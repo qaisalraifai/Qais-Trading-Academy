@@ -201,5 +201,5 @@ const styles = {
     backgroundColor: gold,
     color: "#000",
   },
-  footer: { color: "#333", fontSize: "0.8rem", marginTop: "1rem" },
-};};
+footer: { color: "#333", fontSize: "0.8rem", marginTop: "1rem" },
+};
