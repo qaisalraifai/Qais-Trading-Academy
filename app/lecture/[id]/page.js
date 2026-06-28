@@ -28,7 +28,7 @@ export default async function LecturePage({ params }) {
     .eq("lecture_id", lecture.id)
     .maybeSingle();
 
-  const driveLink = `https://drive.google.com/file/d/${lecture.youtube_video_id}/view`;
+  const videoSrc = `/api/video?fileId=${lecture.youtube_video_id}`;
 
   return (
     <div style={styles.container}>
@@ -36,11 +36,14 @@ export default async function LecturePage({ params }) {
         ← رجوع للوحة
       </a>
       <h1 style={styles.title}>{lecture.title}</h1>
-
-      <a href={driveLink} target="_blank" rel="noopener noreferrer" style={styles.watchButton}>
-        ▶ شاهد المحاضرة
-      </a>
-
+      <div style={styles.videoWrapper}>
+        <video
+          controls
+          style={styles.video}
+          src={videoSrc}
+          controlsList="nodownload"
+        />
+      </div>
       {lecture.description && (
         <p style={styles.description}>{lecture.description}</p>
       )}
@@ -65,21 +68,20 @@ const styles = {
     direction: "rtl",
     fontFamily: "system-ui, sans-serif",
     padding: "2rem",
-    maxWidth: "700px",
+    maxWidth: "900px",
     margin: "0 auto",
   },
   back: { color: "#10b981", textDecoration: "none", marginBottom: "1rem", display: "inline-block" },
   title: { marginBottom: "1.5rem" },
-  watchButton: {
-    display: "inline-block",
-    padding: "1rem 2rem",
-    backgroundColor: "#10b981",
-    color: "#fff",
-    borderRadius: "12px",
-    textDecoration: "none",
-    fontWeight: "bold",
-    fontSize: "1.1rem",
+  videoWrapper: {
     marginBottom: "1.5rem",
+    borderRadius: "12px",
+    overflow: "hidden",
+    backgroundColor: "#000",
+  },
+  video: {
+    width: "100%",
+    maxHeight: "500px",
   },
   description: { color: "#ccc", marginBottom: "1.5rem", lineHeight: 1.6 },
   quizButton: {
