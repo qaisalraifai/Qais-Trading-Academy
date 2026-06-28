@@ -13,7 +13,6 @@ export async function POST(request) {
 
   const supabase = createAdminClient();
 
-  // 1) تحقق من كود الدعوة
   const { data: invite, error: inviteError } = await supabase
     .from("invite_codes")
     .select("*")
@@ -28,8 +27,7 @@ export async function POST(request) {
     );
   }
 
-  // 2) تحقق إنه اسم المستخدم غير مستخدم من قبل
-  const fakeEmail = `${username.trim().toLowerCase()}@eduapp.local`;
+  const fakeEmail = `${username.trim().toLowerCase()}@eduplatform.com`;
 
   const { data: existing } = await supabase
     .from("profiles")
@@ -44,7 +42,6 @@ export async function POST(request) {
     );
   }
 
-  // 3) إنشاء المستخدم بنظام Auth (بإيميل داخلي وهمي)
   const { data: authUser, error: authError } =
     await supabase.auth.admin.createUser({
       email: fakeEmail,
@@ -56,7 +53,6 @@ export async function POST(request) {
     return NextResponse.json({ error: authError.message }, { status: 400 });
   }
 
-  // 4) إنشاء البروفايل
   const { error: profileError } = await supabase.from("profiles").insert({
     id: authUser.user.id,
     username: username.trim(),
@@ -67,11 +63,10 @@ export async function POST(request) {
     return NextResponse.json({ error: profileError.message }, { status: 400 });
   }
 
-  // 5) تحديث كود الدعوة كمستخدم
   await supabase
     .from("invite_codes")
     .update({ is_used: true, used_by: authUser.user.id })
     .eq("id", invite.id);
 
-  return NextResponse.json({ success: true, email: fakeEmail });
+  return NextResponse.json({ success: true });
 }
