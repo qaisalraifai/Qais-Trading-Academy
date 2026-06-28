@@ -28,20 +28,19 @@ export default async function LecturePage({ params }) {
     .eq("lecture_id", lecture.id)
     .maybeSingle();
 
+  const driveLink = `https://drive.google.com/file/d/${lecture.youtube_video_id}/view`;
+
   return (
     <div style={styles.container}>
       <a href="/dashboard" style={styles.back}>
         ← رجوع للوحة
       </a>
       <h1 style={styles.title}>{lecture.title}</h1>
-      <div style={styles.videoWrapper}>
-        <iframe
-          src={`https://drive.google.com/file/d/${lecture.youtube_video_id}/preview`}
-          style={styles.iframe}
-          allow="autoplay"
-          title={lecture.title}
-        />
-      </div>
+
+      <a href={driveLink} target="_blank" rel="noopener noreferrer" style={styles.watchButton}>
+        ▶ شاهد المحاضرة
+      </a>
+
       {lecture.description && (
         <p style={styles.description}>{lecture.description}</p>
       )}
@@ -70,21 +69,17 @@ const styles = {
     margin: "0 auto",
   },
   back: { color: "#10b981", textDecoration: "none", marginBottom: "1rem", display: "inline-block" },
-  title: { marginBottom: "1rem" },
-  videoWrapper: {
-    position: "relative",
-    paddingBottom: "56.25%",
-    marginBottom: "1.5rem",
+  title: { marginBottom: "1.5rem" },
+  watchButton: {
+    display: "inline-block",
+    padding: "1rem 2rem",
+    backgroundColor: "#10b981",
+    color: "#fff",
     borderRadius: "12px",
-    overflow: "hidden",
-  },
-  iframe: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    border: "none",
+    textDecoration: "none",
+    fontWeight: "bold",
+    fontSize: "1.1rem",
+    marginBottom: "1.5rem",
   },
   description: { color: "#ccc", marginBottom: "1.5rem", lineHeight: 1.6 },
   quizButton: {
