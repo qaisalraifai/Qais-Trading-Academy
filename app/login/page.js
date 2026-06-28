@@ -31,7 +31,7 @@ export default function LoginPage() {
     if (profile?.role === "admin") {
       router.push("/admin");
     } else {
-      router.push("/dashboard");
+      router.push("/choose");
     }
   }
 
@@ -96,4 +96,3 @@ const s = {
   linkText: { color: "#444", fontSize: "0.85rem", textAlign: "center", marginTop: "1.5rem" },
   link: { color: gold, textDecoration: "none" },
 };
-      
