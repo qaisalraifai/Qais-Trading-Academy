@@ -62,6 +62,9 @@ export default function HomePage() {
       <section style={styles.hero}>
         <div style={styles.heroText}>
           <Reveal delay={0}>
+            <img src="/logo.jpg" alt="Qais Trading Academy" style={styles.heroLogo} />
+          </Reveal>
+          <Reveal delay={0.05}>
             <p style={styles.heroTag}>أكاديمية تداول متكاملة</p>
           </Reveal>
           <Reveal delay={0.1}>
@@ -99,7 +102,7 @@ export default function HomePage() {
           </Reveal>
         </div>
 
-        {/* Signature element: ascending candlestick chart */}
+        {/* Candlestick chart */}
         <Reveal delay={0.2} style={styles.heroChart}>
           <svg viewBox="0 0 360 420" style={{ width: "100%", height: "100%" }}>
             {[0, 1, 2, 3, 4].map((i) => (
@@ -261,6 +264,7 @@ const styles = {
     flexWrap: "wrap",
   },
   heroText: { flex: "1 1 480px", minWidth: "320px" },
+  heroLogo: { height: "90px", width: "auto", marginBottom: "1.5rem" },
   heroTag: { fontFamily: "'JetBrains Mono', monospace", color: goldBright, letterSpacing: "2px", fontSize: "0.8rem", marginBottom: "1.25rem" },
   heroTitle: { fontFamily: "'Playfair Display', serif", fontWeight: 600, fontSize: "3rem", lineHeight: 1.25, marginBottom: "1.5rem" },
   heroTitleAccent: { color: goldBright, fontStyle: "italic", fontWeight: 500 },
