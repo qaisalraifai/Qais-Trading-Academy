@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 
 export default function PaymentPage() {
   const [loading, setLoading] = useState(false);
@@ -40,19 +41,18 @@ export default function PaymentPage() {
           <li style={styles.feature}><span style={styles.check}>◆</span> دعم مباشر من المدرب</li>
           <li style={styles.feature}><span style={styles.check}>◆</span> تحليلات وتوصيات حصرية</li>
         </ul>
-        <button
-          style={styles.btn}
-          onClick={handlePayment}
-          disabled={loading}
-        >
+        <button style={styles.btn} onClick={handlePayment} disabled={loading}>
           {loading ? "جاري التحويل..." : "ادفع $300 والانضم الآن"}
         </button>
         <p style={styles.note}>
-          * التجديد الشهري بعد انتهاء الفترة الأولى: <strong style={{color: "#D4AF37"}}>$100 / شهرياً</strong>
+          * التجديد الشهري بعد انتهاء الفترة الأولى: <strong style={{ color: "#D4AF37" }}>$100 / شهرياً</strong>
         </p>
       </div>
 
       <p style={styles.footer}>🔒 جميع المدفوعات مؤمنة عبر Stripe</p>
+
+      {/* رابط الأدمن المخفي */}
+      <Link href="/admin" style={styles.adminLink}>⚙</Link>
     </div>
   );
 }
@@ -72,26 +72,9 @@ const styles = {
     alignItems: "center",
   },
   header: { textAlign: "center", marginBottom: "3rem" },
-  logoText: {
-    fontSize: "3rem",
-    fontWeight: "bold",
-    color: gold,
-    letterSpacing: "8px",
-    textShadow: `0 0 30px ${gold}44`,
-  },
-  logoSub: {
-    color: "#888",
-    letterSpacing: "4px",
-    fontSize: "0.75rem",
-    marginTop: "-0.5rem",
-    marginBottom: "1.5rem",
-  },
-  divider: {
-    width: "80px",
-    height: "2px",
-    backgroundColor: gold,
-    margin: "0 auto 1.5rem",
-  },
+  logoText: { fontSize: "3rem", fontWeight: "bold", color: gold, letterSpacing: "8px", textShadow: `0 0 30px ${gold}44` },
+  logoSub: { color: "#888", letterSpacing: "4px", fontSize: "0.75rem", marginTop: "-0.5rem", marginBottom: "1.5rem" },
+  divider: { width: "80px", height: "2px", backgroundColor: gold, margin: "0 auto 1.5rem" },
   title: { fontSize: "2rem", fontWeight: "bold", marginBottom: "0.5rem" },
   subtitle: { color: "#666", fontSize: "1rem" },
   card: {
@@ -140,4 +123,14 @@ const styles = {
   },
   note: { color: "#555", fontSize: "0.8rem", textAlign: "center", lineHeight: 1.6 },
   footer: { color: "#333", fontSize: "0.8rem", marginTop: "1.5rem" },
+  adminLink: {
+    position: "fixed",
+    bottom: "1rem",
+    left: "1rem",
+    color: "#1a1a1a",
+    fontSize: "1rem",
+    textDecoration: "none",
+    opacity: 0.3,
+    transition: "opacity 0.3s",
+  },
 };
