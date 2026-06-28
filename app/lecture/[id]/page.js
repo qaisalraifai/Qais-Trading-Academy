@@ -33,27 +33,22 @@ export default async function LecturePage({ params }) {
       <a href="/dashboard" style={styles.back}>
         ← رجوع للوحة
       </a>
-
       <h1 style={styles.title}>{lecture.title}</h1>
-
       <div style={styles.videoWrapper}>
         <iframe
-          src={`https://www.youtube.com/embed/${lecture.youtube_video_id}`}
+          src={`https://drive.google.com/file/d/${lecture.youtube_video_id}/preview`}
           style={styles.iframe}
-          allowFullScreen
+          allow="autoplay"
           title={lecture.title}
         />
       </div>
-
       {lecture.description && (
         <p style={styles.description}>{lecture.description}</p>
       )}
-
       <MarkCompleteButton
         lectureId={lecture.id}
         isCompleted={!!progress?.is_completed}
       />
-
       {quiz && (
         <a href={`/quiz/${quiz.id}`} style={styles.quizButton}>
           📝 ابدأ اختبار: {quiz.title}
