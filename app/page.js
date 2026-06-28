@@ -49,8 +49,7 @@ export default function HomePage() {
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.logoBlock}>
-          <span style={styles.logoMark}>QTA</span>
-          <span style={styles.logoDivider} />
+          <img src="/logo.jpg" alt="QTA" style={styles.logoImg} />
           <span style={styles.logoText}>Qais Trading Academy</span>
         </div>
         <nav style={styles.navLinks}>
@@ -238,8 +237,7 @@ const styles = {
     borderBottom: "1px solid #1c1a16",
   },
   logoBlock: { display: "flex", alignItems: "center", gap: "0.85rem" },
-  logoMark: { fontFamily: "'JetBrains Mono', monospace", fontSize: "1rem", color: goldBright, letterSpacing: "2px", fontWeight: 500 },
-  logoDivider: { width: "1px", height: "16px", backgroundColor: "#2a2722" },
+  logoImg: { height: "38px", width: "auto", borderRadius: "4px" },
   logoText: { fontFamily: "'Playfair Display', serif", fontSize: "1.05rem", color: textSoft },
   navLinks: { display: "flex", alignItems: "center", gap: "1.75rem" },
   navLink: { color: textMuted, textDecoration: "none", fontSize: "0.9rem" },
