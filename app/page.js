@@ -47,7 +47,7 @@ export default function HomePage() {
         </div>
         <nav style={styles.navLinks}>
           <Link href="/login" style={styles.navLink}>تسجيل الدخول</Link>
-          <Link href="/payment" style={styles.navCta}>اشترك الآن</Link>
+          <Link href="/signup" style={styles.navCta}>اشترك الآن</Link>
         </nav>
       </header>
 
@@ -82,7 +82,7 @@ export default function HomePage() {
 
           <Reveal delay={0.4}>
             <div style={styles.heroBtns}>
-              <Link href="/payment" style={styles.btnPrimary}>ابدأ رحلتك الآن</Link>
+              <Link href="/signup" style={styles.btnPrimary}>ابدأ رحلتك الآن</Link>
               <Link href="/login" style={styles.btnSecondary}>تسجيل الدخول</Link>
             </div>
           </Reveal>
@@ -182,7 +182,7 @@ export default function HomePage() {
         <Reveal><h2 style={styles.ctaTitle}>جاهز تبدأ؟</h2></Reveal>
         <Reveal delay={0.15}><p style={styles.ctaSub}>انضم الآن وابدأ رحلتك في عالم التداول الاحترافي</p></Reveal>
         <Reveal delay={0.3}>
-          <Link href="/payment" style={styles.btnPrimary}>عرض خطط الاشتراك</Link>
+          <Link href="/signup" style={styles.btnPrimary}>عرض خطط الاشتراك</Link>
         </Reveal>
       </section>
 
