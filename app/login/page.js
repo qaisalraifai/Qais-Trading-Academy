@@ -25,7 +25,14 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+
+    if (profile?.role === "admin") {
+      router.push("/admin");
+    } else {
+      router.push("/dashboard");
+    }
   }
 
   return (
@@ -62,7 +69,7 @@ export default function LoginPage() {
 
           {error && <p style={s.error}>{error}</p>}
 
-          <button onClick={handleLogin} disabled={loading} style={s.btn}>
+          <button onClick={handleLogin} disabled={loading} style={{ ...s.btn, opacity: loading ? 0.7 : 1 }}>
             {loading ? "جاري الدخول..." : "تسجيل الدخول"}
           </button>
         </div>
@@ -89,3 +96,4 @@ const s = {
   linkText: { color: "#444", fontSize: "0.85rem", textAlign: "center", marginTop: "1.5rem" },
   link: { color: gold, textDecoration: "none" },
 };
+      
