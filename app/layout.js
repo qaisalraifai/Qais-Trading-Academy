@@ -11,6 +11,9 @@ export const metadata = {
     "تحليل فني",
     "Backtest",
   ],
+  verification: {
+    google: "VxbiUCbzBZo1Wub4cYuknsfLrMoT_4G_LevBCXeMVkg",
+  },
   icons: {
     icon: "/logo.jpg",
   },
