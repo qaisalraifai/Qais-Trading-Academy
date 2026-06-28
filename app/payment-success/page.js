@@ -1,32 +1,36 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function PaymentSuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
   const type = searchParams.get("type");
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.icon}>🎉</div>
-        <h1 style={styles.title}>تم الدفع بنجاح!</h1>
-        {type === "registration" ? (
-          <p style={styles.desc}>
-            مرحباً بك في Qais Trading Academy. تم تفعيل حسابك بنجاح.
-          </p>
-        ) : (
-          <p style={styles.desc}>
-            تم تجديد اشتراكك بنجاح. استمتع بالوصول الكامل للمحتوى.
-          </p>
-        )}
-        <a href="/dashboard" style={styles.button}>
-          الذهاب للداشبورد
-        </a>
-      </div>
+    <div style={styles.card}>
+      <div style={styles.icon}>🎉</div>
+      <h1 style={styles.title}>تم الدفع بنجاح!</h1>
+      {type === "registration" ? (
+        <p style={styles.desc}>مرحباً بك في Qais Trading Academy. تم تفعيل حسابك بنجاح.</p>
+      ) : (
+        <p style={styles.desc}>تم تجديد اشتراكك بنجاح. استمتع بالوصول الكامل للمحتوى.</p>
+      )}
+      <a href="/dashboard" style={styles.button}>الذهاب للداشبورد</a>
     </div>
   );
 }
+
+export default function PaymentSuccessPage() {
+  return (
+    <div style={styles.container}>
+      <Suspense fallback={<div style={{color:"#fff"}}>جاري التحميل...</div>}>
+        <SuccessContent />
+      </Suspense>
+    </div>
+  );
+}
+
+const gold = "#D4AF37";
 
 const styles = {
   container: {
@@ -40,9 +44,9 @@ const styles = {
     justifyContent: "center",
   },
   card: {
-    backgroundColor: "#111",
-    border: "2px solid #10b981",
-    borderRadius: "16px",
+    backgroundColor: "#0f0f0f",
+    border: `1px solid ${gold}`,
+    borderRadius: "4px",
     padding: "3rem",
     textAlign: "center",
     maxWidth: "400px",
@@ -50,17 +54,20 @@ const styles = {
     flexDirection: "column",
     alignItems: "center",
     gap: "1rem",
+    boxShadow: `0 0 40px ${gold}22`,
   },
   icon: { fontSize: "4rem" },
-  title: { fontSize: "1.8rem", fontWeight: "bold" },
+  title: { fontSize: "1.8rem", fontWeight: "bold", color: gold },
   desc: { color: "#888", lineHeight: 1.6 },
   button: {
     padding: "0.875rem 2rem",
-    borderRadius: "10px",
-    backgroundColor: "#10b981",
+    borderRadius: "2px",
+    border: `1px solid ${gold}`,
+    backgroundColor: gold,
     color: "#000",
     fontWeight: "bold",
     textDecoration: "none",
     marginTop: "1rem",
+    letterSpacing: "1px",
   },
 };
