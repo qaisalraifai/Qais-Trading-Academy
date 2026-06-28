@@ -17,8 +17,9 @@ export default function LoginPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const fakeEmail = `${username.trim().toLowerCase()}@eduapp.local`;
-
+    
+    const fakeEmail = `${username.trim().toLowerCase()}@eduplatform.com`;
+    
     const { error: loginError } = await supabase.auth.signInWithPassword({
       email: fakeEmail,
       password,
