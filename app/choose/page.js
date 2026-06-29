@@ -68,7 +68,7 @@ export default function ChoosePage() {
           </div>
 
           {/* Backtest */}
-          <div style={s.card} onClick={() => window.open("https://qaisalraifai.github.io/backtest-qta/", "_blank")}>
+          <div style={s.card} onClick={() => router.push("/backtest")("https://qaisalraifai.github.io/backtest-qta/", "_blank")}>
             <div style={s.cardIcon}>📊</div>
             <h2 style={s.cardTitle}>Backtest</h2>
             <p style={s.cardDesc}>
