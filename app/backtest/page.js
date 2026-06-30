@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function BacktestPage() {
   const cookieStore = await cookies();
 
+  // عميل عادي للتحقق من تسجيل الدخول فقط
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -21,29 +23,26 @@ export default async function BacktestPage() {
     }
   );
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile, error: profileError } = await supabase
+  // عميل Admin (service role) لجلب الاسم بدون أي قيود RLS
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const { data: profile } = await adminClient
     .from("profiles")
     .select("username")
     .eq("id", user.id)
     .single();
 
-  // وضع تشخيص مؤقت: لو في خطأ أو ما في بيانات، نعرضه بدل "ضيف"
-  let debugInfo = "";
-  if (profileError) {
-    debugInfo = "ERR:" + profileError.message;
-  } else if (!profile) {
-    debugInfo = "NO_PROFILE_FOUND_id_" + user.id.slice(0, 8);
-  } else if (!profile.username) {
-    debugInfo = "USERNAME_EMPTY";
-  }
-
-  const username = profile?.username || debugInfo || "ضيف";
+  const username = profile?.username || "ضيف";
   const encodedUser = encodeURIComponent(username);
 
   return (
