@@ -8,7 +8,6 @@ export const dynamic = "force-dynamic";
 export default async function BacktestPage() {
   const cookieStore = await cookies();
 
-  // عميل عادي للتحقق من تسجيل الدخول فقط
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -29,21 +28,41 @@ export default async function BacktestPage() {
     redirect("/login");
   }
 
-  // عميل Admin (service role) لجلب الاسم بدون أي قيود RLS
-  const adminClient = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  let debugInfo = "";
 
-  const { data: profile } = await adminClient
-    .from("profiles")
-    .select("username")
-    .eq("id", user.id)
-    .single();
+  // تحقق إذا متغير SERVICE_ROLE_KEY موجود أصلاً
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    debugInfo = "NO_SERVICE_KEY_ENV";
+  }
 
-  const username = profile?.username || "ضيف";
-  const encodedUser = encodeURIComponent(username);
+  let username = "ضيف";
+
+  if (!debugInfo) {
+    const adminClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    const { data: profile, error: profileError } = await adminClient
+      .from("profiles")
+      .select("username")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      debugInfo = "ADMIN_ERR:" + profileError.message;
+    } else if (!profile) {
+      debugInfo = "ADMIN_NO_PROFILE_id_" + user.id.slice(0, 8);
+    } else if (!profile.username) {
+      debugInfo = "ADMIN_USERNAME_EMPTY";
+    } else {
+      username = profile.username;
+    }
+  }
+
+  const finalDisplay = debugInfo || username;
+  const encodedUser = encodeURIComponent(finalDisplay);
 
   return (
     <div style={{ width: "100vw", height: "100vh", margin: 0, padding: 0, overflow: "hidden" }}>
