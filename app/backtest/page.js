@@ -27,14 +27,23 @@ export default async function BacktestPage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("username")
     .eq("id", user.id)
     .single();
 
-  const username = profile?.username || "ضيف";
-  const encodedUser = encodeURIComponent(username);
+  let debugInfo = "";
+  if (profileError) {
+    debugInfo = "ERR:" + profileError.message;
+  } else if (!profile) {
+    debugInfo = "NO_PROFILE";
+  } else if (!profile.username) {
+    debugInfo = "EMPTY_USERNAME";
+  }
+
+  const display = `EMAIL_${user.email}_${debugInfo || ("USERNAME_" + profile.username)}`;
+  const encodedUser = encodeURIComponent(display);
 
   return (
     <div style={{ width: "100vw", height: "100vh", margin: 0, padding: 0, overflow: "hidden" }}>
