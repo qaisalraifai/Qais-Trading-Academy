@@ -197,8 +197,9 @@ export default function SignupPage() {
                     type={f.type}
                     placeholder={f.placeholder}
                     value={f.value}
-                    onChange={(e) => f.set(e.target.value)}
+onChange={(e) => f.set(e.target.value)}
                     required={i !== 2 && i !== 3}
+                    autoComplete="off"
                   />
                 </div>
               ))}
