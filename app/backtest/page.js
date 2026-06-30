@@ -1,5 +1,4 @@
 import { createServerClient } from "@supabase/ssr";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -28,41 +27,9 @@ export default async function BacktestPage() {
     redirect("/login");
   }
 
-  let debugInfo = "";
-
-  // تحقق إذا متغير SERVICE_ROLE_KEY موجود أصلاً
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    debugInfo = "NO_SERVICE_KEY_ENV";
-  }
-
-  let username = "ضيف";
-
-  if (!debugInfo) {
-    const adminClient = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-
-    const { data: profile, error: profileError } = await adminClient
-      .from("profiles")
-      .select("username")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError) {
-      debugInfo = "ADMIN_ERR:" + profileError.message;
-    } else if (!profile) {
-      debugInfo = "ADMIN_NO_PROFILE_id_" + user.id.slice(0, 8);
-    } else if (!profile.username) {
-      debugInfo = "ADMIN_USERNAME_EMPTY";
-    } else {
-      username = profile.username;
-    }
-  }
-
-  const finalDisplay = debugInfo || username;
-  const encodedUser = encodeURIComponent(finalDisplay);
+  // نعرض الـ id والإيميل الفعليين كما يراهما السيرفر، بدون أي استعلام إضافي
+  const debugDisplay = `UID_${user.id}_EMAIL_${user.email || "none"}`;
+  const encodedUser = encodeURIComponent(debugDisplay);
 
   return (
     <div style={{ width: "100vw", height: "100vh", margin: 0, padding: 0, overflow: "hidden" }}>
