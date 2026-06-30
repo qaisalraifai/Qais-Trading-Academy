@@ -34,6 +34,7 @@ function Reveal({ children, delay = 0 }) {
 }
 
 export default function SignupPage() {
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -61,18 +62,35 @@ export default function SignupPage() {
   async function handleSignup(e) {
     e.preventDefault();
     setError("");
+    if (!fullName.trim()) { setError("الرجاء إدخال الاسم"); return; }
     if (password !== confirmPassword) { setError("كلمتا المرور غير متطابقتين"); return; }
     setLoading(true);
-    const { error: signUpError } = await supabase.auth.signUp({
+
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email, password,
-      options: { data: { phone, country } },
+      options: { data: { phone, country, full_name: fullName } },
     });
+
     if (signUpError) {
       setError(signUpError.message === "User already registered" ? "هذا الإيميل مسجل مسبقاً" : "حدث خطأ، حاول مرة أخرى");
       setLoading(false);
       return;
     }
+
+    const newUserId = signUpData?.user?.id;
+
     await supabase.auth.signInWithPassword({ email, password });
+
+    // إنشاء/تحديث صف profiles باسم المستخدم
+    if (newUserId) {
+      await supabase.from("profiles").upsert({
+        id: newUserId,
+        username: fullName.trim(),
+        role: "student",
+        subscription_status: "inactive",
+      });
+    }
+
     router.push("/payment");
   }
 
@@ -165,6 +183,7 @@ export default function SignupPage() {
 
             <div style={s.form}>
               {[
+                { label: "الاسم الكامل", type: "text", placeholder: "مثال: قيس الريفاعي", value: fullName, set: setFullName },
                 { label: "البريد الإلكتروني", type: "email", placeholder: "example@email.com", value: email, set: setEmail },
                 { label: "رقم الهاتف", type: "tel", placeholder: "+962 79 000 0000", value: phone, set: setPhone },
                 { label: "بلد الإقامة", type: "text", placeholder: "الأردن، السعودية، الإمارات...", value: country, set: setCountry },
@@ -179,7 +198,7 @@ export default function SignupPage() {
                     placeholder={f.placeholder}
                     value={f.value}
                     onChange={(e) => f.set(e.target.value)}
-                    required={i !== 1 && i !== 2}
+                    required={i !== 2 && i !== 3}
                   />
                 </div>
               ))}
