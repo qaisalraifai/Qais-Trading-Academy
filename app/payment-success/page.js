@@ -77,7 +77,7 @@ export default function PaymentSuccessPage() {
           </div>
 
           {/* Backtest */}
-          <div style={s.card} onClick={() => window.open("https://qaisalraifai.github.io/backtest-qta/", "_blank")}>
+          <div style={s.card} onClick={() => router.push("/backtest")}>
             <div style={s.cardIconWrap}>
               <span style={s.cardIcon}>📊</span>
             </div>
