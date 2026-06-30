@@ -27,9 +27,14 @@ export default async function BacktestPage() {
     redirect("/login");
   }
 
-  // نعرض الـ id والإيميل الفعليين كما يراهما السيرفر، بدون أي استعلام إضافي
-  const debugDisplay = `UID_${user.id}_EMAIL_${user.email || "none"}`;
-  const encodedUser = encodeURIComponent(debugDisplay);
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+
+  const username = profile?.username || "ضيف";
+  const encodedUser = encodeURIComponent(username);
 
   return (
     <div style={{ width: "100vw", height: "100vh", margin: 0, padding: 0, overflow: "hidden" }}>
