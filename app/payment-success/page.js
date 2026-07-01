@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-client";
 
 export default function PaymentSuccessPage() {
   const [logoY, setLogoY] = useState(0);
+  const [status, setStatus] = useState("checking"); // "checking" | "active" | "timeout"
   const router = useRouter();
   const supabase = createClient();
 
@@ -20,9 +21,53 @@ export default function PaymentSuccessPage() {
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  // نتحقق من تفعيل الاشتراك فعلياً (subscription_status = active) قبل ما نسمح بالدخول
+  // هاد يحل مشكلة إنه الـ Webhook ممكن ياخد ثانية-ثانيتين حتى يحدّث القاعدة بعد الدفع مباشرة
+  useEffect(() => {
+    let attempts = 0;
+    const maxAttempts = 15; // 15 محاولة × ثانية = 15 ثانية كحد أقصى
+
+    const checkSubscription = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setStatus("timeout");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("subscription_status")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.subscription_status === "active") {
+        setStatus("active");
+        return;
+      }
+
+      attempts += 1;
+      if (attempts >= maxAttempts) {
+        setStatus("timeout");
+        return;
+      }
+
+      setTimeout(checkSubscription, 1000);
+    };
+
+    checkSubscription();
+  }, []);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");
+  }
+
+  function handleNavigate(path) {
+    if (status !== "active") return; // منع الضغط قبل التفعيل الفعلي
+    router.push(path);
   }
 
   return (
@@ -54,13 +99,41 @@ export default function PaymentSuccessPage() {
         </div>
 
         <p style={s.eyebrow}>QAIS TRADING ACADEMY</p>
-        <h1 style={s.title}>🎉 مرحباً بك في الأكاديمية!</h1>
-        <p style={s.sub}>تم تفعيل اشتراكك بنجاح — اختر من أين تبدأ</p>
+
+        {status === "checking" && (
+          <>
+            <h1 style={s.title}>⏳ جاري تفعيل اشتراكك...</h1>
+            <p style={s.sub}>ثواني ونكون جاهزين، شكراً لصبرك</p>
+          </>
+        )}
+
+        {status === "active" && (
+          <>
+            <h1 style={s.title}>🎉 مرحباً بك في الأكاديمية!</h1>
+            <p style={s.sub}>تم تفعيل اشتراكك بنجاح — اختر من أين تبدأ</p>
+          </>
+        )}
+
+        {status === "timeout" && (
+          <>
+            <h1 style={s.title}>⚠️ التفعيل بياخد وقت أطول من المتوقع</h1>
+            <p style={s.sub}>
+              دفعتك وصلت، بس تفعيل الاشتراك بياخد شوي وقت زيادة. جربي تحدّثي الصفحة بعد دقيقة، أو تواصلي معنا لو استمرت المشكلة.
+            </p>
+          </>
+        )}
 
         {/* Cards */}
         <div style={s.cards}>
           {/* المحاضرات */}
-          <div style={s.card} onClick={() => router.push("/dashboard")}>
+          <div
+            style={{
+              ...s.card,
+              opacity: status === "active" ? 1 : 0.4,
+              cursor: status === "active" ? "pointer" : "not-allowed",
+            }}
+            onClick={() => handleNavigate("/dashboard")}
+          >
             <div style={s.cardIconWrap}>
               <span style={s.cardIcon}>🎓</span>
             </div>
@@ -73,11 +146,20 @@ export default function PaymentSuccessPage() {
               <li><span style={s.dot}>◆</span> مكتبة محاضرات مسجلة</li>
               <li><span style={s.dot}>◆</span> اختبارات لقياس التقدم</li>
             </ul>
-            <div style={s.cardBtn}>ابدأ التعلم ←</div>
+            <div style={s.cardBtn}>
+              {status === "active" ? "ابدأ التعلم ←" : "جاري التفعيل..."}
+            </div>
           </div>
 
           {/* Backtest */}
-          <div style={s.card} onClick={() => router.push("/backtest")}>
+          <div
+            style={{
+              ...s.card,
+              opacity: status === "active" ? 1 : 0.4,
+              cursor: status === "active" ? "pointer" : "not-allowed",
+            }}
+            onClick={() => handleNavigate("/backtest")}
+          >
             <div style={s.cardIconWrap}>
               <span style={s.cardIcon}>📊</span>
             </div>
@@ -90,7 +172,9 @@ export default function PaymentSuccessPage() {
               <li><span style={s.dot}>◆</span> قياس دقيق للأداء</li>
               <li><span style={s.dot}>◆</span> تطوير الاستراتيجيات</li>
             </ul>
-            <div style={s.cardBtn}>افتح البرنامج ←</div>
+            <div style={s.cardBtn}>
+              {status === "active" ? "افتح البرنامج ←" : "جاري التفعيل..."}
+            </div>
           </div>
         </div>
 
@@ -130,7 +214,7 @@ const s = {
   sub: { color: "#555", fontSize: "1rem", marginBottom: "3rem" },
 
   cards: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "3rem" },
-  card: { backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: "8px", padding: "2.5rem 2rem", cursor: "pointer", textAlign: "right", display: "flex", flexDirection: "column", gap: "1rem", transition: "border-color 0.3s" },
+  card: { backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: "8px", padding: "2.5rem 2rem", textAlign: "right", display: "flex", flexDirection: "column", gap: "1rem", transition: "border-color 0.3s, opacity 0.3s" },
   cardIconWrap: { width: "56px", height: "56px", backgroundColor: "#141414", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${gold}22` },
   cardIcon: { fontSize: "1.75rem" },
   cardTitle: { fontSize: "1.4rem", fontWeight: 800, color: "#E8E0D0" },
