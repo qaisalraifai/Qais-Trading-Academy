@@ -1,0 +1,280 @@
+import { createClient } from "@/lib/supabase-server";
+import { redirect } from "next/navigation";
+import LogoutButton from "@/app/components/LogoutButton";
+import DiscordSection from "@/app/components/DiscordSection";
+
+export default async function DashboardPage() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username, discord_username")
+    .eq("id", user.id)
+    .single();
+
+  const { data: lectures } = await supabase
+    .from("lectures")
+    .select("*")
+    .order("order_index", { ascending: true });
+
+  const { data: progress } = await supabase
+    .from("student_progress")
+    .select("lecture_id, is_completed")
+    .eq("student_id", user.id);
+
+  const completedIds = new Set(
+    (progress || []).filter((p) => p.is_completed).map((p) => p.lecture_id)
+  );
+
+  const total = lectures?.length || 0;
+  const completedCount = completedIds.size;
+  const percent = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+  return (
+    <div style={styles.root}>
+      {/* Sidebar */}
+      <div style={styles.sidebar}>
+        <div style={styles.logo}>
+          <span style={styles.logoIcon}>📈</span>
+          <span style={styles.logoText}>QTA</span>
+        </div>
+        <nav style={styles.nav}>
+          <a href="/dashboard" style={styles.navItemActive}>
+            <span>🏠</span> الرئيسية
+          </a>
+          <a href="https://qaisalraifai.github.io/backtest-qta/" target="_blank" style={styles.navItem}>
+            <span>📊</span> Backtest
+          </a>
+        </nav>
+        <div style={styles.sidebarBottom}>
+          <div style={styles.userInfo}>
+            <div style={styles.avatar}>{profile?.username?.[0]?.toUpperCase()}</div>
+            <span style={styles.username}>{profile?.username}</span>
+          </div>
+          <LogoutButton />
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div style={styles.main}>
+        {/* Header */}
+        <div style={styles.header}>
+          <div>
+            <h1 style={styles.greeting}>أهلاً، {profile?.username} 👋</h1>
+            <p style={styles.subGreeting}>Qais Trading Academy</p>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div style={styles.statsGrid}>
+          <div style={styles.statCard}>
+            <div style={styles.statNumber}>{total}</div>
+            <div style={styles.statLabel}>إجمالي المحاضرات</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={{ ...styles.statNumber, color: "#f59e0b" }}>{completedCount}</div>
+            <div style={styles.statLabel}>محاضرات مكتملة</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={{ ...styles.statNumber, color: "#10b981" }}>{percent}%</div>
+            <div style={styles.statLabel}>نسبة التقدم</div>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div style={styles.progressBox}>
+          <div style={styles.progressHeader}>
+            <span style={styles.progressTitle}>تقدمك في الكورس</span>
+            <span style={styles.progressPercent}>{percent}%</span>
+          </div>
+          <div style={styles.progressBarBg}>
+            <div style={{ ...styles.progressBarFill, width: `${percent}%` }} />
+          </div>
+        </div>
+
+        {/* Discord */}
+        <DiscordSection discordUsername={profile?.discord_username} />
+
+        {/* Lectures */}
+        <h2 style={styles.sectionTitle}>المحاضرات</h2>
+        <div style={styles.lecturesGrid}>
+          {(lectures || []).map((lecture, index) => (
+            <a key={lecture.id} href={`/lecture/${lecture.id}`} style={styles.lectureCard}>
+              <div style={styles.lectureNumber}>
+                {completedIds.has(lecture.id) ? "✅" : `${index + 1}`}
+              </div>
+              <div style={styles.lectureInfo}>
+                <div style={styles.lectureTitle}>{lecture.title}</div>
+                <div style={styles.lectureStatus}>
+                  {completedIds.has(lecture.id) ? "مكتملة" : "ابدأ المحاضرة ←"}
+                </div>
+              </div>
+            </a>
+          ))}
+          {(!lectures || lectures.length === 0) && (
+            <p style={{ color: "#666" }}>لا توجد محاضرات بعد.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const styles = {
+  root: {
+    display: "flex",
+    minHeight: "100vh",
+    backgroundColor: "#0a0a0a",
+    color: "#fff",
+    direction: "rtl",
+    fontFamily: "system-ui, sans-serif",
+  },
+  sidebar: {
+    width: "240px",
+    backgroundColor: "#111",
+    borderLeft: "1px solid #222",
+    display: "flex",
+    flexDirection: "column",
+    padding: "1.5rem 1rem",
+    position: "fixed",
+    right: 0,
+    top: 0,
+    height: "100vh",
+  },
+  logo: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    marginBottom: "2rem",
+    padding: "0.5rem",
+  },
+  logoIcon: { fontSize: "1.8rem" },
+  logoText: {
+    fontSize: "1.4rem",
+    fontWeight: "bold",
+    color: "#f59e0b",
+    letterSpacing: "2px",
+  },
+  nav: { display: "flex", flexDirection: "column", gap: "0.5rem", flex: 1 },
+  navItemActive: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    padding: "0.75rem 1rem",
+    borderRadius: "10px",
+    backgroundColor: "#f59e0b22",
+    color: "#f59e0b",
+    textDecoration: "none",
+    fontWeight: "bold",
+  },
+  navItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    padding: "0.75rem 1rem",
+    borderRadius: "10px",
+    color: "#888",
+    textDecoration: "none",
+  },
+  sidebarBottom: { borderTop: "1px solid #222", paddingTop: "1rem" },
+  userInfo: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    marginBottom: "1rem",
+  },
+  avatar: {
+    width: "36px",
+    height: "36px",
+    borderRadius: "50%",
+    backgroundColor: "#f59e0b",
+    color: "#000",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: "bold",
+  },
+  username: { color: "#ccc", fontSize: "0.9rem" },
+  main: {
+    flex: 1,
+    marginRight: "240px",
+    padding: "2rem",
+  },
+  header: {
+    marginBottom: "2rem",
+  },
+  greeting: { fontSize: "1.8rem", fontWeight: "bold", marginBottom: "0.25rem" },
+  subGreeting: { color: "#f59e0b", fontSize: "0.9rem" },
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "1rem",
+    marginBottom: "1.5rem",
+  },
+  statCard: {
+    backgroundColor: "#111",
+    border: "1px solid #222",
+    borderRadius: "12px",
+    padding: "1.5rem",
+    textAlign: "center",
+  },
+  statNumber: { fontSize: "2rem", fontWeight: "bold", color: "#fff", marginBottom: "0.25rem" },
+  statLabel: { color: "#666", fontSize: "0.85rem" },
+  progressBox: {
+    backgroundColor: "#111",
+    border: "1px solid #222",
+    borderRadius: "12px",
+    padding: "1.5rem",
+    marginBottom: "2rem",
+  },
+  progressHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "0.75rem",
+  },
+  progressTitle: { color: "#ccc" },
+  progressPercent: { color: "#f59e0b", fontWeight: "bold" },
+  progressBarBg: {
+    backgroundColor: "#222",
+    borderRadius: "8px",
+    height: "8px",
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    backgroundColor: "#f59e0b",
+    height: "100%",
+    transition: "width 0.3s",
+  },
+  sectionTitle: { marginBottom: "1rem", fontSize: "1.2rem", color: "#ccc" },
+  lecturesGrid: { display: "flex", flexDirection: "column", gap: "0.75rem" },
+  lectureCard: {
+    backgroundColor: "#111",
+    border: "1px solid #222",
+    borderRadius: "12px",
+    padding: "1.25rem",
+    display: "flex",
+    alignItems: "center",
+    gap: "1rem",
+    textDecoration: "none",
+    color: "#fff",
+    transition: "border-color 0.2s",
+  },
+  lectureNumber: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "50%",
+    backgroundColor: "#1a1a1a",
+    border: "2px solid #f59e0b",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#f59e0b",
+    fontWeight: "bold",
+    flexShrink: 0,
+  },
+  lectureInfo: { flex: 1 },
+  lectureTitle: { fontWeight: "bold", marginBottom: "0.25rem" },
+  lectureStatus: { color: "#666", fontSize: "0.85rem" },
+};
