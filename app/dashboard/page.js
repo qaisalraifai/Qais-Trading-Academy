@@ -44,11 +44,7 @@ export default async function DashboardPage() {
         alignItems: "center",
         gap: 12,
         boxShadow: "0 8px 32px rgba(201,162,75,0.3)",
-        transition: "transform 0.2s",
-      }}
-        onMouseOver={e => e.currentTarget.style.transform = "scale(1.04)"}
-        onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}
-      >
+      }}>
         <span style={{ fontSize: 48 }}>🎓</span>
         <span>المحاضرات</span>
         <span style={{ fontSize: 13, fontWeight: "normal", opacity: 0.8 }}>ابدأ التعلم ←</span>
