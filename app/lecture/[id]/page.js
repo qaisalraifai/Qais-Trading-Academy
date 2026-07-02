@@ -8,22 +8,17 @@ export default async function LecturePage({ params }) {
   if (!user) redirect("/login");
 
   const { data: lecture } = await supabase
-    .from("lectures")
-    .select("*")
-    .eq("id", params.id)
-    .single();
-
+    .from("lectures").select("*").eq("id", params.id).single();
   if (!lecture) redirect("/lecture");
 
   const { data: lectures } = await supabase
-    .from("lectures")
-    .select("id, title, order_index")
+    .from("lectures").select("id, title, order_index")
     .order("order_index", { ascending: true });
 
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#0a0a0a",
+      background: "radial-gradient(ellipse at top, #1a1200 0%, #0a0a0a 60%)",
       color: "#fff",
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
@@ -31,44 +26,81 @@ export default async function LecturePage({ params }) {
     }}>
       {/* Sidebar */}
       <div style={{
-        width: 280, background: "#111", borderLeft: "1px solid #222",
-        padding: "1.5rem 1rem", display: "flex", flexDirection: "column", gap: "0.5rem",
+        width: 280,
+        background: "linear-gradient(180deg, #111108 0%, #0a0a0a 100%)",
+        borderLeft: "1px solid #C9A24B22",
+        padding: "1.5rem 1rem",
+        display: "flex", flexDirection: "column", gap: "0.5rem",
         overflowY: "auto",
       }}>
-        <Link href="/lecture" style={{ color: "#C9A24B", textDecoration: "none", fontSize: 13, marginBottom: "1rem", display: "block" }}>
+        {/* Logo + Title */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "1px solid #1a1a0a" }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #C9A24B", overflow: "hidden", flexShrink: 0 }}>
+            <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+          <div>
+            <p style={{ color: "#C9A24B", fontSize: 9, letterSpacing: 2, margin: 0 }}>QTA</p>
+            <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, margin: 0 }}>المحاضرات</p>
+          </div>
+        </div>
+
+        <Link href="/lecture" style={{ color: "#C9A24B", textDecoration: "none", fontSize: 12, marginBottom: "0.5rem", display: "block" }}>
           ← قائمة المحاضرات
         </Link>
+
         {lectures?.map((l, index) => (
           <Link key={l.id} href={`/lecture/${l.id}`} style={{ textDecoration: "none" }}>
             <div style={{
               padding: "0.75rem 1rem",
-              borderRadius: 8,
-              background: l.id === params.id ? "linear-gradient(135deg, #C9A24B22, #a07a2e22)" : "transparent",
-              border: l.id === params.id ? "1px solid #C9A24B55" : "1px solid transparent",
-              color: l.id === params.id ? "#C9A24B" : "#aaa",
-              fontSize: 14,
+              borderRadius: 10,
+              background: l.id === params.id ? "linear-gradient(135deg, #C9A24B22, #a07a2e11)" : "transparent",
+              border: l.id === params.id ? "1px solid #C9A24B44" : "1px solid transparent",
+              color: l.id === params.id ? "#C9A24B" : "#666",
+              fontSize: 13,
               cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 10,
             }}>
-              {index + 1}. {l.title}
+              <div style={{
+                width: 26, height: 26, borderRadius: "50%",
+                background: l.id === params.id ? "linear-gradient(135deg, #C9A24B, #a07a2e)" : "#1a1a0a",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 700, color: l.id === params.id ? "#000" : "#555",
+                flexShrink: 0,
+              }}>
+                {index + 1}
+              </div>
+              {l.title}
             </div>
           </Link>
         ))}
       </div>
 
-      {/* Video */}
+      {/* Video Area */}
       <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column" }}>
-        <h2 style={{ margin: "0 0 1rem", fontSize: 22 }}>{lecture.title}</h2>
-        {lecture.description && (
-          <p style={{ color: "#888", margin: "0 0 1.5rem", fontSize: 14 }}>{lecture.description}</p>
-        )}
-        <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", background: "#000", borderRadius: 12, overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ marginBottom: "1.5rem" }}>
+          <p style={{ color: "#C9A24B", fontSize: 11, letterSpacing: 3, margin: "0 0 8px" }}>QAIS TRADING ACADEMY</p>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>{lecture.title}</h2>
+          {lecture.description && (
+            <p style={{ color: "#666", margin: "8px 0 0", fontSize: 14 }}>{lecture.description}</p>
+          )}
+        </div>
+
+        {/* Video */}
+        <div style={{
+          position: "relative", width: "100%", paddingTop: "56.25%",
+          background: "#000", borderRadius: 16, overflow: "hidden",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+          border: "1px solid #C9A24B22",
+        }}>
           <iframe
             src={`https://www.youtube.com/embed/${lecture.youtube_video_id}?rel=0&modestbranding=1`}
             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
             allowFullScreen
           />
         </div>
-        <p style={{ color: "#555", fontSize: 12, marginTop: "0.75rem" }}>
+
+        <p style={{ color: "#444", fontSize: 12, marginTop: "0.75rem" }}>
           💡 اضغط على أيقونة التكبير ⛶ بالفيديو للعرض بشاشة كاملة
         </p>
       </div>
