@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import MarkCompleteButton from "@/app/components/MarkCompleteButton";
+import Link from "next/link";
 
 export default async function LecturePage({ params }) {
   const supabase = createClient();
@@ -13,85 +13,65 @@ export default async function LecturePage({ params }) {
     .eq("id", params.id)
     .single();
 
-  if (!lecture) redirect("/dashboard");
+  if (!lecture) redirect("/lecture");
 
-  const { data: quiz } = await supabase
-    .from("quizzes")
-    .select("id, title")
-    .eq("lecture_id", lecture.id)
-    .maybeSingle();
-
-  const { data: progress } = await supabase
-    .from("student_progress")
-    .select("is_completed")
-    .eq("student_id", user.id)
-    .eq("lecture_id", lecture.id)
-    .maybeSingle();
-
-  const videoSrc = `/api/video?fileId=${lecture.youtube_video_id}`;
+  const { data: lectures } = await supabase
+    .from("lectures")
+    .select("id, title, order_index")
+    .order("order_index", { ascending: true });
 
   return (
-    <div style={styles.container}>
-      <a href="/dashboard" style={styles.back}>
-        ← رجوع للوحة
-      </a>
-      <h1 style={styles.title}>{lecture.title}</h1>
-      <div style={styles.videoWrapper}>
-        <video
-          controls
-          style={styles.video}
-          src={videoSrc}
-          controlsList="nodownload"
-        />
+    <div style={{
+      minHeight: "100vh",
+      background: "#0a0a0a",
+      color: "#fff",
+      fontFamily: "'Segoe UI', sans-serif",
+      direction: "rtl",
+      display: "flex",
+    }}>
+      {/* Sidebar */}
+      <div style={{
+        width: 280, background: "#111", borderLeft: "1px solid #222",
+        padding: "1.5rem 1rem", display: "flex", flexDirection: "column", gap: "0.5rem",
+        overflowY: "auto",
+      }}>
+        <Link href="/lecture" style={{ color: "#C9A24B", textDecoration: "none", fontSize: 13, marginBottom: "1rem", display: "block" }}>
+          ← قائمة المحاضرات
+        </Link>
+        {lectures?.map((l, index) => (
+          <Link key={l.id} href={`/lecture/${l.id}`} style={{ textDecoration: "none" }}>
+            <div style={{
+              padding: "0.75rem 1rem",
+              borderRadius: 8,
+              background: l.id === params.id ? "linear-gradient(135deg, #C9A24B22, #a07a2e22)" : "transparent",
+              border: l.id === params.id ? "1px solid #C9A24B55" : "1px solid transparent",
+              color: l.id === params.id ? "#C9A24B" : "#aaa",
+              fontSize: 14,
+              cursor: "pointer",
+            }}>
+              {index + 1}. {l.title}
+            </div>
+          </Link>
+        ))}
       </div>
-      {lecture.description && (
-        <p style={styles.description}>{lecture.description}</p>
-      )}
-      <MarkCompleteButton
-        lectureId={lecture.id}
-        isCompleted={!!progress?.is_completed}
-      />
-      {quiz && (
-        <a href={`/quiz/${quiz.id}`} style={styles.quizButton}>
-          📝 ابدأ اختبار: {quiz.title}
-        </a>
-      )}
+
+      {/* Video */}
+      <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column" }}>
+        <h2 style={{ margin: "0 0 1rem", fontSize: 22 }}>{lecture.title}</h2>
+        {lecture.description && (
+          <p style={{ color: "#888", margin: "0 0 1.5rem", fontSize: 14 }}>{lecture.description}</p>
+        )}
+        <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", background: "#000", borderRadius: 12, overflow: "hidden" }}>
+          <iframe
+            src={`https://www.youtube.com/embed/${lecture.youtube_video_id}?rel=0&modestbranding=1`}
+            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
+            allowFullScreen
+          />
+        </div>
+        <p style={{ color: "#555", fontSize: 12, marginTop: "0.75rem" }}>
+          💡 اضغط على أيقونة التكبير ⛶ بالفيديو للعرض بشاشة كاملة
+        </p>
+      </div>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    minHeight: "100vh",
-    backgroundColor: "#0f0f0f",
-    color: "#fff",
-    direction: "rtl",
-    fontFamily: "system-ui, sans-serif",
-    padding: "2rem",
-    maxWidth: "900px",
-    margin: "0 auto",
-  },
-  back: { color: "#10b981", textDecoration: "none", marginBottom: "1rem", display: "inline-block" },
-  title: { marginBottom: "1.5rem" },
-  videoWrapper: {
-    marginBottom: "1.5rem",
-    borderRadius: "12px",
-    overflow: "hidden",
-    backgroundColor: "#000",
-  },
-  video: {
-    width: "100%",
-    maxHeight: "500px",
-  },
-  description: { color: "#ccc", marginBottom: "1.5rem", lineHeight: 1.6 },
-  quizButton: {
-    display: "inline-block",
-    marginTop: "1rem",
-    padding: "0.75rem 1.5rem",
-    backgroundColor: "#3b82f6",
-    color: "#fff",
-    borderRadius: "8px",
-    textDecoration: "none",
-    fontWeight: "bold",
-  },
-};
