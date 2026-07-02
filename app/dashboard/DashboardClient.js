@@ -160,7 +160,7 @@ export default function DashboardClient({ username }) {
           </Link>
           <div
             onClick={async () => {
-              const { createClient } = await import("@/lib/supabase-browser");
+              const { createClient } = await import("@/lib/supabase-client");
               const supabase = createClient();
               await supabase.auth.signOut();
               window.location.href = "/login";
