@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
+import BacktestClient from "../backtest/BacktestClient";
 
 const GOLD = "#C9A24B";
 const GOLD_DARK = "#a07a2e";
@@ -13,7 +14,7 @@ const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: "👥", view: "accounts" },
   { key: "lectures", label: "المحاضرات", icon: "🎓", view: "lectures" },
   { key: "strategies", label: "الاستراتيجيات", icon: "🧩", view: "strategies" },
-  { key: "trades", label: "الصفقات", icon: "📊", href: "/backtest" },
+  { key: "trades", label: "الصفقات", icon: "📊", view: "backtest" },
   { key: "reports", label: "التقارير", icon: "📋", view: "reports" },
   { key: "settings", label: "الإعدادات", icon: "⚙️", view: "settings" },
 ];
@@ -48,7 +49,9 @@ function rowToTrade(row) {
 
 export default function DashboardClient({ username }) {
   const [trades, setTrades] = useState([]); // بترتيب زمني تصاعدي (الأقدم أولاً) - للرسم البياني
+  const [rawTrades, setRawTrades] = useState([]); // الشكل الخام من قاعدة البيانات - تحتاجه أداة الباك تيست
   const [balance, setBalance] = useState(3000);
+  const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // التنقل الداخلي داخل نفس الصفحة (بدون الخروج من الداشبورد)
@@ -77,7 +80,9 @@ export default function DashboardClient({ username }) {
     };
   }, [activeKey, lectures.length]);
 
+  // نحدّث بيانات لوحة التحكم كل مرة نرجع لها (مثلاً بعد إضافة صفقات من تبويب الباك تيست)
   useEffect(() => {
+    if (activeKey !== "dashboard") return;
     let active = true;
     async function load() {
       const supabase = createClient();
@@ -85,6 +90,7 @@ export default function DashboardClient({ username }) {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user || !active) return;
+      setUserId(user.id);
 
       const [{ data: tradesRows }, { data: profile }] = await Promise.all([
         supabase
@@ -96,6 +102,7 @@ export default function DashboardClient({ username }) {
       ]);
 
       if (!active) return;
+      setRawTrades(tradesRows || []);
       setTrades((tradesRows || []).map(rowToTrade));
       setBalance(Number(profile?.backtest_balance ?? 3000));
       setLoading(false);
@@ -104,7 +111,7 @@ export default function DashboardClient({ username }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [activeKey]);
 
   const total = trades.length;
   const wins = trades.filter((t) => t.result === "win").length;
@@ -271,6 +278,19 @@ export default function DashboardClient({ username }) {
             onSelect={setSelectedLecture}
             onBack={() => setSelectedLecture(null)}
           />
+        ) : activeKey === "backtest" ? (
+          userId ? (
+            <BacktestClient
+              key={userId}
+              userId={userId}
+              username={username}
+              initialBalance={balance}
+              initialTrades={rawTrades}
+              onExit={() => setActiveKey("dashboard")}
+            />
+          ) : (
+            <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>...جاري التحميل</div>
+          )
         ) : activeKey !== "dashboard" ? (
           <div
             style={{
