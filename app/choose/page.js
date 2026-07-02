@@ -26,94 +26,91 @@ export default function ChoosePage() {
   }
 
   return (
-    <div style={s.page}>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
-      {/* Orbs */}
-      <div style={{ ...s.orb, width: "500px", height: "500px", top: "-150px", left: "-150px", background: "radial-gradient(circle, #B8915A18 0%, transparent 70%)" }} />
-      <div style={{ ...s.orb, width: "400px", height: "400px", bottom: "-100px", right: "-100px", background: "radial-gradient(circle, #C9A24B14 0%, transparent 70%)" }} />
-
+    <div style={{
+      minHeight: "100vh",
+      background: "radial-gradient(ellipse at top, #1a1200 0%, #0a0a0a 60%)",
+      direction: "rtl",
+      fontFamily: "'Segoe UI', sans-serif",
+      color: "#fff",
+      overflowX: "hidden",
+    }}>
       {/* Header */}
-      <header style={s.header}>
-        <div style={s.logoBlock}>
-          <img src="/logo.jpg" alt="QTA" style={s.logoImg} />
-          <span style={s.logoText}>Qais Trading Academy</span>
+      <header style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "1.2rem 2rem", borderBottom: "1px solid #1a1a0a",
+      }}>
+        <button onClick={handleLogout} style={{
+          background: "none", border: "1px solid #333", color: "#666",
+          padding: "0.5rem 1rem", borderRadius: 6, cursor: "pointer", fontSize: 13,
+        }}>تسجيل الخروج</button>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <span style={{ fontSize: 14, color: "#ccc" }}>Qais Trading Academy</span>
+          <img src="/logo.jpg" style={{ height: 34, borderRadius: "50%" }} />
         </div>
-        <button onClick={handleLogout} style={s.logoutBtn}>تسجيل الخروج</button>
       </header>
 
       {/* Content */}
-      <div style={s.content}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "2rem" }}>
-          <img
-            src="/logo.jpg"
-            alt="QTA"
-            style={{ ...s.heroLogo, transform: `translateY(${logoY}px)` }}
-          />
+      <div style={{ maxWidth: 800, margin: "0 auto", padding: "3rem 2rem", textAlign: "center" }}>
+        
+        {/* Animated Logo */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.5rem" }}>
+          <div style={{
+            width: 110, height: 110, borderRadius: "50%",
+            border: "2px solid #C9A24B",
+            boxShadow: "0 0 40px #C9A24B44, 0 0 80px #C9A24B22",
+            overflow: "hidden",
+            transform: `translateY(${logoY}px)`,
+            transition: "transform 0.1s ease-out",
+          }}>
+            <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
         </div>
 
-        <p style={s.eyebrow}>QAIS TRADING ACADEMY</p>
-        <h1 style={s.title}>اختر وجهتك</h1>
-        <p style={s.sub}>من أين تبدأ جلستك اليوم؟</p>
+        <p style={{ color: "#C9A24B", letterSpacing: 4, fontSize: 11, margin: "0 0 12px" }}>QAIS TRADING ACADEMY</p>
+        <h1 style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", fontWeight: 900, margin: "0 0 8px" }}>
+          👋 بك مرحبياً Samer
+        </h1>
+        <p style={{ color: "#555", fontSize: 15, margin: "0 0 3rem" }}>من أين تبدأ جلستك اليوم؟</p>
 
-        <div style={s.cards}>
-          {/* المحاضرات */}
-          <div style={s.card} onClick={() => router.push("/dashboard")}>
-            <div style={s.cardIcon}>🎓</div>
-            <h2 style={s.cardTitle}>المحاضرات</h2>
-            <p style={s.cardDesc}>
-              وصول كامل لمكتبة المحاضرات المسجلة، الكورسات المرتبة، والاختبارات.
-            </p>
-            <div style={s.cardBtn}>ابدأ التعلم ←</div>
-          </div>
-
+        {/* Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+          
           {/* Backtest */}
-          <div style={s.card} onClick={() => router.push("/backtest")}>
-            <div style={s.cardIcon}>📊</div>
-            <h2 style={s.cardTitle}>Backtest</h2>
-            <p style={s.cardDesc}>
+          <div onClick={() => router.push("/backtest")} style={{
+            background: "linear-gradient(145deg, #111108, #0d0d0a)",
+            border: "1px solid #C9A24B33",
+            borderRadius: 16, padding: "2.5rem 2rem",
+            cursor: "pointer", textAlign: "right",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            transition: "border-color 0.3s",
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#C9A24B", margin: "0 0 12px" }}>Backtest</h2>
+            <p style={{ color: "#555", fontSize: 14, lineHeight: 1.75, margin: "0 0 20px" }}>
               اختبر استراتيجياتك على بيانات تاريخية حقيقية وقِس أداءك بدقة.
             </p>
-            <div style={s.cardBtn}>افتح البرنامج ←</div>
+            <div style={{ color: "#C9A24B", fontSize: 13, fontWeight: 600 }}>افتح البرنامج ←</div>
           </div>
+
+          {/* المحاضرات */}
+          <div onClick={() => router.push("/dashboard")} style={{
+            background: "linear-gradient(145deg, #111108, #0d0d0a)",
+            border: "1px solid #C9A24B33",
+            borderRadius: 16, padding: "2.5rem 2rem",
+            cursor: "pointer", textAlign: "right",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            transition: "border-color 0.3s",
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🎓</div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#C9A24B", margin: "0 0 12px" }}>المحاضرات</h2>
+            <p style={{ color: "#555", fontSize: 14, lineHeight: 1.75, margin: "0 0 20px" }}>
+              وصول كامل لمكتبة المحاضرات المسجلة، الكورسات المرتبة، والاختبارات.
+            </p>
+            <div style={{ color: "#C9A24B", fontSize: 13, fontWeight: 600 }}>ابدأ التعلم ←</div>
+          </div>
+
         </div>
       </div>
     </div>
   );
 }
-
-const gold = "#C9A24B";
-const s = {
-  page: { backgroundColor: "#050505", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#E8E0D0", overflowX: "hidden", position: "relative" },
-  orb: { position: "fixed", borderRadius: "50%", pointerEvents: "none", filter: "blur(80px)", zIndex: 0 },
-
-  header: { position: "relative", zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #141414" },
-  logoBlock: { display: "flex", alignItems: "center", gap: "0.75rem" },
-  logoImg: { height: "34px", borderRadius: "4px" },
-  logoText: { fontSize: "0.95rem", fontWeight: 500, color: "#E8E0D0" },
-  logoutBtn: { background: "none", border: "1px solid #222", color: "#555", padding: "0.5rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" },
-
-  content: { position: "relative", zIndex: 1, maxWidth: "800px", margin: "0 auto", padding: "4rem 2rem", textAlign: "center" },
-  heroLogo: { width: "90px", height: "90px", objectFit: "cover", borderRadius: "50%", border: `2px solid ${gold}44`, boxShadow: `0 0 40px ${gold}33`, transition: "transform 0.1s ease-out" },
-  eyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1rem" },
-  title: { fontSize: "clamp(2rem, 5vw, 3rem)", fontWeight: 900, lineHeight: 1.2, marginBottom: "0.75rem", letterSpacing: "-0.5px" },
-  sub: { color: "#555", fontSize: "1rem", marginBottom: "3rem" },
-
-  cards: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" },
-  card: {
-    backgroundColor: "#0d0d0d",
-    border: "1px solid #1a1a1a",
-    borderRadius: "8px",
-    padding: "2.5rem 2rem",
-    cursor: "pointer",
-    textAlign: "right",
-    transition: "border-color 0.3s, box-shadow 0.3s",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-  },
-  cardIcon: { fontSize: "2.5rem" },
-  cardTitle: { fontSize: "1.4rem", fontWeight: 800, color: "#E8E0D0" },
-  cardDesc: { color: "#555", fontSize: "0.9rem", lineHeight: 1.75, flex: 1 },
-  cardBtn: { color: gold, fontFamily: "'JetBrains Mono', monospace", fontSize: "0.82rem", letterSpacing: "1px", marginTop: "0.5rem" },
-};
