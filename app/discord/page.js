@@ -24,7 +24,7 @@ export default async function DiscordPage() {
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
     }}>
-      <img src="/logo.png" alt="QTA" style={{ width: 80, marginBottom: 20, borderRadius: "50%" }} />
+      <img src="/logo.jpg" alt="QTA" style={{ width: 80, marginBottom: 20, borderRadius: "50%" }} />
       <p style={{ color: "#C9A24B", letterSpacing: 3, fontSize: 13, marginBottom: 24 }}>QAIS TRADING ACADEMY</p>
       <h2 style={{ color: "#fff", fontSize: 24, marginBottom: 40 }}>مجتمع Discord 🎮</h2>
       <DiscordSection
