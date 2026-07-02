@@ -31,7 +31,7 @@ export default async function DashboardPage() {
       <h1 style={{ color: "#fff", fontSize: 28, margin: "0 0 6px" }}>أهلاً {username} 👋</h1>
       <p style={{ color: "#666", marginBottom: 48, fontSize: 15 }}>من أين تبدأ جلستك اليوم؟</p>
 
-      <Link href="/lecture" style={{
+      <Link href="/discord" style={{
         background: "linear-gradient(135deg, #C9A24B, #a07a2e)",
         color: "#000",
         borderRadius: 20,
