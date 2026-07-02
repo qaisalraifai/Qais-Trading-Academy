@@ -45,6 +45,7 @@ export default function PaymentSuccessPage() {
 
       if (profile?.subscription_status === "active") {
         setStatus("active");
+        router.replace("/dashboard");
         return;
       }
 
@@ -103,14 +104,14 @@ export default function PaymentSuccessPage() {
         {status === "checking" && (
           <>
             <h1 style={s.title}>⏳ جاري تفعيل اشتراكك...</h1>
-            <p style={s.sub}>ثواني ونكون جاهزين، شكراً لصبرك</p>
+            <p style={s.sub}>ثواني ونوديك مباشرة للوحة التحكم، شكراً لصبرك</p>
           </>
         )}
 
         {status === "active" && (
           <>
             <h1 style={s.title}>🎉 مرحباً بك في الأكاديمية!</h1>
-            <p style={s.sub}>تم تفعيل اشتراكك بنجاح — اختر من أين تبدأ</p>
+            <p style={s.sub}>تم تفعيل اشتراكك بنجاح — جاري تحويلك للوحة التحكم...</p>
           </>
         )}
 
