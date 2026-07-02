@@ -147,7 +147,7 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-export default function BacktestClient({ userId, username, initialBalance, initialTrades }) {
+export default function BacktestClient({ userId, username, initialBalance, initialTrades, onExit }) {
   const supabase = useRef(createClient()).current;
 
   const [trades, setTrades] = useState((initialTrades || []).map(rowToTrade));
@@ -528,8 +528,8 @@ export default function BacktestClient({ userId, username, initialBalance, initi
 
   /* ===================== خروج ===================== */
   function handleLogout() {
-    const target = "https://qais-trading-academy.vercel.app/choose";
-    window.location.href = target;
+    if (onExit) { onExit(); return; }
+    window.location.href = "/dashboard";
   }
 
   /* ===================== مودال الرصيد ===================== */
