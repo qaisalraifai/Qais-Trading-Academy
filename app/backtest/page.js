@@ -1,12 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import BacktestClient from "./BacktestClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function BacktestPage() {
   const cookieStore = await cookies();
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -21,7 +21,9 @@ export default async function BacktestPage() {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
@@ -29,20 +31,25 @@ export default async function BacktestPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("username")
+    .select("username, backtest_balance")
     .eq("id", user.id)
     .single();
 
   const username = profile?.username || "ضيف";
-  const encodedUser = encodeURIComponent(username);
+  const initialBalance = profile?.backtest_balance ?? 3000;
+
+  const { data: tradesRows } = await supabase
+    .from("trades")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true });
 
   return (
-    <div style={{ width: "100vw", height: "100vh", margin: 0, padding: 0, overflow: "hidden" }}>
-      <iframe
-        src={`https://qaisalraifai.github.io/backtest-qta/?user=${encodedUser}`}
-        style={{ width: "100%", height: "100%", border: "none" }}
-        allow="fullscreen"
-      />
-    </div>
+    <BacktestClient
+      userId={user.id}
+      username={username}
+      initialBalance={Number(initialBalance)}
+      initialTrades={tradesRows || []}
+    />
   );
 }
