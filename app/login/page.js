@@ -20,7 +20,7 @@ export default function LoginPage() {
     if (loginError) { setError("الإيميل أو كلمة المرور غلط"); setLoading(false); return; }
     const { data: { user } } = await supabase.auth.getUser();
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-    if (profile?.role === "admin") { router.push("/admin"); } else { router.push("/choose"); }
+    if (profile?.role === "admin") { router.push("/admin"); } else { router.push("/dashboard"); }
   }
 
   return (
