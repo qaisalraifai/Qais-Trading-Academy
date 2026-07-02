@@ -26,7 +26,7 @@ export default async function DashboardPage() {
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
     }}>
-      <img src="/logo.png" alt="QTA" style={{ width: 90, marginBottom: 24, borderRadius: "50%" }} />
+      <img src="/logo.jpg" alt="QTA" style={{ width: 90, marginBottom: 24, borderRadius: "50%" }} />
       <p style={{ color: "#C9A24B", letterSpacing: 3, fontSize: 13, marginBottom: 8 }}>QAIS TRADING ACADEMY</p>
       <h1 style={{ color: "#fff", fontSize: 28, margin: "0 0 6px" }}>أهلاً {username} 👋</h1>
       <p style={{ color: "#666", marginBottom: 48, fontSize: 15 }}>من أين تبدأ جلستك اليوم؟</p>
