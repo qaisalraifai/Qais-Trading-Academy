@@ -16,83 +16,93 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (loginError) {
-      setError("الإيميل أو كلمة المرور غلط");
-      setLoading(false);
-      return;
-    }
-
+    if (loginError) { setError("الإيميل أو كلمة المرور غلط"); setLoading(false); return; }
     const { data: { user } } = await supabase.auth.getUser();
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-
-    if (profile?.role === "admin") {
-      router.push("/admin");
-    } else {
-      router.push("/choose");
-    }
+    if (profile?.role === "admin") { router.push("/admin"); } else { router.push("/choose"); }
   }
 
   return (
-    <div style={s.page}>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-      <div style={s.card}>
-        <p style={s.eyebrow}>QTA</p>
-        <h1 style={s.title}>تسجيل الدخول</h1>
-        <p style={s.sub}>أهلاً بعودتك لأكاديمية Qais Trading</p>
-
-        <div style={s.form}>
-          <div style={s.field}>
-            <label style={s.label}>البريد الإلكتروني</label>
-            <input
-              style={s.input}
-              type="email"
-              placeholder="example@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+    <div style={{
+      minHeight: "100vh",
+      background: "radial-gradient(ellipse at top, #1a1200 0%, #0a0a0a 60%)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: "'Segoe UI', sans-serif", direction: "rtl", padding: "2rem",
+    }}>
+      <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem" }}>
+        
+        {/* Logo */}
+        <div style={{ position: "relative" }}>
+          <div style={{
+            width: 100, height: 100, borderRadius: "50%",
+            border: "2px solid #C9A24B",
+            boxShadow: "0 0 30px #C9A24B55, 0 0 60px #C9A24B22",
+            overflow: "hidden",
+          }}>
+            <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
-          <div style={s.field}>
-            <label style={s.label}>كلمة المرور</label>
-            <input
-              style={s.input}
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          {error && <p style={s.error}>{error}</p>}
-
-          <button onClick={handleLogin} disabled={loading} style={{ ...s.btn, opacity: loading ? 0.7 : 1 }}>
-            {loading ? "جاري الدخول..." : "تسجيل الدخول"}
-          </button>
         </div>
 
-        <p style={s.linkText}>ما عندك حساب؟ <Link href="/signup" style={s.link}>اشترك الآن</Link></p>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ color: "#C9A24B", letterSpacing: 4, fontSize: 11, margin: "0 0 8px" }}>Q T A</p>
+          <h1 style={{ color: "#fff", fontSize: 28, margin: "0 0 6px", fontWeight: 800 }}>تسجيل الدخول</h1>
+          <p style={{ color: "#555", fontSize: 14, margin: 0 }}>أهلاً بعودتك لأكاديمية Qais Trading</p>
+        </div>
+
+        {/* Card */}
+        <div style={{
+          width: "100%",
+          background: "linear-gradient(145deg, #111108, #0d0d0d)",
+          border: "1px solid #C9A24B33",
+          borderRadius: 16,
+          padding: "2rem",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
+            <div>
+              <label style={{ color: "#888", fontSize: 13, display: "block", marginBottom: 6 }}>البريد الإلكتروني</label>
+              <input
+                type="email" placeholder="example@email.com"
+                value={email} onChange={e => setEmail(e.target.value)}
+                style={{
+                  width: "100%", background: "#080808", border: "1px solid #222",
+                  color: "#fff", padding: "0.75rem 1rem", borderRadius: 8,
+                  fontSize: 14, outline: "none", direction: "ltr", boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ color: "#888", fontSize: 13, display: "block", marginBottom: 6 }}>كلمة المرور</label>
+              <input
+                type="password" placeholder="••••••••"
+                value={password} onChange={e => setPassword(e.target.value)}
+                style={{
+                  width: "100%", background: "#080808", border: "1px solid #222",
+                  color: "#fff", padding: "0.75rem 1rem", borderRadius: 8,
+                  fontSize: 14, outline: "none", direction: "ltr", boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            {error && <p style={{ color: "#ef4444", fontSize: 13, textAlign: "center", margin: 0 }}>{error}</p>}
+
+            <button onClick={handleLogin} disabled={loading} style={{
+              background: "linear-gradient(135deg, #C9A24B, #a07a2e)",
+              color: "#000", border: "none", borderRadius: 8,
+              padding: "0.9rem", fontWeight: 700, fontSize: 15,
+              cursor: "pointer", opacity: loading ? 0.7 : 1, marginTop: "0.5rem",
+            }}>
+              {loading ? "جاري الدخول..." : "تسجيل الدخول"}
+            </button>
+          </div>
+        </div>
+
+        <p style={{ color: "#444", fontSize: 13 }}>
+          ما عندك حساب؟{" "}
+          <Link href="/signup" style={{ color: "#C9A24B", textDecoration: "none" }}>اشترك الآن</Link>
+        </p>
       </div>
     </div>
   );
 }
-
-const gold = "#C9A24B";
-const s = {
-  page: { backgroundColor: "#050505", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", direction: "rtl", fontFamily: "'Inter', sans-serif", padding: "2rem" },
-  card: { backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: "8px", padding: "3rem 2.5rem", width: "100%", maxWidth: "420px" },
-  eyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.75rem", letterSpacing: "3px", marginBottom: "1rem", textAlign: "center" },
-  title: { fontSize: "1.75rem", fontWeight: 800, color: "#E8E0D0", textAlign: "center", marginBottom: "0.5rem" },
-  sub: { color: "#555", fontSize: "0.9rem", textAlign: "center", marginBottom: "2rem" },
-  form: { display: "flex", flexDirection: "column", gap: "1.25rem" },
-  field: { display: "flex", flexDirection: "column", gap: "0.4rem" },
-  label: { color: "#888", fontSize: "0.82rem" },
-  input: { backgroundColor: "#080808", border: "1px solid #1e1e1e", color: "#E8E0D0", padding: "0.75rem 1rem", borderRadius: "4px", fontSize: "0.95rem", outline: "none", direction: "ltr", textAlign: "right" },
-  btn: { backgroundColor: gold, color: "#080600", padding: "0.9rem", borderRadius: "4px", border: "none", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer", marginTop: "0.5rem" },
-  error: { color: "#ef4444", fontSize: "0.85rem", textAlign: "center" },
-  linkText: { color: "#444", fontSize: "0.85rem", textAlign: "center", marginTop: "1.5rem" },
-  link: { color: gold, textDecoration: "none" },
-};
