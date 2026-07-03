@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets";
+import { createClient } from "@/lib/supabase-client";
 
 const GOLD = "#C9A24B";
 const GOLD_LIGHT = "#E8C468";
@@ -66,6 +67,51 @@ function sanitizeCandles(list) {
   );
   clean.sort((a, b) => a.time - b.time);
   return clean.filter((c, i) => i === 0 || c.time !== clean[i - 1].time);
+}
+
+/* ===================== إعدادات ألوان الشارت (تنحفظ محلياً بالمتصفح) ===================== */
+const CHART_SETTINGS_KEY = "qta_chart_settings_v1";
+const DEFAULT_CHART_SETTINGS = { bg: "#0d0d0a", up: GREEN, down: RED };
+function loadChartSettings() {
+  if (typeof window === "undefined") return DEFAULT_CHART_SETTINGS;
+  try {
+    const raw = window.localStorage.getItem(CHART_SETTINGS_KEY);
+    if (!raw) return DEFAULT_CHART_SETTINGS;
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_CHART_SETTINGS, ...parsed };
+  } catch {
+    return DEFAULT_CHART_SETTINGS;
+  }
+}
+function saveChartSettings(settings) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CHART_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {}
+}
+
+/* تحويل صفقة الريبلاي لصف جدول trades (نفس شكل أداة الباك تيست بالظبط عشان تظهر فيها وبلوحة التحكم) */
+function tradeToRow(trade, userId) {
+  return {
+    user_id: userId,
+    asset: trade.asset,
+    trade_date: trade.date,
+    direction: trade.direction,
+    lot: trade.lot,
+    entry: trade.entry,
+    sl: trade.sl,
+    tp: trade.tp,
+    result: trade.result,
+    setup: trade.setup || null,
+    reason: trade.reason || null,
+    risk_amount: trade.riskAmount,
+    reward_amount: trade.rewardAmount,
+    rr: trade.rr,
+    risk_percent: trade.riskPercent,
+    is_live: trade.isLive,
+    price_source: trade.priceSource || null,
+    source_symbol: trade.sourceSymbol || null,
+  };
 }
 
 /* ===================== شارت عشوائي (تدريب أعمى) ===================== */
@@ -300,7 +346,7 @@ function pointSegDist(px, py, x1, y1, x2, y2) {
   return Math.hypot(px - cx, py - cy);
 }
 
-export default function ReplayClient() {
+export default function ReplayClient({ userId }) {
 
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
@@ -333,6 +379,7 @@ export default function ReplayClient() {
     }
     prevPriceRef.current = p;
     setLiveLastPrice(p);
+    checkOpenPositionsRef.current?.(p);
   }
 
   const [cutMode, setCutMode] = useState(false);
@@ -366,6 +413,58 @@ export default function ReplayClient() {
   // لوحة خصائص الرسمة المحددة
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
+
+  /* إعدادات ألوان الشارت (خلفية + شموع صعود/هبوط) + قائمة الكليك يمين + نافذة الإعدادات */
+  const [chartSettings, setChartSettings] = useState(DEFAULT_CHART_SETTINGS);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, price }
+
+  /* ===== ربط أزرار الشراء/البيع الفوري ببرنامج الباك تيست ===== */
+  const supabase = useRef(createClient()).current;
+  const [accountBalance, setAccountBalance] = useState(3000);
+  const [pendingTrade, setPendingTrade] = useState(null); // {direction, entry, lot, tpId, slId, asset}
+  const [tradeLot, setTradeLot] = useState("0.01");
+  const [savingTrade, setSavingTrade] = useState(false);
+  const [tradeToast, setTradeToast] = useState("");
+  const [dragTick, setDragTick] = useState(0);
+  const openPositionsRef = useRef([]); // [{dbId, direction, entry, sl, tp, lot, riskAmount, rewardAmount, asset}]
+  const checkOpenPositionsRef = useRef(null);
+  const pendingTradeRef = useRef(null);
+
+  useEffect(() => {
+    pendingTradeRef.current = pendingTrade;
+  }, [pendingTrade]);
+
+  useEffect(() => {
+    if (!supabase || !userId) return;
+    let active = true;
+    supabase.from("profiles").select("backtest_balance").eq("id", userId).single().then(({ data }) => {
+      if (active && data?.backtest_balance != null) setAccountBalance(Number(data.backtest_balance));
+    });
+    return () => { active = false; };
+  }, [supabase, userId]);
+
+  useEffect(() => {
+    if (!tradeToast) return;
+    const t = setTimeout(() => setTradeToast(""), 3500);
+    return () => clearTimeout(t);
+  }, [tradeToast]);
+
+  /* تحميل إعدادات الألوان المحفوظة بعد أول رندر عالمتصفح (تفادي مشاكل الـ SSR) */
+  useEffect(() => {
+    setChartSettings(loadChartSettings());
+  }, []);
+
+  /* أي تغيير بالإعدادات: تطبيق فوري على الشارت + حفظ بالمتصفح */
+  useEffect(() => {
+    if (!chartRef.current || !seriesRef.current) return;
+    chartRef.current.applyOptions({ layout: { background: { color: chartSettings.bg } } });
+    seriesRef.current.applyOptions({
+      upColor: chartSettings.up, downColor: chartSettings.down,
+      wickUpColor: chartSettings.up, wickDownColor: chartSettings.down,
+    });
+    saveChartSettings(chartSettings);
+  }, [chartSettings]);
 
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
   useEffect(() => { magnetRef.current = magnetOn; }, [magnetOn]);
@@ -440,7 +539,18 @@ export default function ReplayClient() {
         setLineStyle({ ...style, dash: style.dash || "dashed" });
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillText(d.p1.price.toFixed(2), 6, y - 4);
+        const roleLabel = d.tradeRole === "tp" ? "🎯 هدف (TP): " : d.tradeRole === "sl" ? "⛔ إيقاف (SL): " : d.tradeRole === "entry" ? "▶ دخول: " : "";
+        if (roleLabel) {
+          ctx.font = "bold 11px sans-serif";
+          const label = roleLabel + d.p1.price.toFixed(2);
+          const tw = ctx.measureText(label).width;
+          ctx.fillStyle = style.color || GOLD_LIGHT;
+          ctx.fillRect(4, y - 15, tw + 10, 16);
+          ctx.fillStyle = "#0a0a0a";
+          ctx.fillText(label, 9, y - 4);
+        } else {
+          ctx.fillText(d.p1.price.toFixed(2), 6, y - 4);
+        }
 
       } else if (d.type === "hray") {
         const y = series.priceToCoordinate(d.p1.price);
@@ -1056,9 +1166,10 @@ export default function ReplayClient() {
   }
 
   function handleClearDrawings() {
-    if (drawingsRef.current.length === 0) return;
-    if (!window.confirm("مسح كل الرسومات من الشارت؟")) return;
-    drawingsRef.current = [];
+    const clearable = drawingsRef.current.filter((d) => !d.tradeTag);
+    if (clearable.length === 0) return;
+    if (!window.confirm("مسح كل الرسومات من الشارت؟ (خطوط الهدف/الإيقاف لصفقة مفتوحة ما بتتأثر)")) return;
+    drawingsRef.current = drawingsRef.current.filter((d) => !!d.tradeTag);
     drawOverlay();
   }
   function toggleDrawingsVisible() { setDrawingsVisible((v) => !v); }
@@ -1070,25 +1181,159 @@ export default function ReplayClient() {
   const assetInfo = getAssetByValue(assetValue);
   const supported = randomChart || !!assetInfo?.yahoo;
 
+  /* ===================== شراء/بيع فوري مربوط بالباك تيست ===================== */
+  function getCurrentPrice() {
+    const arr = visibleCandlesRef.current;
+    if (arr && arr.length) return arr[arr.length - 1].close;
+    return liveLastPrice;
+  }
+
+  function openQuickTrade(direction, priceOverride) {
+    if (!userId) {
+      setTradeToast("سجّلي دخول أول عشان تقدري تسجّلي صفقات بالباك تيست");
+      return;
+    }
+    const price = priceOverride != null ? priceOverride : getCurrentPrice();
+    if (!price) {
+      setTradeToast("ما في سعر متاح لسا، جربي كمان شوي");
+      return;
+    }
+    if (pendingTradeRef.current) {
+      drawingsRef.current = drawingsRef.current.filter((d) => d.tradeTag !== pendingTradeRef.current.tag);
+    }
+    const tag = "trade_" + Date.now();
+    const dist = price * 0.003; // مسافة افتراضية 0.3% تبدأ فيها الخطوط، وبعدين تسحبيها لمكان الهدف/الستوب الصح
+    const tp = direction === "buy" ? price + dist : price - dist;
+    const sl = direction === "buy" ? price - dist : price + dist;
+    const vr = chartRef.current?.timeScale().getVisibleLogicalRange();
+    const logical = vr ? vr.to - 2 : (visibleCandlesRef.current.length || 1) - 1;
+
+    drawingsRef.current.push({
+      id: Date.now(), type: "hline", p1: { logical, price },
+      style: { color: GOLD_LIGHT, width: 1, dash: "solid" }, tradeTag: tag, tradeRole: "entry",
+    });
+    drawingsRef.current.push({
+      id: Date.now() + 1, type: "hline", p1: { logical, price: tp },
+      style: { color: GREEN, width: 1.5, dash: "dashed" }, tradeTag: tag, tradeRole: "tp",
+    });
+    drawingsRef.current.push({
+      id: Date.now() + 2, type: "hline", p1: { logical, price: sl },
+      style: { color: RED, width: 1.5, dash: "dashed" }, tradeTag: tag, tradeRole: "sl",
+    });
+    drawOverlay();
+    setTradeLot("0.01");
+    setPendingTrade({ tag, direction, entry: price, asset: assetValue });
+  }
+
+  function cancelQuickTrade() {
+    if (pendingTradeRef.current) {
+      drawingsRef.current = drawingsRef.current.filter((d) => d.tradeTag !== pendingTradeRef.current.tag);
+      drawOverlay();
+    }
+    setPendingTrade(null);
+  }
+
+  async function confirmQuickTrade() {
+    const pt = pendingTradeRef.current;
+    if (!pt || !userId) return;
+    const tpLine = drawingsRef.current.find((d) => d.tradeTag === pt.tag && d.tradeRole === "tp");
+    const slLine = drawingsRef.current.find((d) => d.tradeTag === pt.tag && d.tradeRole === "sl");
+    const lot = parseFloat(tradeLot) || 0.01;
+    const info = getAssetByValue(pt.asset);
+    const mult = info?.mult || 1;
+    const tp = tpLine?.p1.price ?? pt.entry;
+    const sl = slLine?.p1.price ?? pt.entry;
+    const riskAmount = Math.abs(pt.entry - sl) * lot * mult;
+    const rewardAmount = Math.abs(tp - pt.entry) * lot * mult;
+    const rr = riskAmount > 0 ? rewardAmount / riskAmount : 0;
+    const riskPercent = accountBalance > 0 ? (riskAmount / accountBalance) * 100 : 0;
+
+    setSavingTrade(true);
+    const row = tradeToRow({
+      asset: pt.asset,
+      date: new Date().toISOString().slice(0, 10),
+      direction: pt.direction,
+      lot, entry: pt.entry, sl, tp,
+      result: "pending",
+      setup: "من الريبلاي",
+      reason: "",
+      riskAmount, rewardAmount, rr, riskPercent,
+      isLive: mode === "live",
+    }, userId);
+
+    const { data, error } = await supabase.from("trades").insert(row).select().single();
+    setSavingTrade(false);
+    if (error) {
+      setTradeToast("صار خطأ بتسجيل الصفقة: " + error.message);
+      return;
+    }
+    // نحوّل الخطوط لصفقة "مفتوحة" مراقَبة بدل ما نمسحها، عشان تنقفل تلقائي لما يلمس السعر الهدف أو الإيقاف
+    openPositionsRef.current.push({
+      dbId: data.id, tag: pt.tag, direction: pt.direction, entry: pt.entry, sl, tp, lot,
+      riskAmount, rewardAmount, asset: pt.asset,
+    });
+    setPendingTrade(null);
+    setTradeToast(`✅ اتسجلت صفقة ${pt.direction === "buy" ? "شراء" : "بيع"} — بتلاقيها بالباك تيست ولوحة التحكم`);
+  }
+
+  async function closeOpenPosition(pos, result, closePrice) {
+    openPositionsRef.current = openPositionsRef.current.filter((p) => p.dbId !== pos.dbId);
+    drawingsRef.current = drawingsRef.current.filter((d) => d.tradeTag !== pos.tag);
+    drawOverlay();
+    setTradeToast(
+      result === "win"
+        ? `🎯 توصلت للهدف — الصفقة اتقفلت ربح`
+        : `⛔ توصلت للإيقاف — الصفقة اتقفلت خسارة`
+    );
+    if (!supabase || !userId) return;
+    await supabase
+      .from("trades")
+      .update({ result, reason: `إغلاق تلقائي من الريبلاي عند ${closePrice.toFixed(2)}` })
+      .eq("id", pos.dbId)
+      .eq("user_id", userId);
+  }
+
+  checkOpenPositionsRef.current = function checkOpenPositions(price) {
+    if (!price || openPositionsRef.current.length === 0) return;
+    for (const pos of [...openPositionsRef.current]) {
+      if (pos.direction === "buy") {
+        if (price >= pos.tp) closeOpenPosition(pos, "win", price);
+        else if (price <= pos.sl) closeOpenPosition(pos, "loss", price);
+      } else {
+        if (price <= pos.tp) closeOpenPosition(pos, "win", price);
+        else if (price >= pos.sl) closeOpenPosition(pos, "loss", price);
+      }
+    }
+  };
+
   /* ===================== إنشاء الشارت مرة وحدة ===================== */
   useEffect(() => {
     let cancelled = false;
     async function setup() {
-      const { createChart } = await import("lightweight-charts");
+      const { createChart, CrosshairMode } = await import("lightweight-charts");
       if (cancelled || !chartContainerRef.current) return;
 
+      const savedSettings = loadChartSettings();
+
       const chart = createChart(chartContainerRef.current, {
-        layout: { background: { color: "transparent" }, textColor: "#999" },
+        layout: { background: { color: savedSettings.bg }, textColor: "#999" },
         grid: { vertLines: { color: "#1a1a1a" }, horzLines: { color: "#1a1a1a" } },
         timeScale: { borderColor: "#222", timeVisible: true },
         rightPriceScale: { borderColor: "#222" },
         width: chartContainerRef.current.clientWidth,
         height: 480,
+        /* وضع Normal (مش Magnet) عشان مؤشر السعر يصير "+" حر بيتبع الفأرة فعلياً
+           بدل ما يلتصق ويقفز لأقرب سعر شمعة */
+        crosshair: {
+          mode: CrosshairMode.Normal,
+          vertLine: { color: "#8a8a8aa0", width: 1, style: 3, labelBackgroundColor: "#333" },
+          horzLine: { color: "#8a8a8aa0", width: 1, style: 3, labelBackgroundColor: "#333" },
+        },
       });
 
       const series = chart.addCandlestickSeries({
-        upColor: GREEN, downColor: RED, borderVisible: false,
-        wickUpColor: GREEN, wickDownColor: RED,
+        upColor: savedSettings.up, downColor: savedSettings.down, borderVisible: false,
+        wickUpColor: savedSettings.up, wickDownColor: savedSettings.down,
       });
 
       chartRef.current = chart;
@@ -1193,6 +1438,7 @@ export default function ReplayClient() {
               const snapped = snapPrice(logical, price, y);
               setHandlePoint(d, st.key, logical, snapped);
             }
+            if (d.tradeTag) setDragTick((t) => t + 1);
             drawOverlay();
             return;
           }
@@ -1282,14 +1528,26 @@ export default function ReplayClient() {
         const { x, y } = getLogicalPrice(e.clientX, e.clientY);
         if (x == null || y == null) return;
         const hit = findDrawingAt(x, y);
-        if (hit) openProperties(hit);
+        if (hit && !hit.tradeTag) openProperties(hit);
       }
+      /* كليك يمين عالشارت: قائمة سياق (نسخ السعر، شراء/بيع فوري، إعدادات الألوان، إلخ) */
+      function onContextMenu(e) {
+        e.preventDefault();
+        const { price } = getLogicalPrice(e.clientX, e.clientY);
+        const areaRect = chartAreaRef.current?.getBoundingClientRect();
+        const x = areaRect ? e.clientX - areaRect.left : e.clientX;
+        const y = areaRect ? e.clientY - areaRect.top : e.clientY;
+        setContextMenu({ x, y, price: price != null ? price : null });
+      }
+
       const overlayEl = overlayCanvasRef.current;
       const containerEl = chartContainerRef.current;
       overlayEl?.addEventListener("mousedown", onMouseDown);
       overlayEl?.addEventListener("dblclick", onDblClickOverlay);
       containerEl?.addEventListener("dblclick", onContainerDblClick);
       containerEl?.addEventListener("mousedown", onContainerMouseDownCapture, { capture: true });
+      overlayEl?.addEventListener("contextmenu", onContextMenu);
+      containerEl?.addEventListener("contextmenu", onContextMenu);
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
       window.addEventListener("keydown", onKeyDown);
@@ -1303,6 +1561,8 @@ export default function ReplayClient() {
         overlayEl?.removeEventListener("dblclick", onDblClickOverlay);
         containerEl?.removeEventListener("dblclick", onContainerDblClick);
         containerEl?.removeEventListener("mousedown", onContainerMouseDownCapture, { capture: true });
+        overlayEl?.removeEventListener("contextmenu", onContextMenu);
+        containerEl?.removeEventListener("contextmenu", onContextMenu);
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseup", onMouseUp);
         window.removeEventListener("keydown", onKeyDown);
@@ -1426,6 +1686,7 @@ export default function ReplayClient() {
         // نضيف/نحدّث الشمعة الأخيرة بس، من دون setData/fitContent
         // عشان ما يصير "رجوع" أو ريست مزعج للزوم والسكرول يلي عم تتفرجي عليه
         seriesRef.current.update(allCandles[revealCount - 1]);
+        checkOpenPositionsRef.current?.(allCandles[revealCount - 1].close);
       } else {
         // تحميل بيانات جديدة أو قفزة كبيرة (تبديل وضع/أصل/فريم/بداية عشوائية/قص نقطة/إعادة من البداية)
         seriesRef.current.setData(allCandles.slice(0, revealCount));
@@ -1631,6 +1892,9 @@ export default function ReplayClient() {
         </button>
         <button onClick={toggleFullscreen} style={tabStyle(isFullscreen)} title="فل سكرين">
           {isFullscreen ? "⤡ خروج من الفل سكرين" : "⤢ فل سكرين"}
+        </button>
+        <button onClick={() => setSettingsOpen(true)} style={tabStyle(false)} title="ألوان الشارت (الخلفية وألوان الشموع)">
+          ⚙️ إعدادات الشارت
         </button>
       </div>
     );
@@ -1876,6 +2140,157 @@ export default function ReplayClient() {
   }
 
   /* أدوات التحكم (الأصل/الفريم/السرعة + أزرار الريبلاي) */
+  /* لوحة تأكيد الصفقة الفورية: بتظهر بعد الضغط على شراء/بيع، فيها اللوت وأسعار الهدف/الإيقاف
+     (بتتحدث لحظياً وقت ما تسحبي الخطين عالشارت) وزرّي تأكيد/إلغاء */
+  function renderTradePanel() {
+    if (!pendingTrade) return null;
+    const tpLine = drawingsRef.current.find((d) => d.tradeTag === pendingTrade.tag && d.tradeRole === "tp");
+    const slLine = drawingsRef.current.find((d) => d.tradeTag === pendingTrade.tag && d.tradeRole === "sl");
+    const tp = tpLine?.p1.price, sl = slLine?.p1.price;
+    const lot = parseFloat(tradeLot) || 0;
+    const info = getAssetByValue(pendingTrade.asset);
+    const mult = info?.mult || 1;
+    const riskAmount = sl != null ? Math.abs(pendingTrade.entry - sl) * lot * mult : 0;
+    const rewardAmount = tp != null ? Math.abs(tp - pendingTrade.entry) * lot * mult : 0;
+    const rr = riskAmount > 0 ? (rewardAmount / riskAmount).toFixed(2) : "-";
+    const isBuy = pendingTrade.direction === "buy";
+    return (
+      <div style={{
+        position: "absolute", top: 10, right: 10, zIndex: 12, width: 240,
+        background: "#161616", border: `1px solid ${isBuy ? GREEN : RED}66`, borderRadius: 12,
+        padding: 14, boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+      }}>
+        <div style={{ fontWeight: 700, color: isBuy ? GREEN : RED, marginBottom: 8, fontSize: 14 }}>
+          {isBuy ? "🟢 صفقة شراء" : "🔴 صفقة بيع"} — {pendingTrade.asset}
+        </div>
+        <div style={{ fontSize: 12.5, color: "#ccc", lineHeight: 1.9 }}>
+          سعر الدخول: <b style={{ color: GOLD_LIGHT }}>{pendingTrade.entry.toFixed(2)}</b><br />
+          🎯 الهدف: <b style={{ color: GREEN }}>{tp != null ? tp.toFixed(2) : "-"}</b><br />
+          ⛔ الإيقاف: <b style={{ color: RED }}>{sl != null ? sl.toFixed(2) : "-"}</b><br />
+          نسبة R:R: <b style={{ color: GOLD_LIGHT }}>{rr}</b>
+        </div>
+        <div style={{ fontSize: 11, color: "#888", margin: "8px 0 4px" }}>
+          اسحبي خط الهدف الأخضر أو خط الإيقاف الأحمر عالشارت لتظبطي مكانهم بالظبط
+        </div>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#999", marginTop: 6 }}>
+          اللوت
+          <input
+            type="number" step="0.01" min="0.01" value={tradeLot}
+            onChange={(e) => setTradeLot(e.target.value)}
+            style={{ ...selectStyle, minWidth: 0, width: "100%" }}
+          />
+        </label>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <button onClick={confirmQuickTrade} disabled={savingTrade} style={{ ...btnStyle("primary"), flex: 1 }}>
+            {savingTrade ? "...جاري الحفظ" : "✔ تأكيد وتسجيل"}
+          </button>
+          <button onClick={cancelQuickTrade} disabled={savingTrade} style={{ ...btnStyle("secondary"), flex: 1 }}>
+            ✕ إلغاء
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* توست صغير لتأكيد/تنبيه نتيجة عمليات الصفقة الفورية */
+  function renderTradeToast() {
+    if (!tradeToast) return null;
+    return (
+      <div style={{
+        position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", zIndex: 15,
+        background: "#161616", border: `1px solid ${GOLD}55`, borderRadius: 10,
+        padding: "0.55rem 1rem", fontSize: 12.5, color: "#eee", boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+        maxWidth: "90%", textAlign: "center",
+      }}>
+        {tradeToast}
+      </div>
+    );
+  }
+
+  /* قائمة الكليك يمين عالشارت (ستايل تريدنغ فيو): شراء/بيع فوري بالسعر يلي ضغطتي عليه،
+     نسخ السعر، إعادة تعيين الشارت، إعدادات الألوان، حذف الرسومات */
+  function renderContextMenu() {
+    if (!contextMenu) return null;
+    const price = contextMenu.price;
+    const item = (label, onClick, extra) => (
+      <div
+        onClick={() => { onClick(); setContextMenu(null); }}
+        style={{
+          padding: "9px 14px", fontSize: 13, color: "#e5e5e5", cursor: "pointer",
+          display: "flex", justifyContent: "space-between", gap: 10, whiteSpace: "nowrap",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "#262626")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+      >
+        <span>{label}</span>
+        {extra && <span style={{ color: "#888" }}>{extra}</span>}
+      </div>
+    );
+    const sep = <div style={{ height: 1, background: "#2a2a2a", margin: "5px 0" }} />;
+    return (
+      <div
+        style={{
+          position: "absolute", top: contextMenu.y, left: contextMenu.x, zIndex: 20,
+          background: "#1a1a1a", border: "1px solid #333", borderRadius: 10, padding: "6px 0",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.5)", minWidth: 220,
+        }}
+      >
+        {price != null && (
+          <>
+            {item("🟢 شراء فوري هون", () => openQuickTrade("buy", price), price.toFixed(2))}
+            {item("🔴 بيع فوري هون", () => openQuickTrade("sell", price), price.toFixed(2))}
+            {item("نسخ السعر", () => navigator.clipboard?.writeText(price.toFixed(2)))}
+            {sep}
+          </>
+        )}
+        {item("⟲ إعادة تعيين الشارت", handleResetView)}
+        {item(drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات", toggleDrawingsVisible)}
+        {item("🗑 حذف كل الرسومات", handleClearDrawings)}
+        {sep}
+        {item("⚙️ إعدادات الألوان", () => setSettingsOpen(true))}
+      </div>
+    );
+  }
+
+  /* نافذة إعدادات ألوان الشارت: خلفية الشارت + لون شمعة الصعود + لون شمعة الهبوط */
+  function renderSettingsDialog() {
+    if (!settingsOpen) return null;
+    const row = (label, control) => (
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #262626" }}>
+        <span style={{ fontSize: 13, color: "#ccc" }}>{label}</span>
+        {control}
+      </div>
+    );
+    const colorInput = (val, onChange) => (
+      <input type="color" value={val} onChange={(e) => onChange(e.target.value)}
+        style={{ width: 40, height: 28, border: "1px solid #333", borderRadius: 6, background: "none", cursor: "pointer", padding: 0 }} />
+    );
+    return (
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 30, background: "#000000aa",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }} onClick={() => setSettingsOpen(false)}>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{ width: 300, background: "#161616", border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem" }}
+        >
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 6, fontSize: 15 }}>⚙️ إعدادات الشارت</div>
+          {row("لون خلفية الشارت", colorInput(chartSettings.bg, (v) => setChartSettings((s) => ({ ...s, bg: v }))))}
+          {row("لون شمعة الصعود", colorInput(chartSettings.up, (v) => setChartSettings((s) => ({ ...s, up: v }))))}
+          {row("لون شمعة الهبوط", colorInput(chartSettings.down, (v) => setChartSettings((s) => ({ ...s, down: v }))))}
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <button onClick={() => setChartSettings(DEFAULT_CHART_SETTINGS)} style={{ ...btnStyle("secondary"), flex: 1 }}>
+              الافتراضي
+            </button>
+            <button onClick={() => setSettingsOpen(false)} style={{ ...btnStyle("primary"), flex: 1 }}>
+              تم
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function renderControls() {
     return (
       <div style={{
@@ -1908,6 +2323,27 @@ export default function ReplayClient() {
         {mode === "training" && <Select label="السرعة" value={speed} onChange={(v) => setSpeed(Number(v))} options={SPEEDS} />}
 
         <div style={{ flex: 1 }} />
+
+        {supported && allCandles.length > 0 && (
+          <div style={{ display: "flex", gap: 6, alignItems: "center", paddingInlineEnd: 8, borderInlineEnd: "1px solid #2a2a2a" }}>
+            <button
+              onClick={() => openQuickTrade("buy")}
+              disabled={!!pendingTrade}
+              title="فتح صفقة شراء فورية بالسعر الحالي وربطها بالباك تيست"
+              style={{ ...btnStyle("primary"), background: `linear-gradient(135deg, ${GREEN}, #0d8f63)`, color: "#fff" }}
+            >
+              🟢 شراء فوري
+            </button>
+            <button
+              onClick={() => openQuickTrade("sell")}
+              disabled={!!pendingTrade}
+              title="فتح صفقة بيع فورية بالسعر الحالي وربطها بالباك تيست"
+              style={{ ...btnStyle("primary"), background: `linear-gradient(135deg, ${RED}, #9f1f1f)`, color: "#fff" }}
+            >
+              🔴 بيع فوري
+            </button>
+          </div>
+        )}
 
         {mode === "training" && (
           <>
@@ -2006,6 +2442,9 @@ export default function ReplayClient() {
         <div ref={chartAreaRef} style={{ position: "relative", width: "100%", flex: 1 }}>
           {!loading && allCandles.length > 0 && renderDrawToolbar()}
           {!loading && allCandles.length > 0 && renderPropertiesDialog()}
+          {!loading && renderTradePanel()}
+          {!loading && renderTradeToast()}
+          {!loading && renderContextMenu()}
           <div
             ref={chartContainerRef}
             style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
@@ -2018,7 +2457,16 @@ export default function ReplayClient() {
             }}
           />
         </div>
+        {renderSettingsDialog()}
       </div>
+
+      {contextMenu && (
+        <div
+          onClick={() => setContextMenu(null)}
+          onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+          style={{ position: "fixed", inset: 0, zIndex: 19 }}
+        />
+      )}
 
       {mode === "training" && !isFullscreen && (
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.75rem", fontSize: 12.5, color: "#777" }}>
