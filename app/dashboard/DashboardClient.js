@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
 import BacktestClient from "../backtest/BacktestClient";
+import ReplayClient from "../replay/ReplayClient";
 
 const GOLD = "#C9A24B";
 const GOLD_LIGHT = "#E8C468";
@@ -13,6 +14,7 @@ const RED = "#ef4444";
 const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: "👥", view: "accounts" },
   { key: "lectures", label: "المحاضرات", icon: "🎓", view: "lectures" },
+  { key: "replay", label: "Replay التدريب", icon: "🎯", view: "replay" },
   { key: "strategies", label: "الاستراتيجيات", icon: "🧩", view: "strategies" },
   { key: "trades", label: "الصفقات", icon: "📊", view: "backtest" },
   { key: "reports", label: "التقارير", icon: "📋", view: "reports" },
@@ -443,6 +445,8 @@ export default function DashboardClient({ username }) {
             onSelect={setSelectedLecture}
             onBack={() => setSelectedLecture(null)}
           />
+        ) : activeKey === "replay" ? (
+          <ReplayClient />
         ) : activeKey === "backtest" ? (
           userId ? (
             <BacktestClient
