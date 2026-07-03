@@ -14,24 +14,29 @@ const INTERVAL_CONFIG = {
   "5min":  { yInterval: "5m",  rangeDays: 60 },
   "15min": { yInterval: "15m", rangeDays: 60 },
   "1h":    { yInterval: "60m", rangeDays: 729 },
-  "4h":    { yInterval: "60m", rangeDays: 729, aggregateEvery: 4 },
+  "4h":    { yInterval: "60m", rangeDays: 729, aggregateHours: 4 },
   "1day":  { yInterval: "1d",  rangeDays: 3650 },
 };
 
-function aggregateCandles(candles, groupSize) {
-  const out = [];
-  for (let i = 0; i < candles.length; i += groupSize) {
-    const chunk = candles.slice(i, i + groupSize);
-    if (chunk.length === 0) continue;
-    out.push({
-      time: chunk[0].time,
-      open: chunk[0].open,
-      high: Math.max(...chunk.map((c) => c.high)),
-      low: Math.min(...chunk.map((c) => c.low)),
-      close: chunk[chunk.length - 1].close,
-    });
+/* تجميع الشموع حسب الوقت الفعلي (تقريب لأقرب حد 4 ساعات UTC) مش حسب ترتيبها بالمصفوفة.
+   هيك التجميع بيضل صحيح ومتسلسل حتى لو صار انقطاع بالبيانات (عطلة/سوق مقفول)،
+   لأن التجميع القديم (كل 4 عناصر متتالية) كان ممكن ينتج طوابع زمنية مش متسلسلة بشكل صحيح
+   بعد أي فجوة، ومكتبة الشارت بترفض هيك بيانات وتعمل كراش بالواجهة */
+function aggregateCandles(candles, groupHours) {
+  const groupSec = groupHours * 3600;
+  const buckets = new Map();
+  for (const c of candles) {
+    const bucketTime = Math.floor(c.time / groupSec) * groupSec;
+    const existing = buckets.get(bucketTime);
+    if (!existing) {
+      buckets.set(bucketTime, { time: bucketTime, open: c.open, high: c.high, low: c.low, close: c.close });
+    } else {
+      existing.high = Math.max(existing.high, c.high);
+      existing.low = Math.min(existing.low, c.low);
+      existing.close = c.close;
+    }
   }
-  return out;
+  return Array.from(buckets.values()).sort((a, b) => a.time - b.time);
 }
 
 export async function GET(req) {
@@ -88,14 +93,25 @@ export async function GET(req) {
         low: quote.low?.[i],
         close: quote.close?.[i],
       }))
-      // نشيل الشموع الفاضية (Yahoo بيرجع null بالأوقات اللي السوق مقفول فيها لبعض الأصول)
+      // نشيل الشموع الفاضية أو الفاسدة (Yahoo بيرجع null بالأوقات اللي السوق مقفول فيها لبعض الأصول،
+      // وأحياناً بيرجع قيم NaN/Infinity) - أي شمعة مش رقمية بالكامل بتكسر مكتبة الشارت بالواجهة
       .filter(
-        (c) => c.open != null && c.high != null && c.low != null && c.close != null
+        (c) =>
+          Number.isFinite(c.time) &&
+          Number.isFinite(c.open) &&
+          Number.isFinite(c.high) &&
+          Number.isFinite(c.low) &&
+          Number.isFinite(c.close)
       );
 
-    if (cfg.aggregateEvery) {
-      candles = aggregateCandles(candles, cfg.aggregateEvery);
+    if (cfg.aggregateHours) {
+      candles = aggregateCandles(candles, cfg.aggregateHours);
     }
+
+    // ضمان إضافي: ترتيب تصاعدي وحذف أي تكرار بنفس الطابع الزمني (مكتبة الشارت بترفض
+    // أي بيانات مش متسلسلة تصاعدياً بشكل صارم وبتعمل كراش بالواجهة كلها)
+    candles.sort((a, b) => a.time - b.time);
+    candles = candles.filter((c, i) => i === 0 || c.time !== candles[i - 1].time);
 
     candles = candles.slice(-wanted);
 
