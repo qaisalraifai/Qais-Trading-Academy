@@ -3,83 +3,101 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const TD_BASE = "https://api.twelvedata.com/time_series";
-const MAX_PER_REQUEST = 5000; // أقصى عدد شموع بالطلب الواحد عند Twelve Data
-const MAX_BATCHES = 3; // حماية من استهلاك الحد اليومي المجاني بسرعة
+/* مصدر البيانات: Yahoo Finance (مجاني بالكامل، بدون مفتاح API، بيغطي المعادن/الفوركس/الكريبتو/المؤشرات/الأسهم) */
+const YF_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
 
-function toChartCandle(row) {
-  return {
-    time: Math.floor(new Date(row.datetime.replace(" ", "T") + "Z").getTime() / 1000),
-    open: Number(row.open),
-    high: Number(row.high),
-    low: Number(row.low),
-    close: Number(row.close),
-  };
-}
+/* إعدادات كل فريم: الفريم المكافئ عند Yahoo + أقصى مدى تاريخي متاح لهالفريم (بالأيام)
+   ملاحظة: Yahoo بيحدد مدى البيانات التاريخية حسب الفريم (شموع الدقيقة مثلاً تتوفر لآخر أسبوع بس)
+   فريم 4 ساعات مش متوفر مباشرة عند Yahoo، فبنجيب شموع الساعة ونجمعها كل 4 شموع سوا */
+const INTERVAL_CONFIG = {
+  "1min":  { yInterval: "1m",  rangeDays: 7 },
+  "5min":  { yInterval: "5m",  rangeDays: 60 },
+  "15min": { yInterval: "15m", rangeDays: 60 },
+  "1h":    { yInterval: "60m", rangeDays: 729 },
+  "4h":    { yInterval: "60m", rangeDays: 729, aggregateEvery: 4 },
+  "1day":  { yInterval: "1d",  rangeDays: 3650 },
+};
 
-async function fetchBatch(symbol, interval, apikey, endDate) {
-  const params = new URLSearchParams({
-    symbol,
-    interval,
-    outputsize: String(MAX_PER_REQUEST),
-    order: "DESC",
-    apikey,
-  });
-  if (endDate) params.set("end_date", endDate);
-
-  const res = await fetch(`${TD_BASE}?${params.toString()}`);
-  const data = await res.json();
-
-  if (data.status === "error") {
-    throw new Error(data.message || "خطأ من Twelve Data");
+function aggregateCandles(candles, groupSize) {
+  const out = [];
+  for (let i = 0; i < candles.length; i += groupSize) {
+    const chunk = candles.slice(i, i + groupSize);
+    if (chunk.length === 0) continue;
+    out.push({
+      time: chunk[0].time,
+      open: chunk[0].open,
+      high: Math.max(...chunk.map((c) => c.high)),
+      low: Math.min(...chunk.map((c) => c.low)),
+      close: chunk[chunk.length - 1].close,
+    });
   }
-  if (!Array.isArray(data.values)) return [];
-  return data.values;
+  return out;
 }
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const symbol = searchParams.get("symbol");
   const interval = searchParams.get("interval") || "15min";
-  const wanted = Math.min(Number(searchParams.get("count") || 1000), MAX_PER_REQUEST * MAX_BATCHES);
+  const wanted = Math.min(Number(searchParams.get("count") || 1000), 5000);
 
-  const apikey = process.env.TWELVE_DATA_API_KEY;
-  if (!apikey) {
-    return NextResponse.json({ error: "TWELVE_DATA_API_KEY غير مضبوط بالسيرفر" }, { status: 500 });
-  }
   if (!symbol) {
     return NextResponse.json({ error: "الرجاء تحديد symbol" }, { status: 400 });
   }
 
+  const cfg = INTERVAL_CONFIG[interval] || INTERVAL_CONFIG["15min"];
+
+  const period2 = Math.floor(Date.now() / 1000);
+  const period1 = period2 - cfg.rangeDays * 24 * 60 * 60;
+
+  const params = new URLSearchParams({
+    interval: cfg.yInterval,
+    period1: String(period1),
+    period2: String(period2),
+    includePrePost: "false",
+  });
+
+  const url = `${YF_BASE}/${encodeURIComponent(symbol)}?${params.toString()}`;
+
   try {
-    let all = [];
-    let endDate = undefined;
+    const res = await fetch(url, {
+      headers: {
+        // يوهو بيرفض الطلبات اللي بدون User-Agent شبيه بالمتصفح
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+      },
+      cache: "no-store",
+    });
+    const data = await res.json();
 
-    while (all.length < wanted) {
-      const batch = await fetchBatch(symbol, interval, apikey, endDate);
-      if (batch.length === 0) break;
-
-      all = all.concat(batch);
-
-      // نجهز نقطة النهاية للطلب الجاي (أقدم شمعة بالدفعة الحالية)
-      const oldest = batch[batch.length - 1];
-      endDate = oldest.datetime;
-
-      if (batch.length < MAX_PER_REQUEST) break; // وصلنا لأقدم بيانات متوفرة عند المصدر
-      if (all.length >= MAX_PER_REQUEST * MAX_BATCHES) break;
+    const err = data?.chart?.error;
+    if (err) {
+      throw new Error(err.description || "الرمز غير موجود عند مزود البيانات");
     }
 
-    // إزالة تكرار محتمل بسبب end_date المتداخل + الترتيب من الأقدم للأحدث
-    const seen = new Set();
-    const deduped = [];
-    for (let i = all.length - 1; i >= 0; i--) {
-      const row = all[i];
-      if (seen.has(row.datetime)) continue;
-      seen.add(row.datetime);
-      deduped.push(row);
+    const result = data?.chart?.result?.[0];
+    if (!result || !Array.isArray(result.timestamp)) {
+      return NextResponse.json({ candles: [] });
     }
 
-    const candles = deduped.map(toChartCandle).slice(-wanted);
+    const quote = result.indicators?.quote?.[0] || {};
+    let candles = result.timestamp
+      .map((t, i) => ({
+        time: t,
+        open: quote.open?.[i],
+        high: quote.high?.[i],
+        low: quote.low?.[i],
+        close: quote.close?.[i],
+      }))
+      // نشيل الشموع الفاضية (Yahoo بيرجع null بالأوقات اللي السوق مقفول فيها لبعض الأصول)
+      .filter(
+        (c) => c.open != null && c.high != null && c.low != null && c.close != null
+      );
+
+    if (cfg.aggregateEvery) {
+      candles = aggregateCandles(candles, cfg.aggregateEvery);
+    }
+
+    candles = candles.slice(-wanted);
 
     return NextResponse.json({ candles });
   } catch (e) {
