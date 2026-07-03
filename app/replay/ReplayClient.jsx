@@ -125,6 +125,14 @@ function ToolIcon({ id }) {
       return (<svg {...common}><line x1="3" y1="5" x2="21" y2="5" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="3" y1="14" x2="21" y2="14" /><line x1="3" y1="19" x2="21" y2="19" /></svg>);
     case "fibext":
       return (<svg {...common}><polyline points="4,19 10,7 15,14 21,4" /><line x1="10" y1="7" x2="21" y2="7" strokeDasharray="2,2" /><line x1="15" y1="14" x2="21" y2="14" strokeDasharray="2,2" /><line x1="4" y1="19" x2="21" y2="19" strokeDasharray="2,2" /></svg>);
+    case "fibchannel":
+      return (<svg {...common}><line x1="2" y1="21" x2="16" y2="4" strokeDasharray="2,2" /><line x1="6" y1="21" x2="20" y2="4" /><line x1="10" y1="21" x2="24" y2="4" strokeDasharray="2,2" /></svg>);
+    case "fibtimezone":
+      return (<svg {...common}><line x1="4" y1="3" x2="4" y2="21" /><line x1="8" y1="3" x2="8" y2="21" /><line x1="14" y1="3" x2="14" y2="21" /><line x1="22" y1="3" x2="22" y2="21" /></svg>);
+    case "gannfan":
+      return (<svg {...common}><line x1="3" y1="21" x2="21" y2="3" /><line x1="3" y1="21" x2="21" y2="9" /><line x1="3" y1="21" x2="21" y2="15" /><line x1="3" y1="21" x2="15" y2="21" /></svg>);
+    case "pitchfork":
+      return (<svg {...common}><line x1="4" y1="20" x2="12" y2="4" /><line x1="12" y1="4" x2="21" y2="10" strokeDasharray="2,2" /><line x1="12" y1="4" x2="21" y2="18" strokeDasharray="2,2" /></svg>);
     case "wave":
       return (<svg {...common}><path d="M4 20l5-14 5 10 6-12" /></svg>);
     case "pricerange":
@@ -170,6 +178,10 @@ const TOOL_TITLES = {
   circle: "دائرة",
   fib: "فيبوناتشي (تصحيح)",
   fibext: "فيبوناتشي (امتداد 3 نقاط)",
+  fibchannel: "قناة فيبوناتشي",
+  fibtimezone: "مناطق فيبوناتشي الزمنية",
+  gannfan: "مروحة غان",
+  pitchfork: "شوكة أندروز (Pitchfork)",
   wave: "موجة تصحيح إليوت (0،A،B،C)",
   pricerange: "نطاق السعر",
   daterange: "نطاق التاريخ",
@@ -182,7 +194,7 @@ const TOOL_GROUPS = [
   ["cursor"],
   ["trendline", "ray", "extendedline", "infoline", "angle", "hline", "hray", "vline", "crossline", "parallelchannel"],
   ["path", "rectangle", "circle"],
-  ["fib", "fibext", "wave"],
+  ["fib", "fibext", "fibchannel", "fibtimezone", "gannfan", "pitchfork", "wave"],
   ["pricerange", "daterange"],
   ["position_long", "position_short"],
   ["text", "measure"],
@@ -220,6 +232,14 @@ function defaultStyleFor(type) {
     case "fib":
     case "fibext":
       return { color: GOLD_LIGHT };
+    case "fibchannel":
+      return { color: GOLD_LIGHT, width: 1.3 };
+    case "fibtimezone":
+      return { color: "#4f7cff", width: 1, dash: "dashed" };
+    case "gannfan":
+      return { color: "#e0a63c", width: 1.2 };
+    case "pitchfork":
+      return { color: "#4f7cff", width: 1.5 };
     case "pricerange":
       return { color: "#4f7cff", width: 1.5, fill: true, fillColor: "#4f7cff", fillAlpha: 0.2 };
     case "daterange":
@@ -375,7 +395,7 @@ export default function ReplayClient() {
 
     const all = [...drawingsRef.current];
     if (drawStateRef.current) all.push(drawStateRef.current);
-    if ((activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext" || activeToolRef.current === "parallelchannel") && pathPointsRef.current.length) {
+    if ((activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext" || activeToolRef.current === "parallelchannel" || activeToolRef.current === "fibchannel" || activeToolRef.current === "pitchfork") && pathPointsRef.current.length) {
       const pts = [...pathPointsRef.current];
       if (liveCursorRef.current) pts.push(liveCursorRef.current);
       all.push({ type: activeToolRef.current, points: pts, style: defaultStyleFor(activeToolRef.current) });
@@ -595,6 +615,89 @@ export default function ReplayClient() {
           }
         }
 
+      } else if (d.type === "fibchannel") {
+        if (!d.points || d.points.length < 2) continue;
+        const [p1, p2, p3] = d.points;
+        const xy1 = toXY(p1), xy2 = toXY(p2);
+        if (xy1.x == null || xy2.x == null) continue;
+        const dx = xy2.x - xy1.x, dy = xy2.y - xy1.y, len = Math.hypot(dx, dy) || 1;
+        const ex1x = xy1.x - (dx / len) * 3000, ex1y = xy1.y - (dy / len) * 3000;
+        const ex2x = xy2.x + (dx / len) * 3000, ex2y = xy2.y + (dy / len) * 3000;
+        const nx = -dy / len, ny = dx / len;
+        let offset = 0;
+        if (p3) {
+          const xy3 = toXY(p3);
+          if (xy3.x != null) offset = (xy3.x - xy1.x) * nx + (xy3.y - xy1.y) * ny;
+        }
+        ctx.font = "10px sans-serif";
+        const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+        for (const lvl of levels) {
+          const off = offset * lvl;
+          setLineStyle({ ...style, dash: lvl === 0 || lvl === 1 ? "solid" : "dotted" });
+          const lx1 = ex1x + nx * off, ly1 = ex1y + ny * off;
+          const lx2 = ex2x + nx * off, ly2 = ex2y + ny * off;
+          ctx.beginPath(); ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillText(`${(lvl * 100).toFixed(1)}%`, lx2 - 30, ly2 - 3);
+        }
+
+      } else if (d.type === "fibtimezone") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null) continue;
+        setLineStyle(style);
+        const barGap = Math.max(1, Math.abs(d.p2.logical - d.p1.logical));
+        const fibSeq = [1, 2, 3, 5, 8, 13, 21, 34, 55];
+        ctx.font = "10px sans-serif";
+        for (const n of fibSeq) {
+          const logical = d.p1.logical + barGap * n;
+          const x = ts.logicalToCoordinate(logical);
+          if (x == null || x > w + 20) break;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillText(String(n), x + 3, 14);
+        }
+
+      } else if (d.type === "gannfan") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null) continue;
+        setLineStyle(style);
+        const priceUnit = (d.p2.price - d.p1.price) || 1;
+        const barUnit = (d.p2.logical - d.p1.logical) || 1;
+        const ratios = [[1, 8], [1, 4], [1, 2], [1, 1], [2, 1], [4, 1], [8, 1]];
+        ctx.font = "10px sans-serif";
+        for (const [pMul, tMul] of ratios) {
+          const endLogical = d.p1.logical + barUnit * tMul * Math.sign(barUnit || 1) * 3;
+          const endPrice = d.p1.price + priceUnit * pMul * Math.sign(barUnit || 1) * 3;
+          const endXY = toXY({ logical: endLogical, price: endPrice });
+          if (endXY.x == null) continue;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(endXY.x, endXY.y); ctx.stroke();
+          ctx.fillText(`${pMul}x${tMul}`, endXY.x, endXY.y);
+        }
+
+      } else if (d.type === "pitchfork") {
+        if (!d.points || d.points.length < 2) continue;
+        const [p1, p2, p3] = d.points;
+        const xy1 = toXY(p1), xy2 = toXY(p2);
+        if (xy1.x == null || xy2.x == null) continue;
+        setLineStyle(style);
+        [xy1, xy2].forEach((p) => { ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill(); });
+        if (p3) {
+          const xy3 = toXY(p3);
+          if (xy3.x == null) continue;
+          const midX = (xy2.x + xy3.x) / 2, midY = (xy2.y + xy3.y) / 2;
+          const dx = midX - xy1.x, dy = midY - xy1.y, len = Math.hypot(dx, dy) || 1;
+          const endX = xy1.x + (dx / len) * 3000, endY = xy1.y + (dy / len) * 3000;
+          ctx.beginPath(); ctx.moveTo(xy1.x, xy1.y); ctx.lineTo(endX, endY); ctx.stroke();
+          const upEndX = xy2.x + (dx / len) * 3000, upEndY = xy2.y + (dy / len) * 3000;
+          const dnEndX = xy3.x + (dx / len) * 3000, dnEndY = xy3.y + (dy / len) * 3000;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath(); ctx.moveTo(xy2.x, xy2.y); ctx.lineTo(upEndX, upEndY); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(xy3.x, xy3.y); ctx.lineTo(dnEndX, dnEndY); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.beginPath(); ctx.arc(xy3.x, xy3.y, 2.5, 0, Math.PI * 2); ctx.fill();
+        }
+
       } else if (d.type === "path" || d.type === "wave") {
         if (!d.points || d.points.length < 1) continue;
         const pts = d.points.map(toXY).filter((p) => p.x != null && p.y != null);
@@ -757,11 +860,19 @@ export default function ReplayClient() {
           if (py == null || px == null) return Infinity;
           return Math.min(Math.abs(y - py), Math.abs(x - px));
         }
-        case "parallelchannel": {
+        case "parallelchannel":
+        case "fibchannel":
+        case "pitchfork": {
           if (!d.points || d.points.length < 2) return Infinity;
           const a = logicalPriceToXY(d.points[0]), b = logicalPriceToXY(d.points[1]);
           if (a.x == null || b.x == null) return Infinity;
           return pointSegDist(x, y, a.x, a.y, b.x, b.y);
+        }
+        case "fibtimezone":
+        case "gannfan": {
+          const a = logicalPriceToXY(d.p1);
+          if (a.x == null) return Infinity;
+          return Math.hypot(x - a.x, y - a.y) < 40 ? 0 : Infinity;
         }
         case "rectangle":
         case "circle":
@@ -983,7 +1094,7 @@ export default function ReplayClient() {
         const price = series.coordinateToPrice(y);
         return { logical, price, x, y };
       }
-      const MULTI_POINT_COUNT = { wave: 4, fibext: 3, parallelchannel: 3 };
+      const MULTI_POINT_COUNT = { wave: 4, fibext: 3, parallelchannel: 3, fibchannel: 3, pitchfork: 3 };
       function onMouseDown(e) {
         const tool = activeToolRef.current;
         if (tool === "cursor") return; // بوضع المؤشر السحب بيصير من onContainerMouseDownCapture تحت
@@ -1006,7 +1117,7 @@ export default function ReplayClient() {
           drawOverlay();
           return;
         }
-        if (tool === "path" || tool === "wave" || tool === "fibext" || tool === "parallelchannel") {
+        if (tool === "path" || tool === "wave" || tool === "fibext" || tool === "parallelchannel" || tool === "fibchannel" || tool === "pitchfork") {
           pathPointsRef.current.push({ logical, price: snapped });
           const need = MULTI_POINT_COUNT[tool];
           if (need && pathPointsRef.current.length >= need) {
