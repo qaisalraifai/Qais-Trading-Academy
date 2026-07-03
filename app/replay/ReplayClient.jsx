@@ -71,7 +71,39 @@ function generateRandomCandles(count, interval) {
   return out;
 }
 
+/* ===================== أيقونات شريط الرسم (SVG نظيفة بستايل تريدنغ فيو) ===================== */
+function ToolIcon({ id }) {
+  const common = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" };
+  switch (id) {
+    case "cursor":
+      return (<svg {...common}><path d="M5 3l14 6.5-6 1.7L11 18 5 3z" fill="currentColor" stroke="none" /></svg>);
+    case "trendline":
+      return (<svg {...common}><circle cx="5" cy="19" r="1.8" /><circle cx="19" cy="5" r="1.8" /><line x1="6.3" y1="17.7" x2="17.7" y2="6.3" /></svg>);
+    case "hline":
+      return (<svg {...common}><line x1="3" y1="12" x2="21" y2="12" /><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" /></svg>);
+    case "rectangle":
+      return (<svg {...common}><rect x="4" y="6" width="16" height="12" rx="1" /></svg>);
+    case "fib":
+      return (<svg {...common}><line x1="3" y1="5" x2="21" y2="5" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="3" y1="14" x2="21" y2="14" /><line x1="3" y1="19" x2="21" y2="19" /></svg>);
+    case "text":
+      return (<svg {...common}><path d="M5 5h14M12 5v14" /></svg>);
+    case "measure":
+      return (<svg {...common}><rect x="3" y="9" width="18" height="6" rx="1" /><line x1="7" y1="9" x2="7" y2="12" /><line x1="11" y1="9" x2="11" y2="12" /><line x1="15" y1="9" x2="15" y2="12" /><line x1="19" y1="9" x2="19" y2="12" /></svg>);
+    case "magnet":
+      return (<svg {...common}><path d="M7 4v7a5 5 0 0 0 10 0V4" /><path d="M7 4H4v7a8 8 0 0 0 16 0V4h-3" /></svg>);
+    case "eye":
+      return (<svg {...common}><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>);
+    case "eyeOff":
+      return (<svg {...common}><path d="M3 3l18 18" /><path d="M10.6 5.2A10.6 10.6 0 0 1 12 5c6 0 10 7 10 7a17.6 17.6 0 0 1-3.4 4.2M6.7 6.7C4 8.5 2 12 2 12s4 7 10 7c1.4 0 2.7-.3 3.9-.8" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>);
+    case "trash":
+      return (<svg {...common}><path d="M4 7h16" /><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" /></svg>);
+    default:
+      return null;
+  }
+}
+
 export default function ReplayClient() {
+
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
@@ -137,13 +169,13 @@ export default function ReplayClient() {
   }, [allCandles, revealCount, mode]);
 
   const TOOLS = [
-    { id: "cursor", icon: "↖", title: "مؤشر (تنقل عادي)" },
-    { id: "trendline", icon: "╱", title: "خط اتجاه" },
-    { id: "hline", icon: "—", title: "خط أفقي" },
-    { id: "rectangle", icon: "▭", title: "مستطيل" },
-    { id: "fib", icon: "𝑓", title: "فيبوناتشي" },
-    { id: "text", icon: "T", title: "نص" },
-    { id: "measure", icon: "📐", title: "أداة قياس" },
+    { id: "cursor", title: "مؤشر (تنقل عادي)" },
+    { id: "trendline", title: "خط اتجاه" },
+    { id: "hline", title: "خط أفقي" },
+    { id: "rectangle", title: "مستطيل" },
+    { id: "fib", title: "فيبوناتشي" },
+    { id: "text", title: "نص" },
+    { id: "measure", title: "أداة قياس" },
   ];
 
   function snapPrice(logical, rawPrice) {
@@ -730,14 +762,14 @@ export default function ReplayClient() {
     );
   }
 
-  /* شريط أدوات الرسم العمودي (ستايل تريدنغ فيو) */
+  /* شريط أدوات الرسم العمودي (ستايل تريدنغ فيو) — ثابت عالشمال دايماً بغض النظر عن اتجاه الصفحة */
   function renderDrawToolbar() {
     return (
       <div style={{
-        position: "absolute", top: 10, insetInlineStart: 10, zIndex: 5,
-        display: "flex", flexDirection: "column", gap: 4,
-        background: "linear-gradient(145deg, #14120a, #0d0d0a)",
-        border: `1px solid ${GOLD}33`, borderRadius: 10, padding: 5,
+        position: "absolute", top: 10, left: 10, zIndex: 10,
+        display: "flex", flexDirection: "column", gap: 3,
+        background: "#1a1a1a", border: "1px solid #2f2f2f", borderRadius: 10, padding: 5,
+        boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
       }}>
         {TOOLS.map((t) => (
           <button
@@ -746,18 +778,18 @@ export default function ReplayClient() {
             onClick={() => setActiveTool((cur) => (cur === t.id ? "cursor" : t.id))}
             style={toolBtnStyle(activeTool === t.id)}
           >
-            {t.icon}
+            <ToolIcon id={t.id} />
           </button>
         ))}
-        <div style={{ height: 1, background: `${GOLD}33`, margin: "3px 2px" }} />
+        <div style={{ height: 1, background: "#333", margin: "3px 2px" }} />
         <button title="مغناطيس: الالتصاق بأقرب سعر شمعة" onClick={() => setMagnetOn((m) => !m)} style={toolBtnStyle(magnetOn)}>
-          🧲
+          <ToolIcon id="magnet" />
         </button>
         <button title={drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات"} onClick={toggleDrawingsVisible} style={toolBtnStyle(!drawingsVisible)}>
-          {drawingsVisible ? "👁" : "🚫"}
+          <ToolIcon id={drawingsVisible ? "eye" : "eyeOff"} />
         </button>
         <button title="حذف كل الرسومات" onClick={handleClearDrawings} style={toolBtnStyle(false)}>
-          🗑
+          <ToolIcon id="trash" />
         </button>
       </div>
     );
@@ -900,7 +932,7 @@ export default function ReplayClient() {
           <canvas
             ref={overlayCanvasRef}
             style={{
-              position: "absolute", inset: 0,
+              position: "absolute", inset: 0, zIndex: 3,
               pointerEvents: activeTool === "cursor" ? "none" : "auto",
             }}
           />
@@ -944,11 +976,12 @@ function tabStyle(active) {
 
 function toolBtnStyle(active) {
   return {
-    width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
-    borderRadius: 7, fontSize: 15, cursor: "pointer",
-    border: `1px solid ${active ? GOLD : "transparent"}`,
+    width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
+    borderRadius: 6, cursor: "pointer",
+    border: "1px solid transparent",
     background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-    color: active ? "#1a1200" : "#ccc",
+    color: active ? "#1a1200" : "#c8c8c8",
+    transition: "background .12s, color .12s",
   };
 }
 
