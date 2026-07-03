@@ -108,11 +108,173 @@ export default function ReplayClient() {
   const [cutMode, setCutMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const chartWrapperRef = useRef(null);
+  const headerRef = useRef(null);
 
   const playTimerRef = useRef(null);
   const livePollRef = useRef(null);
   const countdownTickRef = useRef(null);
   const forminCandleStartRef = useRef(null);
+
+  /* ===================== أدوات الرسم (تريدنغ فيو ستايل) ===================== */
+  const overlayCanvasRef = useRef(null);
+  const chartAreaRef = useRef(null);
+  const [activeTool, setActiveTool] = useState("cursor");
+  const [magnetOn, setMagnetOn] = useState(true);
+  const [drawingsVisible, setDrawingsVisible] = useState(true);
+  const activeToolRef = useRef("cursor");
+  const magnetRef = useRef(true);
+  const drawingsVisibleRef = useRef(true);
+  const drawingsRef = useRef([]); // [{id, type, p1:{logical,price}, p2?, text?}]
+  const drawStateRef = useRef(null); // الرسمة الجارية حالياً
+  const isDrawingRef = useRef(false);
+  const visibleCandlesRef = useRef([]);
+
+  useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
+  useEffect(() => { magnetRef.current = magnetOn; }, [magnetOn]);
+  useEffect(() => { drawingsVisibleRef.current = drawingsVisible; drawOverlay(); }, [drawingsVisible]);
+  useEffect(() => {
+    visibleCandlesRef.current = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
+  }, [allCandles, revealCount, mode]);
+
+  const TOOLS = [
+    { id: "cursor", icon: "↖", title: "مؤشر (تنقل عادي)" },
+    { id: "trendline", icon: "╱", title: "خط اتجاه" },
+    { id: "hline", icon: "—", title: "خط أفقي" },
+    { id: "rectangle", icon: "▭", title: "مستطيل" },
+    { id: "fib", icon: "𝑓", title: "فيبوناتشي" },
+    { id: "text", icon: "T", title: "نص" },
+    { id: "measure", icon: "📐", title: "أداة قياس" },
+  ];
+
+  function snapPrice(logical, rawPrice) {
+    if (!magnetRef.current) return rawPrice;
+    const idx = Math.round(logical);
+    const candle = visibleCandlesRef.current[idx];
+    if (!candle) return rawPrice;
+    const vals = [candle.open, candle.high, candle.low, candle.close];
+    let best = vals[0], bestDist = Math.abs(rawPrice - vals[0]);
+    for (const v of vals) {
+      const d = Math.abs(rawPrice - v);
+      if (d < bestDist) { bestDist = d; best = v; }
+    }
+    return best;
+  }
+
+  function drawOverlay() {
+    const canvas = overlayCanvasRef.current;
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!canvas || !chart || !series) return;
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    if (!drawingsVisibleRef.current) { ctx.restore(); return; }
+
+    const ts = chart.timeScale();
+    const toXY = (p) => ({ x: ts.logicalToCoordinate(p.logical), y: series.priceToCoordinate(p.price) });
+
+    const all = [...drawingsRef.current];
+    if (drawStateRef.current) all.push(drawStateRef.current);
+
+    for (const d of all) {
+      ctx.lineWidth = 1.5;
+      ctx.font = "11px sans-serif";
+      if (d.type === "hline") {
+        const y = series.priceToCoordinate(d.p1.price);
+        if (y == null) continue;
+        ctx.strokeStyle = GOLD_LIGHT;
+        ctx.fillStyle = GOLD_LIGHT;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillText(d.p1.price.toFixed(2), 6, y - 4);
+      } else if (d.type === "trendline") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
+        ctx.strokeStyle = GOLD_LIGHT;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      } else if (d.type === "rectangle") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
+        const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+        const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
+        ctx.fillStyle = "rgba(201,162,75,0.15)";
+        ctx.strokeStyle = GOLD_LIGHT;
+        ctx.fillRect(x, y, rw, rh);
+        ctx.strokeRect(x, y, rw, rh);
+      } else if (d.type === "fib") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
+        const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+        const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+        const priceHigh = Math.max(d.p1.price, d.p2.price);
+        const priceLow = Math.min(d.p1.price, d.p2.price);
+        ctx.strokeStyle = GOLD_LIGHT;
+        ctx.fillStyle = GOLD_LIGHT;
+        for (const lvl of levels) {
+          const price = priceHigh - (priceHigh - priceLow) * lvl;
+          const y = series.priceToCoordinate(price);
+          if (y == null) continue;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(x0, y);
+          ctx.lineTo(x1, y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillText(`${(lvl * 100).toFixed(1)}% - ${price.toFixed(2)}`, x1 + 4, y - 3);
+        }
+      } else if (d.type === "text") {
+        const p = toXY(d.p1);
+        if (p.x == null || p.y == null) continue;
+        ctx.fillStyle = GOLD_LIGHT;
+        ctx.font = "13px sans-serif";
+        ctx.fillText(d.text, p.x + 5, p.y - 5);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (d.type === "measure") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null) continue;
+        const priceDiff = d.p2.price - d.p1.price;
+        const pct = (priceDiff / d.p1.price) * 100;
+        const bars = Math.round(d.p2.logical - d.p1.logical);
+        const col = priceDiff >= 0 ? GREEN : RED;
+        const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+        const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
+        ctx.fillStyle = priceDiff >= 0 ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)";
+        ctx.strokeStyle = col;
+        ctx.fillRect(x, y, rw, rh);
+        ctx.strokeRect(x, y, rw, rh);
+        ctx.fillStyle = col;
+        ctx.font = "12px sans-serif";
+        ctx.fillText(`${priceDiff >= 0 ? "+" : ""}${priceDiff.toFixed(2)} (${pct.toFixed(2)}%) | ${bars} شمعة`, x + 5, y - 6);
+      }
+    }
+    ctx.restore();
+  }
+
+  function handleClearDrawings() {
+    if (drawingsRef.current.length === 0) return;
+    if (!window.confirm("مسح كل الرسومات من الشارت؟")) return;
+    drawingsRef.current = [];
+    drawOverlay();
+  }
+  function toggleDrawingsVisible() { setDrawingsVisible((v) => !v); }
+  function handleResetView() {
+    chartRef.current?.timeScale().fitContent();
+    chartRef.current?.priceScale("right").applyOptions({ autoScale: true });
+  }
 
   const assetInfo = getAssetByValue(assetValue);
   const supported = randomChart || !!assetInfo?.yahoo;
@@ -144,10 +306,27 @@ export default function ReplayClient() {
       const handleResize = () => {
         if (!chartContainerRef.current) return;
         const isFs = !!document.fullscreenElement;
+        let height = 480;
+        if (isFs) {
+          const headerH = headerRef.current?.offsetHeight || 0;
+          // نحسب الارتفاع من المساحة الفعلية المتبقية بالشاشة بدل رقم ثابت
+          // عشان شريط الوقت بالأسفل ما يطلع برا الشاشة لما الهيدر ياخد مساحة أكبر
+          height = Math.max(320, window.innerHeight - headerH - 28);
+        }
         chart.applyOptions({
           width: chartContainerRef.current.clientWidth,
-          height: isFs ? window.innerHeight - 120 : 480,
+          height,
         });
+        // مزامنة قياس الـ overlay canvas مع الشارت (للرسومات)
+        if (overlayCanvasRef.current) {
+          const rect = chartContainerRef.current.getBoundingClientRect();
+          const dpr = window.devicePixelRatio || 1;
+          overlayCanvasRef.current.width = Math.max(1, rect.width * dpr);
+          overlayCanvasRef.current.height = Math.max(1, rect.height * dpr);
+          overlayCanvasRef.current.style.width = rect.width + "px";
+          overlayCanvasRef.current.style.height = rect.height + "px";
+        }
+        drawOverlay();
       };
       window.addEventListener("resize", handleResize);
       const handleFsChange = () => {
@@ -155,11 +334,90 @@ export default function ReplayClient() {
         setTimeout(handleResize, 50);
       };
       document.addEventListener("fullscreenchange", handleFsChange);
+
+      /* ===== ربط أحداث الرسم على الـ overlay canvas ===== */
+      function getLogicalPrice(clientX, clientY) {
+        const canvas = overlayCanvasRef.current;
+        if (!canvas) return { logical: null, price: null };
+        const rect = canvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        const ts = chart.timeScale();
+        const logical = ts.coordinateToLogical(x);
+        const price = series.coordinateToPrice(y);
+        return { logical, price };
+      }
+      function onMouseDown(e) {
+        const tool = activeToolRef.current;
+        if (tool === "cursor") return;
+        const { logical, price } = getLogicalPrice(e.clientX, e.clientY);
+        if (logical == null || price == null) return;
+        const snapped = snapPrice(logical, price);
+
+        if (tool === "text") {
+          const content = window.prompt("اكتبي النص:");
+          if (content) {
+            drawingsRef.current.push({ id: Date.now(), type: "text", p1: { logical, price: snapped }, text: content });
+          }
+          setActiveTool("cursor");
+          drawOverlay();
+          return;
+        }
+        if (tool === "hline") {
+          drawingsRef.current.push({ id: Date.now(), type: "hline", p1: { logical, price: snapped } });
+          setActiveTool("cursor");
+          drawOverlay();
+          return;
+        }
+        drawStateRef.current = { type: tool, p1: { logical, price: snapped }, p2: { logical, price: snapped } };
+        isDrawingRef.current = true;
+      }
+      function onMouseMove(e) {
+        if (!isDrawingRef.current || !drawStateRef.current) return;
+        const { logical, price } = getLogicalPrice(e.clientX, e.clientY);
+        if (logical == null || price == null) return;
+        drawStateRef.current.p2 = { logical, price: snapPrice(logical, price) };
+        drawOverlay();
+      }
+      function onMouseUp() {
+        if (!isDrawingRef.current || !drawStateRef.current) return;
+        isDrawingRef.current = false;
+        const d = drawStateRef.current;
+        drawStateRef.current = null;
+        if (d.type !== "measure") {
+          drawingsRef.current.push({ id: Date.now(), ...d });
+        }
+        setActiveTool("cursor");
+        drawOverlay();
+      }
+      function onKeyDown(e) {
+        if (e.key === "Escape") {
+          isDrawingRef.current = false;
+          drawStateRef.current = null;
+          setActiveTool("cursor");
+          drawOverlay();
+        }
+      }
+      const overlayEl = overlayCanvasRef.current;
+      overlayEl?.addEventListener("mousedown", onMouseDown);
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+      window.addEventListener("keydown", onKeyDown);
+      chart.timeScale().subscribeVisibleLogicalRangeChange(drawOverlay);
+      chart.subscribeCrosshairMove(drawOverlay);
+
       chart.__cleanup = () => {
         window.removeEventListener("resize", handleResize);
         document.removeEventListener("fullscreenchange", handleFsChange);
+        overlayEl?.removeEventListener("mousedown", onMouseDown);
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+        window.removeEventListener("keydown", onKeyDown);
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(drawOverlay);
+        chart.unsubscribeCrosshairMove(drawOverlay);
       };
       chart.__resize = handleResize;
+      handleResize();
     }
     setup();
     return () => {
@@ -183,12 +441,23 @@ export default function ReplayClient() {
     }
   }
 
+  /* لما محتوى شريط التحكم العلوي بيتغيّر بوضع الفل سكرين (تبديل وضع/وضع القص/سرعة...)
+     ممكن يتغيّر ارتفاعه، فلازم نعيد حساب ارتفاع الشارت عشان شريط الوقت السفلي يضل ظاهر بالكامل */
+  useEffect(() => {
+    if (isFullscreen) {
+      const t = setTimeout(() => chartRef.current?.__resize?.(), 30);
+      return () => clearTimeout(t);
+    }
+  }, [isFullscreen, mode, cutMode, randomChart, assetValue, interval, maxBars, speed, isPlaying, loading]);
+
   /* ===================== جلب البيانات ===================== */
   const loadData = useCallback(async () => {
     stopLivePoll();
     setLoading(true);
     setError("");
     setIsPlaying(false);
+    drawingsRef.current = [];
+    drawStateRef.current = null;
 
     if (randomChart) {
       const candles = generateRandomCandles(maxBars, interval);
@@ -247,11 +516,31 @@ export default function ReplayClient() {
   }, [loadData]);
 
   /* ===================== تحديث الشارت ===================== */
+  const prevRevealRef = useRef(0);
+  const prevCandlesRef = useRef(null);
   useEffect(() => {
     if (!seriesRef.current || allCandles.length === 0) return;
-    seriesRef.current.setData(allCandles.slice(0, revealCount));
-    chartRef.current?.timeScale().fitContent();
-  }, [revealCount, allCandles]);
+    const prevLen = prevCandlesRef.current?.length ?? -1;
+    const prevReveal = prevRevealRef.current;
+
+    // وضع التدريب: خطوة وحدة للأمام (تشغيل تلقائي / الشمعة التالية) بنفس مصفوفة الشموع
+    const trainingStep = mode === "training" && allCandles.length === prevLen && revealCount === prevReveal + 1;
+    // وضع السوق الحي: كل بولينغ (كل 5 ثواني) إما بيحدّث آخر شمعة أو بيضيف شمعة جديدة بس
+    const liveTick = mode === "live" && revealCount === allCandles.length && (allCandles.length === prevLen || allCandles.length === prevLen + 1);
+
+    if (trainingStep || liveTick) {
+      // نضيف/نحدّث الشمعة الأخيرة بس، من دون setData/fitContent
+      // عشان ما يصير "رجوع" أو ريست مزعج للزوم والسكرول يلي عم تتفرجي عليه
+      seriesRef.current.update(allCandles[revealCount - 1]);
+    } else {
+      // تحميل بيانات جديدة أو قفزة كبيرة (تبديل وضع/أصل/فريم/بداية عشوائية/قص نقطة/إعادة من البداية)
+      seriesRef.current.setData(allCandles.slice(0, revealCount));
+      chartRef.current?.timeScale().fitContent();
+    }
+    prevRevealRef.current = revealCount;
+    prevCandlesRef.current = allCandles;
+    drawOverlay();
+  }, [revealCount, allCandles, mode]);
 
   /* ===================== وضع سوق حي: متابعة الشمعة الحالية بعداد ===================== */
   function stopLivePoll() {
@@ -431,8 +720,44 @@ export default function ReplayClient() {
           ✂️ {cutMode ? "دوسي على الشارت..." : "اختيار نقطة البداية"}
         </button>
         <button onClick={handleExportImage} style={tabStyle(false)}>📷 تصدير كصورة</button>
+        <button onClick={handleResetView} style={tabStyle(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي">
+          ⟲ إعادة تعيين الشارت
+        </button>
         <button onClick={toggleFullscreen} style={tabStyle(isFullscreen)} title="فل سكرين">
           {isFullscreen ? "⤡ خروج من الفل سكرين" : "⤢ فل سكرين"}
+        </button>
+      </div>
+    );
+  }
+
+  /* شريط أدوات الرسم العمودي (ستايل تريدنغ فيو) */
+  function renderDrawToolbar() {
+    return (
+      <div style={{
+        position: "absolute", top: 10, insetInlineStart: 10, zIndex: 5,
+        display: "flex", flexDirection: "column", gap: 4,
+        background: "linear-gradient(145deg, #14120a, #0d0d0a)",
+        border: `1px solid ${GOLD}33`, borderRadius: 10, padding: 5,
+      }}>
+        {TOOLS.map((t) => (
+          <button
+            key={t.id}
+            title={t.title}
+            onClick={() => setActiveTool((cur) => (cur === t.id ? "cursor" : t.id))}
+            style={toolBtnStyle(activeTool === t.id)}
+          >
+            {t.icon}
+          </button>
+        ))}
+        <div style={{ height: 1, background: `${GOLD}33`, margin: "3px 2px" }} />
+        <button title="مغناطيس: الالتصاق بأقرب سعر شمعة" onClick={() => setMagnetOn((m) => !m)} style={toolBtnStyle(magnetOn)}>
+          🧲
+        </button>
+        <button title={drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات"} onClick={toggleDrawingsVisible} style={toolBtnStyle(!drawingsVisible)}>
+          {drawingsVisible ? "👁" : "🚫"}
+        </button>
+        <button title="حذف كل الرسومات" onClick={handleClearDrawings} style={toolBtnStyle(false)}>
+          🗑
         </button>
       </div>
     );
@@ -551,7 +876,7 @@ export default function ReplayClient() {
         }}
       >
         {isFullscreen && (
-          <div style={{ marginBottom: "0.5rem" }}>
+          <div ref={headerRef} style={{ marginBottom: "0.5rem" }}>
             {renderTopBar()}
             {renderControls()}
             {renderLiveBadge()}
@@ -566,10 +891,20 @@ export default function ReplayClient() {
             ...جاري تحميل البيانات
           </div>
         )}
-        <div
-          ref={chartContainerRef}
-          style={{ width: "100%", flex: 1, cursor: cutMode ? "crosshair" : "default" }}
-        />
+        <div ref={chartAreaRef} style={{ position: "relative", width: "100%", flex: 1 }}>
+          {!loading && allCandles.length > 0 && renderDrawToolbar()}
+          <div
+            ref={chartContainerRef}
+            style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
+          />
+          <canvas
+            ref={overlayCanvasRef}
+            style={{
+              position: "absolute", inset: 0,
+              pointerEvents: activeTool === "cursor" ? "none" : "auto",
+            }}
+          />
+        </div>
       </div>
 
       {mode === "training" && !isFullscreen && (
@@ -604,6 +939,16 @@ function tabStyle(active) {
     border: `1px solid ${GOLD}44`,
     background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
     color: active ? "#1a1200" : GOLD,
+  };
+}
+
+function toolBtnStyle(active) {
+  return {
+    width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
+    borderRadius: 7, fontSize: 15, cursor: "pointer",
+    border: `1px solid ${active ? GOLD : "transparent"}`,
+    background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
+    color: active ? "#1a1200" : "#ccc",
   };
 }
 
