@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
 import BacktestClient from "../backtest/BacktestClient";
@@ -59,7 +59,7 @@ function rowToTrade(row) {
 /* بطاقة عامة موحّدة بالتصميم الذهبي */
 const cardStyle = {
   background: "linear-gradient(145deg, #14120a, #0d0d0a)",
-  border: `1px solid ${GOLD}26`,
+  border: 1px solid ${GOLD}26,
   borderRadius: 18,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
 };
@@ -72,13 +72,13 @@ function FlagBadge({ children }) {
         width: 26,
         height: 26,
         borderRadius: 7,
-        background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
+        background: linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK}),
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         fontSize: 12,
         flexShrink: 0,
-        boxShadow: `0 2px 8px ${GOLD}55`,
+        boxShadow: 0 2px 8px ${GOLD}55,
       }}
     >
       {children}
@@ -119,59 +119,38 @@ export default function DashboardClient({ username }) {
     };
   }, [activeKey, lectures.length]);
 
-  // دالة موحّدة لإعادة تحميل بيانات المستخدم (الصفقات + الرصيد) - قابلة لإعادة الاستخدام
-  // من أي مكان (تبويب الداشبورد، أو بعد ما يسجّل الريبلاي صفقة مباشرة على الباك تيست)
-  const reloadUserData = useCallback(async () => {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
-    setUserId(user.id);
-
-    const [{ data: tradesRows }, { data: profile }] = await Promise.all([
-      supabase
-        .from("trades")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: true }),
-      supabase.from("profiles").select("backtest_balance").eq("id", user.id).single(),
-    ]);
-
-    setRawTrades(tradesRows || []);
-    setTrades((tradesRows || []).map(rowToTrade));
-    setBalance(Number(profile?.backtest_balance ?? 3000));
-    setLoading(false);
-    return user.id;
-  }, []);
-
-  // نحمّل الـ userId فوراً عند فتح لوحة التحكم (بغض النظر عن التبويب المفتوح)
-  // عشان يكون جاهز لأداة الريبلاي فور ما المستخدم يفتحها، مش بس لما يوصل لتبويب الداشبورد
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (active && user) setUserId(user.id);
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
   // نحدّث بيانات لوحة التحكم كل مرة نرجع لها (مثلاً بعد إضافة صفقات من تبويب الباك تيست)
   useEffect(() => {
     if (activeKey !== "dashboard") return;
     let active = true;
-    reloadUserData().then(() => {
+    async function load() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || !active) return;
+      setUserId(user.id);
+
+      const [{ data: tradesRows }, { data: profile }] = await Promise.all([
+        supabase
+          .from("trades")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: true }),
+        supabase.from("profiles").select("backtest_balance").eq("id", user.id).single(),
+      ]);
+
       if (!active) return;
-    });
+      setRawTrades(tradesRows || []);
+      setTrades((tradesRows || []).map(rowToTrade));
+      setBalance(Number(profile?.backtest_balance ?? 3000));
+      setLoading(false);
+    }
+    load();
     return () => {
       active = false;
     };
-  }, [activeKey, reloadUserData]);
+  }, [activeKey]);
 
   const total = trades.length;
   const wins = trades.filter((t) => t.result === "win").length;
@@ -223,7 +202,7 @@ export default function DashboardClient({ username }) {
       .map((p, idx) => {
         const x = (idx / (chartPoints.length - 1)) * chartW;
         const y = chartH - ((p[key] - minBal) / balRange) * (chartH - 20) - 10;
-        return `${idx === 0 ? "M" : "L"}${x},${y}`;
+        return ${idx === 0 ? "M" : "L"}${x},${y};
       })
       .join(" ");
   }
@@ -251,14 +230,14 @@ export default function DashboardClient({ username }) {
           width: 240,
           flexShrink: 0,
           background: "linear-gradient(180deg, #111108 0%, #0a0a0a 100%)",
-          borderLeft: `1px solid ${GOLD}22`,
+          borderLeft: 1px solid ${GOLD}22,
           padding: "1.5rem 1rem",
           display: "flex",
           flexDirection: "column",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "1.6rem" }}>
-          <div style={{ width: 42, height: 42, borderRadius: "50%", border: `2px solid ${GOLD}`, overflow: "hidden", flexShrink: 0 }}>
+          <div style={{ width: 42, height: 42, borderRadius: "50%", border: 2px solid ${GOLD}, overflow: "hidden", flexShrink: 0 }}>
             <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="QTA" />
           </div>
           <div>
@@ -277,13 +256,13 @@ export default function DashboardClient({ username }) {
             gap: 8,
             padding: "0.75rem 0.9rem",
             borderRadius: 12,
-            background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
+            background: linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK}),
             color: "#1a1200",
             fontSize: 13,
             fontWeight: 800,
             cursor: "pointer",
             marginBottom: "1.1rem",
-            boxShadow: `0 4px 16px ${GOLD}44`,
+            boxShadow: 0 4px 16px ${GOLD}44,
           }}
         >
           <span>🏠</span>
@@ -299,8 +278,8 @@ export default function DashboardClient({ username }) {
               gap: 10,
               padding: "0.7rem 0.9rem",
               borderRadius: 10,
-              background: isActive ? `linear-gradient(135deg, ${GOLD}22, ${GOLD_DARK}11)` : "transparent",
-              border: isActive ? `1px solid ${GOLD}55` : "1px solid transparent",
+              background: isActive ? linear-gradient(135deg, ${GOLD}22, ${GOLD_DARK}11) : "transparent",
+              border: isActive ? 1px solid ${GOLD}55 : "1px solid transparent",
               color: isActive ? GOLD : "#888",
               fontSize: 13,
               fontWeight: isActive ? 700 : 400,
@@ -327,8 +306,8 @@ export default function DashboardClient({ username }) {
         <div
           style={{
             marginTop: "1.4rem",
-            background: `linear-gradient(135deg, ${GOLD}1a, #0d0d0a)`,
-            border: `1px solid ${GOLD}44`,
+            background: linear-gradient(135deg, ${GOLD}1a, #0d0d0a),
+            border: 1px solid ${GOLD}44,
             borderRadius: 14,
             padding: "0.9rem 1rem",
             display: "flex",
@@ -385,7 +364,7 @@ export default function DashboardClient({ username }) {
                 width: 52,
                 height: 52,
                 borderRadius: "50%",
-                background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
+                background: linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK}),
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -393,7 +372,7 @@ export default function DashboardClient({ username }) {
                 fontWeight: 800,
                 color: "#1a1200",
                 flexShrink: 0,
-                border: `2px solid ${GOLD}`,
+                border: 2px solid ${GOLD},
               }}
             >
               {initials}
@@ -403,7 +382,7 @@ export default function DashboardClient({ username }) {
                 <span style={{ fontSize: 16, fontWeight: 800 }}>{username}</span>
                 <span
                   style={{
-                    background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
+                    background: linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK}),
                     color: "#1a1200",
                     fontSize: 10,
                     fontWeight: 800,
@@ -420,7 +399,7 @@ export default function DashboardClient({ username }) {
                   marginTop: 6,
                   display: "inline-block",
                   background: "#0f3d2c",
-                  border: `1px solid ${GREEN}33`,
+                  border: 1px solid ${GREEN}33,
                   color: GREEN,
                   fontSize: 12,
                   fontWeight: 700,
@@ -445,7 +424,7 @@ export default function DashboardClient({ username }) {
                 height: 38,
                 borderRadius: "50%",
                 background: "#111",
-                border: `1px solid ${GOLD}33`,
+                border: 1px solid ${GOLD}33,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -467,12 +446,7 @@ export default function DashboardClient({ username }) {
             onBack={() => setSelectedLecture(null)}
           />
         ) : activeKey === "replay" ? (
-          <ReplayClient
-            userId={userId}
-            username={username}
-            balance={balance}
-            onTradeSaved={reloadUserData}
-          />
+          <ReplayClient />
         ) : activeKey === "backtest" ? (
           userId ? (
             <BacktestClient
@@ -499,28 +473,28 @@ export default function DashboardClient({ username }) {
               {[
                 {
                   label: "ربح الشهر",
-                  value: `${monthPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(monthPnL))}`,
+                  value: ${monthPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(monthPnL))},
                   icon: "💵",
                   color: monthPnL >= 0 ? GREEN : RED,
-                  sub: `${monthPnL >= 0 ? "+" : ""}${balance ? ((monthPnL / balance) * 100).toFixed(2) : "0.00"}% من رأس المال`,
+                  sub: ${monthPnL >= 0 ? "+" : ""}${balance ? ((monthPnL / balance) * 100).toFixed(2) : "0.00"}% من رأس المال,
                 },
                 {
                   label: "رأس المال الحالي",
-                  value: `$${fmt(balance)}`,
+                  value: $${fmt(balance)},
                   icon: "💼",
                   color: GOLD_LIGHT,
-                  sub: `بداية من $${fmt(startingCapital)}`,
+                  sub: بداية من $${fmt(startingCapital)},
                 },
                 {
                   label: "صافي الربح/الخسارة",
-                  value: `${netPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(netPnL))}`,
+                  value: ${netPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(netPnL))},
                   icon: "📈",
                   color: netPnL >= 0 ? GREEN : RED,
-                  sub: `${netPnL >= 0 ? "+" : ""}${startingCapital ? ((netPnL / startingCapital) * 100).toFixed(2) : "0.00"}% من رأس مال البداية`,
+                  sub: ${netPnL >= 0 ? "+" : ""}${startingCapital ? ((netPnL / startingCapital) * 100).toFixed(2) : "0.00"}% من رأس مال البداية,
                 },
                 {
                   label: "نسبة النجاح",
-                  value: `${winRate}%`,
+                  value: ${winRate}%,
                   icon: "🎯",
                   color: "#fff",
                   sub: "الهدف القادم: 70%",
@@ -530,7 +504,7 @@ export default function DashboardClient({ username }) {
                   value: total,
                   icon: "📷",
                   color: "#fff",
-                  sub: `${openTrades} صفقة مفتوحة`,
+                  sub: ${openTrades} صفقة مفتوحة,
                 },
               ].map((s, i) => (
                 <div key={i} style={{ ...cardStyle, padding: "1rem" }}>
@@ -556,12 +530,12 @@ export default function DashboardClient({ username }) {
                     <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#888", fontSize: 11 }}>
                       <span style={{ width: 9, height: 9, borderRadius: 3, background: GREEN, display: "inline-block" }} /> الربح
                     </span>
-                    <div style={{ background: "#111", border: `1px solid ${GOLD}33`, color: "#aaa", fontSize: 11, padding: "0.35rem 0.8rem", borderRadius: 20 }}>تفصيلي ⌄</div>
-                    <div style={{ background: `${GOLD}18`, border: `1px solid ${GOLD}44`, color: GOLD_LIGHT, fontSize: 11, fontWeight: 700, padding: "0.35rem 0.8rem", borderRadius: 20 }}>12 شهر</div>
+                    <div style={{ background: "#111", border: 1px solid ${GOLD}33, color: "#aaa", fontSize: 11, padding: "0.35rem 0.8rem", borderRadius: 20 }}>تفصيلي ⌄</div>
+                    <div style={{ background: ${GOLD}18, border: 1px solid ${GOLD}44, color: GOLD_LIGHT, fontSize: 11, fontWeight: 700, padding: "0.35rem 0.8rem", borderRadius: 20 }}>12 شهر</div>
                   </div>
                 </div>
                 {chartPoints.length > 1 ? (
-                  <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width: "100%", height: 230 }}>
+                  <svg viewBox={0 0 ${chartW} ${chartH}} style={{ width: "100%", height: 230 }}>
                     <line x1="0" y1={chartH - 10} x2={chartW} y2={chartH - 10} stroke="#221c0c" strokeWidth="1" />
                     <path d={balPath} fill="none" stroke={GOLD_LIGHT} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
                     <path d={pnlPath} fill="none" stroke={GREEN} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
@@ -578,10 +552,10 @@ export default function DashboardClient({ username }) {
                 <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: "0 0 0.9rem" }}>⚡ ملخص سريع</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem", flex: 1 }}>
                   {[
-                    { label: "أفضل صفقة", value: `$${fmt(bestTrade)}`, color: GREEN, icon: "🏆" },
-                    { label: "أسوأ صفقة", value: `$${fmt(worstTrade)}`, color: RED, icon: "🛡️" },
-                    { label: "متوسط الربح", value: `$${fmt(avgWin)}`, color: GREEN, icon: "📈" },
-                    { label: "متوسط الخسارة", value: `$${fmt(avgLoss)}`, color: RED, icon: "📉" },
+                    { label: "أفضل صفقة", value: $${fmt(bestTrade)}, color: GREEN, icon: "🏆" },
+                    { label: "أسوأ صفقة", value: $${fmt(worstTrade)}, color: RED, icon: "🛡️" },
+                    { label: "متوسط الربح", value: $${fmt(avgWin)}, color: GREEN, icon: "📈" },
+                    { label: "متوسط الخسارة", value: $${fmt(avgLoss)}, color: RED, icon: "📉" },
                   ].map((row, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < 3 ? "1px solid #1a1a0f" : "none", paddingBottom: "0.6rem" }}>
                       <div>
@@ -597,7 +571,7 @@ export default function DashboardClient({ username }) {
                   style={{
                     marginTop: "1rem",
                     textAlign: "center",
-                    border: `1px solid ${GOLD}44`,
+                    border: 1px solid ${GOLD}44,
                     color: GOLD_LIGHT,
                     fontSize: 12,
                     fontWeight: 700,
@@ -657,7 +631,7 @@ export default function DashboardClient({ username }) {
                   style={{
                     marginTop: "1rem",
                     textAlign: "center",
-                    border: `1px solid ${GOLD}33`,
+                    border: 1px solid ${GOLD}33,
                     color: "#aaa",
                     fontSize: 12,
                     fontWeight: 700,
@@ -682,7 +656,7 @@ export default function DashboardClient({ username }) {
                         alignItems: "center",
                         padding: "0.7rem 0.9rem",
                         background: "#0d0d0a",
-                        borderRight: `3px solid ${m.up ? GREEN : RED}`,
+                        borderRight: 3px solid ${m.up ? GREEN : RED},
                         borderRadius: 8,
                       }}
                     >
@@ -696,7 +670,7 @@ export default function DashboardClient({ username }) {
                   style={{
                     marginTop: "1rem",
                     textAlign: "center",
-                    border: `1px solid ${GOLD}33`,
+                    border: 1px solid ${GOLD}33,
                     color: "#aaa",
                     fontSize: 12,
                     fontWeight: 700,
@@ -750,11 +724,11 @@ function LecturesView({ lectures, loading, selectedLecture, onSelect, onBack }) 
             background: "#000",
             borderRadius: 12,
             overflow: "hidden",
-            border: `1px solid ${GOLD}22`,
+            border: 1px solid ${GOLD}22,
           }}
         >
           <iframe
-            src={`https://www.youtube.com/embed/${selectedLecture.youtube_video_id}?rel=0&modestbranding=1`}
+            src={https://www.youtube.com/embed/${selectedLecture.youtube_video_id}?rel=0&modestbranding=1}
             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
             allowFullScreen
           />
@@ -778,7 +752,7 @@ function LecturesView({ lectures, loading, selectedLecture, onSelect, onBack }) 
               onClick={() => onSelect(lecture)}
               style={{
                 background: "#0d0d0a",
-                border: `1px solid ${GOLD}22`,
+                border: 1px solid ${GOLD}22,
                 borderRadius: 12,
                 padding: "1rem 1.2rem",
                 display: "flex",
@@ -792,7 +766,7 @@ function LecturesView({ lectures, loading, selectedLecture, onSelect, onBack }) 
                   width: 38,
                   height: 38,
                   borderRadius: "50%",
-                  background: `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})`,
+                  background: linear-gradient(135deg, ${GOLD}, ${GOLD_DARK}),
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -817,4 +791,3 @@ function LecturesView({ lectures, loading, selectedLecture, onSelect, onBack }) 
       </div>
     </div>
   );
-}
