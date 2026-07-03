@@ -446,7 +446,7 @@ export default function DashboardClient({ username }) {
             onBack={() => setSelectedLecture(null)}
           />
         ) : activeKey === "replay" ? (
-          <ReplayClient />
+          <ReplayClient userId={userId} />
         ) : activeKey === "backtest" ? (
           userId ? (
             <BacktestClient
