@@ -63,7 +63,7 @@ export default function ReplayClient() {
     let cancelled = false;
 
     async function setup() {
-      const { createChart, CandlestickSeries } = await import("lightweight-charts");
+      const { createChart } = await import("lightweight-charts");
       if (cancelled || !chartContainerRef.current) return;
 
       const chart = createChart(chartContainerRef.current, {
@@ -78,7 +78,7 @@ export default function ReplayClient() {
         height: 480,
       });
 
-      const series = chart.addSeries(CandlestickSeries, {
+      const series = chart.addCandlestickSeries({
         upColor: GREEN,
         downColor: RED,
         borderVisible: false,
