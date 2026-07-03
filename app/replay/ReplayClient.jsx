@@ -99,6 +99,16 @@ function ToolIcon({ id }) {
       return (<svg {...common}><circle cx="5" cy="19" r="1.8" /><circle cx="19" cy="5" r="1.8" /><line x1="6.3" y1="17.7" x2="17.7" y2="6.3" /></svg>);
     case "ray":
       return (<svg {...common}><circle cx="5" cy="19" r="1.8" fill="currentColor" stroke="none" /><line x1="6.3" y1="17.7" x2="19" y2="5" /><polyline points="14,5 19,5 19,10" /></svg>);
+    case "extendedline":
+      return (<svg {...common}><line x1="2" y1="21" x2="22" y2="3" /><circle cx="7" cy="16.5" r="1.6" /><circle cx="17" cy="7.5" r="1.6" /></svg>);
+    case "infoline":
+      return (<svg {...common}><circle cx="5" cy="19" r="1.8" /><circle cx="19" cy="5" r="1.8" /><line x1="6.3" y1="17.7" x2="17.7" y2="6.3" /><text x="12" y="14" fontSize="7" stroke="none" fill="currentColor">i</text></svg>);
+    case "angle":
+      return (<svg {...common}><line x1="4" y1="20" x2="20" y2="20" /><line x1="4" y1="20" x2="18" y2="6" /><path d="M9 20a6 6 0 0 1 1.2-3.6" /></svg>);
+    case "crossline":
+      return (<svg {...common}><line x1="12" y1="3" x2="12" y2="21" /><line x1="3" y1="12" x2="21" y2="12" /><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" /></svg>);
+    case "parallelchannel":
+      return (<svg {...common}><line x1="3" y1="18" x2="17" y2="6" /><line x1="7" y1="21" x2="21" y2="9" /></svg>);
     case "hline":
       return (<svg {...common}><line x1="3" y1="12" x2="21" y2="12" /><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" /></svg>);
     case "hray":
@@ -147,9 +157,14 @@ const TOOL_TITLES = {
   cursor: "مؤشر (تنقل عادي)",
   trendline: "خط اتجاه",
   ray: "شعاع",
+  extendedline: "خط ممتد (بالاتجاهين)",
+  infoline: "خط معلومات",
+  angle: "زاوية الاتجاه",
   hline: "خط أفقي",
   hray: "شعاع أفقي",
   vline: "خط عمودي",
+  crossline: "خط متقاطع",
+  parallelchannel: "قناة متوازية",
   path: "مسار (نقاط متعددة)",
   rectangle: "مستطيل",
   circle: "دائرة",
@@ -165,7 +180,7 @@ const TOOL_TITLES = {
 };
 const TOOL_GROUPS = [
   ["cursor"],
-  ["trendline", "ray", "hline", "hray", "vline"],
+  ["trendline", "ray", "extendedline", "infoline", "angle", "hline", "hray", "vline", "crossline", "parallelchannel"],
   ["path", "rectangle", "circle"],
   ["fib", "fibext", "wave"],
   ["pricerange", "daterange"],
@@ -179,6 +194,16 @@ function defaultStyleFor(type) {
     case "trendline":
     case "ray":
       return { color: GOLD_LIGHT, width: 2, extend: "none" };
+    case "extendedline":
+      return { color: GOLD_LIGHT, width: 1.5, extend: "both" };
+    case "infoline":
+      return { color: "#4f7cff", width: 1.5, extend: "none" };
+    case "angle":
+      return { color: "#e0a63c", width: 1.5 };
+    case "crossline":
+      return { color: GOLD_LIGHT, width: 1, dash: "dashed" };
+    case "parallelchannel":
+      return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.12 };
     case "hline":
       return { color: GOLD_LIGHT, width: 1.5, dash: "dashed" };
     case "hray":
@@ -350,7 +375,7 @@ export default function ReplayClient() {
 
     const all = [...drawingsRef.current];
     if (drawStateRef.current) all.push(drawStateRef.current);
-    if ((activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext") && pathPointsRef.current.length) {
+    if ((activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext" || activeToolRef.current === "parallelchannel") && pathPointsRef.current.length) {
       const pts = [...pathPointsRef.current];
       if (liveCursorRef.current) pts.push(liveCursorRef.current);
       all.push({ type: activeToolRef.current, points: pts, style: defaultStyleFor(activeToolRef.current) });
@@ -410,6 +435,90 @@ export default function ReplayClient() {
         const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
         const x2 = a.x + (dx / len) * 3000, y2 = a.y + (dy / len) * 3000;
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(x2, y2); ctx.stroke();
+        ctx.setLineDash([]);
+
+      } else if (d.type === "extendedline") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
+        setLineStyle(style);
+        const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+        const x1 = a.x - (dx / len) * 3000, y1 = a.y - (dy / len) * 3000;
+        const x2 = b.x + (dx / len) * 3000, y2 = b.y + (dy / len) * 3000;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        ctx.setLineDash([]);
+
+      } else if (d.type === "crossline") {
+        const y = series.priceToCoordinate(d.p1.price);
+        const x = ts.logicalToCoordinate(d.p1.logical);
+        if (y == null || x == null) continue;
+        setLineStyle(style);
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillText(d.p1.price.toFixed(2), x + 6, y - 4);
+
+      } else if (d.type === "infoline") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
+        setLineStyle(style);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        ctx.setLineDash([]);
+        [a, b].forEach((p) => { ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill(); });
+        const priceDiff = d.p2.price - d.p1.price;
+        const pct = d.p1.price ? (priceDiff / d.p1.price) * 100 : 0;
+        const bars = Math.round(d.p2.logical - d.p1.logical);
+        const angleDeg = (Math.atan2(-(b.y - a.y), b.x - a.x) * 180) / Math.PI;
+        const midX = (a.x + b.x) / 2, midY = (a.y + b.y) / 2;
+        ctx.font = "11px sans-serif";
+        ctx.fillText(`${priceDiff >= 0 ? "+" : ""}${priceDiff.toFixed(2)} (${pct.toFixed(2)}%) | ${bars} شمعة | ${angleDeg.toFixed(1)}°`, midX + 6, midY - 6);
+
+      } else if (d.type === "angle") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
+        setLineStyle(style);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, a.y); ctx.stroke();
+        ctx.setLineDash([]);
+        const angleDeg = (Math.atan2(-(b.y - a.y), b.x - a.x) * 180) / Math.PI;
+        const r = 22;
+        const startAng = 0;
+        const endAng = -((angleDeg * Math.PI) / 180) * (b.x >= a.x ? 1 : 1);
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, r, startAng, endAng, angleDeg > 0 ? true : false);
+        ctx.stroke();
+        ctx.fillText(`${angleDeg.toFixed(1)}°`, a.x + r + 4, a.y - 4);
+        [a, b].forEach((p) => { ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill(); });
+
+      } else if (d.type === "parallelchannel") {
+        if (!d.points || d.points.length < 2) continue;
+        const [p1, p2, p3] = d.points;
+        const xy1 = toXY(p1), xy2 = toXY(p2);
+        if (xy1.x == null || xy2.x == null) continue;
+        setLineStyle(style);
+        const dx = xy2.x - xy1.x, dy = xy2.y - xy1.y, len = Math.hypot(dx, dy) || 1;
+        const ex1x = xy1.x - (dx / len) * 3000, ex1y = xy1.y - (dy / len) * 3000;
+        const ex2x = xy2.x + (dx / len) * 3000, ex2y = xy2.y + (dy / len) * 3000;
+        ctx.beginPath(); ctx.moveTo(ex1x, ex1y); ctx.lineTo(ex2x, ex2y); ctx.stroke();
+        [xy1, xy2].forEach((p) => { ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill(); });
+        if (p3) {
+          const xy3 = toXY(p3);
+          if (xy3.x != null) {
+            // نحسب الإزاحة العمودية للخط الموازي بحيث يمر من النقطة الثالثة
+            const nx = -dy / len, ny = dx / len;
+            const offset = (xy3.x - xy1.x) * nx + (xy3.y - xy1.y) * ny;
+            const o1x = ex1x + nx * offset, o1y = ex1y + ny * offset;
+            const o2x = ex2x + nx * offset, o2y = ex2y + ny * offset;
+            ctx.beginPath(); ctx.moveTo(o1x, o1y); ctx.lineTo(o2x, o2y); ctx.stroke();
+            if (style.fill !== false) {
+              ctx.fillStyle = hexToRgba(style.fillColor || GOLD, style.fillAlpha ?? 0.12);
+              ctx.beginPath();
+              ctx.moveTo(ex1x, ex1y); ctx.lineTo(ex2x, ex2y); ctx.lineTo(o2x, o2y); ctx.lineTo(o1x, o1y); ctx.closePath();
+              ctx.fill();
+            }
+            ctx.beginPath(); ctx.arc(xy3.x, xy3.y, 2.5, 0, Math.PI * 2); ctx.fill();
+          }
+        }
         ctx.setLineDash([]);
 
       } else if (d.type === "rectangle") {
@@ -627,6 +736,32 @@ export default function ReplayClient() {
           const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
           const ex = a.x + (dx / len) * 3000, ey = a.y + (dy / len) * 3000;
           return pointSegDist(x, y, a.x, a.y, ex, ey);
+        }
+        case "extendedline": {
+          const a = logicalPriceToXY(d.p1), b = logicalPriceToXY(d.p2);
+          if (a.x == null || b.x == null) return Infinity;
+          const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+          const x1 = a.x - (dx / len) * 3000, y1 = a.y - (dy / len) * 3000;
+          const x2 = b.x + (dx / len) * 3000, y2 = b.y + (dy / len) * 3000;
+          return pointSegDist(x, y, x1, y1, x2, y2);
+        }
+        case "infoline":
+        case "angle": {
+          const a = logicalPriceToXY(d.p1), b = logicalPriceToXY(d.p2);
+          if (a.x == null || b.x == null) return Infinity;
+          return pointSegDist(x, y, a.x, a.y, b.x, b.y);
+        }
+        case "crossline": {
+          const py = series.priceToCoordinate(d.p1.price);
+          const px = chart.timeScale().logicalToCoordinate(d.p1.logical);
+          if (py == null || px == null) return Infinity;
+          return Math.min(Math.abs(y - py), Math.abs(x - px));
+        }
+        case "parallelchannel": {
+          if (!d.points || d.points.length < 2) return Infinity;
+          const a = logicalPriceToXY(d.points[0]), b = logicalPriceToXY(d.points[1]);
+          if (a.x == null || b.x == null) return Infinity;
+          return pointSegDist(x, y, a.x, a.y, b.x, b.y);
         }
         case "rectangle":
         case "circle":
@@ -848,7 +983,7 @@ export default function ReplayClient() {
         const price = series.coordinateToPrice(y);
         return { logical, price, x, y };
       }
-      const MULTI_POINT_COUNT = { wave: 4, fibext: 3 };
+      const MULTI_POINT_COUNT = { wave: 4, fibext: 3, parallelchannel: 3 };
       function onMouseDown(e) {
         const tool = activeToolRef.current;
         if (tool === "cursor") return; // بوضع المؤشر السحب بيصير من onContainerMouseDownCapture تحت
@@ -865,13 +1000,13 @@ export default function ReplayClient() {
           drawOverlay();
           return;
         }
-        if (tool === "hline" || tool === "hray" || tool === "vline") {
+        if (tool === "hline" || tool === "hray" || tool === "vline" || tool === "crossline") {
           drawingsRef.current.push({ id: Date.now(), type: tool, p1: { logical, price: snapped }, style: defaultStyleFor(tool) });
           setActiveTool("cursor");
           drawOverlay();
           return;
         }
-        if (tool === "path" || tool === "wave" || tool === "fibext") {
+        if (tool === "path" || tool === "wave" || tool === "fibext" || tool === "parallelchannel") {
           pathPointsRef.current.push({ logical, price: snapped });
           const need = MULTI_POINT_COUNT[tool];
           if (need && pathPointsRef.current.length >= need) {
@@ -1362,8 +1497,9 @@ export default function ReplayClient() {
             {group.map((id) => (
               <button
                 key={id}
+                type="button"
                 title={TOOL_TITLES[id]}
-                onClick={() => setActiveTool((cur) => (cur === id ? "cursor" : id))}
+                onClick={(e) => { e.stopPropagation(); setActiveTool((cur) => (cur === id ? "cursor" : id)); }}
                 style={toolBtnStyle(activeTool === id)}
               >
                 <ToolIcon id={id} />
@@ -1372,13 +1508,22 @@ export default function ReplayClient() {
           </div>
         ))}
         <div style={{ height: 1, background: "#333", margin: "3px 4px" }} />
-        <button title="مغناطيس: يلتصق بأقرب سعر فقط لما تقربي منه فعلاً (حساسية خفيفة)" onClick={() => setMagnetOn((m) => !m)} style={toolBtnStyle(magnetOn)}>
+        <button
+          type="button"
+          title={`مغناطيس: ${magnetOn ? "مفعّل" : "معطّل"} — يلتصق بأقرب سعر فقط لما تقربي منه فعلاً (حساسية خفيفة)`}
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); setMagnetOn((m) => !m); }}
+          style={{ ...toolBtnStyle(magnetOn), position: "relative" }}
+        >
           <ToolIcon id="magnet" />
+          <span style={{
+            position: "absolute", bottom: 2, right: 3, width: 7, height: 7, borderRadius: "50%",
+            background: magnetOn ? GREEN : "#555", border: "1px solid #1a1a1a",
+          }} />
         </button>
-        <button title={drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات"} onClick={toggleDrawingsVisible} style={toolBtnStyle(!drawingsVisible)}>
+        <button type="button" title={drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات"} onClick={(e) => { e.stopPropagation(); toggleDrawingsVisible(); }} style={toolBtnStyle(!drawingsVisible)}>
           <ToolIcon id={drawingsVisible ? "eye" : "eyeOff"} />
         </button>
-        <button title="حذف كل الرسومات" onClick={handleClearDrawings} style={toolBtnStyle(false)}>
+        <button type="button" title="حذف كل الرسومات" onClick={(e) => { e.stopPropagation(); handleClearDrawings(); }} style={toolBtnStyle(false)}>
           <ToolIcon id="trash" />
         </button>
       </div>
