@@ -1,7 +1,3 @@
-bash
-
-cat /home/claude/replay-rebuild/api_replay-candles_route.js
-Output
 
 import { NextResponse } from "next/server";
 
