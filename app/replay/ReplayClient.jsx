@@ -79,12 +79,32 @@ function ToolIcon({ id }) {
       return (<svg {...common}><path d="M5 3l14 6.5-6 1.7L11 18 5 3z" fill="currentColor" stroke="none" /></svg>);
     case "trendline":
       return (<svg {...common}><circle cx="5" cy="19" r="1.8" /><circle cx="19" cy="5" r="1.8" /><line x1="6.3" y1="17.7" x2="17.7" y2="6.3" /></svg>);
+    case "ray":
+      return (<svg {...common}><circle cx="5" cy="19" r="1.8" fill="currentColor" stroke="none" /><line x1="6.3" y1="17.7" x2="19" y2="5" /><polyline points="14,5 19,5 19,10" /></svg>);
     case "hline":
       return (<svg {...common}><line x1="3" y1="12" x2="21" y2="12" /><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" /></svg>);
+    case "hray":
+      return (<svg {...common}><circle cx="4" cy="12" r="1.8" fill="currentColor" stroke="none" /><line x1="4" y1="12" x2="20" y2="12" /><polyline points="16,8 20,12 16,16" /></svg>);
+    case "vline":
+      return (<svg {...common}><line x1="12" y1="3" x2="12" y2="21" /></svg>);
+    case "path":
+      return (<svg {...common}><polyline points="4,18 9,7 14,15 20,5" /></svg>);
     case "rectangle":
       return (<svg {...common}><rect x="4" y="6" width="16" height="12" rx="1" /></svg>);
+    case "circle":
+      return (<svg {...common}><circle cx="12" cy="12" r="8" /></svg>);
     case "fib":
       return (<svg {...common}><line x1="3" y1="5" x2="21" y2="5" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="3" y1="14" x2="21" y2="14" /><line x1="3" y1="19" x2="21" y2="19" /></svg>);
+    case "wave":
+      return (<svg {...common}><path d="M4 20l5-14 5 10 6-12" /></svg>);
+    case "pricerange":
+      return (<svg {...common}><line x1="12" y1="4" x2="12" y2="20" /><polyline points="9,7 12,4 15,7" /><polyline points="9,17 12,20 15,17" /><line x1="7" y1="4" x2="17" y2="4" /><line x1="7" y1="20" x2="17" y2="20" /></svg>);
+    case "daterange":
+      return (<svg {...common}><line x1="4" y1="12" x2="20" y2="12" /><polyline points="7,9 4,12 7,15" /><polyline points="17,9 20,12 17,15" /><line x1="4" y1="7" x2="4" y2="17" /><line x1="20" y1="7" x2="20" y2="17" /></svg>);
+    case "position_long":
+      return (<svg {...common}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M12 16V8M8.5 11.5L12 8l3.5 3.5" /></svg>);
+    case "position_short":
+      return (<svg {...common}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M12 8v8M8.5 12.5L12 16l3.5-3.5" /></svg>);
     case "text":
       return (<svg {...common}><path d="M5 5h14M12 5v14" /></svg>);
     case "measure":
@@ -100,6 +120,89 @@ function ToolIcon({ id }) {
     default:
       return null;
   }
+}
+
+/* عناوين وترتيب أدوات الرسم (مجمّعة زي تريدنغ فيو) */
+const TOOL_TITLES = {
+  cursor: "مؤشر (تنقل عادي)",
+  trendline: "خط اتجاه",
+  ray: "شعاع",
+  hline: "خط أفقي",
+  hray: "شعاع أفقي",
+  vline: "خط عمودي",
+  path: "مسار (نقاط متعددة)",
+  rectangle: "مستطيل",
+  circle: "دائرة",
+  fib: "فيبوناتشي",
+  wave: "موجة تصحيح إليوت (0،A،B،C)",
+  pricerange: "نطاق السعر",
+  daterange: "نطاق التاريخ",
+  position_long: "مركز شراء",
+  position_short: "مركز بيع",
+  text: "نص",
+  measure: "أداة قياس",
+};
+const TOOL_GROUPS = [
+  ["cursor"],
+  ["trendline", "ray", "hline", "hray", "vline"],
+  ["path", "rectangle", "circle"],
+  ["fib", "wave"],
+  ["pricerange", "daterange"],
+  ["position_long", "position_short"],
+  ["text", "measure"],
+];
+
+/* أنماط افتراضية لكل نوع رسمة (قابلة للتعديل من لوحة الخصائص) */
+function defaultStyleFor(type) {
+  switch (type) {
+    case "trendline":
+    case "ray":
+      return { color: GOLD_LIGHT, width: 2, extend: "none" };
+    case "hline":
+      return { color: GOLD_LIGHT, width: 1.5, dash: "dashed" };
+    case "hray":
+    case "vline":
+      return { color: GOLD_LIGHT, width: 1.5, dash: "solid" };
+    case "path":
+      return { color: GOLD_LIGHT, width: 2, closed: false, fill: false, fillColor: GOLD, fillAlpha: 0.15 };
+    case "wave":
+      return { color: "#ffffff", width: 1.5 };
+    case "rectangle":
+      return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.15 };
+    case "circle":
+      return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.18 };
+    case "fib":
+      return { color: GOLD_LIGHT };
+    case "pricerange":
+      return { color: "#4f7cff", width: 1.5, fill: true, fillColor: "#4f7cff", fillAlpha: 0.2 };
+    case "daterange":
+      return { color: "#4f7cff", width: 1.5, fill: true, fillColor: "#4f7cff", fillAlpha: 0.2 };
+    case "position_long":
+    case "position_short":
+      return { targetColor: GREEN, stopColor: RED, alpha: 0.3 };
+    case "text":
+      return { color: GOLD_LIGHT, size: 13 };
+    default:
+      return { color: GOLD_LIGHT, width: 1.5 };
+  }
+}
+
+function hexToRgba(hex, alpha) {
+  if (!hex) return `rgba(201,162,75,${alpha})`;
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const bigint = parseInt(full, 16);
+  const r = (bigint >> 16) & 255, g = (bigint >> 8) & 255, b = bigint & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function pointSegDist(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len2 = dx * dx + dy * dy;
+  let t = len2 === 0 ? 0 : ((px - x1) * dx + (py - y1) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const cx = x1 + t * dx, cy = y1 + t * dy;
+  return Math.hypot(px - cx, py - cy);
 }
 
 export default function ReplayClient() {
@@ -156,39 +259,45 @@ export default function ReplayClient() {
   const activeToolRef = useRef("cursor");
   const magnetRef = useRef(true);
   const drawingsVisibleRef = useRef(true);
-  const drawingsRef = useRef([]); // [{id, type, p1:{logical,price}, p2?, text?}]
-  const drawStateRef = useRef(null); // الرسمة الجارية حالياً
+  const drawingsRef = useRef([]); // [{id, type, p1:{logical,price}, p2?, points?, text?, style}]
+  const drawStateRef = useRef(null); // الرسمة الجارية حالياً (سحب نقطتين)
   const isDrawingRef = useRef(false);
   const visibleCandlesRef = useRef([]);
+  const pathPointsRef = useRef([]); // نقاط أداة المسار/الموجة أثناء الرسم
+  const liveCursorRef = useRef(null); // موقع الماوس الحالي (لمعاينة المسار قبل التثبيت)
+  const intervalRef = useRef(interval);
+
+  // لوحة خصائص الرسمة المحددة
+  const [editingId, setEditingId] = useState(null);
+  const [editDraft, setEditDraft] = useState(null);
 
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
   useEffect(() => { magnetRef.current = magnetOn; }, [magnetOn]);
+  useEffect(() => { intervalRef.current = interval; }, [interval]);
   useEffect(() => { drawingsVisibleRef.current = drawingsVisible; drawOverlay(); }, [drawingsVisible]);
   useEffect(() => {
     visibleCandlesRef.current = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
   }, [allCandles, revealCount, mode]);
 
-  const TOOLS = [
-    { id: "cursor", title: "مؤشر (تنقل عادي)" },
-    { id: "trendline", title: "خط اتجاه" },
-    { id: "hline", title: "خط أفقي" },
-    { id: "rectangle", title: "مستطيل" },
-    { id: "fib", title: "فيبوناتشي" },
-    { id: "text", title: "نص" },
-    { id: "measure", title: "أداة قياس" },
-  ];
-
-  function snapPrice(logical, rawPrice) {
+  /* حساسية المغناطيس: يلتصق فقط لما المؤشر قريب فعلاً (بالبكسل) من قيمة أوبن/هاي/لو/كلوز
+     الشمعة تحت المؤشر - مش فرض أقرب سعر دايماً. هيك حساسيته أخف وأدق من قبل. */
+  const SNAP_THRESHOLD_PX = 10;
+  function snapPrice(logical, rawPrice, rawY) {
     if (!magnetRef.current) return rawPrice;
+    const series = seriesRef.current;
+    if (!series || rawY == null) return rawPrice;
     const idx = Math.round(logical);
     const candle = visibleCandlesRef.current[idx];
     if (!candle) return rawPrice;
     const vals = [candle.open, candle.high, candle.low, candle.close];
-    let best = vals[0], bestDist = Math.abs(rawPrice - vals[0]);
+    let best = null, bestDist = Infinity;
     for (const v of vals) {
-      const d = Math.abs(rawPrice - v);
+      const y = series.priceToCoordinate(v);
+      if (y == null) continue;
+      const d = Math.abs(rawY - y);
       if (d < bestDist) { bestDist = d; best = v; }
     }
+    if (best == null || bestDist > SNAP_THRESHOLD_PX) return rawPrice;
     return best;
   }
 
@@ -209,42 +318,95 @@ export default function ReplayClient() {
 
     const ts = chart.timeScale();
     const toXY = (p) => ({ x: ts.logicalToCoordinate(p.logical), y: series.priceToCoordinate(p.price) });
+    const setLineStyle = (style = {}) => {
+      ctx.strokeStyle = style.color || GOLD_LIGHT;
+      ctx.fillStyle = style.color || GOLD_LIGHT;
+      ctx.lineWidth = style.width || 1.5;
+      ctx.setLineDash(style.dash === "dashed" ? [6, 4] : style.dash === "dotted" ? [2, 3] : []);
+    };
 
     const all = [...drawingsRef.current];
     if (drawStateRef.current) all.push(drawStateRef.current);
+    if ((activeToolRef.current === "path" || activeToolRef.current === "wave") && pathPointsRef.current.length) {
+      const pts = [...pathPointsRef.current];
+      if (liveCursorRef.current) pts.push(liveCursorRef.current);
+      all.push({ type: activeToolRef.current, points: pts, style: defaultStyleFor(activeToolRef.current) });
+    }
 
     for (const d of all) {
-      ctx.lineWidth = 1.5;
+      const style = d.style || defaultStyleFor(d.type);
       ctx.font = "11px sans-serif";
+      ctx.lineWidth = style.width || 1.5;
+
       if (d.type === "hline") {
         const y = series.priceToCoordinate(d.p1.price);
         if (y == null) continue;
-        ctx.strokeStyle = GOLD_LIGHT;
-        ctx.fillStyle = GOLD_LIGHT;
-        ctx.setLineDash([5, 4]);
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
+        setLineStyle({ ...style, dash: style.dash || "dashed" });
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
         ctx.setLineDash([]);
         ctx.fillText(d.p1.price.toFixed(2), 6, y - 4);
+
+      } else if (d.type === "hray") {
+        const y = series.priceToCoordinate(d.p1.price);
+        const x1 = ts.logicalToCoordinate(d.p1.logical);
+        if (y == null || x1 == null) continue;
+        setLineStyle(style);
+        ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(w, y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(x1, y, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillText(d.p1.price.toFixed(2), x1 + 6, y - 4);
+
+      } else if (d.type === "vline") {
+        const x1 = ts.logicalToCoordinate(d.p1.logical);
+        if (x1 == null) continue;
+        setLineStyle(style);
+        ctx.beginPath(); ctx.moveTo(x1, 0); ctx.lineTo(x1, h); ctx.stroke();
+        ctx.setLineDash([]);
+
       } else if (d.type === "trendline") {
         const a = toXY(d.p1), b = toXY(d.p2);
         if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
-        ctx.strokeStyle = GOLD_LIGHT;
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
+        setLineStyle(style);
+        let x1 = a.x, y1 = a.y, x2 = b.x, y2 = b.y;
+        const ext = style.extend;
+        if (ext === "right" || ext === "both") {
+          const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+          x2 = b.x + (dx / len) * 3000; y2 = b.y + (dy / len) * 3000;
+        }
+        if (ext === "left" || ext === "both") {
+          const dx = a.x - b.x, dy = a.y - b.y, len = Math.hypot(dx, dy) || 1;
+          x1 = a.x + (dx / len) * 3000; y1 = a.y + (dy / len) * 3000;
+        }
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        ctx.setLineDash([]);
+
+      } else if (d.type === "ray") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
+        setLineStyle(style);
+        const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+        const x2 = a.x + (dx / len) * 3000, y2 = a.y + (dy / len) * 3000;
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(x2, y2); ctx.stroke();
+        ctx.setLineDash([]);
+
       } else if (d.type === "rectangle") {
         const a = toXY(d.p1), b = toXY(d.p2);
         if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
         const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
         const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
-        ctx.fillStyle = "rgba(201,162,75,0.15)";
-        ctx.strokeStyle = GOLD_LIGHT;
-        ctx.fillRect(x, y, rw, rh);
+        if (style.fill !== false) { ctx.fillStyle = hexToRgba(style.fillColor || GOLD, style.fillAlpha ?? 0.15); ctx.fillRect(x, y, rw, rh); }
+        ctx.strokeStyle = style.color || GOLD_LIGHT; ctx.lineWidth = style.width || 1.5;
         ctx.strokeRect(x, y, rw, rh);
+
+      } else if (d.type === "circle") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
+        const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+        const rx = Math.abs(b.x - a.x) / 2, ry = Math.abs(b.y - a.y) / 2;
+        ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        if (style.fill !== false) { ctx.fillStyle = hexToRgba(style.fillColor || GOLD, style.fillAlpha ?? 0.18); ctx.fill(); }
+        ctx.strokeStyle = style.color || GOLD_LIGHT; ctx.lineWidth = style.width || 1.5; ctx.stroke();
+
       } else if (d.type === "fib") {
         const a = toXY(d.p1), b = toXY(d.p2);
         if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
@@ -252,29 +414,47 @@ export default function ReplayClient() {
         const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
         const priceHigh = Math.max(d.p1.price, d.p2.price);
         const priceLow = Math.min(d.p1.price, d.p2.price);
-        ctx.strokeStyle = GOLD_LIGHT;
-        ctx.fillStyle = GOLD_LIGHT;
+        ctx.strokeStyle = style.color || GOLD_LIGHT; ctx.fillStyle = style.color || GOLD_LIGHT;
         for (const lvl of levels) {
           const price = priceHigh - (priceHigh - priceLow) * lvl;
           const y = series.priceToCoordinate(price);
           if (y == null) continue;
           ctx.setLineDash([3, 3]);
-          ctx.beginPath();
-          ctx.moveTo(x0, y);
-          ctx.lineTo(x1, y);
-          ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
           ctx.setLineDash([]);
           ctx.fillText(`${(lvl * 100).toFixed(1)}% - ${price.toFixed(2)}`, x1 + 4, y - 3);
         }
+
+      } else if (d.type === "path" || d.type === "wave") {
+        if (!d.points || d.points.length < 1) continue;
+        const pts = d.points.map(toXY).filter((p) => p.x != null && p.y != null);
+        if (pts.length < 1) continue;
+        setLineStyle(style);
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        if (style.closed && pts.length > 2) ctx.closePath();
+        ctx.stroke();
+        if (style.closed && style.fill && pts.length > 2) {
+          ctx.fillStyle = hexToRgba(style.fillColor || GOLD, style.fillAlpha ?? 0.15);
+          ctx.fill();
+        }
+        ctx.setLineDash([]);
+        for (const p of pts) { ctx.beginPath(); ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2); ctx.fill(); }
+        if (d.type === "wave") {
+          const labels = ["0", "A", "B", "C"];
+          ctx.font = "12px sans-serif";
+          pts.forEach((p, i) => ctx.fillText(labels[i] || "", p.x + 5, p.y - 6));
+        }
+
       } else if (d.type === "text") {
         const p = toXY(d.p1);
         if (p.x == null || p.y == null) continue;
-        ctx.fillStyle = GOLD_LIGHT;
-        ctx.font = "13px sans-serif";
+        ctx.fillStyle = style.color || GOLD_LIGHT;
+        ctx.font = `${style.size || 13}px sans-serif`;
         ctx.fillText(d.text, p.x + 5, p.y - 5);
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill();
+
       } else if (d.type === "measure") {
         const a = toXY(d.p1), b = toXY(d.p2);
         if (a.x == null || b.x == null) continue;
@@ -286,14 +466,204 @@ export default function ReplayClient() {
         const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
         ctx.fillStyle = priceDiff >= 0 ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)";
         ctx.strokeStyle = col;
-        ctx.fillRect(x, y, rw, rh);
-        ctx.strokeRect(x, y, rw, rh);
-        ctx.fillStyle = col;
-        ctx.font = "12px sans-serif";
+        ctx.fillRect(x, y, rw, rh); ctx.strokeRect(x, y, rw, rh);
+        ctx.fillStyle = col; ctx.font = "12px sans-serif";
         ctx.fillText(`${priceDiff >= 0 ? "+" : ""}${priceDiff.toFixed(2)} (${pct.toFixed(2)}%) | ${bars} شمعة`, x + 5, y - 6);
+
+      } else if (d.type === "pricerange") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null) continue;
+        const priceDiff = d.p2.price - d.p1.price;
+        const pct = (priceDiff / d.p1.price) * 100;
+        const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+        const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
+        const col = style.color || "#4f7cff";
+        if (style.fill !== false) { ctx.fillStyle = hexToRgba(style.fillColor || col, style.fillAlpha ?? 0.2); ctx.fillRect(x, y, rw, rh); }
+        ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, rw, rh);
+        ctx.fillStyle = col; ctx.font = "12px sans-serif";
+        ctx.fillText(`${priceDiff >= 0 ? "+" : ""}${priceDiff.toFixed(2)} (${pct.toFixed(2)}%)`, x + 5, y - 6);
+
+      } else if (d.type === "daterange") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null) continue;
+        const bars = Math.abs(Math.round(d.p2.logical - d.p1.logical));
+        const stepMs = INTERVAL_MS[intervalRef.current] || 60000;
+        const totalH = Math.floor((bars * stepMs) / 3600000);
+        const days = Math.floor(totalH / 24);
+        const hrs = totalH % 24;
+        const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+        const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
+        const col = style.color || "#4f7cff";
+        if (style.fill !== false) { ctx.fillStyle = hexToRgba(style.fillColor || col, style.fillAlpha ?? 0.2); ctx.fillRect(x, y, rw, rh); }
+        ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, rw, rh);
+        ctx.fillStyle = col; ctx.font = "12px sans-serif";
+        ctx.fillText(`${bars} شمعة، ${days} يوم ${hrs} ساعة`, x + 5, y - 6);
+
+      } else if (d.type === "position_long" || d.type === "position_short") {
+        const isLong = d.type === "position_long";
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null) continue;
+        const entryY = a.y;
+        const dist = Math.abs(b.y - a.y);
+        const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+        const targetY = isLong ? entryY - dist : entryY + dist;
+        const stopY = isLong ? entryY + dist : entryY - dist;
+        const alpha = style.alpha ?? 0.3;
+        ctx.fillStyle = hexToRgba(style.targetColor || GREEN, alpha);
+        ctx.fillRect(x0, Math.min(targetY, entryY), x1 - x0, Math.abs(entryY - targetY));
+        ctx.fillStyle = hexToRgba(style.stopColor || RED, alpha);
+        ctx.fillRect(x0, Math.min(entryY, stopY), x1 - x0, Math.abs(stopY - entryY));
+        ctx.strokeStyle = "#ccc"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x0, entryY); ctx.lineTo(x1, entryY); ctx.stroke();
+        const targetPrice = series.coordinateToPrice(targetY);
+        const stopPrice = series.coordinateToPrice(stopY);
+        const entryPrice = d.p1.price;
+        const rewardPct = targetPrice != null ? (((targetPrice - entryPrice) / entryPrice) * 100) : 0;
+        const riskPct = stopPrice != null ? (((stopPrice - entryPrice) / entryPrice) * 100) : 0;
+        ctx.font = "11px sans-serif";
+        ctx.fillStyle = GREEN;
+        ctx.fillText(`الهدف: ${targetPrice != null ? targetPrice.toFixed(2) : "-"} (${rewardPct >= 0 ? "+" : ""}${rewardPct.toFixed(2)}%)`, x0 + 4, Math.min(targetY, entryY) - 4);
+        ctx.fillStyle = RED;
+        ctx.fillText(`الإيقاف: ${stopPrice != null ? stopPrice.toFixed(2) : "-"} (${riskPct >= 0 ? "+" : ""}${riskPct.toFixed(2)}%)`, x0 + 4, Math.max(stopY, entryY) + 14);
       }
     }
     ctx.restore();
+  }
+
+  /* ===================== اختيار وتعديل رسمة موجودة ===================== */
+  function logicalPriceToXY(p) {
+    const chart = chartRef.current, series = seriesRef.current;
+    if (!chart || !series) return { x: null, y: null };
+    return { x: chart.timeScale().logicalToCoordinate(p.logical), y: series.priceToCoordinate(p.price) };
+  }
+  function distanceToDrawingPx(d, x, y) {
+    const chart = chartRef.current, series = seriesRef.current;
+    if (!chart || !series) return Infinity;
+    try {
+      switch (d.type) {
+        case "hline": {
+          const py = series.priceToCoordinate(d.p1.price);
+          return py == null ? Infinity : Math.abs(y - py);
+        }
+        case "hray": {
+          const py = series.priceToCoordinate(d.p1.price);
+          const px1 = chart.timeScale().logicalToCoordinate(d.p1.logical);
+          if (py == null || px1 == null || x < px1 - 4) return Infinity;
+          return Math.abs(y - py);
+        }
+        case "vline": {
+          const px1 = chart.timeScale().logicalToCoordinate(d.p1.logical);
+          return px1 == null ? Infinity : Math.abs(x - px1);
+        }
+        case "trendline": {
+          const a = logicalPriceToXY(d.p1), b = logicalPriceToXY(d.p2);
+          if (a.x == null || b.x == null) return Infinity;
+          return pointSegDist(x, y, a.x, a.y, b.x, b.y);
+        }
+        case "ray": {
+          const a = logicalPriceToXY(d.p1), b = logicalPriceToXY(d.p2);
+          if (a.x == null || b.x == null) return Infinity;
+          const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+          const ex = a.x + (dx / len) * 3000, ey = a.y + (dy / len) * 3000;
+          return pointSegDist(x, y, a.x, a.y, ex, ey);
+        }
+        case "rectangle":
+        case "circle":
+        case "pricerange":
+        case "daterange": {
+          const a = logicalPriceToXY(d.p1), b = logicalPriceToXY(d.p2);
+          if (a.x == null || b.x == null) return Infinity;
+          const x0 = Math.min(a.x, b.x), x1e = Math.max(a.x, b.x);
+          const y0 = Math.min(a.y, b.y), y1e = Math.max(a.y, b.y);
+          if (x >= x0 && x <= x1e && y >= y0 && y <= y1e) return 0;
+          const dx = x < x0 ? x0 - x : x > x1e ? x - x1e : 0;
+          const dy = y < y0 ? y0 - y : y > y1e ? y - y1e : 0;
+          return Math.hypot(dx, dy);
+        }
+        case "position_long":
+        case "position_short": {
+          const a = logicalPriceToXY(d.p1), b = logicalPriceToXY(d.p2);
+          if (a.x == null || b.x == null) return Infinity;
+          const dist = Math.abs(a.y - b.y);
+          const x0 = Math.min(a.x, b.x), x1e = Math.max(a.x, b.x);
+          const y0 = Math.min(a.y, b.y) - dist, y1e = Math.max(a.y, b.y) + dist;
+          return (x >= x0 && x <= x1e && y >= y0 && y <= y1e) ? 0 : 9999;
+        }
+        case "fib": {
+          const a = logicalPriceToXY(d.p1), b = logicalPriceToXY(d.p2);
+          if (a.x == null || b.x == null) return Infinity;
+          const x0 = Math.min(a.x, b.x), x1e = Math.max(a.x, b.x);
+          if (x < x0 - 5 || x > x1e + 5) return Infinity;
+          const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+          const priceHigh = Math.max(d.p1.price, d.p2.price);
+          const priceLow = Math.min(d.p1.price, d.p2.price);
+          let best = Infinity;
+          for (const lvl of levels) {
+            const py = series.priceToCoordinate(priceHigh - (priceHigh - priceLow) * lvl);
+            if (py != null) best = Math.min(best, Math.abs(y - py));
+          }
+          return best;
+        }
+        case "path":
+        case "wave": {
+          if (!d.points || d.points.length < 2) return Infinity;
+          let best = Infinity;
+          for (let i = 0; i < d.points.length - 1; i++) {
+            const a = logicalPriceToXY(d.points[i]), b = logicalPriceToXY(d.points[i + 1]);
+            if (a.x == null || b.x == null) continue;
+            best = Math.min(best, pointSegDist(x, y, a.x, a.y, b.x, b.y));
+          }
+          return best;
+        }
+        case "text": {
+          const p = logicalPriceToXY(d.p1);
+          if (p.x == null) return Infinity;
+          return Math.hypot(x - p.x, y - p.y);
+        }
+        default:
+          return Infinity;
+      }
+    } catch {
+      return Infinity;
+    }
+  }
+  function findDrawingAt(x, y) {
+    let best = null, bestDist = 8;
+    for (const d of drawingsRef.current) {
+      const dist = distanceToDrawingPx(d, x, y);
+      if (dist <= bestDist) { bestDist = dist; best = d; }
+    }
+    return best;
+  }
+  function openProperties(d) {
+    setEditingId(d.id);
+    setEditDraft(JSON.parse(JSON.stringify(d)));
+  }
+  function saveProperties() {
+    if (!editDraft) return;
+    const idx = drawingsRef.current.findIndex((d) => d.id === editDraft.id);
+    if (idx !== -1) drawingsRef.current[idx] = editDraft;
+    setEditingId(null);
+    setEditDraft(null);
+    drawOverlay();
+  }
+  function deleteEditingDrawing() {
+    if (!editDraft) return;
+    drawingsRef.current = drawingsRef.current.filter((d) => d.id !== editDraft.id);
+    setEditingId(null);
+    setEditDraft(null);
+    drawOverlay();
+  }
+  function finishMultiPoint() {
+    const pts = pathPointsRef.current;
+    const tool = activeToolRef.current;
+    if (pts && pts.length >= 2) {
+      drawingsRef.current.push({ id: Date.now(), type: tool, points: pts, style: defaultStyleFor(tool) });
+    }
+    pathPointsRef.current = [];
+    liveCursorRef.current = null;
+    setActiveTool("cursor");
+    drawOverlay();
   }
 
   function handleClearDrawings() {
@@ -370,45 +740,60 @@ export default function ReplayClient() {
       /* ===== ربط أحداث الرسم على الـ overlay canvas ===== */
       function getLogicalPrice(clientX, clientY) {
         const canvas = overlayCanvasRef.current;
-        if (!canvas) return { logical: null, price: null };
+        if (!canvas) return { logical: null, price: null, x: null, y: null };
         const rect = canvas.getBoundingClientRect();
         const x = clientX - rect.left;
         const y = clientY - rect.top;
         const ts = chart.timeScale();
         const logical = ts.coordinateToLogical(x);
         const price = series.coordinateToPrice(y);
-        return { logical, price };
+        return { logical, price, x, y };
       }
       function onMouseDown(e) {
         const tool = activeToolRef.current;
         if (tool === "cursor") return;
-        const { logical, price } = getLogicalPrice(e.clientX, e.clientY);
+        const { logical, price, y } = getLogicalPrice(e.clientX, e.clientY);
         if (logical == null || price == null) return;
-        const snapped = snapPrice(logical, price);
+        const snapped = snapPrice(logical, price, y);
 
         if (tool === "text") {
           const content = window.prompt("اكتبي النص:");
           if (content) {
-            drawingsRef.current.push({ id: Date.now(), type: "text", p1: { logical, price: snapped }, text: content });
+            drawingsRef.current.push({ id: Date.now(), type: "text", p1: { logical, price: snapped }, text: content, style: defaultStyleFor("text") });
           }
           setActiveTool("cursor");
           drawOverlay();
           return;
         }
-        if (tool === "hline") {
-          drawingsRef.current.push({ id: Date.now(), type: "hline", p1: { logical, price: snapped } });
+        if (tool === "hline" || tool === "hray" || tool === "vline") {
+          drawingsRef.current.push({ id: Date.now(), type: tool, p1: { logical, price: snapped }, style: defaultStyleFor(tool) });
           setActiveTool("cursor");
           drawOverlay();
           return;
         }
-        drawStateRef.current = { type: tool, p1: { logical, price: snapped }, p2: { logical, price: snapped } };
+        if (tool === "path" || tool === "wave") {
+          pathPointsRef.current.push({ logical, price: snapped });
+          if (tool === "wave" && pathPointsRef.current.length >= 4) {
+            finishMultiPoint();
+          }
+          drawOverlay();
+          return;
+        }
+        drawStateRef.current = { type: tool, p1: { logical, price: snapped }, p2: { logical, price: snapped }, style: defaultStyleFor(tool) };
         isDrawingRef.current = true;
       }
       function onMouseMove(e) {
-        if (!isDrawingRef.current || !drawStateRef.current) return;
-        const { logical, price } = getLogicalPrice(e.clientX, e.clientY);
+        const activePath = (activeToolRef.current === "path" || activeToolRef.current === "wave") && pathPointsRef.current.length;
+        if (!isDrawingRef.current && !activePath) return;
+        const { logical, price, y } = getLogicalPrice(e.clientX, e.clientY);
         if (logical == null || price == null) return;
-        drawStateRef.current.p2 = { logical, price: snapPrice(logical, price) };
+        const snapped = snapPrice(logical, price, y);
+        if (isDrawingRef.current && drawStateRef.current) {
+          drawStateRef.current.p2 = { logical, price: snapped };
+        }
+        if (activePath) {
+          liveCursorRef.current = { logical, price: snapped };
+        }
         drawOverlay();
       }
       function onMouseUp() {
@@ -426,12 +811,30 @@ export default function ReplayClient() {
         if (e.key === "Escape") {
           isDrawingRef.current = false;
           drawStateRef.current = null;
+          pathPointsRef.current = [];
+          liveCursorRef.current = null;
           setActiveTool("cursor");
           drawOverlay();
+        } else if (e.key === "Enter" && activeToolRef.current === "path" && pathPointsRef.current.length >= 2) {
+          finishMultiPoint();
         }
+      }
+      function onDblClickOverlay() {
+        if (activeToolRef.current === "path" && pathPointsRef.current.length >= 2) {
+          finishMultiPoint();
+        }
+      }
+      function onContainerDblClick(e) {
+        if (activeToolRef.current !== "cursor") return;
+        const { x, y } = getLogicalPrice(e.clientX, e.clientY);
+        if (x == null || y == null) return;
+        const hit = findDrawingAt(x, y);
+        if (hit) openProperties(hit);
       }
       const overlayEl = overlayCanvasRef.current;
       overlayEl?.addEventListener("mousedown", onMouseDown);
+      overlayEl?.addEventListener("dblclick", onDblClickOverlay);
+      chartContainerRef.current?.addEventListener("dblclick", onContainerDblClick);
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
       window.addEventListener("keydown", onKeyDown);
@@ -442,6 +845,8 @@ export default function ReplayClient() {
         window.removeEventListener("resize", handleResize);
         document.removeEventListener("fullscreenchange", handleFsChange);
         overlayEl?.removeEventListener("mousedown", onMouseDown);
+        overlayEl?.removeEventListener("dblclick", onDblClickOverlay);
+        chartContainerRef.current?.removeEventListener("dblclick", onContainerDblClick);
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseup", onMouseUp);
         window.removeEventListener("keydown", onKeyDown);
@@ -770,19 +1175,25 @@ export default function ReplayClient() {
         display: "flex", flexDirection: "column", gap: 3,
         background: "#1a1a1a", border: "1px solid #2f2f2f", borderRadius: 10, padding: 5,
         boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+        maxHeight: "94%", overflowY: "auto",
       }}>
-        {TOOLS.map((t) => (
-          <button
-            key={t.id}
-            title={t.title}
-            onClick={() => setActiveTool((cur) => (cur === t.id ? "cursor" : t.id))}
-            style={toolBtnStyle(activeTool === t.id)}
-          >
-            <ToolIcon id={t.id} />
-          </button>
+        {TOOL_GROUPS.map((group, gi) => (
+          <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {gi > 0 && <div style={{ height: 1, background: "#333", margin: "2px 2px" }} />}
+            {group.map((id) => (
+              <button
+                key={id}
+                title={TOOL_TITLES[id]}
+                onClick={() => setActiveTool((cur) => (cur === id ? "cursor" : id))}
+                style={toolBtnStyle(activeTool === id)}
+              >
+                <ToolIcon id={id} />
+              </button>
+            ))}
+          </div>
         ))}
         <div style={{ height: 1, background: "#333", margin: "3px 2px" }} />
-        <button title="مغناطيس: الالتصاق بأقرب سعر شمعة" onClick={() => setMagnetOn((m) => !m)} style={toolBtnStyle(magnetOn)}>
+        <button title="مغناطيس: يلتصق بأقرب سعر فقط لما تقربي منه فعلاً (حساسية خفيفة)" onClick={() => setMagnetOn((m) => !m)} style={toolBtnStyle(magnetOn)}>
           <ToolIcon id="magnet" />
         </button>
         <button title={drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات"} onClick={toggleDrawingsVisible} style={toolBtnStyle(!drawingsVisible)}>
@@ -790,6 +1201,121 @@ export default function ReplayClient() {
         </button>
         <button title="حذف كل الرسومات" onClick={handleClearDrawings} style={toolBtnStyle(false)}>
           <ToolIcon id="trash" />
+        </button>
+      </div>
+    );
+  }
+
+  /* لوحة خصائص الرسمة المحددة (تظهر بضغطة دبل-كليك على أي رسمة بوضع المؤشر) */
+  function renderPropertiesDialog() {
+    if (!editDraft) return null;
+    const type = editDraft.type;
+    const style = editDraft.style || {};
+    const updateStyle = (patch) => setEditDraft((d) => ({ ...d, style: { ...d.style, ...patch } }));
+    const titleMap = {
+      trendline: "خط اتجاه", ray: "شعاع", hline: "خط أفقي", hray: "شعاع أفقي", vline: "خط عمودي",
+      path: "مسار", rectangle: "مستطيل", circle: "دائرة", fib: "فيبوناتشي", wave: "موجة تصحيح (0،A،B،C)",
+      pricerange: "نطاق السعر", daterange: "نطاق التاريخ", position_long: "مركز شراء", position_short: "مركز بيع",
+      text: "نص",
+    };
+    const row = (label, control) => (
+      <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #262626" }}>
+        <span style={{ fontSize: 13, color: "#ccc" }}>{label}</span>
+        {control}
+      </div>
+    );
+    const colorInput = (val, onChange) => (
+      <input type="color" value={val || GOLD_LIGHT} onChange={(e) => onChange(e.target.value)}
+        style={{ width: 34, height: 26, border: "1px solid #333", borderRadius: 6, background: "none", cursor: "pointer", padding: 0 }} />
+    );
+    const widthSelect = (val, onChange) => (
+      <select value={val || 1.5} onChange={(e) => onChange(Number(e.target.value))} style={selectStyle}>
+        {[1, 1.5, 2, 3, 4].map((w) => (<option key={w} value={w}>{w}</option>))}
+      </select>
+    );
+    const checkbox = (val, onChange) => (
+      <input type="checkbox" checked={!!val} onChange={(e) => onChange(e.target.checked)} style={{ width: 18, height: 18 }} />
+    );
+
+    return (
+      <div style={{
+        position: "absolute", top: 46, left: 10, zIndex: 20, width: 260,
+        background: "#1a1a1a", border: "1px solid #333", borderRadius: 12,
+        boxShadow: "0 10px 30px rgba(0,0,0,0.5)", padding: 14, color: "#eee",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <button onClick={() => { setEditingId(null); setEditDraft(null); }} style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: 16 }}>✕</button>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>✏️ {titleMap[type] || type}</div>
+        </div>
+        <div style={{ maxHeight: 320, overflowY: "auto" }}>
+          {(type === "trendline" || type === "ray") && (
+            <>
+              {row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}
+              {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
+              {type === "trendline" && row("التمديد", (
+                <select value={style.extend || "none"} onChange={(e) => updateStyle({ extend: e.target.value })} style={selectStyle}>
+                  <option value="none">بدون تمديد</option>
+                  <option value="right">تمديد لليمين</option>
+                  <option value="left">تمديد لليسار</option>
+                  <option value="both">تمديد الجهتين</option>
+                </select>
+              ))}
+            </>
+          )}
+          {(type === "hline" || type === "hray" || type === "vline") && (
+            <>
+              {row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}
+              {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
+              {row("النمط", (
+                <select value={style.dash || "solid"} onChange={(e) => updateStyle({ dash: e.target.value })} style={selectStyle}>
+                  <option value="solid">متصل</option>
+                  <option value="dashed">متقطع</option>
+                </select>
+              ))}
+            </>
+          )}
+          {(type === "rectangle" || type === "circle" || type === "path") && (
+            <>
+              {row("لون الإطار", colorInput(style.color, (v) => updateStyle({ color: v })))}
+              {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
+              {type === "path" && row("إغلاق الشكل", checkbox(style.closed, (v) => updateStyle({ closed: v })))}
+              {row("تعبئة الخلفية", checkbox(style.fill, (v) => updateStyle({ fill: v })))}
+              {style.fill && row("لون الخلفية", colorInput(style.fillColor, (v) => updateStyle({ fillColor: v })))}
+            </>
+          )}
+          {(type === "pricerange" || type === "daterange") && (
+            <>
+              {row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}
+              {row("تعبئة الخلفية", checkbox(style.fill, (v) => updateStyle({ fill: v })))}
+              {style.fill && row("لون الخلفية", colorInput(style.fillColor, (v) => updateStyle({ fillColor: v })))}
+            </>
+          )}
+          {(type === "position_long" || type === "position_short") && (
+            <>
+              {row("لون الهدف", colorInput(style.targetColor, (v) => updateStyle({ targetColor: v })))}
+              {row("لون وقف الخسارة", colorInput(style.stopColor, (v) => updateStyle({ stopColor: v })))}
+            </>
+          )}
+          {(type === "fib" || type === "wave") && (
+            <>{row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}</>
+          )}
+          {type === "text" && (
+            <>
+              {row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}
+              {row("حجم الخط", (
+                <select value={style.size || 13} onChange={(e) => updateStyle({ size: Number(e.target.value) })} style={selectStyle}>
+                  {[10, 12, 13, 15, 18, 22].map((s) => (<option key={s} value={s}>{s}</option>))}
+                </select>
+              ))}
+            </>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <button onClick={saveProperties} style={{ ...btnStyle("primary"), flex: 1, padding: "0.5rem" }}>موافق</button>
+          <button onClick={() => { setEditingId(null); setEditDraft(null); }} style={{ ...btnStyle("secondary"), flex: 1, padding: "0.5rem" }}>إلغاء</button>
+        </div>
+        <button onClick={deleteEditingDrawing} style={{ marginTop: 8, width: "100%", background: "none", border: "1px solid #7a2b2b", color: RED, borderRadius: 8, padding: "0.4rem", cursor: "pointer", fontSize: 12.5 }}>
+          🗑 حذف هذه الرسمة
         </button>
       </div>
     );
@@ -925,6 +1451,7 @@ export default function ReplayClient() {
         )}
         <div ref={chartAreaRef} style={{ position: "relative", width: "100%", flex: 1 }}>
           {!loading && allCandles.length > 0 && renderDrawToolbar()}
+          {!loading && allCandles.length > 0 && renderPropertiesDialog()}
           <div
             ref={chartContainerRef}
             style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
