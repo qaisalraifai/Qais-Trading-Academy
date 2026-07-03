@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
 import BacktestClient from "../backtest/BacktestClient";
@@ -119,38 +119,59 @@ export default function DashboardClient({ username }) {
     };
   }, [activeKey, lectures.length]);
 
-  // نحدّث بيانات لوحة التحكم كل مرة نرجع لها (مثلاً بعد إضافة صفقات من تبويب الباك تيست)
+  // دالة موحّدة لإعادة تحميل بيانات المستخدم (الصفقات + الرصيد) - قابلة لإعادة الاستخدام
+  // من أي مكان (تبويب الداشبورد، أو بعد ما يسجّل الريبلاي صفقة مباشرة على الباك تيست)
+  const reloadUserData = useCallback(async () => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+    setUserId(user.id);
+
+    const [{ data: tradesRows }, { data: profile }] = await Promise.all([
+      supabase
+        .from("trades")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true }),
+      supabase.from("profiles").select("backtest_balance").eq("id", user.id).single(),
+    ]);
+
+    setRawTrades(tradesRows || []);
+    setTrades((tradesRows || []).map(rowToTrade));
+    setBalance(Number(profile?.backtest_balance ?? 3000));
+    setLoading(false);
+    return user.id;
+  }, []);
+
+  // نحمّل الـ userId فوراً عند فتح لوحة التحكم (بغض النظر عن التبويب المفتوح)
+  // عشان يكون جاهز لأداة الريبلاي فور ما المستخدم يفتحها، مش بس لما يوصل لتبويب الداشبورد
   useEffect(() => {
-    if (activeKey !== "dashboard") return;
     let active = true;
-    async function load() {
+    (async () => {
       const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user || !active) return;
-      setUserId(user.id);
-
-      const [{ data: tradesRows }, { data: profile }] = await Promise.all([
-        supabase
-          .from("trades")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: true }),
-        supabase.from("profiles").select("backtest_balance").eq("id", user.id).single(),
-      ]);
-
-      if (!active) return;
-      setRawTrades(tradesRows || []);
-      setTrades((tradesRows || []).map(rowToTrade));
-      setBalance(Number(profile?.backtest_balance ?? 3000));
-      setLoading(false);
-    }
-    load();
+      if (active && user) setUserId(user.id);
+    })();
     return () => {
       active = false;
     };
-  }, [activeKey]);
+  }, []);
+
+  // نحدّث بيانات لوحة التحكم كل مرة نرجع لها (مثلاً بعد إضافة صفقات من تبويب الباك تيست)
+  useEffect(() => {
+    if (activeKey !== "dashboard") return;
+    let active = true;
+    reloadUserData().then(() => {
+      if (!active) return;
+    });
+    return () => {
+      active = false;
+    };
+  }, [activeKey, reloadUserData]);
 
   const total = trades.length;
   const wins = trades.filter((t) => t.result === "win").length;
@@ -446,7 +467,12 @@ export default function DashboardClient({ username }) {
             onBack={() => setSelectedLecture(null)}
           />
         ) : activeKey === "replay" ? (
-          <ReplayClient />
+          <ReplayClient
+            userId={userId}
+            username={username}
+            balance={balance}
+            onTradeSaved={reloadUserData}
+          />
         ) : activeKey === "backtest" ? (
           userId ? (
             <BacktestClient
