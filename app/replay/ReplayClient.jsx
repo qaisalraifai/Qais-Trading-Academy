@@ -272,7 +272,7 @@ function defaultStyleFor(type) {
     case "wave":
       return { color: "#ffffff", width: 1.5 };
     case "rectangle":
-      return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.15 };
+      return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.15, midline: false, midlineColor: "#4caf50", midlineDash: true };
     case "circle":
       return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.18 };
     case "fib":
@@ -294,7 +294,25 @@ function defaultStyleFor(type) {
         ],
       };
     case "fibext":
-      return { color: GOLD_LIGHT };
+      return {
+        color: GOLD_LIGHT, width: 1.3, extend: "right",
+        levels: [
+          { value: 0, color: "#787b86", enabled: true },
+          { value: 0.236, color: "#f23645", enabled: false },
+          { value: 0.382, color: "#ff9800", enabled: true },
+          { value: 0.5, color: "#4caf50", enabled: true },
+          { value: 0.618, color: "#00bcd4", enabled: true },
+          { value: 0.786, color: "#2196f3", enabled: false },
+          { value: 1, color: "#787b86", enabled: true },
+          { value: 1.272, color: "#9c27b0", enabled: true },
+          { value: 1.414, color: "#9c27b0", enabled: false },
+          { value: 1.618, color: "#e91e63", enabled: true },
+          { value: 2, color: "#795548", enabled: false },
+          { value: 2.618, color: "#607d8b", enabled: false },
+          { value: 3.618, color: "#607d8b", enabled: false },
+          { value: 4.236, color: "#607d8b", enabled: false },
+        ],
+      };
     case "fibchannel":
       return {
         color: GOLD_LIGHT, width: 1.3,
@@ -687,6 +705,18 @@ export default function ReplayClient({ userId }) {
         if (style.fill !== false) { ctx.fillStyle = hexToRgba(style.fillColor || GOLD, style.fillAlpha ?? 0.15); ctx.fillRect(x, y, rw, rh); }
         ctx.strokeStyle = style.color || GOLD_LIGHT; ctx.lineWidth = style.width || 1.5;
         ctx.strokeRect(x, y, rw, rh);
+        if (style.midline) {
+          const midY = y + rh / 2;
+          const midPrice = (d.p1.price + d.p2.price) / 2;
+          ctx.strokeStyle = style.midlineColor || "#4caf50";
+          ctx.lineWidth = 1.3;
+          ctx.setLineDash(style.midlineDash === false ? [] : [4, 3]);
+          ctx.beginPath(); ctx.moveTo(x, midY); ctx.lineTo(x + rw, midY); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.font = "11px sans-serif";
+          ctx.fillStyle = style.midlineColor || "#4caf50";
+          ctx.fillText(`50% - ${midPrice.toFixed(2)}`, x + rw + 4, midY - 3);
+        }
 
       } else if (d.type === "circle") {
         const a = toXY(d.p1), b = toXY(d.p2);
@@ -748,18 +778,29 @@ export default function ReplayClient({ userId }) {
           const xy3 = toXY(p3);
           if (xy3.x == null) continue;
           const diff = p2.price - p1.price; // مقدار حركة الموجة الأساسية A→B
-          const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.272, 1.618, 2, 2.618];
-          ctx.strokeStyle = style.color || GOLD_LIGHT;
-          ctx.fillStyle = style.color || GOLD_LIGHT;
+          const fallbackLevels = [
+            { value: 0, color: "#787b86", enabled: true }, { value: 0.236, color: "#f23645", enabled: true },
+            { value: 0.382, color: "#ff9800", enabled: true }, { value: 0.5, color: "#4caf50", enabled: true },
+            { value: 0.618, color: "#00bcd4", enabled: true }, { value: 0.786, color: "#2196f3", enabled: true },
+            { value: 1, color: "#787b86", enabled: true }, { value: 1.272, color: "#9c27b0", enabled: true },
+            { value: 1.618, color: "#e91e63", enabled: true },
+          ];
+          const levels = (style.levels && style.levels.length ? style.levels : fallbackLevels).filter((l) => l.enabled !== false);
+          const extendRight = (style.extend || "right") !== "none";
+          const endX = extendRight ? w : xy3.x + 120;
           ctx.font = "11px sans-serif";
           for (const lvl of levels) {
-            const price = p3.price + diff * lvl;
+            const price = p3.price + diff * lvl.value;
             const y = series.priceToCoordinate(price);
             if (y == null) continue;
-            ctx.setLineDash(lvl === 0 || lvl === 1 ? [] : [3, 3]);
-            ctx.beginPath(); ctx.moveTo(xy3.x, y); ctx.lineTo(w, y); ctx.stroke();
+            const col = lvl.color || style.color || GOLD_LIGHT;
+            ctx.strokeStyle = col;
+            ctx.fillStyle = col;
+            ctx.lineWidth = style.width || 1.3;
+            ctx.setLineDash(lvl.value === 0 || lvl.value === 1 ? [] : [3, 3]);
+            ctx.beginPath(); ctx.moveTo(xy3.x, y); ctx.lineTo(endX, y); ctx.stroke();
             ctx.setLineDash([]);
-            ctx.fillText(`${(lvl * 100).toFixed(1)}% - ${price.toFixed(2)}`, xy3.x + 4, y - 3);
+            ctx.fillText(`${(lvl.value * 100).toFixed(1)}% - ${price.toFixed(2)}`, xy3.x + 4, y - 3);
           }
         }
 
@@ -1415,8 +1456,23 @@ export default function ReplayClient({ userId }) {
           drawOverlay();
           return;
         }
+        // نظام النقرات: نقرة أولى تثبّت نقطة البداية وتبلّش معاينة حيّة تتبع الماوس
+        // بدون الحاجة لإبقاء الزر مضغوط، ونقرة ثانية عند أي مكان تثبّت الرسمة نهائياً.
+        if (isDrawingRef.current && drawStateRef.current && drawStateRef.current.type === tool) {
+          const d = drawStateRef.current;
+          d.p2 = { logical, price: snapped };
+          drawStateRef.current = null;
+          isDrawingRef.current = false;
+          if (d.type !== "measure") {
+            drawingsRef.current.push({ id: Date.now(), ...d });
+          }
+          setActiveTool("cursor");
+          drawOverlay();
+          return;
+        }
         drawStateRef.current = { type: tool, p1: { logical, price: snapped }, p2: { logical, price: snapped }, style: defaultStyleFor(tool) };
         isDrawingRef.current = true;
+        drawOverlay();
       }
       function onMouseMove(e) {
         // وضع المؤشر: تلوين مؤشر الفأرة لما يكون فوق رسمة (يد) عشان يبين إنها قابلة للسحب،
@@ -1463,21 +1519,13 @@ export default function ReplayClient({ userId }) {
         drawOverlay();
       }
       function onMouseUp() {
+        // ما عاد في تثبيت بالسحب/الإفلات — الرسم صار بنظام نقرة ثم نقرة (كليك ثم كليك)،
+        // فهون بس منسكّر سحب الرسومات الموجودة بوضع المؤشر (تحريك/تعديل نقاط رسمة قائمة).
         if (dragStateRef.current) {
           dragStateRef.current = null;
           chart.applyOptions({ handleScroll: true, handleScale: true });
           drawOverlay();
-          return;
         }
-        if (!isDrawingRef.current || !drawStateRef.current) return;
-        isDrawingRef.current = false;
-        const d = drawStateRef.current;
-        drawStateRef.current = null;
-        if (d.type !== "measure") {
-          drawingsRef.current.push({ id: Date.now(), ...d });
-        }
-        setActiveTool("cursor");
-        drawOverlay();
       }
       /* سحب رسمة موجودة بوضع المؤشر: نمسك الحدث بمرحلة الـ capture قبل ما يوصل لمكتبة
          الشارت (اللي بتستخدمه للتحريك/الزوم)، فإذا كان في رسمة تحت المؤشر منوقف التحريك
@@ -2091,6 +2139,9 @@ export default function ReplayClient({ userId }) {
               {type === "path" && row("إغلاق الشكل", checkbox(style.closed, (v) => updateStyle({ closed: v })))}
               {row("تعبئة الخلفية", checkbox(style.fill, (v) => updateStyle({ fill: v })))}
               {style.fill && row("لون الخلفية", colorInput(style.fillColor, (v) => updateStyle({ fillColor: v })))}
+              {type === "rectangle" && row("خط المنتصف (50%)", checkbox(style.midline, (v) => updateStyle({ midline: v })))}
+              {type === "rectangle" && style.midline && row("لون خط 50%", colorInput(style.midlineColor, (v) => updateStyle({ midlineColor: v })))}
+              {type === "rectangle" && style.midline && row("خط متقطع", checkbox(style.midlineDash !== false, (v) => updateStyle({ midlineDash: v })))}
             </>
           )}
           {(type === "pricerange" || type === "daterange") && (
@@ -2114,7 +2165,20 @@ export default function ReplayClient({ userId }) {
               {levelsEditor()}
             </>
           )}
-          {(type === "fibext" || type === "wave") && (
+          {type === "fibext" && (
+            <>
+              {row("لون افتراضي", colorInput(style.color, (v) => updateStyle({ color: v })))}
+              {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
+              {row("تمديد الخطوط يميناً", (
+                <select value={style.extend || "right"} onChange={(e) => updateStyle({ extend: e.target.value })} style={selectStyle}>
+                  <option value="right">تمديد لليمين</option>
+                  <option value="none">بدون تمديد</option>
+                </select>
+              ))}
+              {levelsEditor()}
+            </>
+          )}
+          {type === "wave" && (
             <>{row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}</>
           )}
           {type === "text" && (
@@ -2397,6 +2461,33 @@ export default function ReplayClient({ userId }) {
     );
   }
 
+  /* شريط معلومات السعر أعلى الشارت (رمز الأصل + O/H/L/C) — نفس ستايل تريدنغ فيو */
+  function renderOHLCTicker() {
+    const list = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
+    const last = list[list.length - 1];
+    if (!last) return null;
+    const prev = list[list.length - 2];
+    const up = prev ? last.close >= prev.open : last.close >= last.open;
+    const col = up ? GREEN : RED;
+    const info = getAssetByValue(assetValue);
+    const intervalLabel = INTERVALS.find((i) => i.value === interval)?.label || interval;
+    const fmt = (v) => (v != null ? v.toFixed(v < 10 ? 4 : 2) : "-");
+    return (
+      <div style={{
+        position: "absolute", top: 10, left: 68, zIndex: 8, pointerEvents: "none",
+        display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0.5rem 0.7rem",
+        fontSize: 12.5, fontFamily: "monospace, sans-serif",
+      }}>
+        <span style={{ color: "#eee", fontWeight: 700, background: "#00000066", padding: "2px 8px", borderRadius: 6 }}>
+          {info?.label || assetValue} · {intervalLabel}
+        </span>
+        <span style={{ color: col, background: "#00000066", padding: "2px 8px", borderRadius: 6 }}>
+          O <b>{fmt(last.open)}</b>&nbsp;&nbsp;H <b>{fmt(last.high)}</b>&nbsp;&nbsp;L <b>{fmt(last.low)}</b>&nbsp;&nbsp;C <b>{fmt(last.close)}</b>
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div>
       {!isFullscreen && renderTopBar()}
@@ -2441,6 +2532,7 @@ export default function ReplayClient({ userId }) {
         )}
         <div ref={chartAreaRef} style={{ position: "relative", width: "100%", flex: 1 }}>
           {!loading && allCandles.length > 0 && renderDrawToolbar()}
+          {!loading && allCandles.length > 0 && !editDraft && renderOHLCTicker()}
           {!loading && allCandles.length > 0 && renderPropertiesDialog()}
           {!loading && renderTradePanel()}
           {!loading && renderTradeToast()}
