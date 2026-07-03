@@ -1,9 +1,9 @@
-bash
+
 
 cat /home/claude/replay-rebuild/ReplayClient.jsx
 Output
 
-"use client";
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets";
 
