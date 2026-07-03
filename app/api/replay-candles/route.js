@@ -123,6 +123,25 @@ function tradeToRow(trade, userId) {
   };
 }
 
+/* قراءة استجابة API بأمان: لو السيرفر رجّع كود خطأ (405/500/...) بجسم فاضي أو HTML بدل JSON،
+   res.json() المباشرة كانت بترمي "Unexpected end of JSON input" غامضة مالها معنى للمستخدم -
+   هون منرجع رسالة واضحة فيها كود الخطأ الفعلي عشان يسهل تشخيص المشكلة (مثلاً 405 = المسار
+   مرفوض عالسيرفر، غالباً نسخة قديمة منشورة أو مشكلة بإعدادات الاستضافة) */
+async function safeParseJson(res) {
+  const raw = await res.text();
+  let data = null;
+  try {
+    data = raw ? JSON.parse(raw) : null;
+  } catch {
+    data = null;
+  }
+  if (!res.ok) {
+    const msg = data?.error || `فشل الاتصال بالسيرفر (كود ${res.status})`;
+    throw new Error(msg);
+  }
+  return data || {};
+}
+
 /* ===================== شارت عشوائي (تدريب أعمى) ===================== */
 function generateRandomCandles(count, interval) {
   const stepMs = INTERVAL_MS[interval] || 15 * 60 * 1000;
@@ -1700,7 +1719,7 @@ export default function ReplayClient({ userId }) {
       const res = await fetch(
         `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}`
       );
-      const data = await res.json();
+      const data = await safeParseJson(res);
       // لو المستخدم بدّل فريم/أصل وإحنا لسا مستنيين هاد الطلب، هاي الاستجابة صارت قديمة - نتجاهلها
       // بدل ما نطبّقها فوق بيانات الفريم/الأصل الجديد ونلخبط الشارت
       if (loadGenRef.current !== myGen) return;
@@ -1823,7 +1842,7 @@ export default function ReplayClient({ userId }) {
       const res = await fetch(
         `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahoo)}&interval=${tdInterval}&count=3`
       );
-      const data = await res.json();
+      const data = await safeParseJson(res);
       // لو تبدّل الأصل/الفريم من وقت ما طلبنا هاد التحديث، هاد رد قديم - لازم نرميه
       // ولا نخليه يتلخبط مع بيانات الأصل/الفريم الجديد
       if (loadGenRef.current !== myGen) return;
