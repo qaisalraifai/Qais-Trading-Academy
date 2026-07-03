@@ -230,10 +230,38 @@ function defaultStyleFor(type) {
     case "circle":
       return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.18 };
     case "fib":
+      return {
+        color: GOLD_LIGHT, extend: "none",
+        levels: [
+          { value: 0, color: "#787b86", enabled: true },
+          { value: 0.236, color: "#f23645", enabled: true },
+          { value: 0.382, color: "#ff9800", enabled: true },
+          { value: 0.5, color: "#4caf50", enabled: true },
+          { value: 0.618, color: "#00bcd4", enabled: true },
+          { value: 0.786, color: "#2196f3", enabled: true },
+          { value: 1, color: "#787b86", enabled: true },
+          { value: 1.272, color: "#9c27b0", enabled: false },
+          { value: 1.414, color: "#9c27b0", enabled: false },
+          { value: 1.618, color: "#e91e63", enabled: false },
+          { value: 2, color: "#795548", enabled: false },
+          { value: 2.618, color: "#607d8b", enabled: false },
+        ],
+      };
     case "fibext":
       return { color: GOLD_LIGHT };
     case "fibchannel":
-      return { color: GOLD_LIGHT, width: 1.3 };
+      return {
+        color: GOLD_LIGHT, width: 1.3,
+        levels: [
+          { value: 0, color: "#787b86", enabled: true },
+          { value: 0.236, color: "#f23645", enabled: true },
+          { value: 0.382, color: "#ff9800", enabled: true },
+          { value: 0.5, color: "#4caf50", enabled: true },
+          { value: 0.618, color: "#00bcd4", enabled: true },
+          { value: 0.786, color: "#2196f3", enabled: true },
+          { value: 1, color: "#787b86", enabled: true },
+        ],
+      };
     case "fibtimezone":
       return { color: "#4f7cff", width: 1, dash: "dashed" };
     case "gannfan":
@@ -321,10 +349,10 @@ export default function ReplayClient() {
   const overlayCanvasRef = useRef(null);
   const chartAreaRef = useRef(null);
   const [activeTool, setActiveTool] = useState("cursor");
-  const [magnetOn, setMagnetOn] = useState(true);
+  const [magnetOn, setMagnetOn] = useState(false);
   const [drawingsVisible, setDrawingsVisible] = useState(true);
   const activeToolRef = useRef("cursor");
-  const magnetRef = useRef(true);
+  const magnetRef = useRef(false);
   const drawingsVisibleRef = useRef(true);
   const drawingsRef = useRef([]); // [{id, type, p1:{logical,price}, p2?, points?, text?, style}]
   const drawStateRef = useRef(null); // الرسمة الجارية حالياً (سحب نقطتين)
@@ -562,19 +590,29 @@ export default function ReplayClient() {
       } else if (d.type === "fib") {
         const a = toXY(d.p1), b = toXY(d.p2);
         if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
-        const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
-        const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+        const levels = (style.levels && style.levels.length ? style.levels : [
+          { value: 0, color: style.color, enabled: true }, { value: 0.236, color: style.color, enabled: true },
+          { value: 0.382, color: style.color, enabled: true }, { value: 0.5, color: style.color, enabled: true },
+          { value: 0.618, color: style.color, enabled: true }, { value: 0.786, color: style.color, enabled: true },
+          { value: 1, color: style.color, enabled: true },
+        ]).filter((l) => l.enabled !== false);
+        const x0raw = Math.min(a.x, b.x), x1raw = Math.max(a.x, b.x);
+        const ext = style.extend || "none";
+        const x0 = (ext === "left" || ext === "both") ? 0 : x0raw;
+        const x1 = (ext === "right" || ext === "both") ? w : x1raw;
         const priceHigh = Math.max(d.p1.price, d.p2.price);
         const priceLow = Math.min(d.p1.price, d.p2.price);
-        ctx.strokeStyle = style.color || GOLD_LIGHT; ctx.fillStyle = style.color || GOLD_LIGHT;
         for (const lvl of levels) {
-          const price = priceHigh - (priceHigh - priceLow) * lvl;
+          const price = priceHigh - (priceHigh - priceLow) * lvl.value;
           const y = series.priceToCoordinate(price);
           if (y == null) continue;
-          ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = lvl.color || style.color || GOLD_LIGHT;
+          ctx.fillStyle = lvl.color || style.color || GOLD_LIGHT;
+          ctx.lineWidth = style.width || 1.3;
+          ctx.setLineDash(style.dash === "dashed" ? [4, 3] : style.dash === "dotted" ? [2, 3] : []);
           ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
           ctx.setLineDash([]);
-          ctx.fillText(`${(lvl * 100).toFixed(1)}% - ${price.toFixed(2)}`, x1 + 4, y - 3);
+          ctx.fillText(`${(lvl.value * 100).toFixed(1)}% - ${price.toFixed(2)}`, x1raw + 4, y - 3);
         }
 
       } else if (d.type === "fibext") {
@@ -630,15 +668,20 @@ export default function ReplayClient() {
           if (xy3.x != null) offset = (xy3.x - xy1.x) * nx + (xy3.y - xy1.y) * ny;
         }
         ctx.font = "10px sans-serif";
-        const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+        const levels = (style.levels && style.levels.length ? style.levels : [
+          { value: 0, color: style.color, enabled: true }, { value: 0.5, color: style.color, enabled: true }, { value: 1, color: style.color, enabled: true },
+        ]).filter((l) => l.enabled !== false);
         for (const lvl of levels) {
-          const off = offset * lvl;
-          setLineStyle({ ...style, dash: lvl === 0 || lvl === 1 ? "solid" : "dotted" });
+          const off = offset * lvl.value;
+          ctx.strokeStyle = lvl.color || style.color || GOLD_LIGHT;
+          ctx.lineWidth = style.width || 1.3;
+          ctx.setLineDash(lvl.value === 0 || lvl.value === 1 ? [] : [2, 3]);
           const lx1 = ex1x + nx * off, ly1 = ex1y + ny * off;
           const lx2 = ex2x + nx * off, ly2 = ex2y + ny * off;
           ctx.beginPath(); ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2); ctx.stroke();
           ctx.setLineDash([]);
-          ctx.fillText(`${(lvl * 100).toFixed(1)}%`, lx2 - 30, ly2 - 3);
+          ctx.fillStyle = lvl.color || style.color || GOLD_LIGHT;
+          ctx.fillText(`${(lvl.value * 100).toFixed(1)}%`, lx2 - 30, ly2 - 3);
         }
 
       } else if (d.type === "fibtimezone") {
@@ -899,14 +942,15 @@ export default function ReplayClient() {
         case "fib": {
           const a = logicalPriceToXY(d.p1), b = logicalPriceToXY(d.p2);
           if (a.x == null || b.x == null) return Infinity;
+          const style = d.style || {};
           const x0 = Math.min(a.x, b.x), x1e = Math.max(a.x, b.x);
           if (x < x0 - 5 || x > x1e + 5) return Infinity;
-          const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+          const levels = (style.levels && style.levels.length ? style.levels : [{ value: 0 }, { value: 0.236 }, { value: 0.382 }, { value: 0.5 }, { value: 0.618 }, { value: 0.786 }, { value: 1 }]).filter((l) => l.enabled !== false);
           const priceHigh = Math.max(d.p1.price, d.p2.price);
           const priceLow = Math.min(d.p1.price, d.p2.price);
           let best = Infinity;
           for (const lvl of levels) {
-            const py = series.priceToCoordinate(priceHigh - (priceHigh - priceLow) * lvl);
+            const py = series.priceToCoordinate(priceHigh - (priceHigh - priceLow) * lvl.value);
             if (py != null) best = Math.min(best, Math.abs(y - py));
           }
           return best;
@@ -1648,8 +1692,12 @@ export default function ReplayClient() {
     const style = editDraft.style || {};
     const updateStyle = (patch) => setEditDraft((d) => ({ ...d, style: { ...d.style, ...patch } }));
     const titleMap = {
-      trendline: "خط اتجاه", ray: "شعاع", hline: "خط أفقي", hray: "شعاع أفقي", vline: "خط عمودي",
-      path: "مسار", rectangle: "مستطيل", circle: "دائرة", fib: "فيبوناتشي (تصحيح)", fibext: "فيبوناتشي (امتداد)", wave: "موجة تصحيح (0،A،B،C)",
+      trendline: "خط اتجاه", ray: "شعاع", extendedline: "خط ممتد", infoline: "خط معلومات", angle: "زاوية الاتجاه",
+      hline: "خط أفقي", hray: "شعاع أفقي", vline: "خط عمودي", crossline: "خط متقاطع", parallelchannel: "قناة متوازية",
+      path: "مسار", rectangle: "مستطيل", circle: "دائرة",
+      fib: "فيبوناتشي (تصحيح)", fibext: "فيبوناتشي (امتداد)", fibchannel: "قناة فيبوناتشي",
+      fibtimezone: "مناطق فيبوناتشي الزمنية", gannfan: "مروحة غان", pitchfork: "شوكة أندروز",
+      wave: "موجة تصحيح (0،A،B،C)",
       pricerange: "نطاق السعر", daterange: "نطاق التاريخ", position_long: "مركز شراء", position_short: "مركز بيع",
       text: "نص",
     };
@@ -1671,10 +1719,58 @@ export default function ReplayClient() {
     const checkbox = (val, onChange) => (
       <input type="checkbox" checked={!!val} onChange={(e) => onChange(e.target.checked)} style={{ width: 18, height: 18 }} />
     );
+    const dashSelect = (val, onChange) => (
+      <select value={val || "solid"} onChange={(e) => onChange(e.target.value)} style={selectStyle}>
+        <option value="solid">متصل</option>
+        <option value="dashed">متقطع</option>
+        <option value="dotted">منقّط</option>
+      </select>
+    );
+    const extendSelect = (val, onChange) => (
+      <select value={val || "none"} onChange={(e) => onChange(e.target.value)} style={selectStyle}>
+        <option value="none">بدون تمديد</option>
+        <option value="right">تمديد لليمين</option>
+        <option value="left">تمديد لليسار</option>
+        <option value="both">تمديد الجهتين</option>
+      </select>
+    );
+    /* محرر مستويات فيبوناتشي — نفس فكرة لوحة تريدنغ فيو: تفعيل/تعطيل + قيمة + لون لكل مستوى */
+    const levelsEditor = () => {
+      const levels = style.levels || [];
+      const updateLevel = (idx, patch) => {
+        const next = levels.map((l, i) => (i === idx ? { ...l, ...patch } : l));
+        updateStyle({ levels: next });
+      };
+      return (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 12, color: "#999", padding: "6px 0 4px" }}>المستويات (فعّلي/عطّلي، غيّري القيمة واللون لكل واحد)</div>
+          {levels.map((lvl, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0" }}>
+              {checkbox(lvl.enabled, (v) => updateLevel(i, { enabled: v }))}
+              {colorInput(lvl.color, (v) => updateLevel(i, { color: v }))}
+              <input
+                type="number" step="0.001" value={lvl.value}
+                onChange={(e) => updateLevel(i, { value: Number(e.target.value) })}
+                style={{ ...selectStyle, width: 80, flex: 1 }}
+              />
+              <button
+                onClick={() => updateStyle({ levels: levels.filter((_, j) => j !== i) })}
+                style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 13 }}
+                title="حذف هذا المستوى"
+              >✕</button>
+            </div>
+          ))}
+          <button
+            onClick={() => updateStyle({ levels: [...levels, { value: 0, color: GOLD_LIGHT, enabled: true }] })}
+            style={{ ...btnStyle("secondary"), width: "100%", marginTop: 6, padding: "0.4rem", fontSize: 12.5 }}
+          >+ إضافة مستوى</button>
+        </div>
+      );
+    };
 
     return (
       <div style={{
-        position: "absolute", top: 10, left: 68, zIndex: 20, width: 260,
+        position: "absolute", top: 10, left: 68, zIndex: 20, width: 300,
         background: "#1a1a1a", border: "1px solid #333", borderRadius: 12,
         boxShadow: "0 10px 30px rgba(0,0,0,0.5)", padding: 14, color: "#eee",
       }}>
@@ -1682,31 +1778,46 @@ export default function ReplayClient() {
           <button onClick={() => { setEditingId(null); setEditDraft(null); }} style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: 16 }}>✕</button>
           <div style={{ fontWeight: 700, fontSize: 14 }}>✏️ {titleMap[type] || type}</div>
         </div>
-        <div style={{ maxHeight: 320, overflowY: "auto" }}>
+        <div style={{ maxHeight: 420, overflowY: "auto" }}>
           {(type === "trendline" || type === "ray") && (
             <>
               {row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}
               {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
-              {type === "trendline" && row("التمديد", (
-                <select value={style.extend || "none"} onChange={(e) => updateStyle({ extend: e.target.value })} style={selectStyle}>
-                  <option value="none">بدون تمديد</option>
-                  <option value="right">تمديد لليمين</option>
-                  <option value="left">تمديد لليسار</option>
-                  <option value="both">تمديد الجهتين</option>
-                </select>
-              ))}
+              {type === "trendline" && row("التمديد", extendSelect(style.extend, (v) => updateStyle({ extend: v })))}
             </>
           )}
-          {(type === "hline" || type === "hray" || type === "vline") && (
+          {type === "extendedline" && (
             <>
               {row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}
               {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
-              {row("النمط", (
-                <select value={style.dash || "solid"} onChange={(e) => updateStyle({ dash: e.target.value })} style={selectStyle}>
-                  <option value="solid">متصل</option>
-                  <option value="dashed">متقطع</option>
-                </select>
-              ))}
+            </>
+          )}
+          {(type === "infoline" || type === "angle") && (
+            <>
+              {row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}
+              {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
+            </>
+          )}
+          {(type === "hline" || type === "hray" || type === "vline" || type === "crossline") && (
+            <>
+              {row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}
+              {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
+              {row("النمط", dashSelect(style.dash, (v) => updateStyle({ dash: v })))}
+            </>
+          )}
+          {type === "parallelchannel" && (
+            <>
+              {row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}
+              {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
+              {row("تعبئة الخلفية", checkbox(style.fill, (v) => updateStyle({ fill: v })))}
+              {style.fill && row("لون الخلفية", colorInput(style.fillColor, (v) => updateStyle({ fillColor: v })))}
+            </>
+          )}
+          {(type === "fibtimezone" || type === "gannfan" || type === "pitchfork") && (
+            <>
+              {row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}
+              {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
+              {type === "fibtimezone" && row("النمط", dashSelect(style.dash, (v) => updateStyle({ dash: v })))}
             </>
           )}
           {(type === "rectangle" || type === "circle" || type === "path") && (
@@ -1731,7 +1842,15 @@ export default function ReplayClient() {
               {row("لون وقف الخسارة", colorInput(style.stopColor, (v) => updateStyle({ stopColor: v })))}
             </>
           )}
-          {(type === "fib" || type === "fibext" || type === "wave") && (
+          {(type === "fib" || type === "fibchannel") && (
+            <>
+              {row("لون افتراضي", colorInput(style.color, (v) => updateStyle({ color: v })))}
+              {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
+              {type === "fib" && row("التمديد", extendSelect(style.extend, (v) => updateStyle({ extend: v })))}
+              {levelsEditor()}
+            </>
+          )}
+          {(type === "fibext" || type === "wave") && (
             <>{row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}</>
           )}
           {type === "text" && (
