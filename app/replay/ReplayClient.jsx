@@ -78,7 +78,7 @@ export default function ReplayClient() {
   const forminCandleStartRef = useRef(null);
 
   const assetInfo = getAssetByValue(assetValue);
-  const supported = randomChart || !!assetInfo?.td;
+  const supported = randomChart || !!assetInfo?.yahoo;
 
   /* ===================== إنشاء الشارت مرة وحدة ===================== */
   useEffect(() => {
@@ -144,7 +144,7 @@ export default function ReplayClient() {
       return;
     }
 
-    if (!assetInfo?.td) {
+    if (!assetInfo?.yahoo) {
       setError("هذا الأصل غير مدعوم حالياً لعرض الشموع (لا يوجد مصدر بيانات تاريخية له بعد).");
       setAllCandles([]);
       setLoading(false);
@@ -154,7 +154,7 @@ export default function ReplayClient() {
     try {
       const tdInterval = INTERVAL_MAP[interval];
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.td)}&interval=${tdInterval}&count=${maxBars}`
+        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}`
       );
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -234,11 +234,11 @@ export default function ReplayClient() {
       });
       return;
     }
-    if (!assetInfo?.td) return;
+    if (!assetInfo?.yahoo) return;
     try {
       const tdInterval = INTERVAL_MAP[interval];
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.td)}&interval=${tdInterval}&count=3`
+        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahoo)}&interval=${tdInterval}&count=3`
       );
       const data = await res.json();
       if (data.error || !data.candles?.length) return;
@@ -357,8 +357,8 @@ export default function ReplayClient() {
             {ASSETS.map((g) => (
               <optgroup key={g.group} label={g.group}>
                 {g.items.map((it) => (
-                  <option key={it.v} value={it.v} disabled={!it.td}>
-                    {it.label}{!it.td ? " (غير مدعوم بعد)" : ""}
+                  <option key={it.v} value={it.v} disabled={!it.yahoo}>
+                    {it.label}{!it.yahoo ? " (غير مدعوم بعد)" : ""}
                   </option>
                 ))}
               </optgroup>
