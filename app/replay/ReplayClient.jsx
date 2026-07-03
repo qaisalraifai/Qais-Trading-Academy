@@ -50,6 +50,24 @@ function getCurrentBarWindow(interval) {
   return { start, end: start + stepMs, stepMs, now };
 }
 
+/* تصفية أي شمعة فاسدة (وقت/سعر مش رقمي أو تكرار بنفس الوقت) قبل ما توصل لمكتبة الشارت -
+   مكتبة lightweight-charts بترفض هيك بيانات وبتعمل throw exception يكسر الصفحة كلها،
+   فهاي طبقة حماية إضافية جوا الواجهة نفسها (فوق التصفية اللي صارت بالسيرفر) */
+function sanitizeCandles(list) {
+  if (!Array.isArray(list)) return [];
+  const clean = list.filter(
+    (c) =>
+      c &&
+      Number.isFinite(c.time) &&
+      Number.isFinite(c.open) &&
+      Number.isFinite(c.high) &&
+      Number.isFinite(c.low) &&
+      Number.isFinite(c.close)
+  );
+  clean.sort((a, b) => a.time - b.time);
+  return clean.filter((c, i) => i === 0 || c.time !== clean[i - 1].time);
+}
+
 /* ===================== شارت عشوائي (تدريب أعمى) ===================== */
 function generateRandomCandles(count, interval) {
   const stepMs = INTERVAL_MS[interval] || 15 * 60 * 1000;
@@ -73,7 +91,7 @@ function generateRandomCandles(count, interval) {
 
 /* ===================== أيقونات شريط الرسم (SVG نظيفة بستايل تريدنغ فيو) ===================== */
 function ToolIcon({ id }) {
-  const common = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" };
+  const common = { width: 23, height: 23, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" };
   switch (id) {
     case "cursor":
       return (<svg {...common}><path d="M5 3l14 6.5-6 1.7L11 18 5 3z" fill="currentColor" stroke="none" /></svg>);
@@ -95,6 +113,8 @@ function ToolIcon({ id }) {
       return (<svg {...common}><circle cx="12" cy="12" r="8" /></svg>);
     case "fib":
       return (<svg {...common}><line x1="3" y1="5" x2="21" y2="5" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="3" y1="14" x2="21" y2="14" /><line x1="3" y1="19" x2="21" y2="19" /></svg>);
+    case "fibext":
+      return (<svg {...common}><polyline points="4,19 10,7 15,14 21,4" /><line x1="10" y1="7" x2="21" y2="7" strokeDasharray="2,2" /><line x1="15" y1="14" x2="21" y2="14" strokeDasharray="2,2" /><line x1="4" y1="19" x2="21" y2="19" strokeDasharray="2,2" /></svg>);
     case "wave":
       return (<svg {...common}><path d="M4 20l5-14 5 10 6-12" /></svg>);
     case "pricerange":
@@ -133,7 +153,8 @@ const TOOL_TITLES = {
   path: "مسار (نقاط متعددة)",
   rectangle: "مستطيل",
   circle: "دائرة",
-  fib: "فيبوناتشي",
+  fib: "فيبوناتشي (تصحيح)",
+  fibext: "فيبوناتشي (امتداد 3 نقاط)",
   wave: "موجة تصحيح إليوت (0،A،B،C)",
   pricerange: "نطاق السعر",
   daterange: "نطاق التاريخ",
@@ -146,7 +167,7 @@ const TOOL_GROUPS = [
   ["cursor"],
   ["trendline", "ray", "hline", "hray", "vline"],
   ["path", "rectangle", "circle"],
-  ["fib", "wave"],
+  ["fib", "fibext", "wave"],
   ["pricerange", "daterange"],
   ["position_long", "position_short"],
   ["text", "measure"],
@@ -172,6 +193,7 @@ function defaultStyleFor(type) {
     case "circle":
       return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.18 };
     case "fib":
+    case "fibext":
       return { color: GOLD_LIGHT };
     case "pricerange":
       return { color: "#4f7cff", width: 1.5, fill: true, fillColor: "#4f7cff", fillAlpha: 0.2 };
@@ -265,6 +287,7 @@ export default function ReplayClient() {
   const visibleCandlesRef = useRef([]);
   const pathPointsRef = useRef([]); // نقاط أداة المسار/الموجة أثناء الرسم
   const liveCursorRef = useRef(null); // موقع الماوس الحالي (لمعاينة المسار قبل التثبيت)
+  const dragStateRef = useRef(null); // سحب/تحريك رسمة موجودة بوضع المؤشر: {mode:"move"|"handle", id, key?, lastLogical?, lastPrice?}
   const intervalRef = useRef(interval);
 
   // لوحة خصائص الرسمة المحددة
@@ -327,7 +350,7 @@ export default function ReplayClient() {
 
     const all = [...drawingsRef.current];
     if (drawStateRef.current) all.push(drawStateRef.current);
-    if ((activeToolRef.current === "path" || activeToolRef.current === "wave") && pathPointsRef.current.length) {
+    if ((activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext") && pathPointsRef.current.length) {
       const pts = [...pathPointsRef.current];
       if (liveCursorRef.current) pts.push(liveCursorRef.current);
       all.push({ type: activeToolRef.current, points: pts, style: defaultStyleFor(activeToolRef.current) });
@@ -423,6 +446,44 @@ export default function ReplayClient() {
           ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
           ctx.setLineDash([]);
           ctx.fillText(`${(lvl * 100).toFixed(1)}% - ${price.toFixed(2)}`, x1 + 4, y - 3);
+        }
+
+      } else if (d.type === "fibext") {
+        if (!d.points || d.points.length < 2) continue;
+        const [p1, p2, p3] = d.points;
+        const xy1 = toXY(p1), xy2 = toXY(p2);
+        if (xy1.x == null || xy2.x == null) continue;
+        setLineStyle({ ...style, dash: "dashed", width: 1.3 });
+        ctx.beginPath(); ctx.moveTo(xy1.x, xy1.y); ctx.lineTo(xy2.x, xy2.y);
+        if (p3) {
+          const xy3 = toXY(p3);
+          if (xy3.x != null) ctx.lineTo(xy3.x, xy3.y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = style.color || GOLD_LIGHT;
+        [xy1, xy2, ...(p3 ? [toXY(p3)] : [])].forEach((p) => {
+          if (p.x == null) return;
+          ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill();
+        });
+
+        if (p3) {
+          const xy3 = toXY(p3);
+          if (xy3.x == null) continue;
+          const diff = p2.price - p1.price; // مقدار حركة الموجة الأساسية A→B
+          const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.272, 1.618, 2, 2.618];
+          ctx.strokeStyle = style.color || GOLD_LIGHT;
+          ctx.fillStyle = style.color || GOLD_LIGHT;
+          ctx.font = "11px sans-serif";
+          for (const lvl of levels) {
+            const price = p3.price + diff * lvl;
+            const y = series.priceToCoordinate(price);
+            if (y == null) continue;
+            ctx.setLineDash(lvl === 0 || lvl === 1 ? [] : [3, 3]);
+            ctx.beginPath(); ctx.moveTo(xy3.x, y); ctx.lineTo(w, y); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillText(`${(lvl * 100).toFixed(1)}% - ${price.toFixed(2)}`, xy3.x + 4, y - 3);
+          }
         }
 
       } else if (d.type === "path" || d.type === "wave") {
@@ -605,7 +666,8 @@ export default function ReplayClient() {
           return best;
         }
         case "path":
-        case "wave": {
+        case "wave":
+        case "fibext": {
           if (!d.points || d.points.length < 2) return Infinity;
           let best = Infinity;
           for (let i = 0; i < d.points.length - 1; i++) {
@@ -634,6 +696,43 @@ export default function ReplayClient() {
       if (dist <= bestDist) { bestDist = dist; best = d; }
     }
     return best;
+  }
+
+  /* ===================== سحب وتحريك الرسومات (وضع المؤشر) ===================== */
+  function getHandlePoints(d) {
+    if (d.points) return d.points.map((p, i) => ({ key: `points.${i}`, p }));
+    const out = [];
+    if (d.p1) out.push({ key: "p1", p: d.p1 });
+    if (d.p2) out.push({ key: "p2", p: d.p2 });
+    return out;
+  }
+  function findHandleAt(x, y) {
+    const HANDLE_R = 8;
+    let best = null, bestDist = HANDLE_R;
+    for (const d of drawingsRef.current) {
+      for (const h of getHandlePoints(d)) {
+        const xy = logicalPriceToXY(h.p);
+        if (xy.x == null || xy.y == null) continue;
+        const dist = Math.hypot(x - xy.x, y - xy.y);
+        if (dist <= bestDist) { bestDist = dist; best = { drawing: d, key: h.key }; }
+      }
+    }
+    return best;
+  }
+  function moveDrawingBy(d, dLogical, dPrice) {
+    if (d.p1) { d.p1 = { logical: d.p1.logical + dLogical, price: d.p1.price + dPrice }; }
+    if (d.p2) { d.p2 = { logical: d.p2.logical + dLogical, price: d.p2.price + dPrice }; }
+    if (d.points) d.points = d.points.map((p) => ({ logical: p.logical + dLogical, price: p.price + dPrice }));
+  }
+  function setHandlePoint(d, key, logical, price) {
+    if (key === "p1") d.p1 = { logical, price };
+    else if (key === "p2") d.p2 = { logical, price };
+    else if (key.startsWith("points.")) {
+      const idx = Number(key.split(".")[1]);
+      if (d.points && d.points[idx] != null) {
+        d.points = d.points.map((p, i) => (i === idx ? { logical, price } : p));
+      }
+    }
   }
   function openProperties(d) {
     setEditingId(d.id);
@@ -749,9 +848,10 @@ export default function ReplayClient() {
         const price = series.coordinateToPrice(y);
         return { logical, price, x, y };
       }
+      const MULTI_POINT_COUNT = { wave: 4, fibext: 3 };
       function onMouseDown(e) {
         const tool = activeToolRef.current;
-        if (tool === "cursor") return;
+        if (tool === "cursor") return; // بوضع المؤشر السحب بيصير من onContainerMouseDownCapture تحت
         const { logical, price, y } = getLogicalPrice(e.clientX, e.clientY);
         if (logical == null || price == null) return;
         const snapped = snapPrice(logical, price, y);
@@ -771,9 +871,10 @@ export default function ReplayClient() {
           drawOverlay();
           return;
         }
-        if (tool === "path" || tool === "wave") {
+        if (tool === "path" || tool === "wave" || tool === "fibext") {
           pathPointsRef.current.push({ logical, price: snapped });
-          if (tool === "wave" && pathPointsRef.current.length >= 4) {
+          const need = MULTI_POINT_COUNT[tool];
+          if (need && pathPointsRef.current.length >= need) {
             finishMultiPoint();
           }
           drawOverlay();
@@ -783,7 +884,36 @@ export default function ReplayClient() {
         isDrawingRef.current = true;
       }
       function onMouseMove(e) {
-        const activePath = (activeToolRef.current === "path" || activeToolRef.current === "wave") && pathPointsRef.current.length;
+        // وضع المؤشر: تلوين مؤشر الفأرة لما يكون فوق رسمة (يد) عشان يبين إنها قابلة للسحب،
+        // وتحديث موقع الرسمة إذا كان في سحب جاري حالياً
+        if (activeToolRef.current === "cursor") {
+          if (dragStateRef.current) {
+            const st = dragStateRef.current;
+            const { logical, price, y } = getLogicalPrice(e.clientX, e.clientY);
+            if (logical == null || price == null) return;
+            const d = drawingsRef.current.find((dr) => dr.id === st.id);
+            if (!d) return;
+            if (st.mode === "move") {
+              const dLogical = logical - st.lastLogical;
+              const dPrice = price - st.lastPrice;
+              moveDrawingBy(d, dLogical, dPrice);
+              st.lastLogical = logical;
+              st.lastPrice = price;
+            } else if (st.mode === "handle") {
+              const snapped = snapPrice(logical, price, y);
+              setHandlePoint(d, st.key, logical, snapped);
+            }
+            drawOverlay();
+            return;
+          }
+          const { x, y } = getLogicalPrice(e.clientX, e.clientY);
+          if (x != null && y != null && chartContainerRef.current) {
+            const hit = findHandleAt(x, y) || (findDrawingAt(x, y) ? { key: "body" } : null);
+            chartContainerRef.current.style.cursor = hit ? "move" : "default";
+          }
+          return;
+        }
+        const activePath = (activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext") && pathPointsRef.current.length;
         if (!isDrawingRef.current && !activePath) return;
         const { logical, price, y } = getLogicalPrice(e.clientX, e.clientY);
         if (logical == null || price == null) return;
@@ -797,6 +927,12 @@ export default function ReplayClient() {
         drawOverlay();
       }
       function onMouseUp() {
+        if (dragStateRef.current) {
+          dragStateRef.current = null;
+          chart.applyOptions({ handleScroll: true, handleScale: true });
+          drawOverlay();
+          return;
+        }
         if (!isDrawingRef.current || !drawStateRef.current) return;
         isDrawingRef.current = false;
         const d = drawStateRef.current;
@@ -807,12 +943,39 @@ export default function ReplayClient() {
         setActiveTool("cursor");
         drawOverlay();
       }
+      /* سحب رسمة موجودة بوضع المؤشر: نمسك الحدث بمرحلة الـ capture قبل ما يوصل لمكتبة
+         الشارت (اللي بتستخدمه للتحريك/الزوم)، فإذا كان في رسمة تحت المؤشر منوقف التحريك
+         الافتراضي للشارت ومنبلش سحب الرسمة، وإلا منسيب الحدث يكمل طبيعي (بان/زوم عادي) */
+      function onContainerMouseDownCapture(e) {
+        if (activeToolRef.current !== "cursor" || e.button !== 0) return;
+        const { logical, price, x, y } = getLogicalPrice(e.clientX, e.clientY);
+        if (x == null || y == null) return;
+        const handleHit = findHandleAt(x, y);
+        if (handleHit) {
+          e.preventDefault();
+          e.stopPropagation();
+          dragStateRef.current = { mode: "handle", id: handleHit.drawing.id, key: handleHit.key };
+          chart.applyOptions({ handleScroll: false, handleScale: false });
+          return;
+        }
+        const hit = findDrawingAt(x, y);
+        if (hit) {
+          e.preventDefault();
+          e.stopPropagation();
+          dragStateRef.current = { mode: "move", id: hit.id, lastLogical: logical, lastPrice: price };
+          chart.applyOptions({ handleScroll: false, handleScale: false });
+        }
+      }
       function onKeyDown(e) {
         if (e.key === "Escape") {
           isDrawingRef.current = false;
           drawStateRef.current = null;
           pathPointsRef.current = [];
           liveCursorRef.current = null;
+          if (dragStateRef.current) {
+            dragStateRef.current = null;
+            chart.applyOptions({ handleScroll: true, handleScale: true });
+          }
           setActiveTool("cursor");
           drawOverlay();
         } else if (e.key === "Enter" && activeToolRef.current === "path" && pathPointsRef.current.length >= 2) {
@@ -832,9 +995,11 @@ export default function ReplayClient() {
         if (hit) openProperties(hit);
       }
       const overlayEl = overlayCanvasRef.current;
+      const containerEl = chartContainerRef.current;
       overlayEl?.addEventListener("mousedown", onMouseDown);
       overlayEl?.addEventListener("dblclick", onDblClickOverlay);
-      chartContainerRef.current?.addEventListener("dblclick", onContainerDblClick);
+      containerEl?.addEventListener("dblclick", onContainerDblClick);
+      containerEl?.addEventListener("mousedown", onContainerMouseDownCapture, { capture: true });
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
       window.addEventListener("keydown", onKeyDown);
@@ -846,7 +1011,8 @@ export default function ReplayClient() {
         document.removeEventListener("fullscreenchange", handleFsChange);
         overlayEl?.removeEventListener("mousedown", onMouseDown);
         overlayEl?.removeEventListener("dblclick", onDblClickOverlay);
-        chartContainerRef.current?.removeEventListener("dblclick", onContainerDblClick);
+        containerEl?.removeEventListener("dblclick", onContainerDblClick);
+        containerEl?.removeEventListener("mousedown", onContainerMouseDownCapture, { capture: true });
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseup", onMouseUp);
         window.removeEventListener("keydown", onKeyDown);
@@ -925,7 +1091,7 @@ export default function ReplayClient() {
       );
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      const candles = data.candles || [];
+      const candles = sanitizeCandles(data.candles || []);
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
 
       setAllCandles(candles);
@@ -965,14 +1131,20 @@ export default function ReplayClient() {
     // وضع السوق الحي: كل بولينغ (كل 5 ثواني) إما بيحدّث آخر شمعة أو بيضيف شمعة جديدة بس
     const liveTick = mode === "live" && revealCount === allCandles.length && (allCandles.length === prevLen || allCandles.length === prevLen + 1);
 
-    if (trainingStep || liveTick) {
-      // نضيف/نحدّث الشمعة الأخيرة بس، من دون setData/fitContent
-      // عشان ما يصير "رجوع" أو ريست مزعج للزوم والسكرول يلي عم تتفرجي عليه
-      seriesRef.current.update(allCandles[revealCount - 1]);
-    } else {
-      // تحميل بيانات جديدة أو قفزة كبيرة (تبديل وضع/أصل/فريم/بداية عشوائية/قص نقطة/إعادة من البداية)
-      seriesRef.current.setData(allCandles.slice(0, revealCount));
-      chartRef.current?.timeScale().fitContent();
+    try {
+      if (trainingStep || liveTick) {
+        // نضيف/نحدّث الشمعة الأخيرة بس، من دون setData/fitContent
+        // عشان ما يصير "رجوع" أو ريست مزعج للزوم والسكرول يلي عم تتفرجي عليه
+        seriesRef.current.update(allCandles[revealCount - 1]);
+      } else {
+        // تحميل بيانات جديدة أو قفزة كبيرة (تبديل وضع/أصل/فريم/بداية عشوائية/قص نقطة/إعادة من البداية)
+        seriesRef.current.setData(allCandles.slice(0, revealCount));
+        chartRef.current?.timeScale().fitContent();
+      }
+    } catch (err) {
+      // بيانات فاسدة وصلت رغم التصفية (مصدر خارجي غير متوقع) - نعرض رسالة بدل ما نكسر الصفحة
+      console.error("chart data error:", err);
+      setError("صار خطأ بعرض بيانات هالفريم، جربي فريم/أصل تاني أو حدّثي الصفحة.");
     }
     prevRevealRef.current = revealCount;
     prevCandlesRef.current = allCandles;
@@ -1027,7 +1199,8 @@ export default function ReplayClient() {
       );
       const data = await res.json();
       if (data.error || !data.candles?.length) return;
-      const fresh = data.candles;
+      const fresh = sanitizeCandles(data.candles);
+      if (fresh.length === 0) return;
       const lastFresh = fresh[fresh.length - 1];
 
       setAllCandles((prev) => {
@@ -1038,8 +1211,14 @@ export default function ReplayClient() {
           merged[merged.length - 1] = lastFresh;
         } else if (lastFresh.time > merged[merged.length - 1].time) {
           merged.push(lastFresh);
+        } else {
+          return prev; // وقت أقدم من عندنا (بيانات غير متسلسلة) - نتجاهله بدل ما نكسر الشارت
         }
-        seriesRef.current?.update(merged[merged.length - 1]);
+        try {
+          seriesRef.current?.update(merged[merged.length - 1]);
+        } catch (err) {
+          console.error("live update error:", err);
+        }
         setRevealCount(merged.length);
         return merged;
       });
@@ -1172,14 +1351,14 @@ export default function ReplayClient() {
     return (
       <div style={{
         position: "absolute", top: 10, left: 10, zIndex: 10,
-        display: "flex", flexDirection: "column", gap: 3,
-        background: "#1a1a1a", border: "1px solid #2f2f2f", borderRadius: 10, padding: 5,
+        display: "flex", flexDirection: "column", gap: 4,
+        background: "#1a1a1a", border: "1px solid #2f2f2f", borderRadius: 12, padding: 7,
         boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
         maxHeight: "94%", overflowY: "auto",
       }}>
         {TOOL_GROUPS.map((group, gi) => (
-          <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {gi > 0 && <div style={{ height: 1, background: "#333", margin: "2px 2px" }} />}
+          <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {gi > 0 && <div style={{ height: 1, background: "#333", margin: "3px 4px" }} />}
             {group.map((id) => (
               <button
                 key={id}
@@ -1192,7 +1371,7 @@ export default function ReplayClient() {
             ))}
           </div>
         ))}
-        <div style={{ height: 1, background: "#333", margin: "3px 2px" }} />
+        <div style={{ height: 1, background: "#333", margin: "3px 4px" }} />
         <button title="مغناطيس: يلتصق بأقرب سعر فقط لما تقربي منه فعلاً (حساسية خفيفة)" onClick={() => setMagnetOn((m) => !m)} style={toolBtnStyle(magnetOn)}>
           <ToolIcon id="magnet" />
         </button>
@@ -1214,7 +1393,7 @@ export default function ReplayClient() {
     const updateStyle = (patch) => setEditDraft((d) => ({ ...d, style: { ...d.style, ...patch } }));
     const titleMap = {
       trendline: "خط اتجاه", ray: "شعاع", hline: "خط أفقي", hray: "شعاع أفقي", vline: "خط عمودي",
-      path: "مسار", rectangle: "مستطيل", circle: "دائرة", fib: "فيبوناتشي", wave: "موجة تصحيح (0،A،B،C)",
+      path: "مسار", rectangle: "مستطيل", circle: "دائرة", fib: "فيبوناتشي (تصحيح)", fibext: "فيبوناتشي (امتداد)", wave: "موجة تصحيح (0،A،B،C)",
       pricerange: "نطاق السعر", daterange: "نطاق التاريخ", position_long: "مركز شراء", position_short: "مركز بيع",
       text: "نص",
     };
@@ -1239,7 +1418,7 @@ export default function ReplayClient() {
 
     return (
       <div style={{
-        position: "absolute", top: 46, left: 10, zIndex: 20, width: 260,
+        position: "absolute", top: 10, left: 68, zIndex: 20, width: 260,
         background: "#1a1a1a", border: "1px solid #333", borderRadius: 12,
         boxShadow: "0 10px 30px rgba(0,0,0,0.5)", padding: 14, color: "#eee",
       }}>
@@ -1296,7 +1475,7 @@ export default function ReplayClient() {
               {row("لون وقف الخسارة", colorInput(style.stopColor, (v) => updateStyle({ stopColor: v })))}
             </>
           )}
-          {(type === "fib" || type === "wave") && (
+          {(type === "fib" || type === "fibext" || type === "wave") && (
             <>{row("اللون", colorInput(style.color, (v) => updateStyle({ color: v })))}</>
           )}
           {type === "text" && (
@@ -1503,12 +1682,13 @@ function tabStyle(active) {
 
 function toolBtnStyle(active) {
   return {
-    width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
-    borderRadius: 6, cursor: "pointer",
+    width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
+    borderRadius: 8, cursor: "pointer",
     border: "1px solid transparent",
     background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
     color: active ? "#1a1200" : "#c8c8c8",
     transition: "background .12s, color .12s",
+    flexShrink: 0,
   };
 }
 
