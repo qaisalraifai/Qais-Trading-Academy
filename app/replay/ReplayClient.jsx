@@ -29,6 +29,27 @@ const MAX_BARS_OPTIONS = [
   { value: 5000, label: "5000 شمعة (الأقصى)" },
 ];
 
+/* تنسيق العداد: HH:MM:SS لو الفريم ساعة أو أكتر، وإلا MM:SS */
+function formatCountdown(ms) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) {
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+/* حدود الشمعة الحالية محسوبة من ساعة الجهاز مباشرة (مش من آخر شمعة رجعها الـ API)
+   هيك العداد صحيح دايماً حتى لو مصدر البيانات رجّع شمعة مقفولة كآخر شمعة */
+function getCurrentBarWindow(interval) {
+  const stepMs = INTERVAL_MS[interval] || 60000;
+  const now = Date.now();
+  const start = Math.floor(now / stepMs) * stepMs;
+  return { start, end: start + stepMs, stepMs, now };
+}
+
 /* ===================== شارت عشوائي (تدريب أعمى) ===================== */
 function generateRandomCandles(count, interval) {
   const stepMs = INTERVAL_MS[interval] || 15 * 60 * 1000;
@@ -70,7 +91,23 @@ export default function ReplayClient() {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const [countdown, setCountdown] = useState("");
+  const [countdownProgress, setCountdownProgress] = useState(0);
   const [liveLastPrice, setLiveLastPrice] = useState(null);
+  const [priceDir, setPriceDir] = useState(0); // 1 صعود / -1 هبوط / 0 محايد
+  const prevPriceRef = useRef(null);
+
+  function updateLivePrice(p) {
+    if (prevPriceRef.current != null) {
+      if (p > prevPriceRef.current) setPriceDir(1);
+      else if (p < prevPriceRef.current) setPriceDir(-1);
+    }
+    prevPriceRef.current = p;
+    setLiveLastPrice(p);
+  }
+
+  const [cutMode, setCutMode] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const chartWrapperRef = useRef(null);
 
   const playTimerRef = useRef(null);
   const livePollRef = useRef(null);
@@ -105,10 +142,24 @@ export default function ReplayClient() {
       seriesRef.current = series;
 
       const handleResize = () => {
-        if (chartContainerRef.current) chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+        if (!chartContainerRef.current) return;
+        const isFs = !!document.fullscreenElement;
+        chart.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+          height: isFs ? window.innerHeight - 120 : 480,
+        });
       };
       window.addEventListener("resize", handleResize);
-      chart.__cleanup = () => window.removeEventListener("resize", handleResize);
+      const handleFsChange = () => {
+        setIsFullscreen(!!document.fullscreenElement);
+        setTimeout(handleResize, 50);
+      };
+      document.addEventListener("fullscreenchange", handleFsChange);
+      chart.__cleanup = () => {
+        window.removeEventListener("resize", handleResize);
+        document.removeEventListener("fullscreenchange", handleFsChange);
+      };
+      chart.__resize = handleResize;
     }
     setup();
     return () => {
@@ -121,6 +172,16 @@ export default function ReplayClient() {
       }
     };
   }, []);
+
+  /* ===================== تبديل الفل سكرين ===================== */
+  function toggleFullscreen() {
+    if (!chartWrapperRef.current) return;
+    if (!document.fullscreenElement) {
+      chartWrapperRef.current.requestFullscreen?.();
+    } else {
+      document.exitFullscreen?.();
+    }
+  }
 
   /* ===================== جلب البيانات ===================== */
   const loadData = useCallback(async () => {
@@ -205,16 +266,14 @@ export default function ReplayClient() {
 
   function startCountdownTick() {
     stopCountdownTick();
-    countdownTickRef.current = setInterval(() => {
-      const stepMs = INTERVAL_MS[interval] || 60000;
-      const start = forminCandleStartRef.current;
-      if (!start) return;
-      const closeAt = start * 1000 + stepMs;
-      const remain = Math.max(0, closeAt - Date.now());
-      const mins = Math.floor(remain / 60000);
-      const secs = Math.floor((remain % 60000) / 1000);
-      setCountdown(`${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`);
-    }, 1000);
+    const tick = () => {
+      const { end, stepMs, now } = getCurrentBarWindow(interval);
+      const remain = Math.max(0, end - now);
+      setCountdown(formatCountdown(remain));
+      setCountdownProgress(1 - remain / stepMs);
+    };
+    tick();
+    countdownTickRef.current = setInterval(tick, 1000);
   }
 
   async function pollLiveOnce() {
@@ -229,7 +288,7 @@ export default function ReplayClient() {
         last.low = Math.min(last.low, last.close);
         const updated = [...prev.slice(0, -1), last];
         seriesRef.current?.update(last);
-        setLiveLastPrice(last.close);
+        updateLivePrice(last.close);
         return updated;
       });
       return;
@@ -259,7 +318,7 @@ export default function ReplayClient() {
         return merged;
       });
       forminCandleStartRef.current = lastFresh.time;
-      setLiveLastPrice(lastFresh.close);
+      updateLivePrice(lastFresh.close);
     } catch (e) {
       /* تجاهل خطأ تحديث واحد، رح يعيد المحاولة بالدورة الجاية */
     }
@@ -269,7 +328,7 @@ export default function ReplayClient() {
     stopLivePoll();
     if (initialCandles?.length) {
       forminCandleStartRef.current = initialCandles[initialCandles.length - 1].time;
-      setLiveLastPrice(initialCandles[initialCandles.length - 1].close);
+      updateLivePrice(initialCandles[initialCandles.length - 1].close);
     }
     startCountdownTick();
     pollLiveOnce();
@@ -306,6 +365,32 @@ export default function ReplayClient() {
     setMode(m);
   }
 
+  /* ===================== أداة القص: اختيار نقطة بداية الريبلاي بالضغط على الشارت ===================== */
+  useEffect(() => {
+    if (!chartRef.current || !cutMode) return;
+    const handler = (param) => {
+      if (!param?.time || allCandles.length === 0) return;
+      let idx = allCandles.findIndex((c) => c.time === param.time);
+      if (idx === -1) {
+        for (let i = 0; i < allCandles.length; i++) {
+          if (allCandles[i].time <= param.time) idx = i; else break;
+        }
+      }
+      if (idx === -1) return;
+      stopLivePoll();
+      setMode("training");
+      setIsPlaying(false);
+      setRevealCount(idx + 1);
+      setCutMode(false);
+    };
+    chartRef.current.subscribeClick(handler);
+    return () => chartRef.current?.unsubscribeClick?.(handler);
+  }, [cutMode, allCandles]);
+
+  function toggleCutMode() {
+    setCutMode((c) => !c);
+  }
+
   /* ===================== قص/تصدير الشارت كصورة ===================== */
   function handleExportImage() {
     if (!chartRef.current) return;
@@ -323,10 +408,10 @@ export default function ReplayClient() {
 
   const finished = mode === "training" && allCandles.length > 0 && revealCount >= allCandles.length;
 
-  return (
-    <div>
-      {/* شريط الوضع */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.8rem" }}>
+  /* أزرار وضع العرض (سوق حي / تدريب) + عشوائي + قص/تصدير + قص نقطة بداية + فل سكرين */
+  function renderTopBar() {
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.8rem" }}>
         <button onClick={() => switchMode("live")} style={tabStyle(mode === "live")}>📡 سوق حي</button>
         <button onClick={() => switchMode("training")} style={tabStyle(mode === "training")}>🎯 تدريب / ريبلاي</button>
         <div style={{ flex: 1 }} />
@@ -337,10 +422,25 @@ export default function ReplayClient() {
         >
           🎲 شارت عشوائي
         </button>
-        <button onClick={handleExportImage} style={tabStyle(false)}>✂️ قص/تصدير الشارت</button>
+        <button
+          onClick={toggleCutMode}
+          style={{ ...tabStyle(cutMode), background: cutMode ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent", color: cutMode ? "#1a1200" : GOLD }}
+          title="اضغطي الزر، وبعدين دوسي على أي شمعة بالشارت لتبلّشي الريبلاي منها"
+          disabled={!supported || allCandles.length === 0}
+        >
+          ✂️ {cutMode ? "دوسي على الشارت..." : "اختيار نقطة البداية"}
+        </button>
+        <button onClick={handleExportImage} style={tabStyle(false)}>📷 تصدير كصورة</button>
+        <button onClick={toggleFullscreen} style={tabStyle(isFullscreen)} title="فل سكرين">
+          {isFullscreen ? "⤡ خروج من الفل سكرين" : "⤢ فل سكرين"}
+        </button>
       </div>
+    );
+  }
 
-      {/* أدوات التحكم */}
+  /* أدوات التحكم (الأصل/الفريم/السرعة + أزرار الريبلاي) */
+  function renderControls() {
+    return (
       <div style={{
         display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center",
         marginBottom: "1rem", background: "linear-gradient(145deg, #14120a, #0d0d0a)",
@@ -386,6 +486,48 @@ export default function ReplayClient() {
           <button onClick={() => loadData()} style={btnStyle("secondary")}>🔄 تحديث</button>
         )}
       </div>
+    );
+  }
+
+  /* بادج السوق الحي: سعر + عداد إغلاق الشمعة بتنسيق واضح + شريط تقدّم */
+  function renderLiveBadge() {
+    if (!(mode === "live" && supported)) return null;
+    const priceColor = priceDir === 1 ? GREEN : priceDir === -1 ? RED : GOLD_LIGHT;
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: "1.5rem", marginBottom: "0.8rem",
+        background: "#0f1f17", border: `1px solid ${GREEN}44`, borderRadius: 12, padding: "0.7rem 1.2rem",
+        flexWrap: "wrap",
+      }}>
+        <span style={{ color: GREEN, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: GREEN, display: "inline-block", animation: "qtaPulse 1.4s infinite" }} />
+          مباشر
+        </span>
+        <span style={{ color: "#ccc", fontSize: 13 }}>
+          آخر سعر: <b style={{ color: priceColor, transition: "color .3s" }}>{liveLastPrice ? liveLastPrice.toFixed(4) : "..."}</b>
+        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color: "#ccc", fontSize: 13 }}>إغلاق الشمعة خلال:</span>
+          <b style={{ color: "#fff", fontVariantNumeric: "tabular-nums", fontSize: 14, minWidth: 58, display: "inline-block" }}>
+            {countdown || "--:--"}
+          </b>
+          <div style={{ width: 90, height: 5, borderRadius: 3, background: "#1f2f27", overflow: "hidden" }}>
+            <div style={{
+              width: `${Math.min(100, Math.max(0, countdownProgress * 100))}%`,
+              height: "100%", background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`,
+              transition: "width 1s linear",
+            }} />
+          </div>
+        </div>
+        <style>{`@keyframes qtaPulse { 0%,100%{opacity:1} 50%{opacity:.35} }`}</style>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {!isFullscreen && renderTopBar()}
+      {!isFullscreen && renderControls()}
 
       {!supported && !error && (
         <div style={{ color: "#f59e0b", fontSize: 13, marginBottom: "1rem" }}>
@@ -394,21 +536,28 @@ export default function ReplayClient() {
       )}
       {error && <div style={{ color: RED, fontSize: 13, marginBottom: "1rem" }}>{error}</div>}
 
-      {mode === "live" && supported && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: "1.5rem", marginBottom: "0.8rem",
-          background: "#0f1f17", border: `1px solid ${GREEN}44`, borderRadius: 12, padding: "0.7rem 1.2rem",
-        }}>
-          <span style={{ color: GREEN, fontWeight: 700, fontSize: 13 }}>🔴 مباشر</span>
-          <span style={{ color: "#ccc", fontSize: 13 }}>آخر سعر: <b style={{ color: GOLD_LIGHT }}>{liveLastPrice ? liveLastPrice.toFixed(4) : "..."}</b></span>
-          <span style={{ color: "#ccc", fontSize: 13 }}>إغلاق الشمعة خلال: <b style={{ color: "#fff" }}>{countdown || "--:--"}</b></span>
-        </div>
-      )}
+      {!isFullscreen && renderLiveBadge()}
 
-      <div style={{
-        background: "linear-gradient(145deg, #14120a, #0d0d0a)", border: `1px solid ${GOLD}26`,
-        borderRadius: 14, padding: "1rem", position: "relative",
-      }}>
+      <div
+        ref={chartWrapperRef}
+        style={{
+          background: isFullscreen ? "#0a0a08" : "linear-gradient(145deg, #14120a, #0d0d0a)",
+          border: `1px solid ${GOLD}26`,
+          borderRadius: isFullscreen ? 0 : 14,
+          padding: isFullscreen ? "0.6rem" : "1rem",
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {isFullscreen && (
+          <div style={{ marginBottom: "0.5rem" }}>
+            {renderTopBar()}
+            {renderControls()}
+            {renderLiveBadge()}
+          </div>
+        )}
+
         {loading && (
           <div style={{
             position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
@@ -417,10 +566,13 @@ export default function ReplayClient() {
             ...جاري تحميل البيانات
           </div>
         )}
-        <div ref={chartContainerRef} style={{ width: "100%" }} />
+        <div
+          ref={chartContainerRef}
+          style={{ width: "100%", flex: 1, cursor: cutMode ? "crosshair" : "default" }}
+        />
       </div>
 
-      {mode === "training" && (
+      {mode === "training" && !isFullscreen && (
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.75rem", fontSize: 12.5, color: "#777" }}>
           <span>الشموع الظاهرة: {revealCount} / {allCandles.length}</span>
           {finished && <span style={{ color: GOLD_LIGHT }}>خلصت الشموع — دوسي "بداية عشوائية جديدة" لجولة تانية 🎯</span>}
