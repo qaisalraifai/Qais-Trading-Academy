@@ -585,17 +585,17 @@ export default function ReplayClient({ userId }) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
         ctx.setLineDash([]);
         const roleLabel = d.tradeRole === "tp" ? "🎯 هدف (TP): " : d.tradeRole === "sl" ? "⛔ إيقاف (SL): " : d.tradeRole === "entry" ? "▶ دخول: " : "";
-        if (roleLabel) {
-          ctx.font = "bold 11px sans-serif";
-          const label = roleLabel + d.p1.price.toFixed(2);
-          const tw = ctx.measureText(label).width;
-          ctx.fillStyle = style.color || GOLD_LIGHT;
-          ctx.fillRect(4, y - 15, tw + 10, 16);
-          ctx.fillStyle = "#0a0a0a";
-          ctx.fillText(label, 9, y - 4);
-        } else {
-          ctx.fillText(d.p1.price.toFixed(2), 6, y - 4);
-        }
+        /* السعر بيظهر بصندوق واضح ملاصق لمحور السعر يمين الشارت (مش على
+           الحافة الشمال يلي بتضيع لما تكبري/تزحفي بالشارت) */
+        ctx.font = "bold 11px sans-serif";
+        const label = roleLabel ? roleLabel + d.p1.price.toFixed(2) : d.p1.price.toFixed(2);
+        const tw = ctx.measureText(label).width;
+        const boxW = tw + 12;
+        const boxX = Math.max(4, w - boxW - 6);
+        ctx.fillStyle = style.color || GOLD_LIGHT;
+        ctx.fillRect(boxX, y - 10, boxW, 20);
+        ctx.fillStyle = "#0a0a0a";
+        ctx.fillText(label, boxX + 6, y + 4);
 
       } else if (d.type === "hray") {
         const y = series.priceToCoordinate(d.p1.price);
