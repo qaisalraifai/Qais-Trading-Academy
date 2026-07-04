@@ -527,6 +527,49 @@ export default function ReplayClient({ userId }) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
+    /* علامة السعر الحالي (آخر شمعة) على شريط السعر يمين الشارت + وقتها تحت
+       شريط الوقت أسفل الشارت - بتتحدث تلقائياً مع كل شمعة/تحديث حي */
+    const ts0 = chart.timeScale();
+    const liveList = visibleCandlesRef.current;
+    const lastBar = liveList && liveList[liveList.length - 1];
+    if (lastBar) {
+      const lx = ts0.timeToCoordinate(lastBar.time);
+      const ly = series.priceToCoordinate(lastBar.close);
+      if (lx != null && ly != null) {
+        const liveColor = lastBar.close >= lastBar.open ? GREEN : RED;
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = liveColor;
+        ctx.lineWidth = 1;
+        // خط أفقي خفيف من نقطة السعر لحد محور السعر
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(w, ly); ctx.stroke();
+        // خط عمودي خفيف من نقطة السعر لحد محور الوقت
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx, h); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // نقطة على السعر
+        ctx.beginPath(); ctx.arc(lx, ly, 3.5, 0, Math.PI * 2); ctx.fillStyle = liveColor; ctx.fill();
+
+        // صندوق السعر على محور السعر (يمين)
+        ctx.font = "bold 11px sans-serif";
+        const priceLabel = lastBar.close.toFixed(2);
+        const ptw = ctx.measureText(priceLabel).width;
+        ctx.fillStyle = liveColor;
+        ctx.fillRect(w - ptw - 16, ly - 9, ptw + 14, 18);
+        ctx.fillStyle = "#0a0a0a";
+        ctx.fillText(priceLabel, w - ptw - 9, ly + 4);
+
+        // صندوق الوقت على محور الوقت (أسفل)
+        const d = new Date(lastBar.time * 1000);
+        const timeLabel = d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", hour12: false });
+        const ttw = ctx.measureText(timeLabel).width;
+        const tx = Math.min(Math.max(lx - ttw / 2 - 6, 0), w - ttw - 12);
+        ctx.fillStyle = liveColor;
+        ctx.fillRect(tx, h - 18, ttw + 12, 16);
+        ctx.fillStyle = "#0a0a0a";
+        ctx.fillText(timeLabel, tx + 6, h - 6);
+      }
+    }
+
     if (!drawingsVisibleRef.current) { ctx.restore(); return; }
 
     const ts = chart.timeScale();
