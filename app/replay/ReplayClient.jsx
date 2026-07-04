@@ -1358,7 +1358,7 @@ export default function ReplayClient({ userId }) {
 
       const chart = createChart(chartContainerRef.current, {
         layout: { background: { color: savedSettings.bg }, textColor: "#999" },
-        grid: { vertLines: { color: "#1a1a1a" }, horzLines: { color: "#1a1a1a" } },
+        grid: { vertLines: { visible: false }, horzLines: { visible: false } },
         timeScale: { borderColor: "#222", timeVisible: true },
         rightPriceScale: { borderColor: "#222" },
         width: chartContainerRef.current.clientWidth,
@@ -1375,6 +1375,9 @@ export default function ReplayClient({ userId }) {
       const series = chart.addCandlestickSeries({
         upColor: savedSettings.up, downColor: savedSettings.down, borderVisible: false,
         wickUpColor: savedSettings.up, wickDownColor: savedSettings.down,
+        // إخفاء خانة آخر سعر (الصندوق + الخط المتقطع) على محور السعر يمين الشارت
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
 
       chartRef.current = chart;
@@ -1602,6 +1605,29 @@ export default function ReplayClient({ userId }) {
       chart.timeScale().subscribeVisibleLogicalRangeChange(drawOverlay);
       chart.subscribeCrosshairMove(drawOverlay);
 
+      // مغناطيس خفيف على المؤشر نفسه (مش بس على أدوات الرسم): بيلتصق بأقرب
+      // O/H/L/C لما تكوني قريبة منه فعلاً بالبكسل، وبيرجع حر لو بعيدة عنه
+      let settingCrosshairPos = false;
+      function onCrosshairMagnet(param) {
+        if (settingCrosshairPos) { settingCrosshairPos = false; return; }
+        if (!magnetRef.current) return;
+        if (!param.time || !param.point) return;
+        const bar = param.seriesData?.get(series);
+        if (!bar) return;
+        const vals = [bar.open, bar.high, bar.low, bar.close].filter((v) => v != null);
+        let best = null, bestDist = Infinity;
+        for (const v of vals) {
+          const y = series.priceToCoordinate(v);
+          if (y == null) continue;
+          const d = Math.abs(param.point.y - y);
+          if (d < bestDist) { bestDist = d; best = v; }
+        }
+        if (best == null || bestDist > SNAP_THRESHOLD_PX) return;
+        settingCrosshairPos = true;
+        chart.setCrosshairPosition(best, param.time, series);
+      }
+      chart.subscribeCrosshairMove(onCrosshairMagnet);
+
       chart.__cleanup = () => {
         window.removeEventListener("resize", handleResize);
         document.removeEventListener("fullscreenchange", handleFsChange);
@@ -1616,6 +1642,7 @@ export default function ReplayClient({ userId }) {
         window.removeEventListener("keydown", onKeyDown);
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(drawOverlay);
         chart.unsubscribeCrosshairMove(drawOverlay);
+        chart.unsubscribeCrosshairMove(onCrosshairMagnet);
       };
       chart.__resize = handleResize;
       handleResize();
