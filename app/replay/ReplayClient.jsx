@@ -1364,18 +1364,20 @@ export default function ReplayClient({ userId }) {
       const savedSettings = loadChartSettings();
 
       const chart = createChart(chartContainerRef.current, {
-        layout: { background: { color: savedSettings.bg }, textColor: "#999" },
+        layout: { background: { color: savedSettings.bg }, textColor: "#d1d4dc" },
         grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-        timeScale: { borderColor: "#222", timeVisible: true },
-        rightPriceScale: { borderColor: "#222" },
+        timeScale: { borderColor: "#3a3a3a", timeVisible: true },
+        rightPriceScale: { borderColor: "#3a3a3a" },
         width: chartContainerRef.current.clientWidth,
         height: 480,
         /* وضع Normal (مش Magnet) عشان مؤشر السعر يصير "+" حر بيتبع الفأرة فعلياً
-           بدل ما يلتصق ويقفز لأقرب سعر شمعة */
+           بدل ما يلتصق ويقفز لأقرب سعر شمعة. المؤشر نفسه دايماً ظاهر وواضح
+           (لون صريح بدون شفافية) زي تريدنغ فيو، والمغناطيس (لما يكون مفعّل)
+           بس بيقوّي التصاقه لما يكون قريب فعلاً من سعر شمعة، من غير ما يختفي أبداً. */
         crosshair: {
           mode: CrosshairMode.Normal,
-          vertLine: { color: "#8a8a8aa0", width: 1, style: 3, labelBackgroundColor: "#333" },
-          horzLine: { color: "#8a8a8aa0", width: 1, style: 3, labelBackgroundColor: "#333" },
+          vertLine: { color: "#758696", width: 1, style: 2, labelBackgroundColor: "#4c525e" },
+          horzLine: { color: "#758696", width: 1, style: 2, labelBackgroundColor: "#4c525e" },
         },
       });
 
@@ -1650,14 +1652,18 @@ export default function ReplayClient({ userId }) {
       const priceTagInterval = setInterval(updatePriceTag, 250);
 
       // مغناطيس خفيف على المؤشر نفسه (مش بس على أدوات الرسم): بيلتصق بأقرب
-      // O/H/L/C لما تكوني قريبة منه فعلاً بالبكسل، وبيرجع حر لو بعيدة عنه
+      // O/H/L/C لما تكوني قريبة منه فعلاً بالبكسل (التصاق واضح بس مش مبالغ فيه)،
+      // وبيفضل حر يتبع الفأرة عادي لو بعيدة عنه — بدون ما يختفي المؤشر أبداً.
+      // ملاحظة: ما منستخدم clearCrosshairPosition هون إطلاقاً، لأنها هي اللي كانت
+      // بتخفي المؤشر بدل ما ترجّعه حر.
+      const MAGNET_SNAP_PX = 16; // حساسية معتدلة: التصاق واضح لما تكوني قريبة فعلاً، مش قوي جداً
       let settingCrosshairPos = false;
       function onCrosshairMagnet(param) {
         if (settingCrosshairPos) { settingCrosshairPos = false; return; }
         if (!magnetRef.current) return;
-        if (!param.time || !param.point) { chart.clearCrosshairPosition(); return; }
+        if (!param.time || !param.point) return;
         const bar = param.seriesData?.get(series);
-        if (!bar) { chart.clearCrosshairPosition(); return; }
+        if (!bar) return;
         const vals = [bar.open, bar.high, bar.low, bar.close].filter((v) => v != null);
         let best = null, bestDist = Infinity;
         for (const v of vals) {
@@ -1666,13 +1672,11 @@ export default function ReplayClient({ userId }) {
           const d = Math.abs(param.point.y - y);
           if (d < bestDist) { bestDist = d; best = v; }
         }
-        if (best == null || bestDist > SNAP_THRESHOLD_PX) { chart.clearCrosshairPosition(); return; }
+        if (best == null || bestDist > MAGNET_SNAP_PX) return; // بعيدة عن أي سعر: يضل حر يتبع الفأرة
         settingCrosshairPos = true;
         chart.setCrosshairPosition(best, param.time, series);
       }
       chart.subscribeCrosshairMove(onCrosshairMagnet);
-      const onContainerMouseLeave = () => chart.clearCrosshairPosition();
-      containerEl?.addEventListener("mouseleave", onContainerMouseLeave);
 
       chart.__cleanup = () => {
         window.removeEventListener("resize", handleResize);
@@ -1689,7 +1693,7 @@ export default function ReplayClient({ userId }) {
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(drawOverlay);
         chart.unsubscribeCrosshairMove(drawOverlay);
         chart.unsubscribeCrosshairMove(onCrosshairMagnet);
-        containerEl?.removeEventListener("mouseleave", onContainerMouseLeave);
+
         clearInterval(priceTagInterval);
       };
       chart.__resize = handleResize;
@@ -2023,15 +2027,16 @@ export default function ReplayClient({ userId }) {
     );
   }
 
-  /* شريط أدوات الرسم العمودي (ستايل تريدنغ فيو) — ثابت عالشمال دايماً بغض النظر عن اتجاه الصفحة */
+  /* شريط أدوات الرسم العمودي (ستايل تريدنغ فيو) — عمود جانبي ثابت بجانب الشارت
+     (مش طايف فوقه)، عالشمال دايماً بغض النظر عن اتجاه الصفحة، ومقسّم لأقسام. */
   function renderDrawToolbar() {
     return (
       <div style={{
-        position: "absolute", top: 10, left: 10, zIndex: 10,
+        flex: "0 0 auto", alignSelf: "stretch", marginLeft: 8,
         display: "flex", flexDirection: "column", gap: 4,
         background: "#1a1a1a", border: "1px solid #2f2f2f", borderRadius: 12, padding: 7,
-        boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
-        maxHeight: "94%", overflowY: "auto",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+        maxHeight: "100%", overflowY: "auto",
       }}>
         {TOOL_GROUPS.map((group, gi) => (
           <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -2550,7 +2555,7 @@ export default function ReplayClient({ userId }) {
     const fmt = (v) => (v != null ? v.toFixed(v < 10 ? 4 : 2) : "-");
     return (
       <div style={{
-        position: "absolute", top: 10, left: 68, zIndex: 8, pointerEvents: "none",
+        position: "absolute", top: 10, left: 10, zIndex: 8, pointerEvents: "none",
         display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0.5rem 0.7rem",
         fontSize: 12.5, fontFamily: "monospace, sans-serif",
       }}>
@@ -2606,37 +2611,43 @@ export default function ReplayClient({ userId }) {
             ...جاري تحميل البيانات
           </div>
         )}
-        <div ref={chartAreaRef} style={{ position: "relative", width: "100%", flex: 1 }}>
-          {!loading && allCandles.length > 0 && renderDrawToolbar()}
-          {!loading && allCandles.length > 0 && !editDraft && renderOHLCTicker()}
-          {!loading && allCandles.length > 0 && renderPropertiesDialog()}
-          {!loading && renderTradePanel()}
-          {!loading && renderTradeToast()}
-          {!loading && renderContextMenu()}
-          <div
-            ref={chartContainerRef}
-            style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
-          />
-          <canvas
-            ref={overlayCanvasRef}
-            style={{
-              position: "absolute", inset: 0, zIndex: 3,
-              pointerEvents: activeTool === "cursor" ? "none" : "auto",
-            }}
-          />
-          <div
-            ref={priceTagRef}
-            style={{
-              position: "absolute", right: 0, transform: "translateY(-50%)",
-              display: "none", flexDirection: "column", alignItems: "flex-end",
-              padding: "3px 8px", borderRadius: "4px 0 0 4px", zIndex: 4,
-              pointerEvents: "none", minWidth: 70, fontFamily: "monospace, sans-serif",
-            }}
-          >
-            <span data-role="symbol" style={{ fontSize: 10, fontWeight: 700, color: "#0a0a0a" }} />
-            <span data-role="price" style={{ fontSize: 13, fontWeight: 800, color: "#0a0a0a", lineHeight: 1.2 }} />
-            <span data-role="countdown" style={{ fontSize: 10, color: "#0a0a0aaa", display: "none" }} />
+        {/* صف أفقي: شريط الأدوات كعمود جانبي حقيقي (زي تريدنغ فيو) بجانب الشارت،
+            مش طايف فوقه. الترتيب هون (الشارت أولاً بالـ DOM ثم الشريط) مقصود:
+            الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل ثابت عالشمال دايماً من
+            غير ما نضطر نقلب اتجاه أي نص عربي جوا الشارت. */}
+        <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0 }}>
+          <div ref={chartAreaRef} style={{ position: "relative", width: "100%", flex: 1, minWidth: 0 }}>
+            {!loading && allCandles.length > 0 && !editDraft && renderOHLCTicker()}
+            {!loading && allCandles.length > 0 && renderPropertiesDialog()}
+            {!loading && renderTradePanel()}
+            {!loading && renderTradeToast()}
+            {!loading && renderContextMenu()}
+            <div
+              ref={chartContainerRef}
+              style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
+            />
+            <canvas
+              ref={overlayCanvasRef}
+              style={{
+                position: "absolute", inset: 0, zIndex: 3,
+                pointerEvents: activeTool === "cursor" ? "none" : "auto",
+              }}
+            />
+            <div
+              ref={priceTagRef}
+              style={{
+                position: "absolute", right: 0, transform: "translateY(-50%)",
+                display: "none", flexDirection: "column", alignItems: "flex-end",
+                padding: "3px 8px", borderRadius: "4px 0 0 4px", zIndex: 4,
+                pointerEvents: "none", minWidth: 70, fontFamily: "monospace, sans-serif",
+              }}
+            >
+              <span data-role="symbol" style={{ fontSize: 10, fontWeight: 700, color: "#0a0a0a" }} />
+              <span data-role="price" style={{ fontSize: 13, fontWeight: 800, color: "#0a0a0a", lineHeight: 1.2 }} />
+              <span data-role="countdown" style={{ fontSize: 10, color: "#0a0a0aaa", display: "none" }} />
+            </div>
           </div>
+          {!loading && allCandles.length > 0 && renderDrawToolbar()}
         </div>
         {renderSettingsDialog()}
       </div>
