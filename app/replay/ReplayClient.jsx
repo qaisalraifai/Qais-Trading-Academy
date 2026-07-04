@@ -246,6 +246,21 @@ const TOOL_GROUPS = [
   ["text", "measure"],
 ];
 
+/* أقسام كل قائمة منسدلة (زي عناوين FIBONACCI / GANN بتريدنغ فيو). المجموعات
+   يلي مش موجودة هون بتنعرض كقائمة واحدة بدون عنوان قسم. */
+const TOOL_GROUP_SECTIONS = {
+  1: [{ title: "خطوط", tools: ["trendline", "ray", "extendedline", "infoline", "angle", "hline", "hray", "vline", "crossline", "parallelchannel"] }],
+  2: [{ title: "أشكال", tools: ["path", "rectangle", "circle"] }],
+  3: [
+    { title: "فيبوناتشي", tools: ["fib", "fibext", "fibchannel", "fibtimezone"] },
+    { title: "غان", tools: ["gannfan"] },
+    { title: "أخرى", tools: ["pitchfork", "wave"] },
+  ],
+  4: [{ title: "نطاقات", tools: ["pricerange", "daterange"] }],
+  5: [{ title: "المراكز", tools: ["position_long", "position_short"] }],
+  6: [{ title: "نص وقياس", tools: ["text", "measure"] }],
+};
+
 /* أنماط افتراضية لكل نوع رسمة (قابلة للتعديل من لوحة الخصائص) */
 function defaultStyleFor(type) {
   switch (type) {
@@ -418,6 +433,11 @@ export default function ReplayClient({ userId }) {
   const [drawingsVisible, setDrawingsVisible] = useState(true);
   const activeToolRef = useRef("cursor");
   const magnetRef = useRef(false);
+  /* قائمة منسدلة لكل مجموعة أدوات (زي تريدنغ فيو): ضغطة عالسهم بتفتح قائمة
+     بأسماء كل الأدوات جوا المجموعة، وبتتذكر آخر أداة مختارة من كل مجموعة */
+  const [openToolGroup, setOpenToolGroup] = useState(null);
+  const [toolGroupDefault, setToolGroupDefault] = useState({});
+  const groupBtnRefs = useRef({});
   const drawingsVisibleRef = useRef(true);
   const drawingsRef = useRef([]); // [{id, type, p1:{logical,price}, p2?, points?, text?, style}]
   const drawStateRef = useRef(null); // الرسمة الجارية حالياً (سحب نقطتين)
@@ -2028,32 +2048,96 @@ export default function ReplayClient({ userId }) {
   }
 
   /* شريط أدوات الرسم العمودي (ستايل تريدنغ فيو) — عمود جانبي ثابت بجانب الشارت
-     (مش طايف فوقه)، عالشمال دايماً بغض النظر عن اتجاه الصفحة، ومقسّم لأقسام. */
+     (مش طايف فوقه)، عالشمال دايماً بغض النظر عن اتجاه الصفحة، ومقسّم لأقسام.
+     كل مجموعة فيها أكتر من أداة بتظهر كأيقونة وحدة + سهم صغير: ضغطة عالسهم
+     بتفتح قائمة جانبية بأسماء كل الأدوات واضحة زي تريدنغ فيو تماماً. */
   function renderDrawToolbar() {
+    function openFlyout(gi, btnEl) {
+      groupBtnRefs.current[gi] = btnEl;
+      setOpenToolGroup((cur) => (cur === gi ? null : gi));
+    }
+    function pickTool(gi, id) {
+      setActiveTool(id);
+      setToolGroupDefault((prev) => ({ ...prev, [gi]: id }));
+      setOpenToolGroup(null);
+    }
     return (
       <div style={{
-        flex: "0 0 auto", alignSelf: "stretch", marginLeft: 8,
+        flex: "0 0 auto", alignSelf: "flex-start", marginLeft: 8, position: "relative",
         display: "flex", flexDirection: "column", gap: 4,
         background: "#1a1a1a", border: "1px solid #2f2f2f", borderRadius: 12, padding: 7,
         boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-        maxHeight: "100%", overflowY: "auto",
       }}>
-        {TOOL_GROUPS.map((group, gi) => (
-          <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {gi > 0 && <div style={{ height: 1, background: "#333", margin: "3px 4px" }} />}
-            {group.map((id) => (
+        {TOOL_GROUPS.map((group, gi) => {
+          const hasMultiple = group.length > 1;
+          const currentId = hasMultiple ? (toolGroupDefault[gi] || group[0]) : group[0];
+          const isActive = group.includes(activeTool);
+          return (
+            <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {gi > 0 && <div style={{ height: 1, background: "#333", margin: "3px 4px" }} />}
               <button
-                key={id}
                 type="button"
-                title={TOOL_TITLES[id]}
-                onClick={(e) => { e.stopPropagation(); setActiveTool((cur) => (cur === id ? "cursor" : id)); }}
-                style={toolBtnStyle(activeTool === id)}
+                title={TOOL_TITLES[currentId]}
+                onClick={(e) => { e.stopPropagation(); setActiveTool((cur) => (cur === currentId ? "cursor" : currentId)); }}
+                style={{ ...toolBtnStyle(isActive), position: "relative" }}
               >
-                <ToolIcon id={id} />
+                <ToolIcon id={currentId} />
+                {hasMultiple && (
+                  <span
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); openFlyout(gi, e.currentTarget.parentElement); }}
+                    style={{
+                      position: "absolute", bottom: 1, right: 1, width: 0, height: 0,
+                      borderLeft: "4px solid transparent", borderBottom: "4px solid #8a8a8a",
+                      cursor: "pointer",
+                    }}
+                  />
+                )}
               </button>
-            ))}
-          </div>
-        ))}
+              {hasMultiple && openToolGroup === gi && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    position: "absolute", zIndex: 25, left: "100%", marginLeft: 8,
+                    top: groupBtnRefs.current[gi]?.offsetTop || 0,
+                    background: "#1c1c1c", border: "1px solid #333", borderRadius: 10,
+                    boxShadow: "0 8px 28px rgba(0,0,0,0.55)", minWidth: 230,
+                    maxHeight: 420, overflowY: "auto", padding: "6px 0",
+                  }}
+                >
+                  {(TOOL_GROUP_SECTIONS[gi] || [{ title: null, tools: group }]).map((section, si) => (
+                    <div key={si}>
+                      {section.title && (
+                        <div style={{
+                          padding: "6px 14px 4px", fontSize: 10.5, fontWeight: 700,
+                          color: "#777", letterSpacing: 0.5,
+                        }}>
+                          {section.title}
+                        </div>
+                      )}
+                      {section.tools.map((id) => (
+                        <div
+                          key={id}
+                          onClick={() => pickTool(gi, id)}
+                          style={{
+                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                            gap: 12, padding: "8px 14px", cursor: "pointer", fontSize: 13,
+                            color: activeTool === id ? GOLD_LIGHT : "#e5e5e5",
+                            background: activeTool === id ? "#262626" : "transparent",
+                          }}
+                          onMouseEnter={(e) => { if (activeTool !== id) e.currentTarget.style.background = "#242424"; }}
+                          onMouseLeave={(e) => { if (activeTool !== id) e.currentTarget.style.background = "transparent"; }}
+                        >
+                          <span>{TOOL_TITLES[id]}</span>
+                          <span style={{ display: "flex", color: "#aaa", flexShrink: 0 }}><ToolIcon id={id} /></span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
         <div style={{ height: 1, background: "#333", margin: "3px 4px" }} />
         <button
           type="button"
@@ -2657,6 +2741,13 @@ export default function ReplayClient({ userId }) {
           onClick={() => setContextMenu(null)}
           onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
           style={{ position: "fixed", inset: 0, zIndex: 19 }}
+        />
+      )}
+
+      {openToolGroup !== null && (
+        <div
+          onClick={() => setOpenToolGroup(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 24 }}
         />
       )}
 
