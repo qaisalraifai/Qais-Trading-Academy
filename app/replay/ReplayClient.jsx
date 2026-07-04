@@ -465,6 +465,7 @@ export default function ReplayClient({ userId }) {
   const [accountBalance, setAccountBalance] = useState(3000);
   const [pendingTrade, setPendingTrade] = useState(null); // {direction, entry, lot, tpId, slId, asset}
   const [tradeLot, setTradeLot] = useState("0.01");
+  const [tradeReason, setTradeReason] = useState("");
   const [savingTrade, setSavingTrade] = useState(false);
   const [tradeToast, setTradeToast] = useState("");
   const [dragTick, setDragTick] = useState(0);
@@ -553,6 +554,12 @@ export default function ReplayClient({ userId }) {
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
+    /* مهم: الصفحة كلها dir="rtl"، وكانفس بيورث الاتجاه هاد لعرض النصوص، يعني
+       fillText كانت ترسم الأرقام معكوسة الاتجاه (تبدأ من x وتمتد لليسار) فتطلع
+       فوق خلفية الشارت السودا بلون أسود = نص مخفي تماماً. تثبيت ltr هون بيخلي
+       كل أسعار الخطوط تترسم مكانها الصح وتظهر واضحة جوا صناديقها. */
+    ctx.direction = "ltr";
+    ctx.textAlign = "left";
 
     if (!drawingsVisibleRef.current) { ctx.restore(); return; }
 
@@ -1290,6 +1297,7 @@ export default function ReplayClient({ userId }) {
     });
     drawOverlay();
     setTradeLot("0.01");
+    setTradeReason("");
     setPendingTrade({ tag, direction, entry: price, asset: assetValue });
   }
 
@@ -1298,12 +1306,17 @@ export default function ReplayClient({ userId }) {
       drawingsRef.current = drawingsRef.current.filter((d) => d.tradeTag !== pendingTradeRef.current.tag);
       drawOverlay();
     }
+    setTradeReason("");
     setPendingTrade(null);
   }
 
   async function confirmQuickTrade() {
     const pt = pendingTradeRef.current;
     if (!pt || !userId) return;
+    if (!tradeReason.trim()) {
+      setTradeToast("لازم تكتبي سبب الدخول قبل ما تسجّلي الصفقة");
+      return;
+    }
     const tpLine = drawingsRef.current.find((d) => d.tradeTag === pt.tag && d.tradeRole === "tp");
     const slLine = drawingsRef.current.find((d) => d.tradeTag === pt.tag && d.tradeRole === "sl");
     const lot = parseFloat(tradeLot) || 0.01;
@@ -1324,7 +1337,7 @@ export default function ReplayClient({ userId }) {
       lot, entry: pt.entry, sl, tp,
       result: "pending",
       setup: "من الريبلاي",
-      reason: "",
+      reason: tradeReason.trim(),
       riskAmount, rewardAmount, rr, riskPercent,
       isLive: mode === "live",
     }, userId);
@@ -2408,8 +2421,21 @@ export default function ReplayClient({ userId }) {
             style={{ ...selectStyle, minWidth: 0, width: "100%" }}
           />
         </label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#999", marginTop: 8 }}>
+          سبب الدخول
+          <textarea
+            value={tradeReason}
+            onChange={(e) => setTradeReason(e.target.value)}
+            placeholder="ليش دخلتي هالصفقة؟ (بينسجل مع الصفقة بالباك تست)"
+            rows={2}
+            style={{
+              ...selectStyle, minWidth: 0, width: "100%", resize: "vertical",
+              fontFamily: "inherit", padding: "6px 8px", lineHeight: 1.4,
+            }}
+          />
+        </label>
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-          <button onClick={confirmQuickTrade} disabled={savingTrade} style={{ ...btnStyle("primary"), flex: 1 }}>
+          <button onClick={confirmQuickTrade} disabled={savingTrade || !tradeReason.trim()} style={{ ...btnStyle("primary"), flex: 1, opacity: !tradeReason.trim() ? 0.5 : 1 }}>
             {savingTrade ? "...جاري الحفظ" : "✔ تأكيد وتسجيل"}
           </button>
           <button onClick={cancelQuickTrade} disabled={savingTrade} style={{ ...btnStyle("secondary"), flex: 1 }}>
