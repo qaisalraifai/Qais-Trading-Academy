@@ -494,7 +494,7 @@ export default function ReplayClient({ userId }) {
 
   /* حساسية المغناطيس: يلتصق فقط لما المؤشر قريب فعلاً (بالبكسل) من قيمة أوبن/هاي/لو/كلوز
      الشمعة تحت المؤشر - مش فرض أقرب سعر دايماً. هيك حساسيته أخف وأدق من قبل. */
-  const SNAP_THRESHOLD_PX = 10;
+  const SNAP_THRESHOLD_PX = 22;
   function snapPrice(logical, rawPrice, rawY) {
     if (!magnetRef.current) return rawPrice;
     const series = seriesRef.current;
@@ -1611,9 +1611,9 @@ export default function ReplayClient({ userId }) {
       function onCrosshairMagnet(param) {
         if (settingCrosshairPos) { settingCrosshairPos = false; return; }
         if (!magnetRef.current) return;
-        if (!param.time || !param.point) return;
+        if (!param.time || !param.point) { chart.clearCrosshairPosition(); return; }
         const bar = param.seriesData?.get(series);
-        if (!bar) return;
+        if (!bar) { chart.clearCrosshairPosition(); return; }
         const vals = [bar.open, bar.high, bar.low, bar.close].filter((v) => v != null);
         let best = null, bestDist = Infinity;
         for (const v of vals) {
@@ -1622,11 +1622,13 @@ export default function ReplayClient({ userId }) {
           const d = Math.abs(param.point.y - y);
           if (d < bestDist) { bestDist = d; best = v; }
         }
-        if (best == null || bestDist > SNAP_THRESHOLD_PX) return;
+        if (best == null || bestDist > SNAP_THRESHOLD_PX) { chart.clearCrosshairPosition(); return; }
         settingCrosshairPos = true;
         chart.setCrosshairPosition(best, param.time, series);
       }
       chart.subscribeCrosshairMove(onCrosshairMagnet);
+      const onContainerMouseLeave = () => chart.clearCrosshairPosition();
+      containerEl?.addEventListener("mouseleave", onContainerMouseLeave);
 
       chart.__cleanup = () => {
         window.removeEventListener("resize", handleResize);
@@ -1643,6 +1645,7 @@ export default function ReplayClient({ userId }) {
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(drawOverlay);
         chart.unsubscribeCrosshairMove(drawOverlay);
         chart.unsubscribeCrosshairMove(onCrosshairMagnet);
+        containerEl?.removeEventListener("mouseleave", onContainerMouseLeave);
       };
       chart.__resize = handleResize;
       handleResize();
@@ -2455,6 +2458,8 @@ export default function ReplayClient({ userId }) {
 
   /* بادج السوق الحي: سعر + عداد إغلاق الشمعة بتنسيق واضح + شريط تقدّم */
   function renderLiveBadge() {
+    return null; // تم إخفاء شريط "مباشر / آخر سعر / إغلاق الشمعة خلال" بناءً على طلب المستخدم
+    // eslint-disable-next-line no-unreachable
     if (!(mode === "live" && supported)) return null;
     const priceColor = priceDir === 1 ? GREEN : priceDir === -1 ? RED : GOLD_LIGHT;
     return (
