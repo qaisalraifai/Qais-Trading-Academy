@@ -427,6 +427,9 @@ export default function ReplayClient({ userId }) {
   const liveCursorRef = useRef(null); // موقع الماوس الحالي (لمعاينة المسار قبل التثبيت)
   const dragStateRef = useRef(null); // سحب/تحريك رسمة موجودة بوضع المؤشر: {mode:"move"|"handle", id, key?, lastLogical?, lastPrice?}
   const intervalRef = useRef(interval);
+  const countdownRef = useRef("");
+  const symbolLabelRef = useRef("");
+  const priceTagRef = useRef(null);
 
   // لوحة خصائص الرسمة المحددة
   const [editingId, setEditingId] = useState(null);
@@ -491,10 +494,14 @@ export default function ReplayClient({ userId }) {
   useEffect(() => {
     visibleCandlesRef.current = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
   }, [allCandles, revealCount, mode]);
+  useEffect(() => { countdownRef.current = countdown; }, [countdown]);
+  useEffect(() => {
+    symbolLabelRef.current = getAssetByValue(assetValue)?.label || assetValue;
+  }, [assetValue]);
 
   /* حساسية المغناطيس: يلتصق فقط لما المؤشر قريب فعلاً (بالبكسل) من قيمة أوبن/هاي/لو/كلوز
      الشمعة تحت المؤشر - مش فرض أقرب سعر دايماً. هيك حساسيته أخف وأدق من قبل. */
-  const SNAP_THRESHOLD_PX = 22;
+  const SNAP_THRESHOLD_PX = 34;
   function snapPrice(logical, rawPrice, rawY) {
     if (!magnetRef.current) return rawPrice;
     const series = seriesRef.current;
@@ -1509,9 +1516,17 @@ export default function ReplayClient({ userId }) {
           return;
         }
         const activePath = (activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext") && pathPointsRef.current.length;
-        if (!isDrawingRef.current && !activePath) return;
         const { logical, price, y } = getLogicalPrice(e.clientX, e.clientY);
         if (logical == null || price == null) return;
+        // نخلي مؤشر التقاطع (+) الأصلي يضل ظاهر وهو عم يتحرك حتى وإحنا نستخدم أداة رسم،
+        // لأن الـ overlay canvas بياخد كل أحداث الماوس فوقه فما بيوصل حدث mousemove
+        // للشارت الأصلي (يلي هو المسؤول عن رسم مؤشر التقاطع)
+        const idx = Math.round(logical);
+        const barForCrosshair = visibleCandlesRef.current[idx];
+        if (barForCrosshair) {
+          chart.setCrosshairPosition(price, barForCrosshair.time, series);
+        }
+        if (!isDrawingRef.current && !activePath) return;
         const snapped = snapPrice(logical, price, y);
         if (isDrawingRef.current && drawStateRef.current) {
           drawStateRef.current.p2 = { logical, price: snapped };
@@ -1605,6 +1620,35 @@ export default function ReplayClient({ userId }) {
       chart.timeScale().subscribeVisibleLogicalRangeChange(drawOverlay);
       chart.subscribeCrosshairMove(drawOverlay);
 
+      /* خانة السعر الحيّة على محور السعر (زي TradingView): اسم الزوج + السعر
+         + الوقت المتبقي لإغلاق الشمعة الحالية. بتتحدث بتيكر دوري بسيط عشان
+         تتفادى مشكلة الـ closures القديمة بالبيانات. */
+      function updatePriceTag() {
+        const el = priceTagRef.current;
+        const s = seriesRef.current;
+        if (!el || !s) return;
+        const list = visibleCandlesRef.current;
+        const last = list && list[list.length - 1];
+        if (!last) { el.style.display = "none"; return; }
+        const y = s.priceToCoordinate(last.close);
+        if (y == null) { el.style.display = "none"; return; }
+        const up = last.close >= last.open;
+        el.style.display = "flex";
+        el.style.top = `${y}px`;
+        el.style.background = up ? GREEN : RED;
+        const symEl = el.querySelector('[data-role="symbol"]');
+        const priceEl = el.querySelector('[data-role="price"]');
+        const cdEl = el.querySelector('[data-role="countdown"]');
+        if (symEl) symEl.textContent = symbolLabelRef.current;
+        if (priceEl) priceEl.textContent = last.close.toFixed(2);
+        const cd = countdownRef.current;
+        if (cdEl) {
+          if (cd) { cdEl.style.display = "block"; cdEl.textContent = cd; }
+          else { cdEl.style.display = "none"; }
+        }
+      }
+      const priceTagInterval = setInterval(updatePriceTag, 250);
+
       // مغناطيس خفيف على المؤشر نفسه (مش بس على أدوات الرسم): بيلتصق بأقرب
       // O/H/L/C لما تكوني قريبة منه فعلاً بالبكسل، وبيرجع حر لو بعيدة عنه
       let settingCrosshairPos = false;
@@ -1646,6 +1690,7 @@ export default function ReplayClient({ userId }) {
         chart.unsubscribeCrosshairMove(drawOverlay);
         chart.unsubscribeCrosshairMove(onCrosshairMagnet);
         containerEl?.removeEventListener("mouseleave", onContainerMouseLeave);
+        clearInterval(priceTagInterval);
       };
       chart.__resize = handleResize;
       handleResize();
@@ -2579,6 +2624,19 @@ export default function ReplayClient({ userId }) {
               pointerEvents: activeTool === "cursor" ? "none" : "auto",
             }}
           />
+          <div
+            ref={priceTagRef}
+            style={{
+              position: "absolute", right: 0, transform: "translateY(-50%)",
+              display: "none", flexDirection: "column", alignItems: "flex-end",
+              padding: "3px 8px", borderRadius: "4px 0 0 4px", zIndex: 4,
+              pointerEvents: "none", minWidth: 70, fontFamily: "monospace, sans-serif",
+            }}
+          >
+            <span data-role="symbol" style={{ fontSize: 10, fontWeight: 700, color: "#0a0a0a" }} />
+            <span data-role="price" style={{ fontSize: 13, fontWeight: 800, color: "#0a0a0a", lineHeight: 1.2 }} />
+            <span data-role="countdown" style={{ fontSize: 10, color: "#0a0a0aaa", display: "none" }} />
+          </div>
         </div>
         {renderSettingsDialog()}
       </div>
