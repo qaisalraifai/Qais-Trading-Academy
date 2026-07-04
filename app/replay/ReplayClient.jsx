@@ -1771,6 +1771,7 @@ export default function ReplayClient({ userId }) {
     setIsPlaying(false);
     drawingsRef.current = [];
     drawStateRef.current = null;
+    forceFullReloadRef.current = true;
 
     if (randomChart) {
       const candles = generateRandomCandles(maxBars, interval);
@@ -1831,15 +1832,24 @@ export default function ReplayClient({ userId }) {
   /* ===================== تحديث الشارت ===================== */
   const prevRevealRef = useRef(0);
   const prevCandlesRef = useRef(null);
+  /* علم بيتفعّل مع كل استدعاء loadData() (تبديل وضع/أصل/فريم/رجوع للايف بعد
+     القص...) عشان نجبر تحديث الشارت الجاي يعمل setData كامل، بدل ما يعتمد بس
+     على مقارنة الأطوال (طول المصفوفة القديمة ممكن يطابق الجديدة بالصدفة، زي
+     لما ترجعي من التدريب للايف، فيغلط ويظنها "تيك حي عادي" ويستخدم update()
+     بس عالشمعة الأخيرة، فتضل الشموع القديمة ظاهرة مع شمعة جديدة بعيدة زمنياً
+     = فجوة وتعليق بالشارت). */
+  const forceFullReloadRef = useRef(false);
   useEffect(() => {
     if (!seriesRef.current || allCandles.length === 0) return;
     const prevLen = prevCandlesRef.current?.length ?? -1;
     const prevReveal = prevRevealRef.current;
+    const forceFullReload = forceFullReloadRef.current;
+    forceFullReloadRef.current = false;
 
     // وضع التدريب: خطوة وحدة للأمام (تشغيل تلقائي / الشمعة التالية) بنفس مصفوفة الشموع
-    const trainingStep = mode === "training" && allCandles.length === prevLen && revealCount === prevReveal + 1;
+    const trainingStep = !forceFullReload && mode === "training" && allCandles.length === prevLen && revealCount === prevReveal + 1;
     // وضع السوق الحي: كل بولينغ (كل 5 ثواني) إما بيحدّث آخر شمعة أو بيضيف شمعة جديدة بس
-    const liveTick = mode === "live" && revealCount === allCandles.length && (allCandles.length === prevLen || allCandles.length === prevLen + 1);
+    const liveTick = !forceFullReload && mode === "live" && revealCount === allCandles.length && (allCandles.length === prevLen || allCandles.length === prevLen + 1);
 
     try {
       if (trainingStep || liveTick) {
