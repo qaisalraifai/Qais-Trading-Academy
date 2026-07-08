@@ -118,16 +118,8 @@ function saveCompareSettings(settings) {
     window.localStorage.setItem(COMPARE_SETTINGS_KEY, JSON.stringify(settings));
   } catch {}
 }
-/* تحويل لون hex بسيط لـ rgba بشفافية معيّنة (مستخدم بتلوين تعبئة شارت المنطقة) */
-function hexToRgba(hex, alpha) {
-  const h = (hex || "#C9A24B").replace("#", "");
-  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
-  const r = parseInt(full.slice(0, 2), 16) || 0;
-  const g = parseInt(full.slice(2, 4), 16) || 0;
-  const b = parseInt(full.slice(4, 6), 16) || 0;
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-/* بناء سيريز لوحة المقارنة حسب النوع المختار (منطقة/خط/شموع) وألوانه */
+/* بناء سيريز لوحة المقارنة حسب النوع المختار (منطقة/خط/شموع) وألوانه
+   (تحويل اللون لـ rgba بيصير عن طريق hexToRgba المعرّفة تحت بنفس الملف) */
 function buildCompareSeries(chart, settings) {
   if (settings.type === "line") {
     return chart.addLineSeries({
