@@ -455,6 +455,26 @@ export default function ReplayClient({ userId }) {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
 
+  /* ===== شريط أدوات سريع يطلع فوق أي رسمة لما تنكبس عليها كبسة وحدة
+     (زي تريدنغ فيو: لون/سماكة/قفل/نسخ/حذف بدون ما تفتحي اللوحة الكاملة) ===== */
+  const [selectedDrawingId, setSelectedDrawingId] = useState(null);
+  const selectedIdRef = useRef(null);
+  const [selectionRenderTick, setSelectionRenderTick] = useState(0);
+  const selectionToolbarRef = useRef(null);
+
+  /* ===== مقارنة الرموز (شارت مقسوم) + تكبير أي جزء بضغطتين ماوس ===== */
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareSymbol, setCompareSymbol] = useState("SPX500");
+  const [compareCandles, setCompareCandles] = useState([]);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState("");
+  const [maximizedPane, setMaximizedPane] = useState(null); // null | "main" | "compare"
+  const compareContainerRef = useRef(null);
+  const compareChartRef = useRef(null);
+  const compareSeriesRef = useRef(null);
+  const compareOpenRef = useRef(false);
+  const maximizedPaneRef = useRef(null);
+
   /* إعدادات ألوان الشارت (خلفية + شموع صعود/هبوط) + قائمة الكليك يمين + نافذة الإعدادات */
   const [chartSettings, setChartSettings] = useState(DEFAULT_CHART_SETTINGS);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -512,6 +532,9 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { magnetRef.current = magnetOn; }, [magnetOn]);
   useEffect(() => { intervalRef.current = interval; }, [interval]);
   useEffect(() => { drawingsVisibleRef.current = drawingsVisible; drawOverlay(); }, [drawingsVisible]);
+  useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
+  useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
+  useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
   useEffect(() => {
     visibleCandlesRef.current = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
   }, [allCandles, revealCount, mode]);
@@ -547,6 +570,7 @@ export default function ReplayClient({ userId }) {
     const chart = chartRef.current;
     const series = seriesRef.current;
     if (!canvas || !chart || !series) return;
+    positionSelectionToolbar();
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.width / dpr;
@@ -1210,8 +1234,80 @@ export default function ReplayClient({ userId }) {
     }
   }
   function openProperties(d) {
+    clearSelection();
     setEditingId(d.id);
     setEditDraft(JSON.parse(JSON.stringify(d)));
+  }
+
+  /* ===== اختيار رسمة بكبسة وحدة: يطلع شريط أدوات سريع فوقها مباشرة ===== */
+  function selectDrawing(id) {
+    selectedIdRef.current = id;
+    setSelectedDrawingId(id);
+    setEditingId(null);
+    setEditDraft(null);
+  }
+  function clearSelection() {
+    if (selectedIdRef.current == null) return;
+    selectedIdRef.current = null;
+    setSelectedDrawingId(null);
+  }
+  function getSelectedDrawing() {
+    if (selectedIdRef.current == null) return null;
+    return drawingsRef.current.find((d) => d.id === selectedIdRef.current) || null;
+  }
+  function updateSelectedStyle(patch) {
+    const idx = drawingsRef.current.findIndex((d) => d.id === selectedIdRef.current);
+    if (idx === -1) return;
+    drawingsRef.current[idx] = { ...drawingsRef.current[idx], style: { ...drawingsRef.current[idx].style, ...patch } };
+    drawOverlay();
+    setSelectionRenderTick((t) => t + 1);
+  }
+  function toggleSelectedLock() {
+    const idx = drawingsRef.current.findIndex((d) => d.id === selectedIdRef.current);
+    if (idx === -1) return;
+    drawingsRef.current[idx] = { ...drawingsRef.current[idx], locked: !drawingsRef.current[idx].locked };
+    drawOverlay();
+    setSelectionRenderTick((t) => t + 1);
+  }
+  function deleteSelectedDrawing() {
+    if (selectedIdRef.current == null) return;
+    drawingsRef.current = drawingsRef.current.filter((d) => d.id !== selectedIdRef.current);
+    clearSelection();
+    drawOverlay();
+  }
+  function duplicateSelectedDrawing() {
+    const d = getSelectedDrawing();
+    if (!d) return;
+    const offset = 6;
+    const clone = JSON.parse(JSON.stringify(d));
+    clone.id = Date.now();
+    if (clone.p1) clone.p1 = { ...clone.p1, logical: clone.p1.logical + offset };
+    if (clone.p2) clone.p2 = { ...clone.p2, logical: clone.p2.logical + offset };
+    if (clone.points) clone.points = clone.points.map((p) => ({ ...p, logical: p.logical + offset }));
+    drawingsRef.current.push(clone);
+    selectDrawing(clone.id);
+    drawOverlay();
+  }
+  /* بتحسب مكان الشريط العائم فوق الرسمة المختارة مباشرة (تتحدث مع كل تحريك/زوم للشارت) */
+  function positionSelectionToolbar() {
+    const el = selectionToolbarRef.current;
+    if (!el) return;
+    const d = getSelectedDrawing();
+    if (!d) { el.style.display = "none"; return; }
+    const pts = [];
+    if (d.p1) pts.push(logicalPriceToXY(d.p1));
+    if (d.p2) pts.push(logicalPriceToXY(d.p2));
+    if (d.points) d.points.forEach((p) => pts.push(logicalPriceToXY(p)));
+    const valid = pts.filter((p) => p.x != null && p.y != null);
+    if (!valid.length) { el.style.display = "none"; return; }
+    const minX = Math.min(...valid.map((p) => p.x));
+    const maxX = Math.max(...valid.map((p) => p.x));
+    const minY = Math.min(...valid.map((p) => p.y));
+    const areaW = chartAreaRef.current?.clientWidth || 0;
+    const cx = Math.min(Math.max((minX + maxX) / 2, 100), Math.max(100, areaW - 100));
+    el.style.display = "flex";
+    el.style.left = `${cx}px`;
+    el.style.top = `${Math.max(6, minY - 46)}px`;
   }
   function saveProperties() {
     if (!editDraft) return;
@@ -1397,10 +1493,28 @@ export default function ReplayClient({ userId }) {
       const savedSettings = loadChartSettings();
 
       const chart = createChart(chartContainerRef.current, {
-        layout: { background: { color: savedSettings.bg }, textColor: "#d1d4dc" },
-        grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-        timeScale: { borderColor: "#3a3a3a", timeVisible: true },
-        rightPriceScale: { borderColor: "#3a3a3a" },
+        layout: {
+          background: { color: savedSettings.bg },
+          textColor: "#d1d4dc",
+          // نفس عائلة الخطوط اللي تريدنغ فيو بتستخدمها بمحاور السعر/الوقت، عشان يصير
+          // شكل الأرقام والتسميات أقرب لشكلها هناك
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif",
+        },
+        // شبكة خفيفة جداً بدل إخفائها بالكامل - زي خلفية شارت تريدنغ فيو الحقيقي
+        // (خطوط باهتة بالكاد تُلاحظ، مش شبكة صارخة)
+        grid: {
+          vertLines: { color: "rgba(201,162,75,0.05)", style: 0, visible: true },
+          horzLines: { color: "rgba(201,162,75,0.05)", style: 0, visible: true },
+        },
+        timeScale: {
+          borderColor: "#3a3a3a",
+          timeVisible: true,
+          secondsVisible: false,
+          rightOffset: 6,
+          barSpacing: 7,
+          minBarSpacing: 1.5,
+        },
+        rightPriceScale: { borderColor: "#3a3a3a", scaleMargins: { top: 0.08, bottom: 0.08 } },
         width: chartContainerRef.current.clientWidth,
         height: 480,
         /* وضع Normal (مش Magnet) عشان مؤشر السعر يصير "+" حر بيتبع الفأرة فعلياً
@@ -1428,16 +1542,31 @@ export default function ReplayClient({ userId }) {
       const handleResize = () => {
         if (!chartContainerRef.current) return;
         const isFs = !!document.fullscreenElement;
-        let height = 480;
+        let totalHeight = 480;
         if (isFs) {
           const headerH = headerRef.current?.offsetHeight || 0;
           // نحسب الارتفاع من المساحة الفعلية المتبقية بالشاشة بدل رقم ثابت
           // عشان شريط الوقت بالأسفل ما يطلع برا الشاشة لما الهيدر ياخد مساحة أكبر
-          height = Math.max(320, window.innerHeight - headerH - 28);
+          totalHeight = Math.max(320, window.innerHeight - headerH - 28);
+        }
+        // توزيع الارتفاع بين الشارت الرئيسي وشارت المقارنة (لو مفعّل) حسب أي جزء مكبّر حالياً
+        let mainHeight = totalHeight;
+        let compareHeight = 0;
+        if (compareOpenRef.current) {
+          if (maximizedPaneRef.current === "compare") {
+            mainHeight = 0;
+            compareHeight = totalHeight;
+          } else if (maximizedPaneRef.current === "main") {
+            mainHeight = totalHeight;
+            compareHeight = 0;
+          } else {
+            compareHeight = Math.max(140, Math.round(totalHeight * 0.32));
+            mainHeight = Math.max(160, totalHeight - compareHeight - 10);
+          }
         }
         chart.applyOptions({
           width: chartContainerRef.current.clientWidth,
-          height,
+          height: mainHeight,
         });
         // مزامنة قياس الـ overlay canvas مع الشارت (للرسومات)
         if (overlayCanvasRef.current) {
@@ -1447,6 +1576,12 @@ export default function ReplayClient({ userId }) {
           overlayCanvasRef.current.height = Math.max(1, rect.height * dpr);
           overlayCanvasRef.current.style.width = rect.width + "px";
           overlayCanvasRef.current.style.height = rect.height + "px";
+        }
+        if (compareChartRef.current && compareContainerRef.current) {
+          compareChartRef.current.applyOptions({
+            width: compareContainerRef.current.clientWidth,
+            height: compareHeight,
+          });
         }
         drawOverlay();
       };
@@ -1591,6 +1726,8 @@ export default function ReplayClient({ userId }) {
         if (handleHit) {
           e.preventDefault();
           e.stopPropagation();
+          selectDrawing(handleHit.drawing.id);
+          if (handleHit.drawing.locked) { drawOverlay(); return; }
           dragStateRef.current = { mode: "handle", id: handleHit.drawing.id, key: handleHit.key };
           chart.applyOptions({ handleScroll: false, handleScale: false });
           return;
@@ -1599,9 +1736,13 @@ export default function ReplayClient({ userId }) {
         if (hit) {
           e.preventDefault();
           e.stopPropagation();
+          selectDrawing(hit.id);
+          if (hit.locked) { drawOverlay(); return; }
           dragStateRef.current = { mode: "move", id: hit.id, lastLogical: logical, lastPrice: price };
           chart.applyOptions({ handleScroll: false, handleScale: false });
+          return;
         }
+        clearSelection();
       }
       function onKeyDown(e) {
         if (e.key === "Escape") {
@@ -1613,6 +1754,7 @@ export default function ReplayClient({ userId }) {
             dragStateRef.current = null;
             chart.applyOptions({ handleScroll: true, handleScale: true });
           }
+          clearSelection();
           setActiveTool("cursor");
           drawOverlay();
         } else if (e.key === "Enter" && activeToolRef.current === "path" && pathPointsRef.current.length >= 2) {
@@ -1762,6 +1904,134 @@ export default function ReplayClient({ userId }) {
       return () => clearTimeout(t);
     }
   }, [isFullscreen, mode, cutMode, randomChart, assetValue, interval, maxBars, speed, isPlaying, loading]);
+
+  /* لما تنفتح/تنقفل لوحة المقارنة أو ينكبّر أي جزء منها، لازم نعيد توزيع الارتفاع بين الشارتين */
+  useEffect(() => {
+    const t = setTimeout(() => chartRef.current?.__resize?.(), 30);
+    return () => clearTimeout(t);
+  }, [compareOpen, maximizedPane]);
+
+  /* ===================== شارت المقارنة (لوحة سفلية بسيطة للقراءة فقط، بدون أدوات رسم) ===================== */
+  useEffect(() => {
+    if (!compareOpen) {
+      if (compareChartRef.current) {
+        compareChartRef.current.remove();
+        compareChartRef.current = null;
+        compareSeriesRef.current = null;
+      }
+      return;
+    }
+    let cancelled = false;
+    async function setupCompareChart() {
+      const { createChart } = await import("lightweight-charts");
+      if (cancelled || !compareContainerRef.current) return;
+      const savedSettings = loadChartSettings();
+      const chart = createChart(compareContainerRef.current, {
+        layout: {
+          background: { color: savedSettings.bg },
+          textColor: "#d1d4dc",
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif",
+        },
+        grid: {
+          vertLines: { color: "rgba(201,162,75,0.05)", visible: true },
+          horzLines: { color: "rgba(201,162,75,0.05)", visible: true },
+        },
+        timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false },
+        rightPriceScale: { borderColor: "#3a3a3a" },
+        width: compareContainerRef.current.clientWidth,
+        height: 160,
+        handleScroll: { mouseWheel: false, pressedMouseMove: true },
+        handleScale: { mouseWheel: false },
+      });
+      const series = chart.addAreaSeries({
+        lineColor: GOLD_LIGHT,
+        topColor: "rgba(232,196,104,0.28)",
+        bottomColor: "rgba(232,196,104,0.02)",
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
+      compareChartRef.current = chart;
+      compareSeriesRef.current = series;
+
+      // مزامنة السكرول/الزوم بين الشارتين لما تكونا ظاهرتين سوا (نفس فكرة تريدنغ فيو بمقارنة الرموز)
+      let syncing = false;
+      const mainChart = chartRef.current;
+      const onMainRangeChange = (range) => {
+        if (!range || syncing || !compareChartRef.current) return;
+        syncing = true;
+        try { compareChartRef.current.timeScale().setVisibleLogicalRange(range); } catch {}
+        syncing = false;
+      };
+      const onCompareRangeChange = (range) => {
+        if (!range || syncing || !mainChart) return;
+        syncing = true;
+        try { mainChart.timeScale().setVisibleLogicalRange(range); } catch {}
+        syncing = false;
+      };
+      mainChart?.timeScale().subscribeVisibleLogicalRangeChange(onMainRangeChange);
+      chart.timeScale().subscribeVisibleLogicalRangeChange(onCompareRangeChange);
+      chart.__unsyncMain = () => mainChart?.timeScale().unsubscribeVisibleLogicalRangeChange(onMainRangeChange);
+
+      chartRef.current?.__resize?.();
+    }
+    setupCompareChart();
+    return () => {
+      cancelled = true;
+      compareChartRef.current?.__unsyncMain?.();
+    };
+  }, [compareOpen]);
+
+  /* تحديث بيانات شارت المقارنة كل ما تتغيّر الرسمة/الفريم */
+  useEffect(() => {
+    if (compareSeriesRef.current) {
+      const data = compareCandles.map((c) => ({ time: c.time, value: c.close }));
+      try {
+        compareSeriesRef.current.setData(data);
+        compareChartRef.current?.timeScale().fitContent();
+      } catch {}
+    }
+  }, [compareCandles]);
+
+  /* جلب بيانات رمز المقارنة (نفس مصدر البيانات اللي بتستخدمه أداة الريبلاي - Yahoo Finance) */
+  useEffect(() => {
+    if (!compareOpen) return;
+    let cancelled = false;
+    async function loadCompare() {
+      setCompareLoading(true);
+      setCompareError("");
+      try {
+        const info = getAssetByValue(compareSymbol);
+        if (!info?.yahoo) throw new Error("هذا الرمز غير مدعوم للمقارنة حالياً");
+        const tdInterval = INTERVAL_MAP[interval];
+        const res = await fetch(
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahoo)}&interval=${tdInterval}&count=${maxBars}`
+        );
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        const candles = sanitizeCandles(data.candles || []);
+        if (cancelled) return;
+        setCompareCandles(candles);
+      } catch (e) {
+        if (!cancelled) { setCompareError(e.message || "تعذّر تحميل بيانات المقارنة"); setCompareCandles([]); }
+      } finally {
+        if (!cancelled) setCompareLoading(false);
+      }
+    }
+    loadCompare();
+    return () => { cancelled = true; };
+  }, [compareOpen, compareSymbol, interval, maxBars]);
+
+  function toggleCompare() {
+    setCompareOpen((v) => {
+      const next = !v;
+      if (!next) setMaximizedPane((p) => (p === "compare" ? null : p));
+      return next;
+    });
+  }
+  function toggleMaximizePane(pane) {
+    setMaximizedPane((p) => (p === pane ? null : pane));
+  }
 
   /* ===================== جلب البيانات ===================== */
   const loadData = useCallback(async () => {
@@ -2066,6 +2336,13 @@ export default function ReplayClient({ userId }) {
           disabled={!supported || allCandles.length === 0}
         >
           ✂️ {cutMode ? "دوسي على الشارت..." : "اختيار نقطة البداية"}
+        </button>
+        <button
+          onClick={toggleCompare}
+          style={{ ...tabStyle(compareOpen), background: compareOpen ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent", color: compareOpen ? "#1a1200" : GOLD }}
+          title="اعرضي رمز ثاني بلوحة منفصلة أسفل الشارت للمقارنة بينهم (دبل-كليك على عنوان أي لوحة يكبّرها ويخفي التانية)"
+        >
+          🔀 مقارنة رمز
         </button>
         <button onClick={handleExportImage} style={tabStyle(false)}>📷 تصدير كصورة</button>
         <button onClick={handleResetView} style={tabStyle(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي">
@@ -2397,6 +2674,58 @@ export default function ReplayClient({ userId }) {
         <button onClick={deleteEditingDrawing} style={{ marginTop: 8, width: "100%", background: "none", border: "1px solid #7a2b2b", color: RED, borderRadius: 8, padding: "0.4rem", cursor: "pointer", fontSize: 12.5 }}>
           🗑 حذف هذه الرسمة
         </button>
+      </div>
+    );
+  }
+
+  /* شريط أدوات سريع وعائم يطلع فوق أي رسمة بمجرد ما تنكبس عليها كبسة وحدة (زي تريدنغ فيو):
+     لون، سماكة، قفل، نسخ، حذف، وزر "..." لفتح لوحة الخصائص الكاملة لو احتجتي إعدادات أكتر */
+  function renderSelectionToolbar() {
+    const d = selectedDrawingId != null ? drawingsRef.current.find((dr) => dr.id === selectedDrawingId) : null;
+    if (!d || d.tradeTag) return null;
+    const style = d.style || {};
+    const hasWidth = style.width !== undefined;
+    const hasColor = style.color !== undefined || style.targetColor !== undefined;
+    const locked = !!d.locked;
+    return (
+      <div
+        ref={selectionToolbarRef}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{
+          position: "absolute", zIndex: 21, transform: "translateX(-50%)",
+          display: "flex", alignItems: "center", gap: 2,
+          background: "#1a1a1a", border: "1px solid #333", borderRadius: 10,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.5)", padding: "4px 5px",
+        }}
+      >
+        {hasColor && (
+          <input
+            type="color"
+            value={style.color || style.targetColor || GOLD_LIGHT}
+            onChange={(e) => updateSelectedStyle({ color: e.target.value })}
+            title="اللون"
+            style={{ width: 24, height: 24, border: "1px solid #333", borderRadius: 5, background: "none", cursor: "pointer", padding: 0 }}
+          />
+        )}
+        {hasWidth && (
+          <select
+            value={style.width || 1.5}
+            onChange={(e) => updateSelectedStyle({ width: Number(e.target.value) })}
+            title="السماكة"
+            style={{ ...selectStyle, minWidth: 0, width: 52, padding: "0.3rem 0.35rem", fontSize: 12 }}
+          >
+            {[1, 1.5, 2, 3, 4].map((w) => (<option key={w} value={w}>{w}px</option>))}
+          </select>
+        )}
+        <span style={selToolDivider} />
+        <button type="button" onClick={duplicateSelectedDrawing} title="نسخ" style={selToolBtnStyle}>⧉</button>
+        <button type="button" onClick={toggleSelectedLock} title={locked ? "فك القفل" : "قفل (منع التحريك)"} style={{ ...selToolBtnStyle, color: locked ? GOLD_LIGHT : "#ccc" }}>
+          {locked ? "🔒" : "🔓"}
+        </button>
+        <button type="button" onClick={() => openProperties(d)} title="كل الإعدادات" style={selToolBtnStyle}>⋯</button>
+        <span style={selToolDivider} />
+        <button type="button" onClick={deleteSelectedDrawing} title="حذف" style={{ ...selToolBtnStyle, color: RED }}>🗑</button>
+        <button type="button" onClick={clearSelection} title="إغلاق" style={selToolBtnStyle}>✕</button>
       </div>
     );
   }
@@ -2742,43 +3071,97 @@ export default function ReplayClient({ userId }) {
             ...جاري تحميل البيانات
           </div>
         )}
-        {/* صف أفقي: شريط الأدوات كعمود جانبي حقيقي (زي تريدنغ فيو) بجانب الشارت،
-            مش طايف فوقه. الترتيب هون (الشارت أولاً بالـ DOM ثم الشريط) مقصود:
-            الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل ثابت عالشمال دايماً من
-            غير ما نضطر نقلب اتجاه أي نص عربي جوا الشارت. */}
-        <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0 }}>
-          <div ref={chartAreaRef} style={{ position: "relative", width: "100%", flex: 1, minWidth: 0 }}>
-            {!loading && allCandles.length > 0 && !editDraft && renderOHLCTicker()}
-            {!loading && allCandles.length > 0 && renderPropertiesDialog()}
-            {!loading && renderTradePanel()}
-            {!loading && renderTradeToast()}
-            {!loading && renderContextMenu()}
-            <div
-              ref={chartContainerRef}
-              style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
-            />
-            <canvas
-              ref={overlayCanvasRef}
-              style={{
-                position: "absolute", inset: 0, zIndex: 3,
-                pointerEvents: activeTool === "cursor" ? "none" : "auto",
-              }}
-            />
-            <div
-              ref={priceTagRef}
-              style={{
-                position: "absolute", right: 0, transform: "translateY(-50%)",
-                display: "none", flexDirection: "column", alignItems: "flex-end",
-                padding: "3px 8px", borderRadius: "4px 0 0 4px", zIndex: 4,
-                pointerEvents: "none", minWidth: 70, fontFamily: "monospace, sans-serif",
-              }}
-            >
-              <span data-role="symbol" style={{ fontSize: 10, fontWeight: 700, color: "#0a0a0a" }} />
-              <span data-role="price" style={{ fontSize: 13, fontWeight: 800, color: "#0a0a0a", lineHeight: 1.2 }} />
-              <span data-role="countdown" style={{ fontSize: 10, color: "#0a0a0aaa", display: "none" }} />
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, gap: compareOpen ? 8 : 0 }}>
+          {/* اللوحة الرئيسية */}
+          <div style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: compareOpen && !maximizedPane ? "0 0 auto" : 1, minHeight: 0 }}>
+            {compareOpen && (
+              <div
+                onDoubleClick={() => toggleMaximizePane("main")}
+                title="دبل-كليك لتكبير هاي اللوحة وإخفاء لوحة المقارنة"
+                style={paneHeaderStyle()}
+              >
+                <span>📈 {assetInfo?.label || assetValue}</span>
+                <button onClick={() => toggleMaximizePane("main")} style={paneHeaderBtnStyle} title={maximizedPane === "main" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة"}>
+                  {maximizedPane === "main" ? "⤡" : "⤢"}
+                </button>
+              </div>
+            )}
+            {/* صف أفقي: شريط الأدوات كعمود جانبي حقيقي (زي تريدنغ فيو) بجانب الشارت،
+                مش طايف فوقه. الترتيب هون (الشارت أولاً بالـ DOM ثم الشريط) مقصود:
+                الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل ثابت عالشمال دايماً من
+                غير ما نضطر نقلب اتجاه أي نص عربي جوا الشارت. */}
+            <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0 }}>
+              <div ref={chartAreaRef} style={{ position: "relative", width: "100%", flex: 1, minWidth: 0 }}>
+                {!loading && allCandles.length > 0 && !editDraft && renderOHLCTicker()}
+                {!loading && allCandles.length > 0 && renderPropertiesDialog()}
+                {!loading && allCandles.length > 0 && renderSelectionToolbar()}
+                {!loading && renderTradePanel()}
+                {!loading && renderTradeToast()}
+                {!loading && renderContextMenu()}
+                <div
+                  ref={chartContainerRef}
+                  style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
+                />
+                <canvas
+                  ref={overlayCanvasRef}
+                  style={{
+                    position: "absolute", inset: 0, zIndex: 3,
+                    pointerEvents: activeTool === "cursor" ? "none" : "auto",
+                  }}
+                />
+                <div
+                  ref={priceTagRef}
+                  style={{
+                    position: "absolute", right: 0, transform: "translateY(-50%)",
+                    display: "none", flexDirection: "column", alignItems: "flex-end",
+                    padding: "3px 8px", borderRadius: "4px 0 0 4px", zIndex: 4,
+                    pointerEvents: "none", minWidth: 70, fontFamily: "monospace, sans-serif",
+                  }}
+                >
+                  <span data-role="symbol" style={{ fontSize: 10, fontWeight: 700, color: "#0a0a0a" }} />
+                  <span data-role="price" style={{ fontSize: 13, fontWeight: 800, color: "#0a0a0a", lineHeight: 1.2 }} />
+                  <span data-role="countdown" style={{ fontSize: 10, color: "#0a0a0aaa", display: "none" }} />
+                </div>
+              </div>
+              {!loading && allCandles.length > 0 && renderDrawToolbar()}
             </div>
           </div>
-          {!loading && allCandles.length > 0 && renderDrawToolbar()}
+
+          {/* لوحة المقارنة: رمز ثاني للقراءة فقط، بدون أدوات رسم، مزامَنة سكرول/زوم مع اللوحة الرئيسية */}
+          {compareOpen && (
+            <div style={{ display: maximizedPane === "main" ? "none" : "flex", flexDirection: "column", flex: maximizedPane === "compare" ? 1 : "0 0 auto", minHeight: 0 }}>
+              <div
+                onDoubleClick={() => toggleMaximizePane("compare")}
+                title="دبل-كليك لتكبير هاي اللوحة وإخفاء اللوحة الرئيسية"
+                style={paneHeaderStyle()}
+              >
+                <span>🔀 مقارنة:</span>
+                <select
+                  value={compareSymbol}
+                  onChange={(e) => setCompareSymbol(e.target.value)}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ ...selectStyle, minWidth: 140, padding: "0.25rem 0.5rem", fontSize: 12 }}
+                >
+                  {ASSETS.map((g) => (
+                    <optgroup key={g.group} label={g.group}>
+                      {g.items.map((it) => (
+                        <option key={it.v} value={it.v} disabled={!it.yahoo}>{it.label}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                {compareLoading && <span style={{ fontSize: 11, color: "#888" }}>...جاري التحميل</span>}
+                {compareError && <span style={{ fontSize: 11, color: RED }}>{compareError}</span>}
+                <div style={{ flex: 1 }} />
+                <button onClick={(e) => { e.stopPropagation(); toggleMaximizePane("compare"); }} style={paneHeaderBtnStyle} title={maximizedPane === "compare" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة"}>
+                  {maximizedPane === "compare" ? "⤡" : "⤢"}
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); toggleCompare(); }} style={paneHeaderBtnStyle} title="إغلاق لوحة المقارنة">✕</button>
+              </div>
+              <div ref={compareContainerRef} style={{ width: "100%", flex: 1, minHeight: 0 }} />
+            </div>
+          )}
         </div>
         {renderSettingsDialog()}
       </div>
@@ -2844,6 +3227,25 @@ function toolBtnStyle(active) {
     flexShrink: 0,
   };
 }
+
+const selToolBtnStyle = {
+  width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+  background: "none", border: "none", borderRadius: 6, color: "#ccc", cursor: "pointer", fontSize: 14,
+};
+const selToolDivider = { width: 1, height: 18, background: "#333", margin: "0 2px", flexShrink: 0 };
+
+function paneHeaderStyle() {
+  return {
+    display: "flex", alignItems: "center", gap: 8,
+    padding: "0.35rem 0.6rem", marginBottom: 4,
+    background: "#141210", border: `1px solid ${GOLD}22`, borderRadius: 8,
+    fontSize: 12.5, fontWeight: 700, color: "#ccc", cursor: "pointer", userSelect: "none",
+  };
+}
+const paneHeaderBtnStyle = {
+  background: "none", border: `1px solid ${GOLD}44`, borderRadius: 6, color: GOLD_LIGHT,
+  cursor: "pointer", fontSize: 12, padding: "0.15rem 0.5rem",
+};
 
 function btnStyle(kind) {
   const base = { padding: "0.55rem 1rem", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" };
