@@ -7,6 +7,7 @@ const GOLD = "#C9A24B";
 const GOLD_LIGHT = "#E8C468";
 const GREEN = "#10b981";
 const RED = "#ef4444";
+const DEFAULT_COMPARE_HEIGHT = 200; // ارتفاع لوحة المقارنة الافتراضي بالبكسل (قابل للسحب من المستخدم)
 
 const INTERVALS = [
   { value: "1m", label: "1 دقيقة" },
@@ -474,6 +475,8 @@ export default function ReplayClient({ userId }) {
   const compareSeriesRef = useRef(null);
   const compareOpenRef = useRef(false);
   const maximizedPaneRef = useRef(null);
+  const [compareHeightPx, setCompareHeightPx] = useState(DEFAULT_COMPARE_HEIGHT);
+  const compareHeightPxRef = useRef(DEFAULT_COMPARE_HEIGHT);
 
   /* إعدادات ألوان الشارت (خلفية + شموع صعود/هبوط) + قائمة الكليك يمين + نافذة الإعدادات */
   const [chartSettings, setChartSettings] = useState(DEFAULT_CHART_SETTINGS);
@@ -535,6 +538,7 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
   useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
   useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
+  useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
   useEffect(() => {
     visibleCandlesRef.current = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
   }, [allCandles, revealCount, mode]);
@@ -1550,6 +1554,8 @@ export default function ReplayClient({ userId }) {
           totalHeight = Math.max(320, window.innerHeight - headerH - 28);
         }
         // توزيع الارتفاع بين الشارت الرئيسي وشارت المقارنة (لو مفعّل) حسب أي جزء مكبّر حالياً
+        // وحسب الحجم اللي المستخدم سحبه يدوياً (قاسم قابل للسحب زي تريدنغ فيو)
+        const DIVIDER_H = 10;
         let mainHeight = totalHeight;
         let compareHeight = 0;
         if (compareOpenRef.current) {
@@ -1560,8 +1566,9 @@ export default function ReplayClient({ userId }) {
             mainHeight = totalHeight;
             compareHeight = 0;
           } else {
-            compareHeight = Math.max(140, Math.round(totalHeight * 0.32));
-            mainHeight = Math.max(160, totalHeight - compareHeight - 10);
+            const maxCompare = Math.max(100, totalHeight - 150 - DIVIDER_H);
+            compareHeight = Math.min(Math.max(100, compareHeightPxRef.current), maxCompare);
+            mainHeight = Math.max(150, totalHeight - compareHeight - DIVIDER_H);
           }
         }
         chart.applyOptions({
@@ -2031,6 +2038,25 @@ export default function ReplayClient({ userId }) {
   }
   function toggleMaximizePane(pane) {
     setMaximizedPane((p) => (p === pane ? null : pane));
+  }
+  /* سحب القاسم بين الشارت الرئيسي ولوحة المقارنة لتكبير/تصغير أي منهم يدوياً (زي تريدنغ فيو بالظبط) */
+  function onDividerMouseDown(e) {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = compareHeightPxRef.current;
+    function onMove(ev) {
+      const delta = ev.clientY - startY;
+      const next = Math.max(80, startHeight - delta);
+      compareHeightPxRef.current = next;
+      setCompareHeightPx(next);
+      chartRef.current?.__resize?.();
+    }
+    function onUp() {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   }
 
   /* ===================== جلب البيانات ===================== */
@@ -3071,21 +3097,9 @@ export default function ReplayClient({ userId }) {
             ...جاري تحميل البيانات
           </div>
         )}
-        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, gap: compareOpen ? 8 : 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
           {/* اللوحة الرئيسية */}
-          <div style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: compareOpen && !maximizedPane ? "0 0 auto" : 1, minHeight: 0 }}>
-            {compareOpen && (
-              <div
-                onDoubleClick={() => toggleMaximizePane("main")}
-                title="دبل-كليك لتكبير هاي اللوحة وإخفاء لوحة المقارنة"
-                style={paneHeaderStyle()}
-              >
-                <span>📈 {assetInfo?.label || assetValue}</span>
-                <button onClick={() => toggleMaximizePane("main")} style={paneHeaderBtnStyle} title={maximizedPane === "main" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة"}>
-                  {maximizedPane === "main" ? "⤡" : "⤢"}
-                </button>
-              </div>
-            )}
+          <div style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: compareOpen && !maximizedPane ? "0 0 auto" : 1, minHeight: 0, position: "relative" }}>
             {/* صف أفقي: شريط الأدوات كعمود جانبي حقيقي (زي تريدنغ فيو) بجانب الشارت،
                 مش طايف فوقه. الترتيب هون (الشارت أولاً بالـ DOM ثم الشريط) مقصود:
                 الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل ثابت عالشمال دايماً من
@@ -3098,6 +3112,13 @@ export default function ReplayClient({ userId }) {
                 {!loading && renderTradePanel()}
                 {!loading && renderTradeToast()}
                 {!loading && renderContextMenu()}
+                {compareOpen && (
+                  <div style={paneCornerBadgeStyle("right")}>
+                    <button onClick={() => toggleMaximizePane("main")} style={paneCornerBtnStyle} title={maximizedPane === "main" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة (أو دبل-كليك على القاسم)"}>
+                      {maximizedPane === "main" ? "⤡" : "⤢"}
+                    </button>
+                  </div>
+                )}
                 <div
                   ref={chartContainerRef}
                   style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
@@ -3127,21 +3148,29 @@ export default function ReplayClient({ userId }) {
             </div>
           </div>
 
-          {/* لوحة المقارنة: رمز ثاني للقراءة فقط، بدون أدوات رسم، مزامَنة سكرول/زوم مع اللوحة الرئيسية */}
+          {/* قاسم قابل للسحب لتكبير/تصغير لوحة المقارنة (زي تريدنغ فيو بالظبط) - اسحبيه لفوق/تحت،
+              أو دبل-كليك عليه يرجّع النسبة الافتراضية */}
+          {compareOpen && !maximizedPane && (
+            <div
+              onMouseDown={onDividerMouseDown}
+              onDoubleClick={() => { compareHeightPxRef.current = DEFAULT_COMPARE_HEIGHT; setCompareHeightPx(DEFAULT_COMPARE_HEIGHT); chartRef.current?.__resize?.(); }}
+              title="اسحبي لتكبير/تصغير لوحة المقارنة، أو دبل-كليك للرجوع للحجم الافتراضي"
+              style={dividerStyle}
+            >
+              <span style={dividerGripStyle} />
+            </div>
+          )}
+
+          {/* لوحة المقارنة: رمز ثاني للقراءة فقط، بدون أدوات رسم، مزامَنة سكرول/زوم مع اللوحة الرئيسية.
+              نفس سطح الشارت الرئيسي بالضبط (بدون حدود/زوايا مدوّرة) عشان تبان لوحة وحدة متصلة زي تريدنغ فيو */}
           {compareOpen && (
-            <div style={{ display: maximizedPane === "main" ? "none" : "flex", flexDirection: "column", flex: maximizedPane === "compare" ? 1 : "0 0 auto", minHeight: 0 }}>
-              <div
-                onDoubleClick={() => toggleMaximizePane("compare")}
-                title="دبل-كليك لتكبير هاي اللوحة وإخفاء اللوحة الرئيسية"
-                style={paneHeaderStyle()}
-              >
-                <span>🔀 مقارنة:</span>
+            <div style={{ display: maximizedPane === "main" ? "none" : "flex", flexDirection: "column", flex: maximizedPane === "compare" ? 1 : "0 0 auto", minHeight: 0, position: "relative" }}>
+              <div style={paneCornerBadgeStyle()}>
+                <span>🔀</span>
                 <select
                   value={compareSymbol}
                   onChange={(e) => setCompareSymbol(e.target.value)}
-                  onDoubleClick={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ ...selectStyle, minWidth: 140, padding: "0.25rem 0.5rem", fontSize: 12 }}
+                  style={{ ...selectStyle, minWidth: 130, padding: "0.2rem 0.4rem", fontSize: 11.5, background: "#0000" }}
                 >
                   {ASSETS.map((g) => (
                     <optgroup key={g.group} label={g.group}>
@@ -3153,11 +3182,10 @@ export default function ReplayClient({ userId }) {
                 </select>
                 {compareLoading && <span style={{ fontSize: 11, color: "#888" }}>...جاري التحميل</span>}
                 {compareError && <span style={{ fontSize: 11, color: RED }}>{compareError}</span>}
-                <div style={{ flex: 1 }} />
-                <button onClick={(e) => { e.stopPropagation(); toggleMaximizePane("compare"); }} style={paneHeaderBtnStyle} title={maximizedPane === "compare" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة"}>
+                <button onClick={() => toggleMaximizePane("compare")} style={paneCornerBtnStyle} title={maximizedPane === "compare" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة (أو دبل-كليك على القاسم)"}>
                   {maximizedPane === "compare" ? "⤡" : "⤢"}
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); toggleCompare(); }} style={paneHeaderBtnStyle} title="إغلاق لوحة المقارنة">✕</button>
+                <button onClick={toggleCompare} style={paneCornerBtnStyle} title="إغلاق لوحة المقارنة">✕</button>
               </div>
               <div ref={compareContainerRef} style={{ width: "100%", flex: 1, minHeight: 0 }} />
             </div>
@@ -3234,17 +3262,28 @@ const selToolBtnStyle = {
 };
 const selToolDivider = { width: 1, height: 18, background: "#333", margin: "0 2px", flexShrink: 0 };
 
-function paneHeaderStyle() {
+function paneCornerBadgeStyle(side) {
   return {
-    display: "flex", alignItems: "center", gap: 8,
-    padding: "0.35rem 0.6rem", marginBottom: 4,
-    background: "#141210", border: `1px solid ${GOLD}22`, borderRadius: 8,
-    fontSize: 12.5, fontWeight: 700, color: "#ccc", cursor: "pointer", userSelect: "none",
+    position: "absolute", top: 8, [side === "right" ? "right" : "left"]: 8, zIndex: 6,
+    display: "flex", alignItems: "center", gap: 6,
+    background: "rgba(13,13,10,0.72)", backdropFilter: "blur(2px)",
+    border: `1px solid ${GOLD}22`, borderRadius: 6,
+    padding: "0.2rem 0.45rem", fontSize: 12, fontWeight: 700, color: "#ddd",
+    pointerEvents: "auto",
   };
 }
-const paneHeaderBtnStyle = {
-  background: "none", border: `1px solid ${GOLD}44`, borderRadius: 6, color: GOLD_LIGHT,
-  cursor: "pointer", fontSize: 12, padding: "0.15rem 0.5rem",
+const paneCornerBtnStyle = {
+  background: "none", border: "none", color: GOLD_LIGHT,
+  cursor: "pointer", fontSize: 13, padding: "0 0.15rem", lineHeight: 1,
+};
+/* القاسم القابل للسحب بين الشارت الرئيسي ولوحة المقارنة - سطح واحد متصل بدون فراغ، زي تريدنغ فيو بالظبط */
+const dividerStyle = {
+  height: 8, flexShrink: 0, cursor: "row-resize",
+  display: "flex", alignItems: "center", justifyContent: "center",
+  background: "transparent",
+};
+const dividerGripStyle = {
+  width: 40, height: 3, borderRadius: 3, background: `${GOLD}55`,
 };
 
 function btnStyle(kind) {
