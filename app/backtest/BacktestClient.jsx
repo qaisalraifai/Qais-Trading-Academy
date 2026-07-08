@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase-client";
 /* ===================== قائمة الأصول ===================== */
 const ASSETS = [
   {
-    group: "المعادن (لايف مدعوم ✅ مجاناً)",
+    group: "المعادن (متابعة مباشرة مدعومة ✅ مجاناً)",
     items: [
       { v: "XAUUSD", label: "(ذهب) XAUUSD", mult: 100, source: "goldapi", sourceSymbol: "XAU" },
       { v: "XAGUSD", label: "(فضة) XAGUSD", mult: 5000, source: "goldapi", sourceSymbol: "XAG" },
@@ -31,7 +31,7 @@ const ASSETS = [
     ],
   },
   {
-    group: "كريبتو (لايف مدعوم ✅)",
+    group: "كريبتو (متابعة مباشرة مدعومة ✅)",
     items: [
       { v: "BTCUSD", label: "Bitcoin (BTC/USD)", mult: 1, source: "finnhub", sourceSymbol: "BINANCE:BTCUSDT" },
       { v: "ETHUSD", label: "Ethereum (ETH/USD)", mult: 1, source: "finnhub", sourceSymbol: "BINANCE:ETHUSDT" },
@@ -47,10 +47,10 @@ const ASSETS = [
       { v: "US30", label: "US30 (داو جونز)", mult: 1, source: null },
       { v: "NAS100", label: "NAS100 (ناسداك)", mult: 1, source: null },
       { v: "SPX500", label: "SPX500 (S&P 500)", mult: 1, source: null },
-      { v: "AAPL", label: "Apple (AAPL) - لايف ✅", mult: 1, source: "finnhub", sourceSymbol: "AAPL" },
-      { v: "TSLA", label: "Tesla (TSLA) - لايف ✅", mult: 1, source: "finnhub", sourceSymbol: "TSLA" },
-      { v: "MSFT", label: "Microsoft (MSFT) - لايف ✅", mult: 1, source: "finnhub", sourceSymbol: "MSFT" },
-      { v: "AMZN", label: "Amazon (AMZN) - لايف ✅", mult: 1, source: "finnhub", sourceSymbol: "AMZN" },
+      { v: "AAPL", label: "Apple (AAPL) - مباشر ✅", mult: 1, source: "finnhub", sourceSymbol: "AAPL" },
+      { v: "TSLA", label: "Tesla (TSLA) - مباشر ✅", mult: 1, source: "finnhub", sourceSymbol: "TSLA" },
+      { v: "MSFT", label: "Microsoft (MSFT) - مباشر ✅", mult: 1, source: "finnhub", sourceSymbol: "MSFT" },
+      { v: "AMZN", label: "Amazon (AMZN) - مباشر ✅", mult: 1, source: "finnhub", sourceSymbol: "AMZN" },
     ],
   },
   {
@@ -169,7 +169,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
   const [reason, setReason] = useState("");
   const userEditedEntryRef = useRef(false);
 
-  // بيانات لايف مؤقتة (ما بتتخزن بقاعدة البيانات كل تحديث، بس وقت الإغلاق)
+  // بيانات مباشرة مؤقتة (ما بتتخزن بقاعدة البيانات كل تحديث، بس وقت الإغلاق)
   const [liveMeta, setLiveMeta] = useState({}); // { [tradeId]: { currentPrice, lastError } }
   const [liveStatus, setLiveStatus] = useState({ on: false, text: "غير مفعّل", lastUpdate: "" });
 
@@ -219,7 +219,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
   }
   const preview = calcPreview();
 
-  /* ===================== وضع يدوي / لايف ===================== */
+  /* ===================== وضع يدوي / مباشر ===================== */
   function stopEntryLivePriceWatch() {
     if (entryLivePriceTimerRef.current) clearInterval(entryLivePriceTimerRef.current);
     entryLivePriceTimerRef.current = null;
@@ -291,12 +291,12 @@ export default function BacktestClient({ userId, username, initialBalance, initi
     if (currentMode === "live") {
       if (!assetInfo || !assetInfo.source) {
         alert(
-          "هذا الأصل غير مدعوم حالياً للمتابعة اللايف المجانية. متاح حالياً: المعادن، الكريبتو، وبعض الأسهم الأمريكية."
+          "هذا الأصل غير مدعوم حالياً للمتابعة المباشرة المجانية. متاح حالياً: المعادن، الكريبتو، وبعض الأسهم الأمريكية."
         );
         return;
       }
       if (assetInfo.source === "finnhub" && !apiKey) {
-        alert("لازم تضيفي مفتاح Finnhub API أولاً من زر ⚙ السوق الحي قبل فتح صفقة لايف.");
+        alert("لازم تضيفي مفتاح Finnhub API أولاً من زر ⚙ السوق الحي قبل فتح صفقة مباشرة.");
         setSettingsModalOpen(true);
         return;
       }
@@ -429,7 +429,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
   const pollLiveTrades = useCallback(async () => {
     const liveTrades = trades.filter((t) => t.isLive && t.result === "pending");
     if (liveTrades.length === 0) {
-      setLiveStatus({ on: false, text: "لا توجد صفقات لايف مفتوحة", lastUpdate: "" });
+      setLiveStatus({ on: false, text: "لا توجد صفقات مباشرة مفتوحة", lastUpdate: "" });
       return;
     }
     setLiveStatus((s) => ({ ...s, text: "جاري التحديث..." }));
@@ -519,7 +519,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
     return "pill";
   }
   function resultPillText(t) {
-    if (t.isLive && t.result === "pending") return "🔴 لايف - متابعة";
+    if (t.isLive && t.result === "pending") return "🔴 مباشر - متابعة";
     if (t.result === "win") return "✓ رابحة";
     if (t.result === "loss") return "✗ خاسرة";
     if (t.result === "breakeven") return "تعادل";
@@ -714,7 +714,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
               <span>إضافة صفقة جديدة</span>
               <div className="qta-mode-toggle">
                 <button className={`qta-mode-btn ${currentMode === "manual" ? "active" : ""}`} onClick={() => setMode("manual")}>📝 يدوية (باك تيست)</button>
-                <button className={`qta-mode-btn ${currentMode === "live" ? "active" : ""}`} onClick={() => setMode("live")}>🔴 لايف (متابعة حقيقية)</button>
+                <button className={`qta-mode-btn ${currentMode === "live" ? "active" : ""}`} onClick={() => setMode("live")}>🔴 مباشر (متابعة حقيقية)</button>
               </div>
             </div>
             <div className="qta-form-row">
@@ -782,7 +782,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
               )}
               <div className="qta-field" style={{ display: "flex", alignItems: "flex-end" }}>
                 <button className={`qta-btn-add ${currentMode === "live" ? "live" : ""}`} onClick={handleAdd}>
-                  {currentMode === "live" ? "🔴 فتح صفقة لايف" : "+ أضف"}
+                  {currentMode === "live" ? "🔴 فتح صفقة مباشرة" : "+ أضف"}
                 </button>
               </div>
             </div>
@@ -807,7 +807,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
             <div className="qta-filter-group">
               {[
                 { k: "all", label: "الكل" },
-                { k: "live", label: "لايف 🔴" },
+                { k: "live", label: "مباشر 🔴" },
                 { k: "win", label: "الرابحة" },
                 { k: "loss", label: "الخاسرة" },
               ].map((f) => (
@@ -888,8 +888,8 @@ export default function BacktestClient({ userId, username, initialBalance, initi
           <div className="qta-modal-box">
             <h3>إعدادات السوق الحي</h3>
             <small>
-              <b>المعادن</b> تشتغل لايف تلقائياً وبدون أي مفتاح. المفتاح هون مطلوب فقط لمتابعة{" "}
-              <b>الكريبتو والأسهم الأمريكية</b> لايف، عبر Finnhub.io.{" "}
+              <b>المعادن</b> تشتغل مباشرة تلقائياً وبدون أي مفتاح. المفتاح هون مطلوب فقط لمتابعة{" "}
+              <b>الكريبتو والأسهم الأمريكية</b> مباشرة، عبر Finnhub.io.{" "}
               احصلي على مفتاح مجاني من <a href="https://finnhub.io/register" target="_blank" rel="noreferrer">finnhub.io</a>.
             </small>
             <input type="text" value={apiKeyInput} onChange={(e) => setApiKeyInput(e.target.value)} placeholder="الصقي Finnhub API Key هون" />
