@@ -7,6 +7,17 @@ export async function GET(request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new NextResponse("Unauthorized", { status: 401 });
 
+  // امنع مشاهدة الفيديو مباشرة عبر الـ API إذا الاشتراك غير فعّال، حتى لو المستخدم مسجل دخول
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("subscription_status, role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin" && profile?.subscription_status !== "active") {
+    return new NextResponse("اشتراكك غير نشط حالياً", { status: 403 });
+  }
+
   const { searchParams } = new URL(request.url);
   const fileId = searchParams.get("fileId");
   if (!fileId) return new NextResponse("Missing fileId", { status: 400 });
