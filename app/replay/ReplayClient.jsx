@@ -90,7 +90,7 @@ function saveChartSettings(settings) {
   } catch {}
 }
 
-/* تحويل صفقة الريبلاي لصف جدول trades (نفس شكل أداة الباك تيست بالظبط عشان تظهر فيها وبلوحة التحكم) */
+/* تحويل صفقة الاستعراض التاريخي لصف جدول trades (نفس شكل أداة الباك تيست بالظبط عشان تظهر فيها وبلوحة التحكم) */
 function tradeToRow(trade, userId) {
   return {
     user_id: userId,
@@ -1277,7 +1277,7 @@ export default function ReplayClient({ userId }) {
       drawingsRef.current = drawingsRef.current.filter((d) => d.tradeTag !== pendingTradeRef.current.tag);
     }
     const tag = "trade_" + Date.now();
-    const dist = price * 0.003; // مسافة افتراضية 0.3% تبدأ فيها الخطوط، وبعدين تسحبيها لمكان الهدف/الستوب الصح
+    const dist = price * 0.003; // مسافة افتراضية 0.3% تبدأ فيها الخطوط، وبعدين تسحبيها لمكان الهدف/وقف الخسارة الصح
     const tp = direction === "buy" ? price + dist : price - dist;
     const sl = direction === "buy" ? price - dist : price + dist;
     const vr = chartRef.current?.timeScale().getVisibleLogicalRange();
@@ -1336,7 +1336,7 @@ export default function ReplayClient({ userId }) {
       direction: pt.direction,
       lot, entry: pt.entry, sl, tp,
       result: "pending",
-      setup: "من الريبلاي",
+      setup: "من الاستعراض التاريخي",
       reason: tradeReason.trim(),
       riskAmount, rewardAmount, rr, riskPercent,
       isLive: mode === "live",
@@ -1369,7 +1369,7 @@ export default function ReplayClient({ userId }) {
     if (!supabase || !userId) return;
     await supabase
       .from("trades")
-      .update({ result, reason: `إغلاق تلقائي من الريبلاي عند ${closePrice.toFixed(2)}` })
+      .update({ result, reason: `إغلاق تلقائي من الاستعراض التاريخي عند ${closePrice.toFixed(2)}` })
       .eq("id", pos.dbId)
       .eq("user_id", userId);
   }
@@ -1744,7 +1744,7 @@ export default function ReplayClient({ userId }) {
     };
   }, []);
 
-  /* ===================== تبديل الفل سكرين ===================== */
+  /* ===================== تبديل الشاشة الكاملة ===================== */
   function toggleFullscreen() {
     if (!chartWrapperRef.current) return;
     if (!document.fullscreenElement) {
@@ -1754,7 +1754,7 @@ export default function ReplayClient({ userId }) {
     }
   }
 
-  /* لما محتوى شريط التحكم العلوي بيتغيّر بوضع الفل سكرين (تبديل وضع/وضع القص/سرعة...)
+  /* لما محتوى شريط التحكم العلوي بيتغيّر بوضع الشاشة الكاملة (تبديل وضع/وضع القص/سرعة...)
      ممكن يتغيّر ارتفاعه، فلازم نعيد حساب ارتفاع الشارت عشان شريط الوقت السفلي يضل ظاهر بالكامل */
   useEffect(() => {
     if (isFullscreen) {
@@ -1832,10 +1832,10 @@ export default function ReplayClient({ userId }) {
   /* ===================== تحديث الشارت ===================== */
   const prevRevealRef = useRef(0);
   const prevCandlesRef = useRef(null);
-  /* علم بيتفعّل مع كل استدعاء loadData() (تبديل وضع/أصل/فريم/رجوع للايف بعد
+  /* علم بيتفعّل مع كل استدعاء loadData() (تبديل وضع/أصل/فريم/رجوع للمباشر بعد
      القص...) عشان نجبر تحديث الشارت الجاي يعمل setData كامل، بدل ما يعتمد بس
      على مقارنة الأطوال (طول المصفوفة القديمة ممكن يطابق الجديدة بالصدفة، زي
-     لما ترجعي من التدريب للايف، فيغلط ويظنها "تيك حي عادي" ويستخدم update()
+     لما ترجعي من التدريب للمباشر، فيغلط ويظنها "تيك حي عادي" ويستخدم update()
      بس عالشمعة الأخيرة، فتضل الشموع القديمة ظاهرة مع شمعة جديدة بعيدة زمنياً
      = فجوة وتعليق بالشارت). */
   const forceFullReloadRef = useRef(false);
@@ -1957,7 +1957,12 @@ export default function ReplayClient({ userId }) {
       updateLivePrice(initialCandles[initialCandles.length - 1].close);
     }
     startCountdownTick();
-    pollLiveOnce();
+    // مهم: ما منستدعي pollLiveOnce() فوراً هون. الشارت لسا ما طبّق البيانات الجديدة
+    // كاملة (setData بتصير بـ useEffect منفصل بعد الرندر). لو استدعيناها فوراً ممكن
+    // تحاول تحدّث (update) شمعة قبل ما ينضبط الشارت على المجموعة الجديدة، ومكتبة
+    // lightweight-charts بترفض هيك تحديث وبتعمل throw exception يكسر الصفحة كلها
+    // (هاي كانت سبب مشكلة "شارت عشوائي" اللي بتطلع وقت التبديل بوضع السوق الحي).
+    setTimeout(pollLiveOnce, 0);
     livePollRef.current = setInterval(pollLiveOnce, 5000);
   }
 
@@ -1991,7 +1996,7 @@ export default function ReplayClient({ userId }) {
     setMode(m);
   }
 
-  /* ===================== أداة القص: اختيار نقطة بداية الريبلاي بالضغط على الشارت ===================== */
+  /* ===================== أداة القص: اختيار نقطة بداية الاستعراض بالضغط على الشارت ===================== */
   useEffect(() => {
     if (!chartRef.current || !cutMode) return;
     const handler = (param) => {
@@ -2034,24 +2039,30 @@ export default function ReplayClient({ userId }) {
 
   const finished = mode === "training" && allCandles.length > 0 && revealCount >= allCandles.length;
 
-  /* أزرار وضع العرض (سوق حي / تدريب) + عشوائي + قص/تصدير + قص نقطة بداية + فل سكرين */
+  /* شريط علوي: حالة الوضع (بدون تبويب يدوي) + عشوائي + قص/تصدير + قص نقطة بداية + شاشة كاملة */
   function renderTopBar() {
     return (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.8rem" }}>
-        <button onClick={() => switchMode("live")} style={tabStyle(mode === "live")}>📡 سوق حي</button>
-        <button onClick={() => switchMode("training")} style={tabStyle(mode === "training")}>🎯 تدريب / ريبلاي</button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.8rem", alignItems: "center" }}>
+        <span style={{ ...tabStyle(mode === "live"), cursor: "default" }}>
+          {mode === "live" ? "📡 السوق مباشر" : "🎯 عرض تاريخي (من نقطة مختارة)"}
+        </span>
+        {mode === "training" && (
+          <button onClick={() => switchMode("live")} style={tabStyle(false)} title="ارجعي للمتابعة المباشرة للسوق">
+            🔴 رجوع للسوق المباشر
+          </button>
+        )}
         <div style={{ flex: 1 }} />
         <button
           onClick={() => setRandomChart((r) => !r)}
           style={{ ...tabStyle(randomChart), background: randomChart ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent", color: randomChart ? "#1a1200" : GOLD }}
-          title="تدريب أعمى على حركة سعر مولّدة عشوائياً بدل السوق الحقيقي"
+          title="حركة سعر مولّدة عشوائياً بدل السوق الحقيقي"
         >
           🎲 شارت عشوائي
         </button>
         <button
           onClick={toggleCutMode}
           style={{ ...tabStyle(cutMode), background: cutMode ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent", color: cutMode ? "#1a1200" : GOLD }}
-          title="اضغطي الزر، وبعدين دوسي على أي شمعة بالشارت لتبلّشي الريبلاي منها"
+          title="اضغطي الزر، وبعدين دوسي على أي شمعة بالشارت لتبلّشي الاستعراض منها"
           disabled={!supported || allCandles.length === 0}
         >
           ✂️ {cutMode ? "دوسي على الشارت..." : "اختيار نقطة البداية"}
@@ -2060,8 +2071,8 @@ export default function ReplayClient({ userId }) {
         <button onClick={handleResetView} style={tabStyle(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي">
           ⟲ إعادة تعيين الشارت
         </button>
-        <button onClick={toggleFullscreen} style={tabStyle(isFullscreen)} title="فل سكرين">
-          {isFullscreen ? "⤡ خروج من الفل سكرين" : "⤢ فل سكرين"}
+        <button onClick={toggleFullscreen} style={tabStyle(isFullscreen)} title="شاشة كاملة">
+          {isFullscreen ? "⤡ خروج من الشاشة الكاملة" : "⤢ شاشة كاملة"}
         </button>
         <button onClick={() => setSettingsOpen(true)} style={tabStyle(false)} title="ألوان الشارت (الخلفية وألوان الشموع)">
           ⚙️ إعدادات الشارت
@@ -2390,7 +2401,7 @@ export default function ReplayClient({ userId }) {
     );
   }
 
-  /* أدوات التحكم (الأصل/الفريم/السرعة + أزرار الريبلاي) */
+  /* أدوات التحكم (الأصل/الفريم/السرعة + أزرار الاستعراض) */
   /* لوحة تأكيد الصفقة الفورية: بتظهر بعد الضغط على شراء/بيع، فيها اللوت وأسعار الهدف/الإيقاف
      (بتتحدث لحظياً وقت ما تسحبي الخطين عالشارت) وزرّي تأكيد/إلغاء */
   function renderTradePanel() {
