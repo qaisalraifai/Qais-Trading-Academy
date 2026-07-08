@@ -75,7 +75,7 @@ export default function HomePage() {
 
           <Reveal delay={0.25}>
             <p style={styles.heroSubtitle}>
-              منهج تداول كامل من الأساسيات حتى الاحترافية — محاضرات لايف ومسجلة،
+              منهج تداول كامل من الأساسيات حتى الاحترافية — محاضرات مباشرة ومسجلة،
               وتدريب عملي مستمر على حساب ديمو لمدة 6 أشهر.
             </p>
           </Reveal>
@@ -157,7 +157,7 @@ export default function HomePage() {
           <Reveal>
             <p style={styles.eyebrow}>طريقة التعلّم</p>
             <h2 style={{ ...styles.sectionTitle, textAlign: "right", marginBottom: "1.5rem" }}>
-              محاضرات لايف ومسجلة،<br />منظمة بالكامل
+              محاضرات مباشرة ومسجلة،<br />منظمة بالكامل
             </h2>
             <p style={styles.featuresDesc}>
               يصلك المحتوى عبر مجتمع Discord الخاص — محاضرات حية تفاعلية أسبوعية،
@@ -166,7 +166,7 @@ export default function HomePage() {
           </Reveal>
           <Reveal delay={0.2}>
             <ul style={styles.featureList}>
-              {["محاضرات لايف أسبوعية", "مكتبة محاضرات مسجلة منظمة", "اختبارات لقياس التقدم", "دعم مباشر من المدرب داخل Discord"].map((f, i) => (
+              {["محاضرات مباشرة أسبوعية", "مكتبة محاضرات مسجلة منظمة", "اختبارات لقياس التقدم", "دعم مباشر من المدرب داخل Discord"].map((f, i) => (
                 <li key={i} style={styles.featureItem}>
                   <span style={styles.featureIcon}>◆</span> {f}
                 </li>
