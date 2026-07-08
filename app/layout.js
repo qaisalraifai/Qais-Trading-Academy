@@ -1,7 +1,7 @@
 export const metadata = {
   title: "Qais Trading Academy | QTA",
   description:
-    "أكاديمية Qais Trading Academy لتعليم التداول من الأساسيات حتى الاحترافية — أساسيات التداول، التحليل الأساسي، ICT، SK، تدريب 6 أشهر على حساب ديمو، وBacktest مستمر. محاضرات لايف ومسجلة.",
+    "أكاديمية Qais Trading Academy لتعليم التداول من الأساسيات حتى الاحترافية — أساسيات التداول، التحليل الأساسي، ICT، SK، تدريب 6 أشهر على حساب ديمو، وBacktest مستمر. محاضرات مباشرة ومسجلة.",
   keywords: [
     "Qais Trading Academy",
     "QTA",
