@@ -1,33 +1,70 @@
-export const metadata = {
-  title: "Qais Trading Academy | QTA",
-  description:
-    "أكاديمية Qais Trading Academy لتعليم التداول من الأساسيات حتى الاحترافية — أساسيات التداول، التحليل الأساسي، ICT، SK، تدريب 6 أشهر على حساب ديمو، وBacktest مستمر. محاضرات مباشرة ومسجلة.",
-  keywords: [
-    "Qais Trading Academy",
-    "QTA",
-    "تعليم التداول",
-    "أكاديمية تداول",
-    "ICT",
-    "تحليل فني",
-    "Backtest",
-  ],
-  verification: {
-    google: "VxbiUCbzBZo1Wub4cYuknsfLrMoT_4G_LevBCXeMVkg",
-  },
-  icons: {
-    icon: "/logo.jpg",
-  },
-  openGraph: {
-    title: "Qais Trading Academy | QTA",
-    description: "أكاديمية متكاملة لتعليم التداول من الأساسيات حتى الاحترافية",
-    images: ["/logo.jpg"],
-  },
+/* قائمة الأصول الموحّدة — نفس ترتيب وتسمية أداة الباك تيست
+   حقل yahoo = رمز الأصل عند Yahoo Finance لجلب الشموع التاريخية (مصدر مجاني بالكامل، بدون مفتاح API، بيغطي المعادن والفوركس والكريبتو والمؤشرات والأسهم)
+   إذا yahoo غير موجود، الأصل يظهر بالقائمة لكن معطّل بأداة الاستعراض */
+
+export const ASSETS = [
+  { group: "المعادن", items: [
+    { v:"XAUUSD", label:"(ذهب) XAUUSD", yahoo:"GC=F", mult:100  },
+    { v:"XAGUSD", label:"(فضة) XAGUSD", yahoo:"SI=F", mult:5000  },
+    { v:"XPTUSD", label:"(بلاتين) XPTUSD", yahoo:"PL=F", mult:100  },
+    { v:"XPDUSD", label:"(بلاديوم) XPDUSD", yahoo:"PA=F", mult:100  },
+    { v:"COPPER", label:"(نحاس) Copper", yahoo:"HG=F", mult:1  },
+  ]},
+  { group: "فوركس", items: [
+    { v:"EURUSD", label:"EUR/USD", yahoo:"EURUSD=X", mult:100000  },
+    { v:"GBPUSD", label:"GBP/USD", yahoo:"GBPUSD=X", mult:100000  },
+    { v:"USDJPY", label:"USD/JPY", yahoo:"USDJPY=X", mult:1000  },
+    { v:"USDCHF", label:"USD/CHF", yahoo:"USDCHF=X", mult:100000  },
+    { v:"AUDUSD", label:"AUD/USD", yahoo:"AUDUSD=X", mult:100000  },
+    { v:"USDCAD", label:"USD/CAD", yahoo:"USDCAD=X", mult:100000  },
+    { v:"NZDUSD", label:"NZD/USD", yahoo:"NZDUSD=X", mult:100000  },
+    { v:"EURJPY", label:"EUR/JPY", yahoo:"EURJPY=X", mult:1000  },
+    { v:"GBPJPY", label:"GBP/JPY", yahoo:"GBPJPY=X", mult:1000  },
+    { v:"EURGBP", label:"EUR/GBP", yahoo:"EURGBP=X", mult:100000  },
+  ]},
+  { group: "كريبتو", items: [
+    { v:"BTCUSD", label:"Bitcoin (BTC/USD)", yahoo:"BTC-USD", mult:1  },
+    { v:"ETHUSD", label:"Ethereum (ETH/USD)", yahoo:"ETH-USD", mult:1  },
+    { v:"SOLUSD", label:"Solana (SOL/USD)", yahoo:"SOL-USD", mult:1  },
+    { v:"XRPUSD", label:"Ripple (XRP/USD)", yahoo:"XRP-USD", mult:1  },
+    { v:"BNBUSD", label:"BNB/USD", yahoo:"BNB-USD", mult:1  },
+    { v:"DOGEUSD", label:"Dogecoin (DOGE/USD)", yahoo:"DOGE-USD", mult:1  },
+  ]},
+  { group: "مؤشرات وأسهم", items: [
+    { v:"US30", label:"US30 (داو جونز)", yahoo:"^DJI", mult:1  },
+    { v:"NAS100", label:"NAS100 (ناسداك)", yahoo:"^NDX", mult:1  },
+    { v:"SPX500", label:"SPX500 (S&P 500)", yahoo:"^GSPC", mult:1  },
+    { v:"AAPL", label:"Apple (AAPL)", yahoo:"AAPL", mult:1  },
+    { v:"TSLA", label:"Tesla (TSLA)", yahoo:"TSLA", mult:1  },
+    { v:"MSFT", label:"Microsoft (MSFT)", yahoo:"MSFT", mult:1  },
+    { v:"AMZN", label:"Amazon (AMZN)", yahoo:"AMZN", mult:1  },
+  ]},
+];
+
+export function getAssetByValue(v){
+  for(const g of ASSETS){
+    const found = g.items.find(i=>i.v===v);
+    if(found) return found;
+  }
+  return null;
+}
+
+/* تحويل فريم أداة الباك تيست/الاستعراض لصيغة Twelve Data */
+export const INTERVAL_MAP = {
+  "1m": "1min",
+  "5m": "5min",
+  "15m": "15min",
+  "1h": "1h",
+  "4h": "4h",
+  "1d": "1day",
 };
 
-export default function RootLayout({ children }) {
-  return (
-    <html lang="ar" dir="rtl">
-      <body style={{ margin: 0 }}>{children}</body>
-    </html>
-  );
-}
+/* مدة الفريم بالميلي ثانية - تستخدم لحساب عداد وقت الشمعة الحية */
+export const INTERVAL_MS = {
+  "1m": 60 * 1000,
+  "5m": 5 * 60 * 1000,
+  "15m": 15 * 60 * 1000,
+  "1h": 60 * 60 * 1000,
+  "4h": 4 * 60 * 60 * 1000,
+  "1d": 24 * 60 * 60 * 1000,
+};
