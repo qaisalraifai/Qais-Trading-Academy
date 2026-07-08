@@ -32,12 +32,18 @@ export async function POST(request) {
   let session;
 
   if (type === "subscription") {
-    // دفعة تسجيل $300 لمرة وحدة + اشتراك شهري $100 يبلش يسحب تلقائياً من نفس الشهر الجاي
+    // أول دفعة: $300 رسوم تسجيل فقط (تنحسب فوراً بأول فاتورة).
+    // الاشتراك الشهري $100 منحطله trial_period_days: 30 حتى ستريب ما يسحبه إلا بعد شهر
+    // من تاريخ التسجيل، وبهيك أول فاتورة بتصير $300 مش $400.
     session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "subscription",
       client_reference_id: user.id,
       metadata: { user_id: user.id },
+      subscription_data: {
+        trial_period_days: 30, // يأجّل أول سحب لبند الاشتراك الشهري لمدة شهر
+        metadata: { user_id: user.id },
+      },
       line_items: [
         {
           price_data: {
@@ -51,7 +57,7 @@ export async function POST(request) {
           price_data: {
             currency: "usd",
             product_data: { name: "اشتراك شهري - Qais Trading Academy" },
-            unit_amount: 10000, // $100 شهرياً، بيتكرر تلقائياً كل شهر
+            unit_amount: 10000, // $100 شهرياً، بيبلش السحب بعد أول شهر (trial) وبيتكرر تلقائياً بعدها
             recurring: { interval: "month" },
           },
           quantity: 1,
