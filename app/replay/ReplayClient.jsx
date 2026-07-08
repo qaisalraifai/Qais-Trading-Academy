@@ -541,6 +541,8 @@ export default function ReplayClient({ userId }) {
   const compareHeightPxRef = useRef(DEFAULT_COMPARE_HEIGHT);
   const mainPaneRef = useRef(null);
   const comparePaneRef = useRef(null);
+  const compareCandlesRef = useRef([]);
+  const crosshairSyncingRef = useRef(false);
 
   /* إعدادات لوحة المقارنة (نوع الشارت وألوانه) + نافذتها الخاصة */
   const [compareSettings, setCompareSettings] = useState(DEFAULT_COMPARE_SETTINGS);
@@ -627,6 +629,7 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
   useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
   useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
+  useEffect(() => { compareCandlesRef.current = compareCandles; }, [compareCandles]);
   useEffect(() => {
     visibleCandlesRef.current = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
   }, [allCandles, revealCount, mode]);
@@ -1963,6 +1966,36 @@ export default function ReplayClient({ userId }) {
       }
       chart.subscribeCrosshairMove(onCrosshairMagnet);
 
+      /* مزامنة مؤشر تقاطع الوقت/السعر مع لوحة المقارنة (لو مفتوحة) عشان يبانوا
+         كأنهم شاشة وحدة زي تريدنغ فيو بالظبط: أي تحريك بالماوس عالشارت الرئيسي
+         بيحرك نفس عمود الوقت بلوحة المقارنة تلقائياً، شمعة شمعة. */
+      function onMainCrosshairSync(param) {
+        if (crosshairSyncingRef.current) return;
+        const cChart = compareChartRef.current;
+        const cSeries = compareSeriesRef.current;
+        if (!cChart || !cSeries) return;
+        crosshairSyncingRef.current = true;
+        try {
+          if (!param.time) {
+            cChart.clearCrosshairPosition();
+          } else {
+            const candles = compareCandlesRef.current || [];
+            let bar = candles.find((c) => c.time === param.time);
+            if (!bar && candles.length) {
+              let bestDiff = Infinity;
+              for (const c of candles) {
+                const diff = Math.abs(c.time - param.time);
+                if (diff < bestDiff) { bestDiff = diff; bar = c; }
+              }
+            }
+            if (bar) cChart.setCrosshairPosition(bar.close, bar.time, cSeries);
+            else cChart.clearCrosshairPosition();
+          }
+        } catch {}
+        crosshairSyncingRef.current = false;
+      }
+      chart.subscribeCrosshairMove(onMainCrosshairSync);
+
       chart.__cleanup = () => {
         window.removeEventListener("resize", handleResize);
         document.removeEventListener("fullscreenchange", handleFsChange);
@@ -1978,6 +2011,7 @@ export default function ReplayClient({ userId }) {
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(drawOverlay);
         chart.unsubscribeCrosshairMove(drawOverlay);
         chart.unsubscribeCrosshairMove(onCrosshairMagnet);
+        chart.unsubscribeCrosshairMove(onMainCrosshairSync);
 
         clearInterval(priceTagInterval);
       };
@@ -2074,7 +2108,41 @@ export default function ReplayClient({ userId }) {
       };
       mainChart?.timeScale().subscribeVisibleLogicalRangeChange(onMainRangeChange);
       chart.timeScale().subscribeVisibleLogicalRangeChange(onCompareRangeChange);
-      chart.__unsyncMain = () => mainChart?.timeScale().unsubscribeVisibleLogicalRangeChange(onMainRangeChange);
+
+      /* نفس فكرة مزامنة السكرول/الزوم، بس لمؤشر تقاطع الوقت/السعر: أي تحريك ماوس
+         بلوحة المقارنة نفسها بيحرك نفس عمود الوقت بالشارت الرئيسي كمان، فيبانوا
+         كأنهم شاشة وحدة (زي تريدنغ فيو بالظبط) بدل ما يكون لكل شارت مؤشره لحاله. */
+      function onCompareCrosshairSync(param) {
+        if (crosshairSyncingRef.current) return;
+        const mChart = chartRef.current;
+        const mSeries = seriesRef.current;
+        if (!mChart || !mSeries) return;
+        crosshairSyncingRef.current = true;
+        try {
+          if (!param.time) {
+            mChart.clearCrosshairPosition();
+          } else {
+            const candles = visibleCandlesRef.current || [];
+            let bar = candles.find((c) => c.time === param.time);
+            if (!bar && candles.length) {
+              let bestDiff = Infinity;
+              for (const c of candles) {
+                const diff = Math.abs(c.time - param.time);
+                if (diff < bestDiff) { bestDiff = diff; bar = c; }
+              }
+            }
+            if (bar) mChart.setCrosshairPosition(bar.close, bar.time, mSeries);
+            else mChart.clearCrosshairPosition();
+          }
+        } catch {}
+        crosshairSyncingRef.current = false;
+      }
+      chart.subscribeCrosshairMove(onCompareCrosshairSync);
+
+      chart.__unsyncMain = () => {
+        mainChart?.timeScale().unsubscribeVisibleLogicalRangeChange(onMainRangeChange);
+        chart.unsubscribeCrosshairMove(onCompareCrosshairSync);
+      };
 
       chartRef.current?.__resize?.();
     }
