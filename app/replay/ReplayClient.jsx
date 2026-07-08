@@ -91,6 +91,76 @@ function saveChartSettings(settings) {
   } catch {}
 }
 
+/* ===================== إعدادات لوحة المقارنة (نوع الشارت + ألوان)، تنحفظ محلياً بالمتصفح ===================== */
+const COMPARE_SETTINGS_KEY = "qta_compare_chart_settings_v1";
+const DEFAULT_COMPARE_SETTINGS = {
+  type: "area", // area | line | candles
+  lineColor: GOLD_LIGHT,
+  fillColor: GOLD_LIGHT,
+  lineWidth: 2,
+  up: GREEN,
+  down: RED,
+};
+function loadCompareSettings() {
+  if (typeof window === "undefined") return DEFAULT_COMPARE_SETTINGS;
+  try {
+    const raw = window.localStorage.getItem(COMPARE_SETTINGS_KEY);
+    if (!raw) return DEFAULT_COMPARE_SETTINGS;
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_COMPARE_SETTINGS, ...parsed };
+  } catch {
+    return DEFAULT_COMPARE_SETTINGS;
+  }
+}
+function saveCompareSettings(settings) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(COMPARE_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {}
+}
+/* تحويل لون hex بسيط لـ rgba بشفافية معيّنة (مستخدم بتلوين تعبئة شارت المنطقة) */
+function hexToRgba(hex, alpha) {
+  const h = (hex || "#C9A24B").replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const r = parseInt(full.slice(0, 2), 16) || 0;
+  const g = parseInt(full.slice(2, 4), 16) || 0;
+  const b = parseInt(full.slice(4, 6), 16) || 0;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+/* بناء سيريز لوحة المقارنة حسب النوع المختار (منطقة/خط/شموع) وألوانه */
+function buildCompareSeries(chart, settings) {
+  if (settings.type === "line") {
+    return chart.addLineSeries({
+      color: settings.lineColor,
+      lineWidth: settings.lineWidth,
+      priceLineVisible: false,
+      lastValueVisible: true,
+    });
+  }
+  if (settings.type === "candles") {
+    return chart.addCandlestickSeries({
+      upColor: settings.up, downColor: settings.down, borderVisible: false,
+      wickUpColor: settings.up, wickDownColor: settings.down,
+      priceLineVisible: false, lastValueVisible: true,
+    });
+  }
+  return chart.addAreaSeries({
+    lineColor: settings.lineColor,
+    topColor: hexToRgba(settings.fillColor, 0.28),
+    bottomColor: hexToRgba(settings.fillColor, 0.02),
+    lineWidth: settings.lineWidth,
+    priceLineVisible: false,
+    lastValueVisible: true,
+  });
+}
+/* تجهيز بيانات لوحة المقارنة حسب نوع الشارت المختار (شموع كاملة أو قيمة إغلاق فقط) */
+function compareSeriesData(type, candles) {
+  if (type === "candles") {
+    return candles.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }));
+  }
+  return candles.map((c) => ({ time: c.time, value: c.close }));
+}
+
 /* تحويل صفقة الاستعراض التاريخي لصف جدول trades (نفس شكل أداة الباك تيست بالظبط عشان تظهر فيها وبلوحة التحكم) */
 function tradeToRow(trade, userId) {
   return {
@@ -477,6 +547,12 @@ export default function ReplayClient({ userId }) {
   const maximizedPaneRef = useRef(null);
   const [compareHeightPx, setCompareHeightPx] = useState(DEFAULT_COMPARE_HEIGHT);
   const compareHeightPxRef = useRef(DEFAULT_COMPARE_HEIGHT);
+  const mainPaneRef = useRef(null);
+  const comparePaneRef = useRef(null);
+
+  /* إعدادات لوحة المقارنة (نوع الشارت وألوانه) + نافذتها الخاصة */
+  const [compareSettings, setCompareSettings] = useState(DEFAULT_COMPARE_SETTINGS);
+  const [compareSettingsOpen, setCompareSettingsOpen] = useState(false);
 
   /* إعدادات ألوان الشارت (خلفية + شموع صعود/هبوط) + قائمة الكليك يمين + نافذة الإعدادات */
   const [chartSettings, setChartSettings] = useState(DEFAULT_CHART_SETTINGS);
@@ -518,9 +594,10 @@ export default function ReplayClient({ userId }) {
   /* تحميل إعدادات الألوان المحفوظة بعد أول رندر عالمتصفح (تفادي مشاكل الـ SSR) */
   useEffect(() => {
     setChartSettings(loadChartSettings());
+    setCompareSettings(loadCompareSettings());
   }, []);
 
-  /* أي تغيير بالإعدادات: تطبيق فوري على الشارت + حفظ بالمتصفح */
+  /* أي تغيير بالإعدادات: تطبيق فوري على الشارت + حفظ بالمتصفح (وتطبيق نفس لون الخلفية على لوحة المقارنة لو مفتوحة) */
   useEffect(() => {
     if (!chartRef.current || !seriesRef.current) return;
     chartRef.current.applyOptions({ layout: { background: { color: chartSettings.bg } } });
@@ -528,8 +605,27 @@ export default function ReplayClient({ userId }) {
       upColor: chartSettings.up, downColor: chartSettings.down,
       wickUpColor: chartSettings.up, wickDownColor: chartSettings.down,
     });
+    if (compareChartRef.current) {
+      compareChartRef.current.applyOptions({ layout: { background: { color: chartSettings.bg } } });
+    }
     saveChartSettings(chartSettings);
   }, [chartSettings]);
+
+  /* أي تغيير بإعدادات لوحة المقارنة (نوع الشارت أو ألوانه): نعيد بناء السيريز فوراً ونحفظ بالمتصفح.
+     منقّاة بنفس بيانات الشمعة الحالية عشان يبان التغيير مباشرة بدون قفل/إعادة تحميل. */
+  useEffect(() => {
+    saveCompareSettings(compareSettings);
+    if (!compareChartRef.current) return;
+    try {
+      if (compareSeriesRef.current) compareChartRef.current.removeSeries(compareSeriesRef.current);
+    } catch {}
+    const series = buildCompareSeries(compareChartRef.current, compareSettings);
+    compareSeriesRef.current = series;
+    try {
+      series.setData(compareSeriesData(compareSettings.type, compareCandles));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareSettings]);
 
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
   useEffect(() => { magnetRef.current = magnetOn; }, [magnetOn]);
@@ -1549,9 +1645,19 @@ export default function ReplayClient({ userId }) {
         let totalHeight = 480;
         if (isFs) {
           const headerH = headerRef.current?.offsetHeight || 0;
-          // نحسب الارتفاع من المساحة الفعلية المتبقية بالشاشة بدل رقم ثابت
-          // عشان شريط الوقت بالأسفل ما يطلع برا الشاشة لما الهيدر ياخد مساحة أكبر
-          totalHeight = Math.max(320, window.innerHeight - headerH - 28);
+          // نحسب الارتفاع من المساحة الفعلية المتبقية بالشاشة (بدل رقم ثابت تخميني):
+          // نقيس فعلياً الـ margin تحت الهيدر + الـ padding الفوقي/التحتي لصندوق الشارت
+          // عشان ما يضل فراغ أو يطلع أي جزء برا الشاشة أياً كان حجم الهيدر.
+          const headerMarginBottom = headerRef.current
+            ? parseFloat(window.getComputedStyle(headerRef.current).marginBottom) || 0
+            : 0;
+          let padTop = 0, padBottom = 0;
+          if (chartWrapperRef.current) {
+            const cs = window.getComputedStyle(chartWrapperRef.current);
+            padTop = parseFloat(cs.paddingTop) || 0;
+            padBottom = parseFloat(cs.paddingBottom) || 0;
+          }
+          totalHeight = Math.max(320, window.innerHeight - headerH - headerMarginBottom - padTop - padBottom - 4);
         }
         // توزيع الارتفاع بين الشارت الرئيسي وشارت المقارنة (لو مفعّل) حسب أي جزء مكبّر حالياً
         // وحسب الحجم اللي المستخدم سحبه يدوياً (قاسم قابل للسحب زي تريدنغ فيو)
@@ -1571,6 +1677,11 @@ export default function ReplayClient({ userId }) {
             mainHeight = Math.max(150, totalHeight - compareHeight - DIVIDER_H);
           }
         }
+        // نفرض ارتفاع صريح بالبكسل على صندوقي اللوحتين نفسهم (مش بس على الشارت جوّاهم).
+        // هيك بيضلوا مطابقين تماماً لبعض بغض النظر عن طول أي عنصر جوا اللوحة الرئيسية
+        // (زي عمود أدوات الرسم اللي كان بيطوّل أكتر من الشارت ويسيب فراغ أسود تحته).
+        if (mainPaneRef.current) mainPaneRef.current.style.height = `${mainHeight}px`;
+        if (comparePaneRef.current) comparePaneRef.current.style.height = `${compareHeight}px`;
         chart.applyOptions({
           width: chartContainerRef.current.clientWidth,
           height: mainHeight,
@@ -1950,14 +2061,7 @@ export default function ReplayClient({ userId }) {
         handleScroll: { mouseWheel: false, pressedMouseMove: true },
         handleScale: { mouseWheel: false },
       });
-      const series = chart.addAreaSeries({
-        lineColor: GOLD_LIGHT,
-        topColor: "rgba(232,196,104,0.28)",
-        bottomColor: "rgba(232,196,104,0.02)",
-        lineWidth: 2,
-        priceLineVisible: false,
-        lastValueVisible: true,
-      });
+      const series = buildCompareSeries(chart, loadCompareSettings());
       compareChartRef.current = chart;
       compareSeriesRef.current = series;
 
@@ -1992,12 +2096,13 @@ export default function ReplayClient({ userId }) {
   /* تحديث بيانات شارت المقارنة كل ما تتغيّر الرسمة/الفريم */
   useEffect(() => {
     if (compareSeriesRef.current) {
-      const data = compareCandles.map((c) => ({ time: c.time, value: c.close }));
+      const data = compareSeriesData(compareSettings.type, compareCandles);
       try {
         compareSeriesRef.current.setData(data);
         compareChartRef.current?.timeScale().fitContent();
       } catch {}
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareCandles]);
 
   /* جلب بيانات رمز المقارنة (نفس مصدر البيانات اللي بتستخدمه أداة الريبلاي - Yahoo Finance) */
@@ -2404,6 +2509,7 @@ export default function ReplayClient({ userId }) {
         display: "flex", flexDirection: "column", gap: 4,
         background: "#1a1a1a", border: "1px solid #2f2f2f", borderRadius: 12, padding: 7,
         boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+        maxHeight: "100%", overflowY: "auto", overflowX: "visible",
       }}>
         {TOOL_GROUPS.map((group, gi) => {
           const hasMultiple = group.length > 1;
@@ -2921,6 +3027,68 @@ export default function ReplayClient({ userId }) {
     );
   }
 
+  /* نافذة إعدادات لوحة المقارنة: نوع الشارت (منطقة/خط/شموع) + ألوانه، بتنطبق فوراً وتنحفظ محلياً */
+  function renderCompareSettingsDialog() {
+    if (!compareSettingsOpen) return null;
+    const row = (label, control) => (
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #262626" }}>
+        <span style={{ fontSize: 13, color: "#ccc" }}>{label}</span>
+        {control}
+      </div>
+    );
+    const colorInput = (val, onChange) => (
+      <input type="color" value={val} onChange={(e) => onChange(e.target.value)}
+        style={{ width: 40, height: 28, border: "1px solid #333", borderRadius: 6, background: "none", cursor: "pointer", padding: 0 }} />
+    );
+    const typeOptions = [
+      { value: "area", label: "منطقة (Area)" },
+      { value: "line", label: "خط (Line)" },
+      { value: "candles", label: "شموع (Candlestick)" },
+    ];
+    return (
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 30, background: "#000000aa",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }} onClick={() => setCompareSettingsOpen(false)}>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{ width: 300, background: "#161616", border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem" }}
+        >
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 6, fontSize: 15 }}>⚙️ إعدادات لوحة المقارنة</div>
+          {row("نوع الشارت", (
+            <select
+              value={compareSettings.type}
+              onChange={(e) => setCompareSettings((s) => ({ ...s, type: e.target.value }))}
+              style={{ ...selectStyle, minWidth: 140, padding: "0.35rem 0.5rem" }}
+            >
+              {typeOptions.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
+            </select>
+          ))}
+          {compareSettings.type === "candles" ? (
+            <>
+              {row("لون شمعة الصعود", colorInput(compareSettings.up, (v) => setCompareSettings((s) => ({ ...s, up: v }))))}
+              {row("لون شمعة الهبوط", colorInput(compareSettings.down, (v) => setCompareSettings((s) => ({ ...s, down: v }))))}
+            </>
+          ) : (
+            <>
+              {row("لون الخط", colorInput(compareSettings.lineColor, (v) => setCompareSettings((s) => ({ ...s, lineColor: v }))))}
+              {compareSettings.type === "area" &&
+                row("لون التعبئة", colorInput(compareSettings.fillColor, (v) => setCompareSettings((s) => ({ ...s, fillColor: v }))))}
+            </>
+          )}
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <button onClick={() => setCompareSettings(DEFAULT_COMPARE_SETTINGS)} style={{ ...btnStyle("secondary"), flex: 1 }}>
+              الافتراضي
+            </button>
+            <button onClick={() => setCompareSettingsOpen(false)} style={{ ...btnStyle("primary"), flex: 1 }}>
+              تم
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function renderControls() {
     return (
       <div style={{
@@ -3098,14 +3266,19 @@ export default function ReplayClient({ userId }) {
           </div>
         )}
         <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-          {/* اللوحة الرئيسية */}
-          <div style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: compareOpen && !maximizedPane ? "0 0 auto" : 1, minHeight: 0, position: "relative" }}>
+          {/* اللوحة الرئيسية - ارتفاعها الفعلي مضبوط مباشرة بالبكسل من JS (mainPaneRef)
+              عشان يضل مطابق تماماً لارتفاع الشارت نفسه، حتى لو عمود أدوات الرسم أطول
+              (overflow:hidden هون بيمنعه من "يفلت" ويسيب فراغ أسود تحت الشارت) */}
+          <div
+            ref={mainPaneRef}
+            style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
+          >
             {/* صف أفقي: شريط الأدوات كعمود جانبي حقيقي (زي تريدنغ فيو) بجانب الشارت،
                 مش طايف فوقه. الترتيب هون (الشارت أولاً بالـ DOM ثم الشريط) مقصود:
                 الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل ثابت عالشمال دايماً من
                 غير ما نضطر نقلب اتجاه أي نص عربي جوا الشارت. */}
-            <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0 }}>
-              <div ref={chartAreaRef} style={{ position: "relative", width: "100%", flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", flexDirection: "row", height: "100%", minHeight: 0, overflow: "hidden" }}>
+              <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
                 {!loading && allCandles.length > 0 && !editDraft && renderOHLCTicker()}
                 {!loading && allCandles.length > 0 && renderPropertiesDialog()}
                 {!loading && allCandles.length > 0 && renderSelectionToolbar()}
@@ -3164,7 +3337,10 @@ export default function ReplayClient({ userId }) {
           {/* لوحة المقارنة: رمز ثاني للقراءة فقط، بدون أدوات رسم، مزامَنة سكرول/زوم مع اللوحة الرئيسية.
               نفس سطح الشارت الرئيسي بالضبط (بدون حدود/زوايا مدوّرة) عشان تبان لوحة وحدة متصلة زي تريدنغ فيو */}
           {compareOpen && (
-            <div style={{ display: maximizedPane === "main" ? "none" : "flex", flexDirection: "column", flex: maximizedPane === "compare" ? 1 : "0 0 auto", minHeight: 0, position: "relative" }}>
+            <div
+              ref={comparePaneRef}
+              style={{ display: maximizedPane === "main" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
+            >
               <div style={paneCornerBadgeStyle()}>
                 <span>🔀</span>
                 <select
@@ -3182,12 +3358,14 @@ export default function ReplayClient({ userId }) {
                 </select>
                 {compareLoading && <span style={{ fontSize: 11, color: "#888" }}>...جاري التحميل</span>}
                 {compareError && <span style={{ fontSize: 11, color: RED }}>{compareError}</span>}
+                <button onClick={() => setCompareSettingsOpen(true)} style={paneCornerBtnStyle} title="إعدادات لوحة المقارنة (نوع الشارت والألوان)">⚙️</button>
                 <button onClick={() => toggleMaximizePane("compare")} style={paneCornerBtnStyle} title={maximizedPane === "compare" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة (أو دبل-كليك على القاسم)"}>
                   {maximizedPane === "compare" ? "⤡" : "⤢"}
                 </button>
                 <button onClick={toggleCompare} style={paneCornerBtnStyle} title="إغلاق لوحة المقارنة">✕</button>
               </div>
-              <div ref={compareContainerRef} style={{ width: "100%", flex: 1, minHeight: 0 }} />
+              <div ref={compareContainerRef} style={{ width: "100%", height: "100%", flex: 1, minHeight: 0 }} />
+              {renderCompareSettingsDialog()}
             </div>
           )}
         </div>
@@ -3278,7 +3456,7 @@ const paneCornerBtnStyle = {
 };
 /* القاسم القابل للسحب بين الشارت الرئيسي ولوحة المقارنة - سطح واحد متصل بدون فراغ، زي تريدنغ فيو بالظبط */
 const dividerStyle = {
-  height: 8, flexShrink: 0, cursor: "row-resize",
+  height: 10, flexShrink: 0, cursor: "row-resize",
   display: "flex", alignItems: "center", justifyContent: "center",
   background: "transparent",
 };
