@@ -10,12 +10,12 @@ const YF_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
    ملاحظة: Yahoo بيحدد مدى البيانات التاريخية حسب الفريم (شموع الدقيقة مثلاً تتوفر لآخر أسبوع بس)
    فريم 4 ساعات مش متوفر مباشرة عند Yahoo، فبنجيب شموع الساعة ونجمعها كل 4 شموع سوا */
 const INTERVAL_CONFIG = {
-  "1min":  { yInterval: "1m",  rangeDays: 7 },
-  "5min":  { yInterval: "5m",  rangeDays: 60 },
-  "15min": { yInterval: "15m", rangeDays: 60 },
-  "1h":    { yInterval: "60m", rangeDays: 729 },
-  "4h":    { yInterval: "60m", rangeDays: 729, aggregateHours: 4 },
-  "1day":  { yInterval: "1d",  rangeDays: 3650 },
+  "1min":  { yInterval: "1m",  rangeDays: 7,   liveRangeDays: 2  },
+  "5min":  { yInterval: "5m",  rangeDays: 60,  liveRangeDays: 3  },
+  "15min": { yInterval: "15m", rangeDays: 60,  liveRangeDays: 3  },
+  "1h":    { yInterval: "60m", rangeDays: 729, liveRangeDays: 5  },
+  "4h":    { yInterval: "60m", rangeDays: 729, aggregateHours: 4, liveRangeDays: 5  },
+  "1day":  { yInterval: "1d",  rangeDays: 3650, liveRangeDays: 20 },
 };
 
 /* تجميع الشموع حسب الوقت الفعلي (تقريب لأقرب حد 4 ساعات UTC) مش حسب ترتيبها بالمصفوفة.
@@ -51,8 +51,27 @@ export async function GET(req) {
 
   const cfg = INTERVAL_CONFIG[interval] || INTERVAL_CONFIG["15min"];
 
+  /* السبب الحقيقي لمشكلة "الشارت الرئيسي بيتجمّد ومش بيتحدّث لايف بينما لوحة
+     المقارنة عم تجيب بيانات أحدث": التحديث اللايف (pollLiveOnce بالواجهة)
+     كان عم يطلب count=3 بس (آخر 3 شموع)، لكن هالسطر كان عم يحسب period1
+     دايماً بناءً على rangeDays الكامل (تقدر توصل 729 يوم لفريم 4 ساعات/ساعة)
+     بغض النظر عن count المطلوب! يعني كل 5 ثواني كان عم يترسل طلب ليوهو
+     فايننس يجيب سنتين كاملتين من بيانات الساعة بس عشان ياخد آخر 3 شموع منها -
+     طلب ضخم وغير ضروري بيتكرر كل 5 ثواني، وهاد بيوصل بسرعة لحد الحظر/التقييد
+     (rate limit) عند يوهو لأنه API مجاني بدون مفتاح. لما يصير الحظر، يوهو
+     بيرجع خطأ، و pollLiveOnce كان عم يتجاهل الخطأ بصمت (بدون أي إشعار)
+     فيضل الشارت الرئيسي واقف عند آخر شمعة نجحت قبل الحظر - ممكن لأيام - بينما
+     لوحة المقارنة (اللي بتطلب مرة وحدة بس لما تنفتح) ما بتتأثر بنفس الحظر
+     وبتضل تجيب بيانات حديثة، فيصير فرق واضح بين اللوحتين.
+     الحل: أي طلب بعدد شموع صغير (count <= 10) هو أكيد طلب "تحديث لايف" أو
+     "مزامنة سريعة"، مش تحميل تاريخي كامل - فمنستخدمله مدى زمني صغير جداً
+     (liveRangeDays) بدل rangeDays الكامل، فيصير الطلب خفيف جداً وما يوصل
+     لحد التقييد أبداً. */
+  const isLightPoll = wanted <= 10;
+  const effectiveRangeDays = isLightPoll ? (cfg.liveRangeDays || cfg.rangeDays) : cfg.rangeDays;
+
   const period2 = Math.floor(Date.now() / 1000);
-  const period1 = period2 - cfg.rangeDays * 24 * 60 * 60;
+  const period1 = period2 - effectiveRangeDays * 24 * 60 * 60;
 
   const params = new URLSearchParams({
     interval: cfg.yInterval,
