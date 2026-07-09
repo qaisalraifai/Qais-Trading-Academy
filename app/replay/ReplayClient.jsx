@@ -2096,9 +2096,16 @@ export default function ReplayClient({ userId }) {
     }
   }, [isFullscreen, mode, cutMode, randomChart, assetValue, interval, maxBars, speed, isPlaying, loading]);
 
-  /* لما تنفتح/تنقفل لوحة المقارنة أو ينكبّر أي جزء منها، لازم نعيد توزيع الارتفاع بين الشارتين */
+  /* لما تنفتح/تنقفل لوحة المقارنة أو ينكبّر أي جزء منها، لازم نعيد توزيع الارتفاع بين الشارتين.
+     وكمان لازم نخفي محور الوقت (شريط التواريخ) بالشارت الرئيسي وقتها، عشان يضل
+     محور وقت واحد بس ظاهر بالأسفل (بلوحة المقارنة) - بالضبط زي تريدنغ فيو، مش
+     محورين منفصلين لكل لوحة. */
   useEffect(() => {
     const t = setTimeout(() => chartRef.current?.__resize?.(), 30);
+    if (chartRef.current) {
+      const hideMainAxis = compareOpen && maximizedPane !== "main";
+      try { chartRef.current.applyOptions({ timeScale: { visible: !hideMainAxis } }); } catch {}
+    }
     return () => clearTimeout(t);
   }, [compareOpen, maximizedPane]);
 
@@ -2131,33 +2138,27 @@ export default function ReplayClient({ userId }) {
         rightPriceScale: { borderColor: "#3a3a3a" },
         width: compareContainerRef.current.clientWidth,
         height: 160,
-        handleScroll: { mouseWheel: false, pressedMouseMove: true },
-        handleScale: { mouseWheel: false },
+        // لوحة المقارنة صارت "مرآة" بس تتبع الشارت الرئيسي، مش تفاعلية لحالها
+        // (ما في سكرول/زوم مباشر عليها) — هيك ما بيصير أي "تجاذب" بين اللوحتين
+        // يسبب زوم عشوائي أو تكبير غير طبيعي لما تتحرك بالشارت الرئيسي.
+        handleScroll: false,
+        handleScale: false,
       });
       const series = buildCompareSeries(chart, loadCompareSettings());
       compareChartRef.current = chart;
       compareSeriesRef.current = series;
 
-      // مزامنة السكرول/الزوم بين الشارتين لما تكونا ظاهرتين سوا (نفس فكرة تريدنغ فيو بمقارنة الرموز)
-      // مهم: المزامنة لازم تكون بالوقت الفعلي (setVisibleRange) مش برقم الشمعة (setVisibleLogicalRange)،
-      // لأن عدد الشموع يختلف بين الأصلين (رمز المقارنة ممكن يكون له عدد بيانات مختلف)، فلو زامنّا
-      // برقم الشمعة بس، بتنزاح اللوحتين عن بعض بالزمن بالظبط زي ما صار قبل هيك.
-      let syncing = false;
+      // مزامنة السكرول/الزوم: بس باتجاه واحد (الشارت الرئيسي بيقود لوحة المقارنة)،
+      // مش بالاتجاهين. المزامنة بالاتجاهين كانت بتعمل "بينغ-بونغ" بين الشارتين
+      // (كل شارت يرجع يصحح التاني) وهاد كان يسبب الزوم العشوائي والمربعات
+      // العملاقة يلي ظهرت. مهم كمان إنها بالوقت الفعلي (setVisibleRange) مش
+      // برقم الشمعة، لأن عدد الشموع مختلف بين الأصلين.
       const mainChart = chartRef.current;
       const onMainRangeChange = (range) => {
-        if (!range || syncing || !compareChartRef.current) return;
-        syncing = true;
+        if (!range || !compareChartRef.current) return;
         try { compareChartRef.current.timeScale().setVisibleRange(range); } catch {}
-        syncing = false;
-      };
-      const onCompareRangeChange = (range) => {
-        if (!range || syncing || !mainChart) return;
-        syncing = true;
-        try { mainChart.timeScale().setVisibleRange(range); } catch {}
-        syncing = false;
       };
       mainChart?.timeScale().subscribeVisibleTimeRangeChange(onMainRangeChange);
-      chart.timeScale().subscribeVisibleTimeRangeChange(onCompareRangeChange);
       // نحاذي لوحة المقارنة فوراً مع نفس فترة الشارت الرئيسي المعروضة حالياً وقت الفتح
       // (بدل ما تضل بفترتها الافتراضية العريضة لحد أول سحب/زوم من المستخدم)
       try {
@@ -2165,39 +2166,8 @@ export default function ReplayClient({ userId }) {
         if (mainRange) chart.timeScale().setVisibleRange(mainRange);
       } catch {}
 
-      /* نفس فكرة مزامنة السكرول/الزوم، بس لمؤشر تقاطع الوقت/السعر: أي تحريك ماوس
-         بلوحة المقارنة نفسها بيحرك نفس عمود الوقت بالشارت الرئيسي كمان، فيبانوا
-         كأنهم شاشة وحدة (زي تريدنغ فيو بالظبط) بدل ما يكون لكل شارت مؤشره لحاله. */
-      function onCompareCrosshairSync(param) {
-        if (crosshairSyncingRef.current) return;
-        const mChart = chartRef.current;
-        const mSeries = seriesRef.current;
-        if (!mChart || !mSeries) return;
-        crosshairSyncingRef.current = true;
-        try {
-          if (!param.time) {
-            mChart.clearCrosshairPosition();
-          } else {
-            const candles = visibleCandlesRef.current || [];
-            let bar = candles.find((c) => c.time === param.time);
-            if (!bar && candles.length) {
-              let bestDiff = Infinity;
-              for (const c of candles) {
-                const diff = Math.abs(c.time - param.time);
-                if (diff < bestDiff) { bestDiff = diff; bar = c; }
-              }
-            }
-            if (bar) mChart.setCrosshairPosition(bar.close, bar.time, mSeries);
-            else mChart.clearCrosshairPosition();
-          }
-        } catch {}
-        crosshairSyncingRef.current = false;
-      }
-      chart.subscribeCrosshairMove(onCompareCrosshairSync);
-
       chart.__unsyncMain = () => {
         mainChart?.timeScale().unsubscribeVisibleTimeRangeChange(onMainRangeChange);
-        chart.unsubscribeCrosshairMove(onCompareCrosshairSync);
       };
 
       chartRef.current?.__resize?.();
