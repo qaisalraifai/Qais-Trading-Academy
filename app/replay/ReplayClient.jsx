@@ -590,6 +590,11 @@ export default function ReplayClient({ userId }) {
   const intervalRef = useRef(interval);
   const countdownRef = useRef("");
   const symbolLabelRef = useRef("");
+  const ohlcLineRef = useRef(null);
+  const ohlcORef = useRef(null);
+  const ohlcHRef = useRef(null);
+  const ohlcLRef = useRef(null);
+  const ohlcCRef = useRef(null);
   const priceTagRef = useRef(null);
 
   // لوحة خصائص الرسمة المحددة
@@ -2106,6 +2111,31 @@ export default function ReplayClient({ userId }) {
       }
       const priceTagInterval = setInterval(updatePriceTag, 250);
 
+      /* شريط O/H/L/C أعلى الشارت: بيتحدث فوراً لبيانات الشمعة يلي تحت المؤشر
+         وقت الـ hover، وبيرجع لآخر شمعة لما الفأرة تطلع برا الشارت. بنحدّثه
+         مباشرة بالـ DOM (مش React state) عشان ما نعمل re-render على كل حركة فأرة. */
+      function updateOhlcTicker(hoverBar) {
+        const list = visibleCandlesRef.current;
+        const bar = hoverBar || (list && list[list.length - 1]);
+        if (!bar || !ohlcORef.current) return;
+        const idx = hoverBar ? list.findIndex((x) => x.time === bar.time) : list.length - 1;
+        const prevBar = idx > 0 ? list[idx - 1] : null;
+        const up = prevBar ? bar.close >= prevBar.open : bar.close >= bar.open;
+        const fmt = (v) => (v != null ? v.toFixed(v < 10 ? 4 : 2) : "-");
+        ohlcORef.current.textContent = fmt(bar.open);
+        ohlcHRef.current.textContent = fmt(bar.high);
+        ohlcLRef.current.textContent = fmt(bar.low);
+        ohlcCRef.current.textContent = fmt(bar.close);
+        if (ohlcLineRef.current) ohlcLineRef.current.style.color = up ? GREEN : RED;
+      }
+      const ohlcTickerInterval = setInterval(() => updateOhlcTicker(null), 250);
+      function onOhlcHover(param) {
+        if (!param.time) { updateOhlcTicker(null); return; }
+        const bar = param.seriesData?.get(series);
+        if (bar) updateOhlcTicker(bar);
+      }
+      chart.subscribeCrosshairMove(onOhlcHover);
+
       // مغناطيس خفيف على المؤشر نفسه (مش بس على أدوات الرسم): بيلتصق بأقرب
       // O/H/L/C لما تكوني قريبة منه فعلاً بالبكسل (التصاق واضح بس مش مبالغ فيه)،
       // وبيفضل حر يتبع الفأرة عادي لو بعيدة عنه — بدون ما يختفي المؤشر أبداً.
@@ -2192,6 +2222,8 @@ export default function ReplayClient({ userId }) {
         chart.unsubscribeCrosshairMove(onMainCrosshairSync);
 
         clearInterval(priceTagInterval);
+        clearInterval(ohlcTickerInterval);
+        chart.unsubscribeCrosshairMove(onOhlcHover);
       };
       chart.__resize = handleResize;
       handleResize();
@@ -2978,12 +3010,15 @@ export default function ReplayClient({ userId }) {
                   />
                 )}
               </button>
-              {hasMultiple && openToolGroup === gi && (
+              {hasMultiple && openToolGroup === gi && (() => {
+                const btnRect = groupBtnRefs.current[gi]?.getBoundingClientRect();
+                return (
                 <div
                   onClick={(e) => e.stopPropagation()}
                   style={{
-                    position: "absolute", zIndex: 25, left: "100%", marginLeft: 8,
-                    top: groupBtnRefs.current[gi]?.offsetTop || 0,
+                    position: "fixed", zIndex: 25,
+                    top: btnRect ? btnRect.top : 0,
+                    left: btnRect ? btnRect.right + 8 : 0,
                     background: "#171b26", border: "1px solid #242832", borderRadius: 10,
                     boxShadow: "0 8px 28px rgba(0,0,0,0.55)", minWidth: 230,
                     maxHeight: 420, overflowY: "auto", padding: "6px 0",
@@ -3019,7 +3054,8 @@ export default function ReplayClient({ userId }) {
                     </div>
                   ))}
                 </div>
-              )}
+                );
+              })()}
             </div>
           );
         })}
@@ -3744,7 +3780,7 @@ export default function ReplayClient({ userId }) {
       <div style={{
         position: "absolute", top: 10, left: 10, zIndex: 8, pointerEvents: "none",
         display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0.5rem 0.7rem",
-        fontSize: 12.5, fontFamily: "monospace, sans-serif",
+        fontSize: 12.5, fontFamily: "monospace, sans-serif", direction: "ltr",
       }}>
         {(chartSettings.statusShowSymbol !== false || chartSettings.statusShowInterval !== false) && (
           <span style={{ color: "#eee", fontWeight: 700, background: bgStyle, padding: "2px 8px", borderRadius: 6 }}>
@@ -3754,8 +3790,8 @@ export default function ReplayClient({ userId }) {
           </span>
         )}
         {chartSettings.statusShowValues !== false && (
-          <span style={{ color: col, background: bgStyle, padding: "2px 8px", borderRadius: 6 }}>
-            O <b>{fmt(last.open)}</b>&nbsp;&nbsp;H <b>{fmt(last.high)}</b>&nbsp;&nbsp;L <b>{fmt(last.low)}</b>&nbsp;&nbsp;C <b>{fmt(last.close)}</b>
+          <span ref={ohlcLineRef} style={{ color: col, background: bgStyle, padding: "2px 8px", borderRadius: 6, direction: "ltr" }}>
+            O <b ref={ohlcORef}>{fmt(last.open)}</b>&nbsp;&nbsp;H <b ref={ohlcHRef}>{fmt(last.high)}</b>&nbsp;&nbsp;L <b ref={ohlcLRef}>{fmt(last.low)}</b>&nbsp;&nbsp;C <b ref={ohlcCRef}>{fmt(last.close)}</b>
           </span>
         )}
       </div>
