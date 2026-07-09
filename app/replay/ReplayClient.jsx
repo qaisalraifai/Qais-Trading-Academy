@@ -302,6 +302,40 @@ function ToolIcon({ id }) {
       return (<svg {...common}><path d="M3 3l18 18" /><path d="M10.6 5.2A10.6 10.6 0 0 1 12 5c6 0 10 7 10 7a17.6 17.6 0 0 1-3.4 4.2M6.7 6.7C4 8.5 2 12 2 12s4 7 10 7c1.4 0 2.7-.3 3.9-.8" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>);
     case "trash":
       return (<svg {...common}><path d="M4 7h16" /><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" /></svg>);
+    case "gear":
+      return (<svg {...common}><circle cx="12" cy="12" r="3" /><path d="M19.4 13a7.7 7.7 0 0 0 0-2l2-1.5-2-3.4-2.3.9a7.7 7.7 0 0 0-1.7-1L15 3h-4l-.4 2.4a7.7 7.7 0 0 0-1.7 1l-2.3-.9-2 3.4L6.6 11a7.7 7.7 0 0 0 0 2l-2 1.5 2 3.4 2.3-.9c.5.4 1.1.8 1.7 1L10 21h4l.4-2.4c.6-.2 1.2-.6 1.7-1l2.3.9 2-3.4z" /></svg>);
+    case "undo":
+      return (<svg {...common}><path d="M7 8H3V4" /><path d="M3 8a9 9 0 1 1 2.6 8.6" /></svg>);
+    case "redo":
+      return (<svg {...common}><path d="M17 8h4V4" /><path d="M21 8a9 9 0 1 0-2.6 8.6" /></svg>);
+    case "refresh":
+      return (<svg {...common}><path d="M3 12a9 9 0 0 1 15.3-6.4L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-15.3 6.4L3 16" /><path d="M3 21v-5h5" /></svg>);
+    case "compare2":
+      return (<svg {...common}><path d="M7 3v14M7 17l-3-3M7 17l3-3" /><path d="M17 21V7M17 7l3 3M17 7l-3 3" /></svg>);
+    case "indicators2":
+      return (<svg {...common}><path d="M4 19V9" /><path d="M11 19V4" /><path d="M18 19v-7" /></svg>);
+    case "template2":
+      return (<svg {...common}><rect x="3" y="4" width="18" height="16" rx="1.5" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="9" x2="9" y2="20" /></svg>);
+    case "plus":
+      return (<svg {...common}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>);
+    case "camera":
+      return (<svg {...common}><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.5" /></svg>);
+    case "resetzoom":
+      return (<svg {...common}><path d="M3 3v6h6" /><path d="M21 12A9 9 0 0 0 6 5.3L3 8" /><path d="M21 21v-6h-6" /><path d="M3 12a9 9 0 0 0 15 6.7l3-2.7" /></svg>);
+    case "fullscreen":
+      return (<svg {...common}><path d="M8 3H4v4" /><path d="M16 3h4v4" /><path d="M8 21H4v-4" /><path d="M16 21h4v-4" /></svg>);
+    case "fullscreenExit":
+      return (<svg {...common}><path d="M4 8V4h4" /><path d="M20 8V4h-4" /><path d="M4 16v4h4" /><path d="M20 16v4h-4" /></svg>);
+    case "dice2":
+      return (<svg {...common}><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" /><circle cx="16" cy="8" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="8" cy="16" r="1" fill="currentColor" stroke="none" /><circle cx="16" cy="16" r="1" fill="currentColor" stroke="none" /></svg>);
+    case "scissors2":
+      return (<svg {...common}><circle cx="6" cy="6" r="2.2" /><circle cx="6" cy="18" r="2.2" /><line x1="7.8" y1="7.5" x2="20" y2="19" /><line x1="20" y1="5" x2="7.8" y2="16.5" /></svg>);
+    case "person":
+      return (<svg {...common}><circle cx="12" cy="8" r="3.3" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>);
+    case "lock":
+      return (<svg {...common}><rect x="5" y="11" width="14" height="9" rx="1.5" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>);
+    case "unlock":
+      return (<svg {...common}><rect x="5" y="11" width="14" height="9" rx="1.5" /><path d="M8 11V7a4 4 0 0 1 7.4-2" /></svg>);
     default:
       return null;
   }
@@ -341,25 +375,26 @@ const TOOL_GROUPS = [
   ["cursor"],
   ["trendline", "ray", "extendedline", "infoline", "angle", "hline", "hray", "vline", "crossline", "parallelchannel"],
   ["path", "rectangle", "circle"],
-  ["fib", "fibext", "fibchannel", "fibtimezone", "gannfan", "pitchfork", "wave"],
-  ["pricerange", "daterange"],
-  ["position_long", "position_short"],
-  ["text", "measure"],
+  ["text"],
+  ["fib", "fibext", "fibchannel", "fibtimezone"],
+  ["gannfan", "pitchfork", "wave", "pricerange", "daterange", "position_long", "position_short"],
+  ["measure"],
 ];
+/* التسمية اللي بتظهر تحت أيقونة كل مجموعة بالشريط الجانبي */
+const GROUP_LABELS = ["مؤشر", "خطوط", "رسم", "نص", "أدوات فيبوناتشي", "أدوات رسم", "القياسات"];
 
 /* أقسام كل قائمة منسدلة (زي عناوين FIBONACCI / GANN بتريدنغ فيو). المجموعات
    يلي مش موجودة هون بتنعرض كقائمة واحدة بدون عنوان قسم. */
 const TOOL_GROUP_SECTIONS = {
   1: [{ title: "خطوط", tools: ["trendline", "ray", "extendedline", "infoline", "angle", "hline", "hray", "vline", "crossline", "parallelchannel"] }],
   2: [{ title: "أشكال", tools: ["path", "rectangle", "circle"] }],
-  3: [
-    { title: "فيبوناتشي", tools: ["fib", "fibext", "fibchannel", "fibtimezone"] },
+  4: [{ title: "فيبوناتشي", tools: ["fib", "fibext", "fibchannel", "fibtimezone"] }],
+  5: [
     { title: "غان", tools: ["gannfan"] },
     { title: "أخرى", tools: ["pitchfork", "wave"] },
+    { title: "نطاقات", tools: ["pricerange", "daterange"] },
+    { title: "المراكز", tools: ["position_long", "position_short"] },
   ],
-  4: [{ title: "نطاقات", tools: ["pricerange", "daterange"] }],
-  5: [{ title: "المراكز", tools: ["position_long", "position_short"] }],
-  6: [{ title: "نص وقياس", tools: ["text", "measure"] }],
 };
 
 /* أنماط افتراضية لكل نوع رسمة (قابلة للتعديل من لوحة الخصائص) */
@@ -535,6 +570,8 @@ export default function ReplayClient({ userId }) {
   const [activeTool, setActiveTool] = useState("cursor");
   const [magnetOn, setMagnetOn] = useState(false);
   const [drawingsVisible, setDrawingsVisible] = useState(true);
+  const [allDrawingsLocked, setAllDrawingsLocked] = useState(false);
+  const allDrawingsLockedRef = useRef(false);
   const activeToolRef = useRef("cursor");
   const magnetRef = useRef(false);
   /* قائمة منسدلة لكل مجموعة أدوات (زي تريدنغ فيو): ضغطة عالسهم بتفتح قائمة
@@ -1447,6 +1484,16 @@ export default function ReplayClient({ userId }) {
     drawOverlay();
     setSelectionRenderTick((t) => t + 1);
   }
+  // قفل/فك قفل كل الرسومات دفعة وحدة (زر "قفل" بالشريط الجانبي)
+  function toggleLockAllDrawings() {
+    const list = drawingsRef.current.filter((d) => !d.tradeTag);
+    if (list.length === 0) return;
+    const nextLocked = !allDrawingsLockedRef.current;
+    drawingsRef.current = drawingsRef.current.map((d) => (d.tradeTag ? d : { ...d, locked: nextLocked }));
+    allDrawingsLockedRef.current = nextLocked;
+    setAllDrawingsLocked(nextLocked);
+    drawOverlay();
+  }
   function deleteSelectedDrawing() {
     if (selectedIdRef.current == null) return;
     drawingsRef.current = drawingsRef.current.filter((d) => d.id !== selectedIdRef.current);
@@ -1520,6 +1567,17 @@ export default function ReplayClient({ userId }) {
     if (!window.confirm("مسح كل الرسومات من الشارت؟ (خطوط الهدف/الإيقاف لصفقة مفتوحة ما بتتأثر)")) return;
     drawingsRef.current = drawingsRef.current.filter((d) => !!d.tradeTag);
     drawOverlay();
+  }
+  // تراجع عن آخر رسمة (بيتجاهل خطوط الهدف/الإيقاف الخاصة بصفقة مفتوحة)
+  function handleUndoLastDrawing() {
+    const list = drawingsRef.current;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (!list[i].tradeTag) {
+        drawingsRef.current = list.filter((_, idx) => idx !== i);
+        drawOverlay();
+        return;
+      }
+    }
   }
   function toggleDrawingsVisible() { setDrawingsVisible((v) => !v); }
   function handleResetView() {
@@ -2761,13 +2819,79 @@ export default function ReplayClient({ userId }) {
      يمين، وأزرار الإجراءات (عشوائي/قص/مقارنة/تصدير/إعادة تعيين/شاشة كاملة/إعدادات)
      شمال، بدون صناديق كبيرة فوق بعض زي قبل. */
   function renderTopBar() {
-    const mini = (active) => ({ ...tabStyle(active), padding: "0.4rem 0.65rem", fontSize: 12.5, borderRadius: 8 });
+    const iconBtn = (active, disabled) => ({
+      width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center",
+      borderRadius: 8, cursor: disabled ? "not-allowed" : "pointer", border: "1px solid transparent",
+      background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
+      color: active ? "#1a1200" : disabled ? "#4a4e58" : "#c7cad1",
+      opacity: disabled ? 0.5 : 1, flexShrink: 0,
+    });
     return (
       <div style={{
-        display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center",
-        marginBottom: "0.6rem", background: "linear-gradient(145deg, #14120a, #0d0d0a)",
-        border: `1px solid ${GOLD}26`, borderRadius: 10, padding: "0.4rem 0.6rem",
+        display: "flex", flexWrap: "wrap", gap: "0.35rem", alignItems: "center",
+        marginBottom: "0.6rem", background: "#131722",
+        border: "1px solid #242832", borderRadius: 10, padding: "0.35rem 0.5rem",
       }}>
+        {/* مجموعة أزرار الأدوات (أيقونات فقط، بدون نص) */}
+        <button onClick={() => setSettingsOpen(true)} style={iconBtn(false)} title="إعدادات الشارت"><ToolIcon id="gear" /></button>
+        <button onClick={handleUndoLastDrawing} style={iconBtn(false)} title="تراجع عن آخر رسمة"><ToolIcon id="undo" /></button>
+        {mode === "training" ? (
+          <button onClick={handleReset} style={iconBtn(false)} title="إعادة من البداية"><ToolIcon id="refresh" /></button>
+        ) : (
+          <button onClick={() => loadData()} style={iconBtn(false)} title="تحديث"><ToolIcon id="refresh" /></button>
+        )}
+        <div style={{ width: 1, height: 22, background: "#242832" }} />
+        <button onClick={toggleCompare} style={iconBtn(compareOpen)} title="اعرضي رمز ثاني بلوحة منفصلة أسفل الشارت للمقارنة"><ToolIcon id="compare2" /></button>
+        <button onClick={handleExportImage} style={iconBtn(false)} title="تصدير كصورة"><ToolIcon id="camera" /></button>
+        <button onClick={handleResetView} style={iconBtn(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي"><ToolIcon id="resetzoom" /></button>
+        <button onClick={toggleFullscreen} style={iconBtn(isFullscreen)} title="شاشة كاملة"><ToolIcon id={isFullscreen ? "fullscreenExit" : "fullscreen"} /></button>
+        <div style={{ width: 1, height: 22, background: "#242832" }} />
+        <button onClick={() => setRandomChart((r) => !r)} style={iconBtn(randomChart)} title="حركة سعر مولّدة عشوائياً بدل السوق الحقيقي"><ToolIcon id="dice2" /></button>
+        <button
+          onClick={toggleCutMode}
+          style={iconBtn(cutMode, !supported || allCandles.length === 0)}
+          title="اضغطي الزر، وبعدين دوسي على أي شمعة بالشارت لتبلّشي الاستعراض منها"
+          disabled={!supported || allCandles.length === 0}
+        >
+          <ToolIcon id="scissors2" />
+        </button>
+        {mode === "training" && (
+          <>
+            <div style={{ width: 1, height: 22, background: "#242832" }} />
+            <button onClick={handleRandomStart} style={iconBtn(false)} title="بداية عشوائية جديدة">🎲</button>
+            <button onClick={togglePlay} disabled={finished || loading} style={iconBtn(isPlaying)} title={isPlaying ? "إيقاف" : "تشغيل تلقائي"}>
+              {isPlaying ? "⏸" : "▶"}
+            </button>
+            <button onClick={handleNext} disabled={finished || loading} style={iconBtn(false)} title="الشمعة التالية">⏭</button>
+            <button onClick={() => switchMode("live")} style={iconBtn(false)} title="ارجعي للمتابعة المباشرة للسوق">🔴</button>
+          </>
+        )}
+
+        <div style={{ flex: 1 }} />
+
+        {/* مجموعة اليمين: حالة السوق + الفريم/السرعة + الأصل */}
+        <span style={{
+          display: "flex", alignItems: "center", gap: 6, padding: "0.3rem 0.7rem",
+          borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "default",
+          border: `1px solid ${mode === "live" ? GREEN : GOLD}55`,
+          color: mode === "live" ? GREEN : GOLD_LIGHT,
+        }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: mode === "live" ? GREEN : GOLD }} />
+          {mode === "live" ? "مباشر" : "تاريخي"}
+        </span>
+
+        {mode === "training" && (
+          <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} title="السرعة"
+            style={{ ...selectStyle, minWidth: 70, padding: "0.35rem 0.5rem", fontSize: 12.5 }}>
+            {SPEEDS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
+          </select>
+        )}
+
+        <select value={interval} onChange={(e) => setIntervalValue(e.target.value)} title="الفريم"
+          style={{ ...selectStyle, minWidth: 70, padding: "0.35rem 0.5rem", fontSize: 12.5 }}>
+          {INTERVALS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
+        </select>
+
         <select
           value={assetValue}
           onChange={(e) => setAssetValue(e.target.value)}
@@ -2790,78 +2914,15 @@ export default function ReplayClient({ userId }) {
             </optgroup>
           ))}
         </select>
-
-        <select value={interval} onChange={(e) => setIntervalValue(e.target.value)} title="الفريم"
-          style={{ ...selectStyle, minWidth: 70, padding: "0.35rem 0.5rem", fontSize: 12.5 }}>
-          {INTERVALS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
-        </select>
-
-        {mode === "training" && (
-          <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} title="السرعة"
-            style={{ ...selectStyle, minWidth: 70, padding: "0.35rem 0.5rem", fontSize: 12.5 }}>
-            {SPEEDS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
-          </select>
-        )}
-
-        <span style={{ ...mini(mode === "live"), cursor: "default" }}>
-          {mode === "live" ? "📡 مباشر" : "🎯 تاريخي"}
-        </span>
-        {mode === "training" && (
-          <button onClick={() => switchMode("live")} style={mini(false)} title="ارجعي للمتابعة المباشرة للسوق">🔴 رجوع للمباشر</button>
-        )}
-
-        <div style={{ flex: 1 }} />
-
-        {mode === "training" && (
-          <>
-            <button onClick={handleRandomStart} style={mini(false)} title="بداية عشوائية جديدة">🎲</button>
-            <button onClick={handleReset} style={mini(false)} title="إعادة من البداية">⏮</button>
-            <button onClick={togglePlay} disabled={finished || loading} style={mini(isPlaying)} title={isPlaying ? "إيقاف" : "تشغيل تلقائي"}>
-              {isPlaying ? "⏸" : "▶"}
-            </button>
-            <button onClick={handleNext} disabled={finished || loading} style={mini(false)} title="الشمعة التالية">⏭</button>
-            <div style={{ width: 1, height: 22, background: "#2a2a2a" }} />
-          </>
-        )}
-        {mode === "live" && (
-          <>
-            <button onClick={() => loadData()} style={mini(false)} title="تحديث">🔄</button>
-            <div style={{ width: 1, height: 22, background: "#2a2a2a" }} />
-          </>
-        )}
-
-        <button
-          onClick={() => setRandomChart((r) => !r)}
-          style={mini(randomChart)}
-          title="حركة سعر مولّدة عشوائياً بدل السوق الحقيقي"
-        >
-          🎲 عشوائي
-        </button>
-        <button
-          onClick={toggleCutMode}
-          style={mini(cutMode)}
-          title="اضغطي الزر، وبعدين دوسي على أي شمعة بالشارت لتبلّشي الاستعراض منها"
-          disabled={!supported || allCandles.length === 0}
-        >
-          ✂️ {cutMode ? "دوسي على الشارت..." : "بداية"}
-        </button>
-        <button onClick={toggleCompare} style={mini(compareOpen)} title="اعرضي رمز ثاني بلوحة منفصلة أسفل الشارت للمقارنة">
-          🔀 مقارنة
-        </button>
-        <button onClick={handleExportImage} style={mini(false)} title="تصدير كصورة">📷</button>
-        <button onClick={handleResetView} style={mini(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي">⟲</button>
-        <button onClick={toggleFullscreen} style={mini(isFullscreen)} title="شاشة كاملة">
-          {isFullscreen ? "⤡" : "⤢"}
-        </button>
-        <button onClick={() => setSettingsOpen(true)} style={mini(false)} title="إعدادات الشارت">⚙️</button>
       </div>
     );
   }
 
   /* شريط أدوات الرسم العمودي (ستايل تريدنغ فيو) — عمود جانبي ثابت بجانب الشارت
      (مش طايف فوقه)، عالشمال دايماً بغض النظر عن اتجاه الصفحة، ومقسّم لأقسام.
-     كل مجموعة فيها أكتر من أداة بتظهر كأيقونة وحدة + سهم صغير: ضغطة عالسهم
-     بتفتح قائمة جانبية بأسماء كل الأدوات واضحة زي تريدنغ فيو تماماً. */
+     كل زر فيه أيقونة + تسمية نصية تحتها (زي الستايل المطلوب). كل مجموعة فيها
+     أكتر من أداة بتظهر كأيقونة وحدة + سهم صغير: ضغطة عالسهم بتفتح قائمة جانبية
+     بأسماء كل الأدوات واضحة زي تريدنغ فيو تماماً. */
   function renderDrawToolbar() {
     function openFlyout(gi, btnEl) {
       groupBtnRefs.current[gi] = btnEl;
@@ -2872,11 +2933,22 @@ export default function ReplayClient({ userId }) {
       setToolGroupDefault((prev) => ({ ...prev, [gi]: id }));
       setOpenToolGroup(null);
     }
+    function sidebarBtnStyle(active) {
+      return {
+        width: 62, minHeight: 52, display: "flex", flexDirection: "column", alignItems: "center",
+        justifyContent: "center", gap: 3, borderRadius: 8, cursor: "pointer",
+        border: "1px solid transparent",
+        background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
+        color: active ? "#1a1200" : "#9aa0aa",
+        transition: "background .12s, color .12s", flexShrink: 0, padding: "6px 2px",
+      };
+    }
+    const labelStyle = (active) => ({ fontSize: 10, fontWeight: 600, color: active ? "#1a1200" : "#8a8f99", lineHeight: 1.1 });
     return (
       <div style={{
         flex: "0 0 auto", alignSelf: "stretch", marginLeft: 8, position: "relative",
-        display: "flex", flexDirection: "column", gap: 4,
-        background: "#1a1a1a", border: "1px solid #2f2f2f", borderRadius: 12, padding: 7,
+        display: "flex", flexDirection: "column", gap: 3,
+        background: "#131722", border: "1px solid #242832", borderRadius: 10, padding: 6,
         boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
         height: "100%", overflowY: "auto", overflowX: "visible",
       }}>
@@ -2885,20 +2957,21 @@ export default function ReplayClient({ userId }) {
           const currentId = hasMultiple ? (toolGroupDefault[gi] || group[0]) : group[0];
           const isActive = group.includes(activeTool);
           return (
-            <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {gi > 0 && <div style={{ height: 1, background: "#333", margin: "3px 4px" }} />}
+            <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              {gi > 0 && <div style={{ height: 1, background: "#242832", margin: "3px 4px" }} />}
               <button
                 type="button"
                 title={TOOL_TITLES[currentId]}
                 onClick={(e) => { e.stopPropagation(); setActiveTool((cur) => (cur === currentId ? "cursor" : currentId)); }}
-                style={{ ...toolBtnStyle(isActive), position: "relative" }}
+                style={{ ...sidebarBtnStyle(isActive), position: "relative" }}
               >
                 <ToolIcon id={currentId} />
+                <span style={labelStyle(isActive)}>{GROUP_LABELS[gi]}</span>
                 {hasMultiple && (
                   <span
                     onClick={(e) => { e.stopPropagation(); e.preventDefault(); openFlyout(gi, e.currentTarget.parentElement); }}
                     style={{
-                      position: "absolute", bottom: 1, right: 1, width: 0, height: 0,
+                      position: "absolute", bottom: 3, right: 6, width: 0, height: 0,
                       borderLeft: "4px solid transparent", borderBottom: "4px solid #8a8a8a",
                       cursor: "pointer",
                     }}
@@ -2911,7 +2984,7 @@ export default function ReplayClient({ userId }) {
                   style={{
                     position: "absolute", zIndex: 25, left: "100%", marginLeft: 8,
                     top: groupBtnRefs.current[gi]?.offsetTop || 0,
-                    background: "#1c1c1c", border: "1px solid #333", borderRadius: 10,
+                    background: "#171b26", border: "1px solid #242832", borderRadius: 10,
                     boxShadow: "0 8px 28px rgba(0,0,0,0.55)", minWidth: 230,
                     maxHeight: 420, overflowY: "auto", padding: "6px 0",
                   }}
@@ -2934,9 +3007,9 @@ export default function ReplayClient({ userId }) {
                             display: "flex", alignItems: "center", justifyContent: "space-between",
                             gap: 12, padding: "8px 14px", cursor: "pointer", fontSize: 13,
                             color: activeTool === id ? GOLD_LIGHT : "#e5e5e5",
-                            background: activeTool === id ? "#262626" : "transparent",
+                            background: activeTool === id ? "#20242f" : "transparent",
                           }}
-                          onMouseEnter={(e) => { if (activeTool !== id) e.currentTarget.style.background = "#242424"; }}
+                          onMouseEnter={(e) => { if (activeTool !== id) e.currentTarget.style.background = "#1c202a"; }}
                           onMouseLeave={(e) => { if (activeTool !== id) e.currentTarget.style.background = "transparent"; }}
                         >
                           <span>{TOOL_TITLES[id]}</span>
@@ -2950,24 +3023,36 @@ export default function ReplayClient({ userId }) {
             </div>
           );
         })}
-        <div style={{ height: 1, background: "#333", margin: "3px 4px" }} />
+        <div style={{ height: 1, background: "#242832", margin: "3px 4px" }} />
         <button
           type="button"
           title={`مغناطيس: ${magnetOn ? "مفعّل" : "معطّل"} — يشتغل فقط أثناء استخدام أداة رسم، ويلتصق بأقرب سعر لما تقربي منه فعلاً`}
           onClick={(e) => { e.stopPropagation(); e.preventDefault(); setMagnetOn((m) => !m); }}
-          style={{ ...toolBtnStyle(magnetOn), position: "relative" }}
+          style={{ ...sidebarBtnStyle(magnetOn), position: "relative" }}
         >
           <ToolIcon id="magnet" />
+          <span style={labelStyle(magnetOn)}>مغناطيس</span>
           <span style={{
-            position: "absolute", bottom: 2, right: 3, width: 7, height: 7, borderRadius: "50%",
-            background: magnetOn ? GREEN : "#555", border: "1px solid #1a1a1a",
+            position: "absolute", top: 5, right: 8, width: 6, height: 6, borderRadius: "50%",
+            background: magnetOn ? GREEN : "#555", border: "1px solid #131722",
           }} />
         </button>
-        <button type="button" title={drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات"} onClick={(e) => { e.stopPropagation(); toggleDrawingsVisible(); }} style={toolBtnStyle(!drawingsVisible)}>
+        <button type="button" title={drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات"} onClick={(e) => { e.stopPropagation(); toggleDrawingsVisible(); }} style={sidebarBtnStyle(!drawingsVisible)}>
           <ToolIcon id={drawingsVisible ? "eye" : "eyeOff"} />
+          <span style={labelStyle(!drawingsVisible)}>{drawingsVisible ? "إظهار" : "مخفي"}</span>
         </button>
-        <button type="button" title="حذف كل الرسومات" onClick={(e) => { e.stopPropagation(); handleClearDrawings(); }} style={toolBtnStyle(false)}>
+        <button
+          type="button"
+          title={allDrawingsLocked ? "فك قفل كل الرسومات" : "قفل كل الرسومات (منع التحريك/التعديل)"}
+          onClick={(e) => { e.stopPropagation(); toggleLockAllDrawings(); }}
+          style={sidebarBtnStyle(allDrawingsLocked)}
+        >
+          <ToolIcon id={allDrawingsLocked ? "lock" : "unlock"} />
+          <span style={labelStyle(allDrawingsLocked)}>قفل</span>
+        </button>
+        <button type="button" title="حذف كل الرسومات" onClick={(e) => { e.stopPropagation(); handleClearDrawings(); }} style={sidebarBtnStyle(false)}>
           <ToolIcon id="trash" />
+          <span style={labelStyle(false)}>حذف</span>
         </button>
       </div>
     );
