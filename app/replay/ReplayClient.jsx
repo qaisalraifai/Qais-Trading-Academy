@@ -595,6 +595,7 @@ export default function ReplayClient({ userId }) {
   const ohlcHRef = useRef(null);
   const ohlcLRef = useRef(null);
   const ohlcCRef = useRef(null);
+  const ohlcHoverActiveRef = useRef(false);
   const priceTagRef = useRef(null);
 
   // لوحة خصائص الرسمة المحددة
@@ -2128,11 +2129,27 @@ export default function ReplayClient({ userId }) {
         ohlcCRef.current.textContent = fmt(bar.close);
         if (ohlcLineRef.current) ohlcLineRef.current.style.color = up ? GREEN : RED;
       }
-      const ohlcTickerInterval = setInterval(() => updateOhlcTicker(null), 250);
+      // مهم: هاد المؤقّت وظيفته بس إنه يحدّث القيم لآخر شمعة وهي عم تتحرك بالسعر
+      // المباشر (وضع "مباشر") لما الفأرة برا الشارت. قبل هيك كان شغّال دايماً
+      // كل ٢٥٠ مللي ثانية بغض النظر عن حالة التحويم، فكان "يسحب" القيم يرجع
+      // لآخر شمعة كل شوي حتى وانتي واقفة عالمؤشر فوق شمعة تانية - هاد سبب إنه
+      // كان صعب/مستحيل تلاحظي المعلومات ثابتة عالشمعة يلي تحت المؤشر. هلأ
+      // بيتجاهل نفسه طول ما في تحويم فعلي عالشارت (ohlcHoverActiveRef).
+      const ohlcTickerInterval = setInterval(() => {
+        if (ohlcHoverActiveRef.current) return;
+        updateOhlcTicker(null);
+      }, 250);
       function onOhlcHover(param) {
-        if (!param.time) { updateOhlcTicker(null); return; }
+        if (!param.time) {
+          ohlcHoverActiveRef.current = false;
+          updateOhlcTicker(null);
+          return;
+        }
         const bar = param.seriesData?.get(series);
-        if (bar) updateOhlcTicker(bar);
+        if (bar) {
+          ohlcHoverActiveRef.current = true;
+          updateOhlcTicker(bar);
+        }
       }
       chart.subscribeCrosshairMove(onOhlcHover);
 
@@ -3022,14 +3039,22 @@ export default function ReplayClient({ userId }) {
                 <ToolIcon id={currentId} />
                 <span style={labelStyle(isActive)}>{GROUP_LABELS[gi]}</span>
                 {hasMultiple && (
+                  // منطقة ضغط أكبر بكتير من المثلث نفسه (كانت قبل شبه بلا مساحة،
+                  // فصعب جداً تصيبيها بالماوس/بالإصبع). هلأ صار في مربع ٢٦×٢٤ كامل
+                  // قابل للضغط بزاوية الزر، والمثلث المرسوم جواه بس أكبر شوي عشان يبان أوضح.
                   <span
                     onClick={(e) => { e.stopPropagation(); e.preventDefault(); openFlyout(gi, e.currentTarget.parentElement); }}
                     style={{
-                      position: "absolute", bottom: 3, right: 6, width: 0, height: 0,
-                      borderLeft: "4px solid transparent", borderBottom: "4px solid #8a8a8a",
-                      cursor: "pointer",
+                      position: "absolute", bottom: 0, right: 0, width: 26, height: 24,
+                      display: "flex", alignItems: "flex-end", justifyContent: "flex-end",
+                      padding: "0 4px 4px 0", cursor: "pointer",
                     }}
-                  />
+                  >
+                    <span style={{
+                      width: 0, height: 0,
+                      borderLeft: "5px solid transparent", borderBottom: "5px solid #8a8a8a",
+                    }} />
+                  </span>
                 )}
               </button>
               {hasMultiple && openToolGroup === gi && (() => {
