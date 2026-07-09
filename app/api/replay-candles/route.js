@@ -50,10 +50,10 @@ async function getCrumbAndCookie() {
    فريم 4 ساعات مش متوفر مباشرة عند Yahoo، فبنجيب شموع الساعة ونجمعها كل 4 شموع سوا */
 const INTERVAL_CONFIG = {
   "1min":  { yInterval: "1m",  rangeDays: 7,   liveRangeDays: 2  },
-  "5min":  { yInterval: "5m",  rangeDays: 60,  liveRangeDays: 3  },
-  "15min": { yInterval: "15m", rangeDays: 60,  liveRangeDays: 3  },
-  "1h":    { yInterval: "60m", rangeDays: 729, liveRangeDays: 5  },
-  "4h":    { yInterval: "60m", rangeDays: 729, aggregateHours: 4, liveRangeDays: 5  },
+  "5min":  { yInterval: "5m",  rangeDays: 58,  liveRangeDays: 3  },
+  "15min": { yInterval: "15m", rangeDays: 58,  liveRangeDays: 3  },
+  "1h":    { yInterval: "60m", rangeDays: 725, liveRangeDays: 5  },
+  "4h":    { yInterval: "60m", rangeDays: 725, aggregateHours: 4, liveRangeDays: 5  },
   "1day":  { yInterval: "1d",  rangeDays: 3650, liveRangeDays: 20 },
 };
 
