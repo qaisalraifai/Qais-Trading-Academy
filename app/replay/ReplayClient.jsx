@@ -2139,22 +2139,31 @@ export default function ReplayClient({ userId }) {
       compareSeriesRef.current = series;
 
       // مزامنة السكرول/الزوم بين الشارتين لما تكونا ظاهرتين سوا (نفس فكرة تريدنغ فيو بمقارنة الرموز)
+      // مهم: المزامنة لازم تكون بالوقت الفعلي (setVisibleRange) مش برقم الشمعة (setVisibleLogicalRange)،
+      // لأن عدد الشموع يختلف بين الأصلين (رمز المقارنة ممكن يكون له عدد بيانات مختلف)، فلو زامنّا
+      // برقم الشمعة بس، بتنزاح اللوحتين عن بعض بالزمن بالظبط زي ما صار قبل هيك.
       let syncing = false;
       const mainChart = chartRef.current;
       const onMainRangeChange = (range) => {
         if (!range || syncing || !compareChartRef.current) return;
         syncing = true;
-        try { compareChartRef.current.timeScale().setVisibleLogicalRange(range); } catch {}
+        try { compareChartRef.current.timeScale().setVisibleRange(range); } catch {}
         syncing = false;
       };
       const onCompareRangeChange = (range) => {
         if (!range || syncing || !mainChart) return;
         syncing = true;
-        try { mainChart.timeScale().setVisibleLogicalRange(range); } catch {}
+        try { mainChart.timeScale().setVisibleRange(range); } catch {}
         syncing = false;
       };
-      mainChart?.timeScale().subscribeVisibleLogicalRangeChange(onMainRangeChange);
-      chart.timeScale().subscribeVisibleLogicalRangeChange(onCompareRangeChange);
+      mainChart?.timeScale().subscribeVisibleTimeRangeChange(onMainRangeChange);
+      chart.timeScale().subscribeVisibleTimeRangeChange(onCompareRangeChange);
+      // نحاذي لوحة المقارنة فوراً مع نفس فترة الشارت الرئيسي المعروضة حالياً وقت الفتح
+      // (بدل ما تضل بفترتها الافتراضية العريضة لحد أول سحب/زوم من المستخدم)
+      try {
+        const mainRange = mainChart?.timeScale().getVisibleRange();
+        if (mainRange) chart.timeScale().setVisibleRange(mainRange);
+      } catch {}
 
       /* نفس فكرة مزامنة السكرول/الزوم، بس لمؤشر تقاطع الوقت/السعر: أي تحريك ماوس
          بلوحة المقارنة نفسها بيحرك نفس عمود الوقت بالشارت الرئيسي كمان، فيبانوا
@@ -2187,7 +2196,7 @@ export default function ReplayClient({ userId }) {
       chart.subscribeCrosshairMove(onCompareCrosshairSync);
 
       chart.__unsyncMain = () => {
-        mainChart?.timeScale().unsubscribeVisibleLogicalRangeChange(onMainRangeChange);
+        mainChart?.timeScale().unsubscribeVisibleTimeRangeChange(onMainRangeChange);
         chart.unsubscribeCrosshairMove(onCompareCrosshairSync);
       };
 
@@ -2200,13 +2209,18 @@ export default function ReplayClient({ userId }) {
     };
   }, [compareOpen]);
 
-  /* تحديث بيانات شارت المقارنة كل ما تتغيّر الرسمة/الفريم */
+  /* تحديث بيانات شارت المقارنة كل ما تتغيّر الرسمة/الفريم.
+     ملاحظة مهمة: ما منستخدم fitContent() هون، لأنها بتوسّع العرض ليشمل كل بيانات
+     رمز المقارنة (يلي غالباً مدته الزمنية مختلفة عن الأصل الرئيسي)، وهاد كان
+     بالضبط سبب انزياح اللوحتين عن بعض بالزمن. بدالها منحاذي مباشرة مع نفس
+     الفترة الظاهرة حالياً بالشارت الرئيسي. */
   useEffect(() => {
     if (compareSeriesRef.current) {
       const data = compareSeriesData(compareSettings.type, compareCandles);
       try {
         compareSeriesRef.current.setData(data);
-        compareChartRef.current?.timeScale().fitContent();
+        const mainRange = chartRef.current?.timeScale().getVisibleRange();
+        if (mainRange) compareChartRef.current?.timeScale().setVisibleRange(mainRange);
       } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
