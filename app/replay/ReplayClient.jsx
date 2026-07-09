@@ -720,8 +720,10 @@ export default function ReplayClient({ userId }) {
   }, [assetValue]);
 
   /* حساسية المغناطيس: يلتصق فقط لما المؤشر قريب فعلاً (بالبكسل) من قيمة أوبن/هاي/لو/كلوز
-     الشمعة تحت المؤشر - مش فرض أقرب سعر دايماً. هيك حساسيته أخف وأدق من قبل. */
-  const SNAP_THRESHOLD_PX = 34;
+     الشمعة تحت المؤشر - مش فرض أقرب سعر دايماً. رفعنا نصف قطر الالتصاق (من 34 إلى 46
+     بكسل) بناءً على طلب "مغناطيس أقوى" - بيلتصق بأقرب نقطة (الذيل: هاي/لو، أو الجسم:
+     أوبن/كلوز) حسب أيهم أقرب فعلياً للماوس. */
+  const SNAP_THRESHOLD_PX = 46;
   function snapPrice(logical, rawPrice, rawY) {
     if (!magnetRef.current) return rawPrice;
     const series = seriesRef.current;
@@ -1903,17 +1905,21 @@ export default function ReplayClient({ userId }) {
         const activePath = (activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext") && pathPointsRef.current.length;
         const { logical, price, y } = getLogicalPrice(e.clientX, e.clientY);
         if (logical == null || price == null) return;
+        // مغناطيس أثناء الرسم: نحسب السعر الملتصق *قبل* ما نحرك مؤشر التقاطع، ونستخدمه
+        // هو (مش السعر الخام) لعرض المؤشر - هيك المغناطيس محسوس وقوي وإحنا عم نرسم،
+        // مش بس لما يكون المؤشر حر بدون أداة رسم مفعّلة.
+        const toolActive = activeToolRef.current !== "cursor";
+        const snapped = toolActive ? snapPrice(logical, price, y) : price;
         // نخلي مؤشر التقاطع (+) الأصلي يضل ظاهر وهو عم يتحرك حتى وإحنا نستخدم أداة رسم،
         // لأن الـ overlay canvas بياخد كل أحداث الماوس فوقه فما بيوصل حدث mousemove
         // للشارت الأصلي (يلي هو المسؤول عن رسم مؤشر التقاطع)
         const idx = Math.round(logical);
         const barForCrosshair = visibleCandlesRef.current[idx];
         if (barForCrosshair) {
-          chart.setCrosshairPosition(price, barForCrosshair.time, series);
+          chart.setCrosshairPosition(snapped, barForCrosshair.time, series);
           syncCrosshairToCompare(barForCrosshair.time);
         }
         if (!isDrawingRef.current && !activePath) return;
-        const snapped = snapPrice(logical, price, y);
         if (isDrawingRef.current && drawStateRef.current) {
           drawStateRef.current.p2 = { logical, price: snapped };
         }
@@ -2047,7 +2053,7 @@ export default function ReplayClient({ userId }) {
       // وبيفضل حر يتبع الفأرة عادي لو بعيدة عنه — بدون ما يختفي المؤشر أبداً.
       // ملاحظة: ما منستخدم clearCrosshairPosition هون إطلاقاً، لأنها هي اللي كانت
       // بتخفي المؤشر بدل ما ترجّعه حر.
-      const MAGNET_SNAP_PX = 16; // حساسية معتدلة: التصاق واضح لما تكوني قريبة فعلاً، مش قوي جداً
+      const MAGNET_SNAP_PX = 30; // مغناطيس أقوى (رُفعت الحساسية بناءً على طلب "مغناطيس أقوى")
       let settingCrosshairPos = false;
       function onCrosshairMagnet(param) {
         if (settingCrosshairPos) { settingCrosshairPos = false; return; }
@@ -2767,9 +2773,14 @@ export default function ReplayClient({ userId }) {
           style={{ ...selectStyle, minWidth: 130, padding: "0.35rem 0.5rem", fontSize: 12.5 }}
         >
           {ASSETS.map((g) => (
-            <optgroup key={g.group} label={g.group}>
+            <optgroup key={g.group} label={g.group} style={{ background: "#141414", color: GOLD_LIGHT }}>
               {g.items.map((it) => (
-                <option key={it.v} value={it.v} disabled={!it.yahoo}>
+                <option
+                  key={it.v}
+                  value={it.v}
+                  disabled={!it.yahoo}
+                  style={{ background: "#141414", color: it.yahoo ? "#f0f0f0" : "#777" }}
+                >
                   {it.label}{!it.yahoo ? " (غير مدعوم بعد)" : ""}
                 </option>
               ))}
