@@ -439,6 +439,14 @@ export default function BacktestClient({ userId, username, initialBalance, initi
     const metaUpdates = {};
 
     for (const t of liveTrades) {
+      // صفقات قديمة/غير صالحة (بدون priceSource أو sourceSymbol حقيقي، مثل أصول
+      // ما إلها مصدر مجاني زي SPX500/US30/فوركس): منوقف عنها فوراً بدون أي طلب
+      // شبكة، لأنها هي سبب طوفان "symbol=null" و429 يلي كان عم يصير.
+      if (!t.priceSource || !t.sourceSymbol) {
+        errorCount++;
+        metaUpdates[t.id] = { currentPrice: null, lastError: "هذا الأصل غير مدعوم للمتابعة الحية (صفقة قديمة/غير صالحة) - أغلقيها يدوياً" };
+        continue;
+      }
       try {
         const price =
           t.priceSource === "goldapi"
@@ -458,6 +466,9 @@ export default function BacktestClient({ userId, username, initialBalance, initi
       } catch (e) {
         errorCount++;
         metaUpdates[t.id] = { currentPrice: null, lastError: e.message || "خطأ غير معروف" };
+        // لو السبب تحديداً 429 (طلبات كتير)، منستنى أطول شوي قبل الصفقة يلي بعدها
+        // عشان ما نضل نطبّل على Finnhub ونطول الحظر أكتر.
+        if (String(e.message || "").includes("429")) await sleep(2000);
       }
       await sleep(120);
     }
