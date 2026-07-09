@@ -2175,36 +2175,46 @@ export default function ReplayClient({ userId }) {
       // مزامنة السكرول/الزوم: بس باتجاه واحد (الشارت الرئيسي بيقود لوحة المقارنة)،
       // مش بالاتجاهين. المزامنة بالاتجاهين كانت بتعمل "بينغ-بونغ" بين الشارتين
       // (كل شارت يرجع يصحح التاني) وهاد كان يسبب الزوم العشوائي والمربعات
-      // العملاقة يلي ظهرت. مهم كمان إنها بالوقت الفعلي (setVisibleRange) مش
-      // برقم الشمعة، لأن عدد الشموع مختلف بين الأصلين.
+      // العملاقة يلي ظهرت.
+      // مهم: نستخدم مزامنة "منطقية" (logical range = رقم موضع الشمعة) مش
+      // مزامنة بالتوقيت المطلق (setVisibleRange). المزامنة بالتوقيت كانت هي
+      // سبب مشكلة "الخط العمودي (نقطة الوقت الحالية) مش بنفس المكان بين
+      // الشارتين": أي رمزين مختلفين (زي NAS100 وSPX500) ممكن يكون عندهم
+      // فجوات/شموع ناقصة بأوقات مختلفة شوي عن بعض، فنفس الفترة الزمنية
+      // بالضبط ممكن تترجم لعدد شموع مختلف بكل لوحة، فينزاح كل شي بصرياً حتى
+      // لو الفترة "نفسها" بالتوقيت. المزامنة المنطقية (logical range) بتحاذي
+      // برقم موضع الشمعة مباشرة، فعمود رقم N بيضل بنفس البكسل بين اللوحتين
+      // دايماً - وهاد هو الأسلوب الموصى فيه رسمياً من مكتبة lightweight-charts
+      // لمزامنة عدة شارتات مع بعض.
       const mainChart = chartRef.current;
       const onMainRangeChange = (range) => {
         if (!range || !compareChartRef.current) return;
-        try { compareChartRef.current.timeScale().setVisibleRange(range); } catch {}
+        try { compareChartRef.current.timeScale().setVisibleLogicalRange(range); } catch {}
       };
-      mainChart?.timeScale().subscribeVisibleTimeRangeChange(onMainRangeChange);
-      // نحاذي لوحة المقارنة فوراً مع نفس فترة الشارت الرئيسي المعروضة حالياً وقت الفتح
+      mainChart?.timeScale().subscribeVisibleLogicalRangeChange(onMainRangeChange);
+      // نحاذي لوحة المقارنة فوراً مع نفس الموضع المنطقي للشارت الرئيسي وقت الفتح
       // (بدل ما تضل بفترتها الافتراضية العريضة لحد أول سحب/زوم من المستخدم)
       try {
-        const mainRange = mainChart?.timeScale().getVisibleRange();
-        if (mainRange) chart.timeScale().setVisibleRange(mainRange);
+        const mainRange = mainChart?.timeScale().getVisibleLogicalRange();
+        if (mainRange) chart.timeScale().setVisibleLogicalRange(mainRange);
       } catch {}
 
-      // شبكة أمان إضافية: كل شوي منجبر لوحة المقارنة تاخد بالضبط نفس فترة الشارت
-      // الرئيسي المعروضة، بغض النظر عن أي حدث. هاي بتغطي كل الحالات يلي ممكن
-      // يصير فيها "تأخر" بسيط بين تحديث بيانات الأصلين (كل رمز بيتحدث بمصدره
-      // ووقته لحاله)، فبتضمن إن اللوحتين ما بيبقوا منزاحين عن بعض أبداً حتى
-      // لو لحظياً، من غير ما نعتمد بس على أحداث ممكن تفوت أو توصل متأخرة.
+      // شبكة أمان إضافية: كل شوي منجبر لوحة المقارنة تاخد بالضبط نفس الموضع
+      // المنطقي للشارت الرئيسي المعروض، بغض النظر عن أي حدث. هاي بتغطي كل
+      // الحالات يلي ممكن يصير فيها "تأخر" بسيط بين تحديث بيانات الأصلين (كل
+      // رمز بيتحدث بمصدره ووقته لحاله)، فبتضمن إن اللوحتين ما بيبقوا منزاحين
+      // عن بعض أبداً حتى لو لحظياً، من غير ما نعتمد بس على أحداث ممكن تفوت
+      // أو توصل متأخرة.
       const rangeSyncInterval = setInterval(() => {
         if (!chartRef.current || !compareChartRef.current) return;
         try {
-          const r = chartRef.current.timeScale().getVisibleRange();
-          if (r) compareChartRef.current.timeScale().setVisibleRange(r);
+          const r = chartRef.current.timeScale().getVisibleLogicalRange();
+          if (r) compareChartRef.current.timeScale().setVisibleLogicalRange(r);
         } catch {}
       }, 300);
 
       chart.__unsyncMain = () => {
-        mainChart?.timeScale().unsubscribeVisibleTimeRangeChange(onMainRangeChange);
+        mainChart?.timeScale().unsubscribeVisibleLogicalRangeChange(onMainRangeChange);
         clearInterval(rangeSyncInterval);
       };
 
@@ -2235,12 +2245,15 @@ export default function ReplayClient({ userId }) {
       const data = compareSeriesData(compareSettings.type, sourceCandles);
       try {
         compareSeriesRef.current.setData(data);
-        const mainRange = chartRef.current?.timeScale().getVisibleRange();
-        if (mainRange) compareChartRef.current?.timeScale().setVisibleRange(mainRange);
+        // نحاذي بالموضع المنطقي (logical range) مش بالتوقيت المطلق - نفس السبب
+        // المشروح فوق بـ setupCompareChart (تفادي انزياح الخط العمودي بين اللوحتين)
+        const mainRange = chartRef.current?.timeScale().getVisibleLogicalRange();
+        if (mainRange) compareChartRef.current?.timeScale().setVisibleLogicalRange(mainRange);
       } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareCandles, revealCount, allCandles, mode]);
+
 
   /* جلب بيانات رمز المقارنة (نفس مصدر البيانات اللي بتستخدمه أداة الريبلاي - Yahoo Finance) */
   useEffect(() => {
