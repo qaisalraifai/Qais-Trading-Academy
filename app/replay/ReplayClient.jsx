@@ -2058,6 +2058,9 @@ export default function ReplayClient({ userId }) {
       function onCrosshairMagnet(param) {
         if (settingCrosshairPos) { settingCrosshairPos = false; return; }
         if (!magnetRef.current) return;
+        // المغناطيس بده يشتغل بس وإحنا عم نرسم (أداة رسم مفعّلة فعلياً، مش وضع
+        // المؤشر العادي "cursor") - هيك ما بيتدخل بحركة المؤشر الحرة العادية.
+        if (activeToolRef.current === "cursor") return;
         if (!param.time || !param.point) return;
         const bar = param.seriesData?.get(series);
         if (!bar) return;
@@ -2950,7 +2953,7 @@ export default function ReplayClient({ userId }) {
         <div style={{ height: 1, background: "#333", margin: "3px 4px" }} />
         <button
           type="button"
-          title={`مغناطيس: ${magnetOn ? "مفعّل" : "معطّل"} — يلتصق بأقرب سعر فقط لما تقربي منه فعلاً (حساسية خفيفة)`}
+          title={`مغناطيس: ${magnetOn ? "مفعّل" : "معطّل"} — يشتغل فقط أثناء استخدام أداة رسم، ويلتصق بأقرب سعر لما تقربي منه فعلاً`}
           onClick={(e) => { e.stopPropagation(); e.preventDefault(); setMagnetOn((m) => !m); }}
           style={{ ...toolBtnStyle(magnetOn), position: "relative" }}
         >
