@@ -2166,8 +2166,22 @@ export default function ReplayClient({ userId }) {
         if (mainRange) chart.timeScale().setVisibleRange(mainRange);
       } catch {}
 
+      // شبكة أمان إضافية: كل شوي منجبر لوحة المقارنة تاخد بالضبط نفس فترة الشارت
+      // الرئيسي المعروضة، بغض النظر عن أي حدث. هاي بتغطي كل الحالات يلي ممكن
+      // يصير فيها "تأخر" بسيط بين تحديث بيانات الأصلين (كل رمز بيتحدث بمصدره
+      // ووقته لحاله)، فبتضمن إن اللوحتين ما بيبقوا منزاحين عن بعض أبداً حتى
+      // لو لحظياً، من غير ما نعتمد بس على أحداث ممكن تفوت أو توصل متأخرة.
+      const rangeSyncInterval = setInterval(() => {
+        if (!chartRef.current || !compareChartRef.current) return;
+        try {
+          const r = chartRef.current.timeScale().getVisibleRange();
+          if (r) compareChartRef.current.timeScale().setVisibleRange(r);
+        } catch {}
+      }, 300);
+
       chart.__unsyncMain = () => {
         mainChart?.timeScale().unsubscribeVisibleTimeRangeChange(onMainRangeChange);
+        clearInterval(rangeSyncInterval);
       };
 
       chartRef.current?.__resize?.();
