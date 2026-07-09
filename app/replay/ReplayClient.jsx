@@ -95,7 +95,6 @@ const DEFAULT_CHART_SETTINGS = {
   scaleMarginBottom: 8,
   // رمز (Symbol)
   lastValueLabelVisible: true,
-  priceLineVisible: false,
   ohlcVisible: true,
   // خط الحالة (Status line)
   statusShowSymbol: true,
@@ -666,7 +665,10 @@ export default function ReplayClient({ userId }) {
       upColor: chartSettings.up, downColor: chartSettings.down,
       wickUpColor: chartSettings.up, wickDownColor: chartSettings.down,
       lastValueVisible: chartSettings.lastValueLabelVisible !== false,
-      priceLineVisible: chartSettings.priceLineVisible !== false,
+      // هاد الخط (priceLine) هو سبب "الشحطات الصغيرة" بعد آخر شمعة - تم إلغاؤه
+      // نهائياً وبشكل ثابت، مش مرتبط بإعداد قابل للتغيير عشان ما يرجع يظهر
+      // أبداً بأي حالة (حتى لو في إعدادات قديمة محفوظة بالمتصفح).
+      priceLineVisible: false,
     });
     if (compareChartRef.current) {
       compareChartRef.current.applyOptions({
@@ -3391,7 +3393,6 @@ export default function ReplayClient({ userId }) {
               {sectionTitle("القيم على الشارت")}
               {row("إظهار شريط O H L C", toggleInput(chartSettings.ohlcVisible, (v) => set({ ohlcVisible: v })))}
               {row("إظهار آخر قيمة على محور السعر", toggleInput(chartSettings.lastValueLabelVisible, (v) => set({ lastValueLabelVisible: v })))}
-              {row("إظهار خط السعر الحالي", toggleInput(chartSettings.priceLineVisible, (v) => set({ priceLineVisible: v })))}
             </>
           );
         case "status":
