@@ -88,6 +88,24 @@ const DEFAULT_CHART_SETTINGS = {
   watermarkText: "",
   scaleMarginTop: 8,
   scaleMarginBottom: 8,
+  // رمز (Symbol)
+  lastValueLabelVisible: true,
+  priceLineVisible: true,
+  ohlcVisible: true,
+  // خط الحالة (Status line)
+  statusShowSymbol: true,
+  statusShowInterval: true,
+  statusShowValues: true,
+  statusShowBg: true,
+  // المقاييس والخطوط (Scales & lines)
+  autoScale: true,
+  // تداول (Trading)
+  showTradeButtons: true,
+  // تنبيهات (Alerts)
+  activeAlertsOnly: true,
+  autoHideToast: true,
+  // أحداث (Events)
+  showEvents: false,
 };
 function loadChartSettings() {
   if (typeof window === "undefined") return DEFAULT_CHART_SETTINGS;
@@ -571,6 +589,7 @@ export default function ReplayClient({ userId }) {
   /* إعدادات ألوان الشارت (خلفية + شموع صعود/هبوط) + قائمة الكليك يمين + نافذة الإعدادات */
   const [chartSettings, setChartSettings] = useState(DEFAULT_CHART_SETTINGS);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState("symbol");
   const [contextMenu, setContextMenu] = useState(null); // { x, y, price }
 
   /* ===== ربط أزرار الشراء/البيع الفوري ببرنامج الباك تيست ===== */
@@ -600,10 +619,10 @@ export default function ReplayClient({ userId }) {
   }, [supabase, userId]);
 
   useEffect(() => {
-    if (!tradeToast) return;
+    if (!tradeToast || chartSettings.autoHideToast === false) return;
     const t = setTimeout(() => setTradeToast(""), 3500);
     return () => clearTimeout(t);
-  }, [tradeToast]);
+  }, [tradeToast, chartSettings.autoHideToast]);
 
   /* تحميل إعدادات الألوان المحفوظة بعد أول رندر عالمتصفح (تفادي مشاكل الـ SSR) */
   useEffect(() => {
@@ -625,6 +644,7 @@ export default function ReplayClient({ userId }) {
         : { visible: false },
       rightPriceScale: {
         scaleMargins: { top: (chartSettings.scaleMarginTop ?? 8) / 100, bottom: (chartSettings.scaleMarginBottom ?? 8) / 100 },
+        autoScale: chartSettings.autoScale !== false,
         // عرض ثابت لعمود الأسعار (لازم يطابق نفس القيمة بشارت المقارنة تماماً)،
         // عشان منطقة رسم الشموع تضل نفس المحاذاة بالبكسل بين الشارتين بغض النظر
         // عن عدد خانات السعر (مثلاً XAUUSD أربع خانات وNAS100 خمس خانات) - لو
@@ -640,6 +660,8 @@ export default function ReplayClient({ userId }) {
     seriesRef.current.applyOptions({
       upColor: chartSettings.up, downColor: chartSettings.down,
       wickUpColor: chartSettings.up, wickDownColor: chartSettings.down,
+      lastValueVisible: chartSettings.lastValueLabelVisible !== false,
+      priceLineVisible: chartSettings.priceLineVisible !== false,
     });
     if (compareChartRef.current) {
       compareChartRef.current.applyOptions({
@@ -2748,11 +2770,11 @@ export default function ReplayClient({ userId }) {
     }
     return (
       <div style={{
-        flex: "0 0 auto", alignSelf: "flex-start", marginLeft: 8, position: "relative",
+        flex: "0 0 auto", alignSelf: "stretch", marginLeft: 8, position: "relative",
         display: "flex", flexDirection: "column", gap: 4,
         background: "#1a1a1a", border: "1px solid #2f2f2f", borderRadius: 12, padding: 7,
         boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-        maxHeight: "100%", overflowY: "auto", overflowX: "visible",
+        height: "100%", overflowY: "auto", overflowX: "visible",
       }}>
         {TOOL_GROUPS.map((group, gi) => {
           const hasMultiple = group.length > 1;
@@ -3231,21 +3253,27 @@ export default function ReplayClient({ userId }) {
     );
   }
 
-  /* نافذة إعدادات ألوان الشارت: خلفية الشارت + لون شمعة الصعود + لون شمعة الهبوط */
+  /* نافذة إعدادات الشارت الكاملة — ستايل تريدنغ فيو بالظبط: قائمة تبويبات عالجانب
+     (رمز / خط الحالة / المقاييس والخطوط / لوحة / تداول / تنبيهات / أحداث) ومحتوى كل
+     تبويب بمنطقة قابلة للتمرير لحالها. كل تغيير بينطبق فوراً وبينحفظ محلياً بالمتصفح. */
   function renderSettingsDialog() {
     if (!settingsOpen) return null;
+    const set = (patch) => setChartSettings((s) => ({ ...s, ...(typeof patch === "function" ? patch(s) : patch) }));
     const row = (label, control) => (
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #262626" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #262626", gap: 12 }}>
         <span style={{ fontSize: 13, color: "#ccc" }}>{label}</span>
         {control}
       </div>
+    );
+    const sectionTitle = (label) => (
+      <div style={{ fontSize: 11.5, color: "#777", margin: "16px 0 2px", fontWeight: 700 }}>{label}</div>
     );
     const colorInput = (val, onChange) => (
       <input type="color" value={val} onChange={(e) => onChange(e.target.value)}
         style={{ width: 40, height: 28, border: "1px solid #333", borderRadius: 6, background: "none", cursor: "pointer", padding: 0 }} />
     );
     const toggleInput = (val, onChange) => (
-      <input type="checkbox" checked={val} onChange={(e) => onChange(e.target.checked)}
+      <input type="checkbox" checked={val !== false} onChange={(e) => onChange(e.target.checked)}
         style={{ width: 18, height: 18, cursor: "pointer", accentColor: GOLD }} />
     );
     const numberInput = (val, onChange, min = 0, max = 40) => (
@@ -3253,6 +3281,109 @@ export default function ReplayClient({ userId }) {
         onChange={(e) => onChange(Math.max(min, Math.min(max, Number(e.target.value) || 0)))}
         style={{ width: 60, background: "#0d0d0d", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "4px 6px", fontSize: 12.5, textAlign: "center" }} />
     );
+    const textInput = (val, onChange, placeholder, width = 150) => (
+      <input
+        type="text" value={val} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        style={{ width, background: "#0d0d0d", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "4px 6px", fontSize: 12.5 }}
+      />
+    );
+    const disabledNote = (label) => (
+      <div style={{ fontSize: 11.5, color: "#555", padding: "10px 0", borderBottom: "1px solid #262626", fontStyle: "italic" }}>
+        {label}
+      </div>
+    );
+
+    const TABS = [
+      { key: "symbol", label: "رمز", icon: "𝍖" },
+      { key: "status", label: "خط الحالة", icon: "≡" },
+      { key: "scales", label: "المقاييس والخطوط", icon: "↕" },
+      { key: "canvas", label: "لوحة", icon: "✎" },
+      { key: "trading", label: "تداول", icon: "⤯" },
+      { key: "alerts", label: "تنبيهات", icon: "🕐" },
+      { key: "events", label: "أحداث", icon: "🗓" },
+    ];
+
+    function tabContent() {
+      switch (settingsTab) {
+        case "symbol":
+          return (
+            <>
+              {sectionTitle("الشموع")}
+              {row("لون شمعة الصعود", colorInput(chartSettings.up, (v) => set({ up: v })))}
+              {row("لون شمعة الهبوط", colorInput(chartSettings.down, (v) => set({ down: v })))}
+              {sectionTitle("القيم على الشارت")}
+              {row("إظهار شريط O H L C", toggleInput(chartSettings.ohlcVisible, (v) => set({ ohlcVisible: v })))}
+              {row("إظهار آخر قيمة على محور السعر", toggleInput(chartSettings.lastValueLabelVisible, (v) => set({ lastValueLabelVisible: v })))}
+              {row("إظهار خط السعر الحالي", toggleInput(chartSettings.priceLineVisible, (v) => set({ priceLineVisible: v })))}
+            </>
+          );
+        case "status":
+          return (
+            <>
+              {sectionTitle("الأداة")}
+              {row("رمز الأصل", toggleInput(chartSettings.statusShowSymbol, (v) => set({ statusShowSymbol: v })))}
+              {row("الفريم الزمني", toggleInput(chartSettings.statusShowInterval, (v) => set({ statusShowInterval: v })))}
+              {row("قيم الرسم البياني (O H L C)", toggleInput(chartSettings.statusShowValues, (v) => set({ statusShowValues: v })))}
+              {row("خلفية شريط الحالة", toggleInput(chartSettings.statusShowBg, (v) => set({ statusShowBg: v })))}
+            </>
+          );
+        case "scales":
+          return (
+            <>
+              {sectionTitle("مقياس الأسعار")}
+              {row("تحجيم تلقائي (Auto Scale)", toggleInput(chartSettings.autoScale, (v) => set({ autoScale: v })))}
+              {sectionTitle("هوامش محور السعر (%)")}
+              {row("الهامش الأعلى", numberInput(chartSettings.scaleMarginTop, (v) => set({ scaleMarginTop: v })))}
+              {row("الهامش الأسفل", numberInput(chartSettings.scaleMarginBottom, (v) => set({ scaleMarginBottom: v })))}
+              {sectionTitle("مقياس الوقت")}
+              {disabledNote("يتبع توقيت جهازك تلقائياً")}
+            </>
+          );
+        case "canvas":
+          return (
+            <>
+              {sectionTitle("الخلفية")}
+              {row("لون خلفية الشارت", colorInput(chartSettings.bg, (v) => set({ bg: v })))}
+              {sectionTitle("الشبكة ومؤشر التقاطع")}
+              {row("إظهار الشبكة", toggleInput(chartSettings.gridVisible, (v) => set({ gridVisible: v })))}
+              {row("لون الشبكة", colorInput(chartSettings.gridColor, (v) => set({ gridColor: v })))}
+              {row("لون مؤشر التقاطع", colorInput(chartSettings.crosshairColor, (v) => set({ crosshairColor: v })))}
+              {sectionTitle("العلامة المائية")}
+              {row("نص العلامة المائية", textInput(chartSettings.watermarkText, (v) => set({ watermarkText: v }), "فارغ = مخفية"))}
+            </>
+          );
+        case "trading":
+          return (
+            <>
+              {sectionTitle("أزرار التداول")}
+              {row("إظهار أزرار شراء/بيع فوري", toggleInput(chartSettings.showTradeButtons, (v) => set({ showTradeButtons: v })))}
+              {sectionTitle("الحجم الافتراضي")}
+              {row("حجم الصفقة (لوت)", textInput(tradeLot, setTradeLot, "0.01", 80))}
+            </>
+          );
+        case "alerts":
+          return (
+            <>
+              {sectionTitle("رؤية خط الرسم البياني")}
+              {row("خطوط التنبيه على الشارت", toggleInput(drawingsVisible, () => toggleDrawingsVisible()))}
+              {row("التنبيهات النشطة فقط", toggleInput(chartSettings.activeAlertsOnly, (v) => set({ activeAlertsOnly: v })))}
+              {sectionTitle("إشعارات")}
+              {row("إخفاء \"التوست\" تلقائياً", toggleInput(chartSettings.autoHideToast, (v) => set({ autoHideToast: v })))}
+            </>
+          );
+        case "events":
+          return (
+            <>
+              {sectionTitle("الأحداث الاقتصادية")}
+              {row("إظهار الأحداث على الشارت", toggleInput(chartSettings.showEvents, (v) => set({ showEvents: v })))}
+              {disabledNote("تقويم الأحداث الاقتصادية بيوصل قريباً")}
+            </>
+          );
+        default:
+          return null;
+      }
+    }
+
     return (
       <div style={{
         position: "absolute", inset: 0, zIndex: 30, background: "#000000aa",
@@ -3260,34 +3391,38 @@ export default function ReplayClient({ userId }) {
       }} onClick={() => setSettingsOpen(false)}>
         <div
           onClick={(e) => e.stopPropagation()}
-          style={{ width: 320, maxHeight: "80%", overflowY: "auto", background: "#161616", border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem" }}
+          style={{
+            width: 620, maxWidth: "92%", maxHeight: "82%", background: "#161616",
+            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem",
+            display: "flex", flexDirection: "column",
+          }}
         >
-          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 6, fontSize: 15 }}>⚙️ إعدادات الشارت</div>
-          <div style={{ fontSize: 11.5, color: "#777", margin: "4px 0 2px" }}>الألوان الأساسية</div>
-          {row("لون خلفية الشارت", colorInput(chartSettings.bg, (v) => setChartSettings((s) => ({ ...s, bg: v }))))}
-          {row("لون شمعة الصعود", colorInput(chartSettings.up, (v) => setChartSettings((s) => ({ ...s, up: v }))))}
-          {row("لون شمعة الهبوط", colorInput(chartSettings.down, (v) => setChartSettings((s) => ({ ...s, down: v }))))}
-          <div style={{ fontSize: 11.5, color: "#777", margin: "10px 0 2px" }}>الشبكة ومؤشر التقاطع</div>
-          {row("إظهار الشبكة", toggleInput(chartSettings.gridVisible, (v) => setChartSettings((s) => ({ ...s, gridVisible: v }))))}
-          {row("لون الشبكة", colorInput(chartSettings.gridColor, (v) => setChartSettings((s) => ({ ...s, gridColor: v }))))}
-          {row("لون مؤشر التقاطع", colorInput(chartSettings.crosshairColor, (v) => setChartSettings((s) => ({ ...s, crosshairColor: v }))))}
-          <div style={{ fontSize: 11.5, color: "#777", margin: "10px 0 2px" }}>العلامة المائية</div>
-          {row("نص العلامة المائية", (
-            <input
-              type="text"
-              value={chartSettings.watermarkText}
-              onChange={(e) => setChartSettings((s) => ({ ...s, watermarkText: e.target.value }))}
-              placeholder="فارغ = مخفية"
-              style={{ width: 130, background: "#0d0d0d", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "4px 6px", fontSize: 12.5 }}
-            />
-          ))}
-          <div style={{ fontSize: 11.5, color: "#777", margin: "10px 0 2px" }}>هوامش محور السعر (%)</div>
-          {row("الهامش الأعلى", numberInput(chartSettings.scaleMarginTop, (v) => setChartSettings((s) => ({ ...s, scaleMarginTop: v }))))}
-          {row("الهامش الأسفل", numberInput(chartSettings.scaleMarginBottom, (v) => setChartSettings((s) => ({ ...s, scaleMarginBottom: v }))))}
-          <div style={{ fontSize: 10.5, color: "#666", marginTop: 10, lineHeight: 1.6 }}>
-            كل تغيير هون بينحفظ تلقائياً بالمتصفح وبيرجع لنفس الشكل بأي مرة تفتحي فيها الشارت من جديد.
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10, fontSize: 15, flexShrink: 0 }}>⚙️ إعدادات</div>
+          <div style={{ display: "flex", flexDirection: "row", gap: 16, flex: 1, minHeight: 0 }}>
+            <div style={{ flex: 1, minWidth: 0, overflowY: "auto", paddingLeft: 4 }}>
+              {tabContent()}
+            </div>
+            <div style={{ width: 168, flexShrink: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setSettingsTab(t.key)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, textAlign: "right",
+                    padding: "8px 10px", borderRadius: 8, border: "none", cursor: "pointer",
+                    background: settingsTab === t.key ? "#262626" : "transparent",
+                    color: settingsTab === t.key ? GOLD_LIGHT : "#ccc",
+                    fontSize: 13, fontWeight: settingsTab === t.key ? 700 : 500,
+                  }}
+                >
+                  <span style={{ width: 18, textAlign: "center", flexShrink: 0 }}>{t.icon}</span>
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 14, flexShrink: 0 }}>
             <button onClick={() => setChartSettings(DEFAULT_CHART_SETTINGS)} style={{ ...btnStyle("secondary"), flex: 1 }}>
               الافتراضي
             </button>
@@ -3394,7 +3529,7 @@ export default function ReplayClient({ userId }) {
 
         <div style={{ flex: 1 }} />
 
-        {supported && allCandles.length > 0 && (
+        {supported && allCandles.length > 0 && chartSettings.showTradeButtons !== false && (
           <div style={{ display: "flex", gap: 6, alignItems: "center", paddingInlineEnd: 8, borderInlineEnd: "1px solid #2a2a2a" }}>
             <button
               onClick={() => openQuickTrade("buy")}
@@ -3480,18 +3615,25 @@ export default function ReplayClient({ userId }) {
     const info = getAssetByValue(assetValue);
     const intervalLabel = INTERVALS.find((i) => i.value === interval)?.label || interval;
     const fmt = (v) => (v != null ? v.toFixed(v < 10 ? 4 : 2) : "-");
+    const bgStyle = chartSettings.statusShowBg !== false ? "#00000066" : "transparent";
     return (
       <div style={{
         position: "absolute", top: 10, left: 10, zIndex: 8, pointerEvents: "none",
         display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0.5rem 0.7rem",
         fontSize: 12.5, fontFamily: "monospace, sans-serif",
       }}>
-        <span style={{ color: "#eee", fontWeight: 700, background: "#00000066", padding: "2px 8px", borderRadius: 6 }}>
-          {info?.label || assetValue} · {intervalLabel}
-        </span>
-        <span style={{ color: col, background: "#00000066", padding: "2px 8px", borderRadius: 6 }}>
-          O <b>{fmt(last.open)}</b>&nbsp;&nbsp;H <b>{fmt(last.high)}</b>&nbsp;&nbsp;L <b>{fmt(last.low)}</b>&nbsp;&nbsp;C <b>{fmt(last.close)}</b>
-        </span>
+        {(chartSettings.statusShowSymbol !== false || chartSettings.statusShowInterval !== false) && (
+          <span style={{ color: "#eee", fontWeight: 700, background: bgStyle, padding: "2px 8px", borderRadius: 6 }}>
+            {chartSettings.statusShowSymbol !== false && (info?.label || assetValue)}
+            {chartSettings.statusShowSymbol !== false && chartSettings.statusShowInterval !== false && " · "}
+            {chartSettings.statusShowInterval !== false && intervalLabel}
+          </span>
+        )}
+        {chartSettings.statusShowValues !== false && (
+          <span style={{ color: col, background: bgStyle, padding: "2px 8px", borderRadius: 6 }}>
+            O <b>{fmt(last.open)}</b>&nbsp;&nbsp;H <b>{fmt(last.high)}</b>&nbsp;&nbsp;L <b>{fmt(last.low)}</b>&nbsp;&nbsp;C <b>{fmt(last.close)}</b>
+          </span>
+        )}
       </div>
     );
   }
@@ -3538,21 +3680,22 @@ export default function ReplayClient({ userId }) {
             ...جاري تحميل البيانات
           </div>
         )}
-        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-          {/* اللوحة الرئيسية - ارتفاعها الفعلي مضبوط مباشرة بالبكسل من JS (mainPaneRef)
-              عشان يضل مطابق تماماً لارتفاع الشارت نفسه، حتى لو عمود أدوات الرسم أطول
-              (overflow:hidden هون بيمنعه من "يفلت" ويسيب فراغ أسود تحت الشارت) */}
-          <div
-            ref={mainPaneRef}
-            style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
-          >
-            {/* صف أفقي: شريط الأدوات كعمود جانبي حقيقي (زي تريدنغ فيو) بجانب الشارت،
-                مش طايف فوقه. الترتيب هون (الشارت أولاً بالـ DOM ثم الشريط) مقصود:
-                الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل ثابت عالشمال دايماً من
-                غير ما نضطر نقلب اتجاه أي نص عربي جوا الشارت. */}
-            <div style={{ display: "flex", flexDirection: "row", height: "100%", minHeight: 0, overflow: "hidden" }}>
+        {/* صف أفقي خارجي: شريط الأدوات عمود ثابت يمتد على كامل ارتفاع منطقة الشارت
+            (اللوحة الرئيسية + القاسم + لوحة المقارنة سوا) بالظبط متل تريدنغ فيو،
+            مش محصور بارتفاع اللوحة الرئيسية لحالها. الترتيب هون (المحتوى أولاً
+            بالـ DOM ثم الشريط) مقصود: الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل
+            ثابت عالشمال دايماً من غير ما نضطر نقلب اتجاه أي نص عربي جوا الشارت. */}
+        <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
+            {/* اللوحة الرئيسية - ارتفاعها الفعلي مضبوط مباشرة بالبكسل من JS (mainPaneRef)
+                عشان يضل مطابق تماماً لارتفاع الشارت نفسه (overflow:hidden هون بيمنعه
+                من "يفلت" ويسيب فراغ أسود تحت الشارت) */}
+            <div
+              ref={mainPaneRef}
+              style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
+            >
               <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
-                {!loading && allCandles.length > 0 && !editDraft && renderOHLCTicker()}
+                {!loading && allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
                 {!loading && allCandles.length > 0 && renderPropertiesDialog()}
                 {!loading && allCandles.length > 0 && renderSelectionToolbar()}
                 {!loading && renderTradePanel()}
@@ -3590,57 +3733,57 @@ export default function ReplayClient({ userId }) {
                   <span data-role="countdown" style={{ fontSize: 10, color: "#0a0a0aaa", display: "none" }} />
                 </div>
               </div>
-              {!loading && allCandles.length > 0 && renderDrawToolbar()}
             </div>
-          </div>
 
-          {/* قاسم قابل للسحب لتكبير/تصغير لوحة المقارنة (زي تريدنغ فيو بالظبط) - اسحبيه لفوق/تحت،
-              أو دبل-كليك عليه يرجّع النسبة الافتراضية */}
-          {compareOpen && !maximizedPane && (
-            <div
-              onMouseDown={onDividerMouseDown}
-              onDoubleClick={() => { compareHeightPxRef.current = DEFAULT_COMPARE_HEIGHT; setCompareHeightPx(DEFAULT_COMPARE_HEIGHT); chartRef.current?.__resize?.(); }}
-              title="اسحبي لتكبير/تصغير لوحة المقارنة، أو دبل-كليك للرجوع للحجم الافتراضي"
-              style={dividerStyle}
-            >
-              <span style={dividerGripStyle} />
-            </div>
-          )}
-
-          {/* لوحة المقارنة: رمز ثاني للقراءة فقط، بدون أدوات رسم، مزامَنة سكرول/زوم مع اللوحة الرئيسية.
-              نفس سطح الشارت الرئيسي بالضبط (بدون حدود/زوايا مدوّرة) عشان تبان لوحة وحدة متصلة زي تريدنغ فيو */}
-          {compareOpen && (
-            <div
-              ref={comparePaneRef}
-              style={{ display: maximizedPane === "main" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
-            >
-              <div style={paneCornerBadgeStyle()}>
-                <span>🔀</span>
-                <select
-                  value={compareSymbol}
-                  onChange={(e) => setCompareSymbol(e.target.value)}
-                  style={{ ...selectStyle, minWidth: 130, padding: "0.2rem 0.4rem", fontSize: 11.5, background: "#0000" }}
-                >
-                  {ASSETS.map((g) => (
-                    <optgroup key={g.group} label={g.group}>
-                      {g.items.map((it) => (
-                        <option key={it.v} value={it.v} disabled={!it.yahoo}>{it.label}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-                {compareLoading && <span style={{ fontSize: 11, color: "#888" }}>...جاري التحميل</span>}
-                {compareError && <span style={{ fontSize: 11, color: RED }}>{compareError}</span>}
-                <button onClick={() => setCompareSettingsOpen(true)} style={paneCornerBtnStyle} title="إعدادات لوحة المقارنة (نوع الشارت والألوان)">⚙️</button>
-                <button onClick={() => toggleMaximizePane("compare")} style={paneCornerBtnStyle} title={maximizedPane === "compare" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة (أو دبل-كليك على القاسم)"}>
-                  {maximizedPane === "compare" ? "⤡" : "⤢"}
-                </button>
-                <button onClick={toggleCompare} style={paneCornerBtnStyle} title="إغلاق لوحة المقارنة">✕</button>
+            {/* قاسم قابل للسحب لتكبير/تصغير لوحة المقارنة (زي تريدنغ فيو بالظبط) - اسحبيه لفوق/تحت،
+                أو دبل-كليك عليه يرجّع النسبة الافتراضية */}
+            {compareOpen && !maximizedPane && (
+              <div
+                onMouseDown={onDividerMouseDown}
+                onDoubleClick={() => { compareHeightPxRef.current = DEFAULT_COMPARE_HEIGHT; setCompareHeightPx(DEFAULT_COMPARE_HEIGHT); chartRef.current?.__resize?.(); }}
+                title="اسحبي لتكبير/تصغير لوحة المقارنة، أو دبل-كليك للرجوع للحجم الافتراضي"
+                style={dividerStyle}
+              >
+                <span style={dividerGripStyle} />
               </div>
-              <div ref={compareContainerRef} style={{ width: "100%", height: "100%", flex: 1, minHeight: 0 }} />
-              {renderCompareSettingsDialog()}
-            </div>
-          )}
+            )}
+
+            {/* لوحة المقارنة: رمز ثاني للقراءة فقط، بدون أدوات رسم، مزامَنة سكرول/زوم مع اللوحة الرئيسية.
+                نفس سطح الشارت الرئيسي بالضبط (بدون حدود/زوايا مدوّرة) عشان تبان لوحة وحدة متصلة زي تريدنغ فيو */}
+            {compareOpen && (
+              <div
+                ref={comparePaneRef}
+                style={{ display: maximizedPane === "main" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
+              >
+                <div style={paneCornerBadgeStyle()}>
+                  <span>🔀</span>
+                  <select
+                    value={compareSymbol}
+                    onChange={(e) => setCompareSymbol(e.target.value)}
+                    style={{ ...selectStyle, minWidth: 130, padding: "0.2rem 0.4rem", fontSize: 11.5, background: "#0000" }}
+                  >
+                    {ASSETS.map((g) => (
+                      <optgroup key={g.group} label={g.group}>
+                        {g.items.map((it) => (
+                          <option key={it.v} value={it.v} disabled={!it.yahoo}>{it.label}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  {compareLoading && <span style={{ fontSize: 11, color: "#888" }}>...جاري التحميل</span>}
+                  {compareError && <span style={{ fontSize: 11, color: RED }}>{compareError}</span>}
+                  <button onClick={() => setCompareSettingsOpen(true)} style={paneCornerBtnStyle} title="إعدادات لوحة المقارنة (نوع الشارت والألوان)">⚙️</button>
+                  <button onClick={() => toggleMaximizePane("compare")} style={paneCornerBtnStyle} title={maximizedPane === "compare" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة (أو دبل-كليك على القاسم)"}>
+                    {maximizedPane === "compare" ? "⤡" : "⤢"}
+                  </button>
+                  <button onClick={toggleCompare} style={paneCornerBtnStyle} title="إغلاق لوحة المقارنة">✕</button>
+                </div>
+                <div ref={compareContainerRef} style={{ width: "100%", height: "100%", flex: 1, minHeight: 0 }} />
+                {renderCompareSettingsDialog()}
+              </div>
+            )}
+          </div>
+          {!loading && allCandles.length > 0 && renderDrawToolbar()}
         </div>
         {renderSettingsDialog()}
       </div>
