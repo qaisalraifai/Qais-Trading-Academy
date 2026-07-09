@@ -85,12 +85,13 @@ const DEFAULT_CHART_SETTINGS = {
   gridVisible: true,
   gridColor: GOLD,
   crosshairColor: "#758696",
+  textColor: "#d1d4dc",
   watermarkText: "",
   scaleMarginTop: 8,
   scaleMarginBottom: 8,
   // رمز (Symbol)
   lastValueLabelVisible: true,
-  priceLineVisible: true,
+  priceLineVisible: false,
   ohlcVisible: true,
   // خط الحالة (Status line)
   statusShowSymbol: true,
@@ -634,7 +635,7 @@ export default function ReplayClient({ userId }) {
   useEffect(() => {
     if (!chartRef.current || !seriesRef.current) return;
     chartRef.current.applyOptions({
-      layout: { background: { color: chartSettings.bg } },
+      layout: { background: { color: chartSettings.bg }, textColor: chartSettings.textColor || "#d1d4dc" },
       grid: {
         vertLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
         horzLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
@@ -1660,7 +1661,7 @@ export default function ReplayClient({ userId }) {
       const chart = createChart(chartContainerRef.current, {
         layout: {
           background: { color: savedSettings.bg },
-          textColor: "#d1d4dc",
+          textColor: savedSettings.textColor || "#d1d4dc",
           // نفس عائلة الخطوط اللي تريدنغ فيو بتستخدمها بمحاور السعر/الوقت، عشان يصير
           // شكل الأرقام والتسميات أقرب لشكلها هناك
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif",
@@ -1731,6 +1732,19 @@ export default function ReplayClient({ userId }) {
             padBottom = parseFloat(cs.paddingBottom) || 0;
           }
           totalHeight = Math.max(320, window.innerHeight - headerH - headerMarginBottom - padTop - padBottom - 4);
+        } else if (chartWrapperRef.current) {
+          // نفس فكرة الشاشة الكاملة، بس هون منحسب المساحة المتاحة لغاية آخر الصفحة
+          // (مش رقم ثابت 480px) عشان الشارت ياخد كل المساحة المتبقية بالشاشة
+          // بالظبط متل تريدنغ فيو، بدل ما يضل فراغ فاضي تحته أو جنبه.
+          const rect = chartWrapperRef.current.getBoundingClientRect();
+          const cs = window.getComputedStyle(chartWrapperRef.current);
+          const padTop = parseFloat(cs.paddingTop) || 0;
+          const padBottom = parseFloat(cs.paddingBottom) || 0;
+          const BOTTOM_BREATHING_ROOM = 24; // شوي مسافة تحت الشارت قبل نهاية الصفحة
+          totalHeight = Math.max(
+            420,
+            window.innerHeight - rect.top - padTop - padBottom - BOTTOM_BREATHING_ROOM
+          );
         }
         // توزيع الارتفاع بين الشارت الرئيسي وشارت المقارنة (لو مفعّل) حسب أي جزء مكبّر حالياً
         // وحسب الحجم اللي المستخدم سحبه يدوياً (قاسم قابل للسحب زي تريدنغ فيو)
@@ -2167,7 +2181,7 @@ export default function ReplayClient({ userId }) {
       const chart = createChart(compareContainerRef.current, {
         layout: {
           background: { color: savedSettings.bg },
-          textColor: "#d1d4dc",
+          textColor: savedSettings.textColor || "#d1d4dc",
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif",
         },
         grid: {
@@ -3330,6 +3344,8 @@ export default function ReplayClient({ userId }) {
         case "scales":
           return (
             <>
+              {sectionTitle("النص")}
+              {row("لون نص المحاور (الأسعار والوقت)", colorInput(chartSettings.textColor || "#d1d4dc", (v) => set({ textColor: v })))}
               {sectionTitle("مقياس الأسعار")}
               {row("تحجيم تلقائي (Auto Scale)", toggleInput(chartSettings.autoScale, (v) => set({ autoScale: v })))}
               {sectionTitle("هوامش محور السعر (%)")}
