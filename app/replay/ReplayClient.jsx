@@ -8,6 +8,12 @@ const GOLD_LIGHT = "#E8C468";
 const GREEN = "#10b981";
 const RED = "#ef4444";
 const DEFAULT_COMPARE_HEIGHT = 200; // ارتفاع لوحة المقارنة الافتراضي بالبكسل (قابل للسحب من المستخدم)
+// عرض ثابت (بالبكسل) لعمود الأسعار باليمين - لازم يكون نفس القيمة بالشارت الرئيسي
+// وشارت المقارنة معاً، وإلا كل شارت (نسخة lightweight-charts منفصلة) بيحسب عرض
+// عمود الأسعار تلقائياً حسب عدد خانات السعر تبعه، فمنطقة رسم الشموع ما بتضل
+// بنفس المحاذاة بالبكسل بين اللوحتين حتى لو كانت الفترة الزمنية متطابقة 100%
+// (هاي كانت سبب مشكلة "آخر شمعة فوق مش طالعة فوق آخر شمعة تحت بالضبط").
+const PRICE_SCALE_WIDTH = 78;
 
 const INTERVALS = [
   { value: "1m", label: "1 دقيقة" },
@@ -495,6 +501,9 @@ export default function ReplayClient({ userId }) {
 
   const playTimerRef = useRef(null);
   const livePollRef = useRef(null);
+  // عداد فشل التحديث اللايف المتتالي - لو تكرر الفشل (مثلاً تقييد مؤقت من يوهو)
+  // منجبر إعادة تحميل كاملة بدل ما نضل نحاول تحديثات جزئية فاشلة للأبد بصمت
+  const livePollFailCountRef = useRef(0);
   const countdownTickRef = useRef(null);
   const forminCandleStartRef = useRef(null);
 
@@ -615,6 +624,12 @@ export default function ReplayClient({ userId }) {
         : { visible: false },
       rightPriceScale: {
         scaleMargins: { top: (chartSettings.scaleMarginTop ?? 8) / 100, bottom: (chartSettings.scaleMarginBottom ?? 8) / 100 },
+        // عرض ثابت لعمود الأسعار (لازم يطابق نفس القيمة بشارت المقارنة تماماً)،
+        // عشان منطقة رسم الشموع تضل نفس المحاذاة بالبكسل بين الشارتين بغض النظر
+        // عن عدد خانات السعر (مثلاً XAUUSD أربع خانات وNAS100 خمس خانات) - لو
+        // تركنا العرض تلقائي كل شارت بياخد عرض مختلف وآخر شمعة فوق ما بتطابق
+        // آخر شمعة تحت بالضبط حتى لو نفس التوقيت تماماً.
+        minimumWidth: PRICE_SCALE_WIDTH,
       },
       crosshair: {
         vertLine: { color: chartSettings.crosshairColor },
@@ -1647,6 +1662,8 @@ export default function ReplayClient({ userId }) {
         rightPriceScale: {
           borderColor: "#3a3a3a",
           scaleMargins: { top: (savedSettings.scaleMarginTop ?? 8) / 100, bottom: (savedSettings.scaleMarginBottom ?? 8) / 100 },
+          // نفس ملاحظة أعلى: عرض ثابت مطابق تماماً لعرض عمود الأسعار بشارت المقارنة
+          minimumWidth: PRICE_SCALE_WIDTH,
         },
         width: chartContainerRef.current.clientWidth,
         height: 480,
@@ -2135,7 +2152,14 @@ export default function ReplayClient({ userId }) {
           horzLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
         },
         timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false },
-        rightPriceScale: { borderColor: "#3a3a3a" },
+        // عرض ثابت مطابق تماماً لعرض عمود الأسعار بالشارت الرئيسي (PRICE_SCALE_WIDTH)،
+        // هاد هو الحل الفعلي لمشكلة "آخر شمعة فوق ما بتطابق آخر شمعة تحت بالضبط":
+        // كل شارت (رئيسي/مقارنة) هو نسخة lightweight-charts منفصلة، وبدون تثبيت
+        // نفس العرض، كل وحدة بتحسب عرض عمود الأسعار تلقائياً حسب عدد خانات
+        // السعر تبعها (مثلاً XAUUSD أربع خانات مقابل NAS100 خمس خانات) - فمنطقة
+        // رسم الشموع الفعلية ما بتضل بنفس المحاذاة بالبكسل بين اللوحتين حتى لو
+        // كانت الفترة الزمنية المعروضة متطابقة 100%.
+        rightPriceScale: { borderColor: "#3a3a3a", minimumWidth: PRICE_SCALE_WIDTH },
         width: compareContainerRef.current.clientWidth,
         height: 160,
         // لوحة المقارنة صارت "مرآة" بس تتبع الشارت الرئيسي، مش تفاعلية لحالها
@@ -2222,6 +2246,7 @@ export default function ReplayClient({ userId }) {
   useEffect(() => {
     if (!compareOpen) return;
     let cancelled = false;
+    let comparePollTimer = null;
     async function loadCompare() {
       setCompareLoading(true);
       setCompareError("");
@@ -2243,9 +2268,47 @@ export default function ReplayClient({ userId }) {
         if (!cancelled) setCompareLoading(false);
       }
     }
+    /* تحديث خفيف دوري لبيانات المقارنة بوضع المباشر - قبل هالتعديل كانت لوحة
+       المقارنة تُجلب مرة وحدة بس عند الفتح وما تتحدث أبداً بعدها، فمع الوقت
+       تصير هي القديمة (نفس مشكلة الشارت الرئيسي بالظبط بس بالاتجاه المعاكس).
+       نستخدم count صغير (=3) عشان الطلب يستفيد من liveRangeDays الخفيف
+       بالـ API (شوف route.js) وما يثقل على المزوّد. */
+    async function pollCompareOnce() {
+      try {
+        const info = getAssetByValue(compareSymbol);
+        if (!info?.yahoo) return;
+        const tdInterval = INTERVAL_MAP[interval];
+        const res = await fetch(
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahoo)}&interval=${tdInterval}&count=3`
+        );
+        const data = await res.json();
+        if (data.error || !data.candles?.length) return;
+        const fresh = sanitizeCandles(data.candles);
+        if (fresh.length === 0) return;
+        const lastFresh = fresh[fresh.length - 1];
+        if (cancelled) return;
+        setCompareCandles((prev) => {
+          if (prev.length === 0) return prev;
+          const merged = [...prev];
+          if (merged[merged.length - 1].time === lastFresh.time) {
+            merged[merged.length - 1] = lastFresh;
+          } else if (lastFresh.time > merged[merged.length - 1].time) {
+            merged.push(lastFresh);
+          } else {
+            return prev;
+          }
+          return merged;
+        });
+      } catch (e) {
+        console.error("compare live poll failed:", e);
+      }
+    }
     loadCompare();
-    return () => { cancelled = true; };
-  }, [compareOpen, compareSymbol, interval, maxBars]);
+    if (mode === "live") {
+      comparePollTimer = setInterval(pollCompareOnce, 5000);
+    }
+    return () => { cancelled = true; if (comparePollTimer) clearInterval(comparePollTimer); };
+  }, [compareOpen, compareSymbol, interval, maxBars, mode]);
 
   function toggleCompare() {
     setCompareOpen((v) => {
@@ -2433,9 +2496,13 @@ export default function ReplayClient({ userId }) {
         `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahoo)}&interval=${tdInterval}&count=3`
       );
       const data = await res.json();
-      if (data.error || !data.candles?.length) return;
+      if (data.error || !data.candles?.length) {
+        console.error("live poll: empty/error response", data.error);
+        handleLivePollFailure();
+        return;
+      }
       const fresh = sanitizeCandles(data.candles);
-      if (fresh.length === 0) return;
+      if (fresh.length === 0) { handleLivePollFailure(); return; }
       const lastFresh = fresh[fresh.length - 1];
 
       setAllCandles((prev) => {
@@ -2459,8 +2526,22 @@ export default function ReplayClient({ userId }) {
       });
       forminCandleStartRef.current = lastFresh.time;
       updateLivePrice(lastFresh.close);
+      livePollFailCountRef.current = 0; // نجح التحديث - نصفّر عداد الفشل
     } catch (e) {
-      /* تجاهل خطأ تحديث واحد، رح يعيد المحاولة بالدورة الجاية */
+      console.error("live poll failed:", e);
+      handleLivePollFailure();
+    }
+  }
+
+  /* لو التحديث اللايف الجزئي (pollLiveOnce) فشل عدة مرات متتالية (شبكة/تقييد
+     مؤقت من مزوّد البيانات)، منعمل إعادة تحميل كاملة بدل ما نضل نحاول تحديثات
+     صغيرة فاشلة للأبد بصمت - هيك الشارت الرئيسي ما يضل "متجمّد" على نقطة قديمة
+     بينما لوحة المقارنة (يلي بتنجلب من جديد بشكل مستقل) عم تعرض بيانات أحدث. */
+  function handleLivePollFailure() {
+    livePollFailCountRef.current += 1;
+    if (livePollFailCountRef.current >= 3) {
+      livePollFailCountRef.current = 0;
+      loadData();
     }
   }
 
