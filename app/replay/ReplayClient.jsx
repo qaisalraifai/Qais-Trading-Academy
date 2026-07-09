@@ -2611,10 +2611,21 @@ export default function ReplayClient({ userId }) {
       setAllCandles((prev) => {
         if (prev.length === 0) return prev;
         const merged = [...prev];
-        // لو نفس وقت آخر شمعة عندنا - تحديث فقط. لو وقت جديد - إضافة شمعة جديدة
-        if (merged[merged.length - 1].time === lastFresh.time) {
-          merged[merged.length - 1] = lastFresh;
-        } else if (lastFresh.time > merged[merged.length - 1].time) {
+        const last = merged[merged.length - 1];
+        // لو نفس وقت آخر شمعة عندنا - بندمج (مش نستبدل بالكامل): منحافظ على
+        // الافتتاح الحقيقي تبع الشمعة، ومنوسّع الأعلى/الأدنى بدل ما نفقدهم،
+        // ومنحدث الإغلاق للسعر الأحدث. هيك الشمعة الأخيرة بتكبر/تتحرك بشكل
+        // طبيعي متزامن مع السوق بدل ما "تقفز" بين قيم لحظية منفصلة كل استعلام
+        // (وهاد كان سبب ظهورها كشحطة رفيعة بدل شمعة طبيعية).
+        if (last.time === lastFresh.time) {
+          merged[merged.length - 1] = {
+            time: last.time,
+            open: last.open,
+            high: Math.max(last.high, lastFresh.high, lastFresh.close),
+            low: Math.min(last.low, lastFresh.low, lastFresh.close),
+            close: lastFresh.close,
+          };
+        } else if (lastFresh.time > last.time) {
           merged.push(lastFresh);
         } else {
           return prev; // وقت أقدم من عندنا (بيانات غير متسلسلة) - نتجاهله بدل ما نكسر الشارت
