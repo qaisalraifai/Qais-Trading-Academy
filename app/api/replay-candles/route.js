@@ -1,10 +1,49 @@
-
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 /* مصدر البيانات: Yahoo Finance (مجاني بالكامل، بدون مفتاح API، بيغطي المعادن/الفوركس/الكريبتو/المؤشرات/الأسهم) */
 const YF_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
+const UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+/* يوهو صار بيرفض/بيحظر الطلبات اللي بدون كوكي جلسة + "crumb" صالح، وبالأخص من
+   IPs السيرفرات السحابية (زي Vercel) بشكل أعلى بكثير من الطلبات العادية.
+   لما يصير الرفض، يوهو بيرجع صفحة خطأ مش JSON صالح أو chart.error، وهاد
+   كان عم يترجم لـ 502 عام بدون أي تفاصيل تساعد بمعرفة السبب الحقيقي.
+   الحل: نجيب كوكي جلسة + crumb مرة وحدة ونعيد استخدامهم (مع تخزين مؤقت
+   بالذاكرة لمدة ساعة) بدل ما نرسل كل طلب "عاري" بدون هوية جلسة. */
+let crumbCache = { crumb: null, cookie: null, fetchedAt: 0 };
+const CRUMB_TTL_MS = 55 * 60 * 1000;
+
+async function getCrumbAndCookie() {
+  const now = Date.now();
+  if (crumbCache.crumb && crumbCache.cookie && now - crumbCache.fetchedAt < CRUMB_TTL_MS) {
+    return crumbCache;
+  }
+
+  // الخطوة 1: نزور fc.yahoo.com عشان ياخد كوكي جلسة صالح
+  const cookieRes = await fetch("https://fc.yahoo.com", {
+    headers: { "User-Agent": UA },
+    redirect: "manual",
+  });
+  const rawCookies =
+    typeof cookieRes.headers.getSetCookie === "function"
+      ? cookieRes.headers.getSetCookie()
+      : [cookieRes.headers.get("set-cookie")].filter(Boolean);
+  const cookie = rawCookies.map((c) => c.split(";")[0]).join("; ");
+  if (!cookie) throw new Error("تعذّر الحصول على كوكي جلسة من يوهو");
+
+  // الخطوة 2: نستخدم الكوكي لجلب الـ crumb
+  const crumbRes = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", {
+    headers: { "User-Agent": UA, Cookie: cookie },
+  });
+  const crumb = (await crumbRes.text()).trim();
+  if (!crumb || crumb.includes("<html")) throw new Error("تعذّر الحصول على crumb من يوهو");
+
+  crumbCache = { crumb, cookie, fetchedAt: now };
+  return crumbCache;
+}
 
 /* إعدادات كل فريم: الفريم المكافئ عند Yahoo + أقصى مدى تاريخي متاح لهالفريم (بالأيام)
    ملاحظة: Yahoo بيحدد مدى البيانات التاريخية حسب الفريم (شموع الدقيقة مثلاً تتوفر لآخر أسبوع بس)
@@ -80,18 +119,50 @@ export async function GET(req) {
     includePrePost: "false",
   });
 
-  const url = `${YF_BASE}/${encodeURIComponent(symbol)}?${params.toString()}`;
+  /* نحاول أولاً بالطريقة "الموثوقة" (كوكي جلسة + crumb)، وهاي صارت شبه إلزامية
+     من يوهو خصوصاً للطلبات الجاية من سيرفرات سحابية زي Vercel. لو فشلت (يوهو
+     غيّر آلية الحماية مثلاً)، منرجع نجرب الطلب المباشر القديم كخطة بديلة بدل
+     ما نطفّي الميزة بالكامل. */
+  async function fetchYahoo() {
+    try {
+      const { crumb, cookie } = await getCrumbAndCookie();
+      const withCrumb = new URLSearchParams(params);
+      withCrumb.set("crumb", crumb);
+      const res = await fetch(`${YF_BASE}/${encodeURIComponent(symbol)}?${withCrumb.toString()}`, {
+        headers: { "User-Agent": UA, Cookie: cookie },
+        cache: "no-store",
+      });
+      return { res, mode: "crumb" };
+    } catch (crumbErr) {
+      // خطة بديلة: طلب مباشر بدون crumb (كان هيك شغال قبل ما يوهو يشدد الحماية)
+      const res = await fetch(`${YF_BASE}/${encodeURIComponent(symbol)}?${params.toString()}`, {
+        headers: { "User-Agent": UA },
+        cache: "no-store",
+      });
+      return { res, mode: "direct", crumbErr };
+    }
+  }
 
   try {
-    const res = await fetch(url, {
-      headers: {
-        // يوهو بيرفض الطلبات اللي بدون User-Agent شبيه بالمتصفح
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-      },
-      cache: "no-store",
-    });
-    const data = await res.json();
+    const { res, mode, crumbErr } = await fetchYahoo();
+
+    if (!res.ok) {
+      // نرجع كود الحالة الحقيقي جوا الرسالة عشان يكون واضح بالـ console
+      // إذا كانت مشكلة حظر/تقييد (429) أو صلاحية (401/403) أو غيرها
+      const bodyPreview = (await res.text().catch(() => "")).slice(0, 200);
+      throw new Error(
+        `يوهو فايننس رفض الطلب (status ${res.status}${mode === "direct" ? ", direct-fallback" : ""})${
+          crumbErr ? ` — فشل جلب crumb: ${crumbErr.message}` : ""
+        }${bodyPreview ? ` — ${bodyPreview}` : ""}`
+      );
+    }
+
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error("يوهو فايننس رجّع استجابة مش JSON صالح (على الأغلب صفحة حظر/تحقق)");
+    }
 
     const err = data?.chart?.error;
     if (err) {
