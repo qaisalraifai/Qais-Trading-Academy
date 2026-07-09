@@ -77,7 +77,11 @@ function sanitizeCandles(list) {
 }
 
 /* ===================== إعدادات ألوان الشارت (تنحفظ محلياً بالمتصفح) ===================== */
-const CHART_SETTINGS_KEY = "qta_chart_settings_v1";
+// رفعنا رقم النسخة v1 -> v2 قصداً: عشان أي متصفح عنده إعدادات محفوظة قديمة
+// (فيها مثلاً priceLineVisible: true من قبل) يرجع ياخذ القيم الافتراضية
+// الجديدة تلقائياً بدل ما يضل عالقيم القديمة المخزّنة عنده لحد ما يضغط
+// "الافتراضي" يدوياً. هاي أضمن طريقة لأي تغيير مستقبلي بالقيم الافتراضية.
+const CHART_SETTINGS_KEY = "qta_chart_settings_v2";
 const DEFAULT_CHART_SETTINGS = {
   bg: "#0d0d0a",
   up: GREEN,
@@ -666,10 +670,14 @@ export default function ReplayClient({ userId }) {
     });
     if (compareChartRef.current) {
       compareChartRef.current.applyOptions({
-        layout: { background: { color: chartSettings.bg } },
+        layout: { background: { color: chartSettings.bg }, textColor: chartSettings.textColor || "#d1d4dc" },
         grid: {
           vertLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
           horzLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
+        },
+        crosshair: {
+          vertLine: { color: chartSettings.crosshairColor },
+          horzLine: { color: chartSettings.crosshairColor },
         },
       });
     }
@@ -2175,7 +2183,7 @@ export default function ReplayClient({ userId }) {
     }
     let cancelled = false;
     async function setupCompareChart() {
-      const { createChart } = await import("lightweight-charts");
+      const { createChart, CrosshairMode } = await import("lightweight-charts");
       if (cancelled || !compareContainerRef.current) return;
       const savedSettings = loadChartSettings();
       const chart = createChart(compareContainerRef.current, {
@@ -2197,6 +2205,14 @@ export default function ReplayClient({ userId }) {
         // رسم الشموع الفعلية ما بتضل بنفس المحاذاة بالبكسل بين اللوحتين حتى لو
         // كانت الفترة الزمنية المعروضة متطابقة 100%.
         rightPriceScale: { borderColor: "#3a3a3a", minimumWidth: PRICE_SCALE_WIDTH },
+        // نفس إعدادات مؤشر التقاطع بالضبط زي الشارت الرئيسي (اللون + الوضع Normal)
+        // - قبل هيك ما كان في أي إعداد هون، فكان بياخد لون/سلوك افتراضي من
+        // المكتبة يختلف عن الشارت الرئيسي (هاد سبب اختلاف لون المؤشر).
+        crosshair: {
+          mode: CrosshairMode.Normal,
+          vertLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#4c525e" },
+          horzLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#4c525e" },
+        },
         width: compareContainerRef.current.clientWidth,
         height: 160,
         // لوحة المقارنة صارت تفاعلية بالكامل (سكرول/زوم مباشر عليها) — التحكم
