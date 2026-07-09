@@ -562,6 +562,7 @@ export default function ReplayClient({ userId }) {
   const comparePaneRef = useRef(null);
   const compareCandlesRef = useRef([]);
   const crosshairSyncingRef = useRef(false);
+  const rangeSyncingRef = useRef(false);
 
   /* إعدادات لوحة المقارنة (نوع الشارت وألوانه) + نافذتها الخاصة */
   const [compareSettings, setCompareSettings] = useState(DEFAULT_COMPARE_SETTINGS);
@@ -2162,36 +2163,51 @@ export default function ReplayClient({ userId }) {
         rightPriceScale: { borderColor: "#3a3a3a", minimumWidth: PRICE_SCALE_WIDTH },
         width: compareContainerRef.current.clientWidth,
         height: 160,
-        // لوحة المقارنة صارت "مرآة" بس تتبع الشارت الرئيسي، مش تفاعلية لحالها
-        // (ما في سكرول/زوم مباشر عليها) — هيك ما بيصير أي "تجاذب" بين اللوحتين
-        // يسبب زوم عشوائي أو تكبير غير طبيعي لما تتحرك بالشارت الرئيسي.
-        handleScroll: false,
-        handleScale: false,
+        // لوحة المقارنة صارت تفاعلية بالكامل (سكرول/زوم مباشر عليها) — التحكم
+        // متبادل مع الشارت الرئيسي بالاتجاهين (شوف onMainRangeChange/
+        // onCompareRangeChange تحت)، مع حارس (rangeSyncingRef) يمنع أي
+        // "تجاذب"/بينغ-بونغ بين اللوحتين لما توصل تحديثات من الاتجاهين
+        // بنفس الوقت.
+        handleScroll: true,
+        handleScale: true,
       });
       const series = buildCompareSeries(chart, loadCompareSettings());
       compareChartRef.current = chart;
       compareSeriesRef.current = series;
 
-      // مزامنة السكرول/الزوم: بس باتجاه واحد (الشارت الرئيسي بيقود لوحة المقارنة)،
-      // مش بالاتجاهين. المزامنة بالاتجاهين كانت بتعمل "بينغ-بونغ" بين الشارتين
-      // (كل شارت يرجع يصحح التاني) وهاد كان يسبب الزوم العشوائي والمربعات
-      // العملاقة يلي ظهرت.
+      // مزامنة السكرول/الزوم بين الشارت الرئيسي ولوحة المقارنة بالاتجاهين -
+      // أي وحدة فيهم ممكن تقود التانية هلأ (قبل هيك كانت لوحة المقارنة "مرآة"
+      // بس، ما فيها تحكم مباشر). rangeSyncingRef هو الحارس يلي بيمنع
+      // "بينغ-بونغ" (كل شارت يرجع يصحح التاني بلا نهاية): لما وحدة تحدّث
+      // التانية، منرفع الحارس قبل ما نغيّر مدى الشارت التاني، وأي حدث تغيير
+      // ثاني ناتج عن هالتحديث بنفس اللحظة بيتجاهل نفسه لأنه الحارس مرفوع.
+      //
       // مهم: نستخدم مزامنة "منطقية" (logical range = رقم موضع الشمعة) مش
       // مزامنة بالتوقيت المطلق (setVisibleRange). المزامنة بالتوقيت كانت هي
       // سبب مشكلة "الخط العمودي (نقطة الوقت الحالية) مش بنفس المكان بين
       // الشارتين": أي رمزين مختلفين (زي NAS100 وSPX500) ممكن يكون عندهم
       // فجوات/شموع ناقصة بأوقات مختلفة شوي عن بعض، فنفس الفترة الزمنية
       // بالضبط ممكن تترجم لعدد شموع مختلف بكل لوحة، فينزاح كل شي بصرياً حتى
-      // لو الفترة "نفسها" بالتوقيت. المزامنة المنطقية (logical range) بتحاذي
-      // برقم موضع الشمعة مباشرة، فعمود رقم N بيضل بنفس البكسل بين اللوحتين
-      // دايماً - وهاد هو الأسلوب الموصى فيه رسمياً من مكتبة lightweight-charts
+      // لو الفترة "نفسها" بالتوقيت. المزامنة المنطقية بتحاذي برقم موضع
+      // الشمعة مباشرة، فعمود رقم N بيضل بنفس البكسل بين اللوحتين دايماً -
+      // وهاد هو الأسلوب الموصى فيه رسمياً من مكتبة lightweight-charts
       // لمزامنة عدة شارتات مع بعض.
       const mainChart = chartRef.current;
       const onMainRangeChange = (range) => {
-        if (!range || !compareChartRef.current) return;
+        if (!range || !compareChartRef.current || rangeSyncingRef.current) return;
+        rangeSyncingRef.current = true;
         try { compareChartRef.current.timeScale().setVisibleLogicalRange(range); } catch {}
+        rangeSyncingRef.current = false;
+      };
+      const onCompareRangeChange = (range) => {
+        if (!range || !chartRef.current || rangeSyncingRef.current) return;
+        rangeSyncingRef.current = true;
+        try { chartRef.current.timeScale().setVisibleLogicalRange(range); } catch {}
+        rangeSyncingRef.current = false;
       };
       mainChart?.timeScale().subscribeVisibleLogicalRangeChange(onMainRangeChange);
+      chart.timeScale().subscribeVisibleLogicalRangeChange(onCompareRangeChange);
+
       // نحاذي لوحة المقارنة فوراً مع نفس الموضع المنطقي للشارت الرئيسي وقت الفتح
       // (بدل ما تضل بفترتها الافتراضية العريضة لحد أول سحب/زوم من المستخدم)
       try {
@@ -2199,23 +2215,43 @@ export default function ReplayClient({ userId }) {
         if (mainRange) chart.timeScale().setVisibleLogicalRange(mainRange);
       } catch {}
 
-      // شبكة أمان إضافية: كل شوي منجبر لوحة المقارنة تاخد بالضبط نفس الموضع
-      // المنطقي للشارت الرئيسي المعروض، بغض النظر عن أي حدث. هاي بتغطي كل
-      // الحالات يلي ممكن يصير فيها "تأخر" بسيط بين تحديث بيانات الأصلين (كل
-      // رمز بيتحدث بمصدره ووقته لحاله)، فبتضمن إن اللوحتين ما بيبقوا منزاحين
-      // عن بعض أبداً حتى لو لحظياً، من غير ما نعتمد بس على أحداث ممكن تفوت
-      // أو توصل متأخرة.
-      const rangeSyncInterval = setInterval(() => {
-        if (!chartRef.current || !compareChartRef.current) return;
+      /* مزامنة مؤشر تقاطع الوقت/السعر بالاتجاهين (تحريك الماوس فوق أي وحدة من
+         اللوحتين بيحرك نفس عمود الوقت بالتانية) - قبل هيك كانت المزامنة
+         باتجاه واحد بس (الشارت الرئيسي بيقود)، فلما تكوني تحت (لوحة المقارنة)
+         ما كان المؤشر عم يطلع فوق (الشارت الرئيسي). */
+      function findNearestBar(candles, time) {
+        if (!candles?.length) return null;
+        let bar = candles.find((c) => c.time === time);
+        if (bar) return bar;
+        let bestDiff = Infinity;
+        for (const c of candles) {
+          const diff = Math.abs(c.time - time);
+          if (diff < bestDiff) { bestDiff = diff; bar = c; }
+        }
+        return bar || null;
+      }
+      function syncCrosshairToMain(time) {
+        if (crosshairSyncingRef.current) return;
+        const mChart = chartRef.current;
+        const mSeries = seriesRef.current;
+        if (!mChart || !mSeries) return;
+        crosshairSyncingRef.current = true;
         try {
-          const r = chartRef.current.timeScale().getVisibleLogicalRange();
-          if (r) compareChartRef.current.timeScale().setVisibleLogicalRange(r);
+          if (time == null) {
+            mChart.clearCrosshairPosition();
+          } else {
+            const bar = findNearestBar(visibleCandlesRef.current, time);
+            if (bar) mChart.setCrosshairPosition(bar.close, bar.time, mSeries);
+            else mChart.clearCrosshairPosition();
+          }
         } catch {}
-      }, 300);
+        crosshairSyncingRef.current = false;
+      }
+      chart.subscribeCrosshairMove((param) => syncCrosshairToMain(param.time ?? null));
 
       chart.__unsyncMain = () => {
         mainChart?.timeScale().unsubscribeVisibleLogicalRangeChange(onMainRangeChange);
-        clearInterval(rangeSyncInterval);
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(onCompareRangeChange);
       };
 
       chartRef.current?.__resize?.();
