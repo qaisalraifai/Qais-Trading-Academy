@@ -2193,14 +2193,22 @@ export default function ReplayClient({ userId }) {
     };
   }, [compareOpen]);
 
-  /* تحديث بيانات شارت المقارنة كل ما تتغيّر الرسمة/الفريم.
-     ملاحظة مهمة: ما منستخدم fitContent() هون، لأنها بتوسّع العرض ليشمل كل بيانات
-     رمز المقارنة (يلي غالباً مدته الزمنية مختلفة عن الأصل الرئيسي)، وهاد كان
-     بالضبط سبب انزياح اللوحتين عن بعض بالزمن. بدالها منحاذي مباشرة مع نفس
-     الفترة الظاهرة حالياً بالشارت الرئيسي. */
+  /* تحديث بيانات شارت المقارنة كل ما تتغيّر الرسمة/الفريم/تقدّم التشغيل (وضع التدريب).
+     السبب الحقيقي للفراغ يلي كان بيبان يمين الشارت الرئيسي: بوضع "التدريب" (الريبلاي)
+     الشارت الرئيسي بيكون مجمّد على نقطة تاريخية معينة ("اختيار نقطة البداية")
+     ومكشوف منه بس شموع لحد هاي النقطة، بينما رمز المقارنة كان دايماً بيجيب ويعرض
+     آخر بيانات حية لليوم (لحد اليوم)! يعني اللوحتين أصلاً بيمثلوا فترتين زمنيتين
+     مختلفتين تماماً. الحل: نقص بيانات المقارنة لنفس آخر نقطة زمنية مكشوفة
+     بالشارت الرئيسي (بوضع التدريب)، تماماً متل ما بنعمل بالشارت الرئيسي نفسه -
+     هيك ما ينكشف "مستقبل" لرمز المقارنة قبل ما يوصله الريبلاي. */
   useEffect(() => {
     if (compareSeriesRef.current) {
-      const data = compareSeriesData(compareSettings.type, compareCandles);
+      let sourceCandles = compareCandles;
+      if (mode === "training" && allCandles.length) {
+        const cutTime = allCandles[Math.min(revealCount, allCandles.length) - 1]?.time;
+        if (cutTime != null) sourceCandles = compareCandles.filter((c) => c.time <= cutTime);
+      }
+      const data = compareSeriesData(compareSettings.type, sourceCandles);
       try {
         compareSeriesRef.current.setData(data);
         const mainRange = chartRef.current?.timeScale().getVisibleRange();
@@ -2208,7 +2216,7 @@ export default function ReplayClient({ userId }) {
       } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compareCandles]);
+  }, [compareCandles, revealCount, allCandles, mode]);
 
   /* جلب بيانات رمز المقارنة (نفس مصدر البيانات اللي بتستخدمه أداة الريبلاي - Yahoo Finance) */
   useEffect(() => {
