@@ -2184,8 +2184,18 @@ export default function ReplayClient({ userId }) {
           if (time == null) {
             cChart.clearCrosshairPosition();
           } else {
+            const mainList = visibleCandlesRef.current || [];
             const candles = compareCandlesRef.current || [];
-            let bar = candles.find((c) => c.time === time);
+            // مهم: منحاذي بـ"رقم الموضع" (index) مش بأقرب توقيت مطلق. الرمزين
+            // (مثلاً NAS100 وSPX500) ممكن يكون عندهم شموع بأوقات مختلفة شوي عن
+            // بعض (فجوات/إغلاقات مختلفة)، فمطابقة "أقرب توقيت" كانت بترجّع أحياناً
+            // شمعة بموضع مختلف عن يلي تحت الماوس بالضبط بالشارت الرئيسي، فيطلع
+            // الخط العمودي بلوحة المقارنة منزاح شوي عن نفس عمود الوقت فوق - وهاد
+            // هو سبب مشكلة "تزامن الوقت" يلي كانت بتبان بالمقارنة. رقم الموضع
+            // (idx) هو نفسه المستخدم لمزامنة السكرول/الزوم (logical range) بين
+            // اللوحتين، فمطابقته هون بتضمن نفس العمود بالبكسل تماماً بكل الحالات.
+            let idx = mainList.findIndex((c) => c.time === time);
+            let bar = idx !== -1 ? candles[idx] : undefined;
             if (!bar && candles.length) {
               let bestDiff = Infinity;
               for (const c of candles) {
@@ -2393,7 +2403,12 @@ export default function ReplayClient({ userId }) {
           if (time == null) {
             mChart.clearCrosshairPosition();
           } else {
-            const bar = findNearestBar(visibleCandlesRef.current, time);
+            // نفس المبدأ بالاتجاه المعاكس: نلاقي رقم موضع الشمعة تحت الماوس
+            // بلوحة المقارنة، ونستخدم نفس الرقم بالشارت الرئيسي (مش أقرب توقيت)
+            // عشان الخط العمودي يضل بنفس العمود بالبكسل بين اللوحتين تماماً.
+            const compareList = compareCandlesRef.current || [];
+            const idx = compareList.findIndex((c) => c.time === time);
+            const bar = idx !== -1 ? visibleCandlesRef.current[idx] : findNearestBar(visibleCandlesRef.current, time);
             if (bar) mChart.setCrosshairPosition(bar.close, bar.time, mSeries);
             else mChart.clearCrosshairPosition();
           }
@@ -2863,6 +2878,13 @@ export default function ReplayClient({ userId }) {
         display: "flex", flexWrap: "wrap", gap: "0.35rem", alignItems: "center",
         marginBottom: "0.6rem", background: "#131722",
         border: "1px solid #242832", borderRadius: 10, padding: "0.35rem 0.5rem",
+        // مهم: الصفحة كلها dir="rtl"، وبدون تثبيت الاتجاه هون كان "row" الافتراضي
+        // بينقلب تلقائياً (أول عنصر بالـDOM بيطلع أقصى اليمين مش الشمال)، فكانت
+        // كل أزرار الأدوات تطلع بعكس المكان المطلوب (يمين بدل شمال) وصندوق
+        // الحالة/الفريم/الأصل يطلع شمال بدل يمين. تثبيت ltr هون بيخلي ترتيب
+        // العناصر بالـDOM يطابق ترتيبها البصري دايماً: الأزرار شمال، والحالة/
+        // الفريم/الأصل يمين - بغض النظر عن اتجاه باقي الصفحة.
+        direction: "ltr",
       }}>
         {/* مجموعة أزرار الأدوات (أيقونات فقط، بدون نص) */}
         <button onClick={() => setSettingsOpen(true)} style={iconBtn(false)} title="إعدادات الشارت"><ToolIcon id="gear" /></button>
