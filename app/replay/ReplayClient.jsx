@@ -2719,51 +2719,98 @@ export default function ReplayClient({ userId }) {
 
   const finished = mode === "training" && allCandles.length > 0 && revealCount >= allCandles.length;
 
-  /* شريط علوي: حالة الوضع (بدون تبويب يدوي) + عشوائي + قص/تصدير + قص نقطة بداية + شاشة كاملة */
+  /* شريط علوي واحد مضغوط (ستايل تريدنغ فيو): كل شي بصف واحد - الأصل/الفريم/السرعة
+     يمين، وأزرار الإجراءات (عشوائي/قص/مقارنة/تصدير/إعادة تعيين/شاشة كاملة/إعدادات)
+     شمال، بدون صناديق كبيرة فوق بعض زي قبل. */
   function renderTopBar() {
+    const mini = (active) => ({ ...tabStyle(active), padding: "0.4rem 0.65rem", fontSize: 12.5, borderRadius: 8 });
     return (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.8rem", alignItems: "center" }}>
-        <span style={{ ...tabStyle(mode === "live"), cursor: "default" }}>
-          {mode === "live" ? "📡 السوق مباشر" : "🎯 عرض تاريخي (من نقطة مختارة)"}
+      <div style={{
+        display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center",
+        marginBottom: "0.6rem", background: "linear-gradient(145deg, #14120a, #0d0d0a)",
+        border: `1px solid ${GOLD}26`, borderRadius: 10, padding: "0.4rem 0.6rem",
+      }}>
+        <select
+          value={assetValue}
+          onChange={(e) => setAssetValue(e.target.value)}
+          disabled={randomChart}
+          title="الأصل"
+          style={{ ...selectStyle, minWidth: 130, padding: "0.35rem 0.5rem", fontSize: 12.5 }}
+        >
+          {ASSETS.map((g) => (
+            <optgroup key={g.group} label={g.group}>
+              {g.items.map((it) => (
+                <option key={it.v} value={it.v} disabled={!it.yahoo}>
+                  {it.label}{!it.yahoo ? " (غير مدعوم بعد)" : ""}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+
+        <select value={interval} onChange={(e) => setIntervalValue(e.target.value)} title="الفريم"
+          style={{ ...selectStyle, minWidth: 70, padding: "0.35rem 0.5rem", fontSize: 12.5 }}>
+          {INTERVALS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
+        </select>
+
+        {mode === "training" && (
+          <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} title="السرعة"
+            style={{ ...selectStyle, minWidth: 70, padding: "0.35rem 0.5rem", fontSize: 12.5 }}>
+            {SPEEDS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
+          </select>
+        )}
+
+        <span style={{ ...mini(mode === "live"), cursor: "default" }}>
+          {mode === "live" ? "📡 مباشر" : "🎯 تاريخي"}
         </span>
         {mode === "training" && (
-          <button onClick={() => switchMode("live")} style={tabStyle(false)} title="ارجعي للمتابعة المباشرة للسوق">
-            🔴 رجوع للسوق المباشر
-          </button>
+          <button onClick={() => switchMode("live")} style={mini(false)} title="ارجعي للمتابعة المباشرة للسوق">🔴 رجوع للمباشر</button>
         )}
+
         <div style={{ flex: 1 }} />
+
+        {mode === "training" && (
+          <>
+            <button onClick={handleRandomStart} style={mini(false)} title="بداية عشوائية جديدة">🎲</button>
+            <button onClick={handleReset} style={mini(false)} title="إعادة من البداية">⏮</button>
+            <button onClick={togglePlay} disabled={finished || loading} style={mini(isPlaying)} title={isPlaying ? "إيقاف" : "تشغيل تلقائي"}>
+              {isPlaying ? "⏸" : "▶"}
+            </button>
+            <button onClick={handleNext} disabled={finished || loading} style={mini(false)} title="الشمعة التالية">⏭</button>
+            <div style={{ width: 1, height: 22, background: "#2a2a2a" }} />
+          </>
+        )}
+        {mode === "live" && (
+          <>
+            <button onClick={() => loadData()} style={mini(false)} title="تحديث">🔄</button>
+            <div style={{ width: 1, height: 22, background: "#2a2a2a" }} />
+          </>
+        )}
+
         <button
           onClick={() => setRandomChart((r) => !r)}
-          style={{ ...tabStyle(randomChart), background: randomChart ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent", color: randomChart ? "#1a1200" : GOLD }}
+          style={mini(randomChart)}
           title="حركة سعر مولّدة عشوائياً بدل السوق الحقيقي"
         >
-          🎲 شارت عشوائي
+          🎲 عشوائي
         </button>
         <button
           onClick={toggleCutMode}
-          style={{ ...tabStyle(cutMode), background: cutMode ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent", color: cutMode ? "#1a1200" : GOLD }}
+          style={mini(cutMode)}
           title="اضغطي الزر، وبعدين دوسي على أي شمعة بالشارت لتبلّشي الاستعراض منها"
           disabled={!supported || allCandles.length === 0}
         >
-          ✂️ {cutMode ? "دوسي على الشارت..." : "اختيار نقطة البداية"}
+          ✂️ {cutMode ? "دوسي على الشارت..." : "بداية"}
         </button>
-        <button
-          onClick={toggleCompare}
-          style={{ ...tabStyle(compareOpen), background: compareOpen ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent", color: compareOpen ? "#1a1200" : GOLD }}
-          title="اعرضي رمز ثاني بلوحة منفصلة أسفل الشارت للمقارنة بينهم (دبل-كليك على عنوان أي لوحة يكبّرها ويخفي التانية)"
-        >
-          🔀 مقارنة رمز
+        <button onClick={toggleCompare} style={mini(compareOpen)} title="اعرضي رمز ثاني بلوحة منفصلة أسفل الشارت للمقارنة">
+          🔀 مقارنة
         </button>
-        <button onClick={handleExportImage} style={tabStyle(false)}>📷 تصدير كصورة</button>
-        <button onClick={handleResetView} style={tabStyle(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي">
-          ⟲ إعادة تعيين الشارت
+        <button onClick={handleExportImage} style={mini(false)} title="تصدير كصورة">📷</button>
+        <button onClick={handleResetView} style={mini(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي">⟲</button>
+        <button onClick={toggleFullscreen} style={mini(isFullscreen)} title="شاشة كاملة">
+          {isFullscreen ? "⤡" : "⤢"}
         </button>
-        <button onClick={toggleFullscreen} style={tabStyle(isFullscreen)} title="شاشة كاملة">
-          {isFullscreen ? "⤡ خروج من الشاشة الكاملة" : "⤢ شاشة كاملة"}
-        </button>
-        <button onClick={() => setSettingsOpen(true)} style={tabStyle(false)} title="ألوان الشارت (الخلفية وألوان الشموع)">
-          ⚙️ إعدادات الشارت
-        </button>
+        <button onClick={() => setSettingsOpen(true)} style={mini(false)} title="إعدادات الشارت">⚙️</button>
       </div>
     );
   }
@@ -3513,75 +3560,9 @@ export default function ReplayClient({ userId }) {
     );
   }
 
-  function renderControls() {
-    return (
-      <div style={{
-        display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center",
-        marginBottom: "1rem", background: "linear-gradient(145deg, #14120a, #0d0d0a)",
-        border: `1px solid ${GOLD}26`, borderRadius: 14, padding: "1rem 1.25rem",
-      }}>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#999" }}>
-          الأصل
-          <select
-            value={assetValue}
-            onChange={(e) => setAssetValue(e.target.value)}
-            disabled={randomChart}
-            style={selectStyle}
-          >
-            {ASSETS.map((g) => (
-              <optgroup key={g.group} label={g.group}>
-                {g.items.map((it) => (
-                  <option key={it.v} value={it.v} disabled={!it.yahoo}>
-                    {it.label}{!it.yahoo ? " (غير مدعوم بعد)" : ""}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
+  // ملاحظة: renderControls تم دمجها بالكامل جوا renderTopBar (شريط واحد مضغوط
+  // بدل صندوقين فوق بعض)، فما عاد في حاجة لها هون.
 
-        <Select label="الفريم" value={interval} onChange={setIntervalValue} options={INTERVALS} />
-        {mode === "training" && <Select label="السرعة" value={speed} onChange={(v) => setSpeed(Number(v))} options={SPEEDS} />}
-
-        <div style={{ flex: 1 }} />
-
-        {supported && allCandles.length > 0 && chartSettings.showTradeButtons !== false && (
-          <div style={{ display: "flex", gap: 6, alignItems: "center", paddingInlineEnd: 8, borderInlineEnd: "1px solid #2a2a2a" }}>
-            <button
-              onClick={() => openQuickTrade("buy")}
-              disabled={!!pendingTrade}
-              title="فتح صفقة شراء فورية بالسعر الحالي وربطها بالباك تيست"
-              style={{ ...btnStyle("primary"), background: `linear-gradient(135deg, ${GREEN}, #0d8f63)`, color: "#fff" }}
-            >
-              🟢 شراء فوري
-            </button>
-            <button
-              onClick={() => openQuickTrade("sell")}
-              disabled={!!pendingTrade}
-              title="فتح صفقة بيع فورية بالسعر الحالي وربطها بالباك تيست"
-              style={{ ...btnStyle("primary"), background: `linear-gradient(135deg, ${RED}, #9f1f1f)`, color: "#fff" }}
-            >
-              🔴 بيع فوري
-            </button>
-          </div>
-        )}
-
-        {mode === "training" && (
-          <>
-            <button onClick={handleRandomStart} style={btnStyle("secondary")}>🎲 بداية عشوائية جديدة</button>
-            <button onClick={handleReset} style={btnStyle("secondary")}>⏮ إعادة من البداية</button>
-            <button onClick={togglePlay} disabled={finished || loading} style={btnStyle("primary")}>
-              {isPlaying ? "⏸ إيقاف" : "▶ تشغيل تلقائي"}
-            </button>
-            <button onClick={handleNext} disabled={finished || loading} style={btnStyle("primary")}>▶ الشمعة التالية</button>
-          </>
-        )}
-        {mode === "live" && (
-          <button onClick={() => loadData()} style={btnStyle("secondary")}>🔄 تحديث</button>
-        )}
-      </div>
-    );
-  }
 
   /* بادج السوق الحي: سعر + عداد إغلاق الشمعة بتنسيق واضح + شريط تقدّم */
   function renderLiveBadge() {
@@ -3654,10 +3635,51 @@ export default function ReplayClient({ userId }) {
     );
   }
 
+  /* لوحة شراء/بيع فوري عائمة فوق الشارت (نفس ستايل تريدنغ فيو تماماً): صندوقين
+     صغار جنب بعض (بيع أحمر يمين... بالـRTL بيطلع عالشمال، شراء أزرق) والفرق
+     (سبريد) بالنص. هاي بديل أزرار "شراء فوري / بيع فوري" الكبيرة يلي كانت
+     آخذة مساحة بشريط الأدوات. */
+  function renderQuickTradeWidget() {
+    if (chartSettings.showTradeButtons === false) return null;
+    if (!supported || allCandles.length === 0) return null;
+    const list = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
+    const last = list[list.length - 1];
+    if (!last) return null;
+    const SPREAD = last.close < 10 ? 0.00012 : last.close < 100 ? 0.0025 : 0.36;
+    const digits = last.close < 10 ? 5 : last.close < 100 ? 4 : 2;
+    const bid = last.close - SPREAD / 2;
+    const ask = last.close + SPREAD / 2;
+    const disabled = !!pendingTrade;
+    const box = (label, price, color, onClick) => (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        style={{
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+          minWidth: 78, padding: "0.3rem 0.55rem", borderRadius: 6, cursor: disabled ? "default" : "pointer",
+          background: "#0d0d0acc", border: `1.5px solid ${color}`, color,
+          fontFamily: "monospace, sans-serif", opacity: disabled ? 0.5 : 1,
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 700 }}>{price.toFixed(digits)}</span>
+        <span style={{ fontSize: 10.5, fontWeight: 700 }}>{label}</span>
+      </button>
+    );
+    return (
+      <div style={{
+        position: "absolute", top: 42, left: 10, zIndex: 8,
+        display: "flex", alignItems: "center", gap: 4,
+      }}>
+        {box("بيع", bid, RED, () => openQuickTrade("sell"))}
+        <span style={{ fontSize: 11, color: "#888", padding: "0 2px" }}>{(ask - bid).toFixed(digits)}</span>
+        {box("شراء", ask, "#4f7cff", () => openQuickTrade("buy"))}
+      </div>
+    );
+  }
+
   return (
     <div>
       {!isFullscreen && renderTopBar()}
-      {!isFullscreen && renderControls()}
 
       {!supported && !error && (
         <div style={{ color: "#f59e0b", fontSize: 13, marginBottom: "1rem" }}>
@@ -3683,7 +3705,6 @@ export default function ReplayClient({ userId }) {
         {isFullscreen && (
           <div ref={headerRef} style={{ marginBottom: "0.5rem" }}>
             {renderTopBar()}
-            {renderControls()}
             {renderLiveBadge()}
           </div>
         )}
@@ -3712,6 +3733,7 @@ export default function ReplayClient({ userId }) {
             >
               <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
                 {!loading && allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
+                {!loading && allCandles.length > 0 && !editDraft && renderQuickTradeWidget()}
                 {!loading && allCandles.length > 0 && renderPropertiesDialog()}
                 {!loading && allCandles.length > 0 && renderSelectionToolbar()}
                 {!loading && renderTradePanel()}
