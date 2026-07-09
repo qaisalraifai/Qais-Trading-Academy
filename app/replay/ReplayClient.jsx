@@ -72,7 +72,17 @@ function sanitizeCandles(list) {
 
 /* ===================== إعدادات ألوان الشارت (تنحفظ محلياً بالمتصفح) ===================== */
 const CHART_SETTINGS_KEY = "qta_chart_settings_v1";
-const DEFAULT_CHART_SETTINGS = { bg: "#0d0d0a", up: GREEN, down: RED };
+const DEFAULT_CHART_SETTINGS = {
+  bg: "#0d0d0a",
+  up: GREEN,
+  down: RED,
+  gridVisible: true,
+  gridColor: GOLD,
+  crosshairColor: "#758696",
+  watermarkText: "",
+  scaleMarginTop: 8,
+  scaleMarginBottom: 8,
+};
 function loadChartSettings() {
   if (typeof window === "undefined") return DEFAULT_CHART_SETTINGS;
   try {
@@ -594,13 +604,35 @@ export default function ReplayClient({ userId }) {
   /* أي تغيير بالإعدادات: تطبيق فوري على الشارت + حفظ بالمتصفح (وتطبيق نفس لون الخلفية على لوحة المقارنة لو مفتوحة) */
   useEffect(() => {
     if (!chartRef.current || !seriesRef.current) return;
-    chartRef.current.applyOptions({ layout: { background: { color: chartSettings.bg } } });
+    chartRef.current.applyOptions({
+      layout: { background: { color: chartSettings.bg } },
+      grid: {
+        vertLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
+        horzLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
+      },
+      watermark: chartSettings.watermarkText
+        ? { visible: true, text: chartSettings.watermarkText, color: "rgba(201,162,75,0.12)", fontSize: 48, horzAlign: "center", vertAlign: "center" }
+        : { visible: false },
+      rightPriceScale: {
+        scaleMargins: { top: (chartSettings.scaleMarginTop ?? 8) / 100, bottom: (chartSettings.scaleMarginBottom ?? 8) / 100 },
+      },
+      crosshair: {
+        vertLine: { color: chartSettings.crosshairColor },
+        horzLine: { color: chartSettings.crosshairColor },
+      },
+    });
     seriesRef.current.applyOptions({
       upColor: chartSettings.up, downColor: chartSettings.down,
       wickUpColor: chartSettings.up, wickDownColor: chartSettings.down,
     });
     if (compareChartRef.current) {
-      compareChartRef.current.applyOptions({ layout: { background: { color: chartSettings.bg } } });
+      compareChartRef.current.applyOptions({
+        layout: { background: { color: chartSettings.bg } },
+        grid: {
+          vertLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
+          horzLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
+        },
+      });
     }
     saveChartSettings(chartSettings);
   }, [chartSettings]);
@@ -1596,11 +1628,14 @@ export default function ReplayClient({ userId }) {
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif",
         },
         // شبكة خفيفة جداً بدل إخفائها بالكامل - زي خلفية شارت تريدنغ فيو الحقيقي
-        // (خطوط باهتة بالكاد تُلاحظ، مش شبكة صارخة)
+        // (خطوط باهتة بالكاد تُلاحظ، مش شبكة صارخة) - قابلة للإخفاء/تلوين من الإعدادات
         grid: {
-          vertLines: { color: "rgba(201,162,75,0.05)", style: 0, visible: true },
-          horzLines: { color: "rgba(201,162,75,0.05)", style: 0, visible: true },
+          vertLines: { color: hexToRgba(savedSettings.gridColor, 0.05), style: 0, visible: savedSettings.gridVisible },
+          horzLines: { color: hexToRgba(savedSettings.gridColor, 0.05), style: 0, visible: savedSettings.gridVisible },
         },
+        watermark: savedSettings.watermarkText
+          ? { visible: true, text: savedSettings.watermarkText, color: "rgba(201,162,75,0.12)", fontSize: 48, horzAlign: "center", vertAlign: "center" }
+          : { visible: false },
         timeScale: {
           borderColor: "#3a3a3a",
           timeVisible: true,
@@ -1609,7 +1644,10 @@ export default function ReplayClient({ userId }) {
           barSpacing: 7,
           minBarSpacing: 1.5,
         },
-        rightPriceScale: { borderColor: "#3a3a3a", scaleMargins: { top: 0.08, bottom: 0.08 } },
+        rightPriceScale: {
+          borderColor: "#3a3a3a",
+          scaleMargins: { top: (savedSettings.scaleMarginTop ?? 8) / 100, bottom: (savedSettings.scaleMarginBottom ?? 8) / 100 },
+        },
         width: chartContainerRef.current.clientWidth,
         height: 480,
         /* وضع Normal (مش Magnet) عشان مؤشر السعر يصير "+" حر بيتبع الفأرة فعلياً
@@ -1618,8 +1656,8 @@ export default function ReplayClient({ userId }) {
            بس بيقوّي التصاقه لما يكون قريب فعلاً من سعر شمعة، من غير ما يختفي أبداً. */
         crosshair: {
           mode: CrosshairMode.Normal,
-          vertLine: { color: "#758696", width: 1, style: 2, labelBackgroundColor: "#4c525e" },
-          horzLine: { color: "#758696", width: 1, style: 2, labelBackgroundColor: "#4c525e" },
+          vertLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#4c525e" },
+          horzLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#4c525e" },
         },
       });
 
@@ -1808,6 +1846,7 @@ export default function ReplayClient({ userId }) {
         const barForCrosshair = visibleCandlesRef.current[idx];
         if (barForCrosshair) {
           chart.setCrosshairPosition(price, barForCrosshair.time, series);
+          syncCrosshairToCompare(barForCrosshair.time);
         }
         if (!isDrawingRef.current && !activePath) return;
         const snapped = snapPrice(logical, price, y);
@@ -1968,23 +2007,28 @@ export default function ReplayClient({ userId }) {
 
       /* مزامنة مؤشر تقاطع الوقت/السعر مع لوحة المقارنة (لو مفتوحة) عشان يبانوا
          كأنهم شاشة وحدة زي تريدنغ فيو بالظبط: أي تحريك بالماوس عالشارت الرئيسي
-         بيحرك نفس عمود الوقت بلوحة المقارنة تلقائياً، شمعة شمعة. */
-      function onMainCrosshairSync(param) {
+         بيحرك نفس عمود الوقت بلوحة المقارنة تلقائياً، شمعة شمعة.
+         ملاحظة مهمة: منستدعيها بشكل مباشر من onMouseMove (مش بس عن طريق
+         subscribeCrosshairMove) لأن مؤشر الشارت الرئيسي أصلاً بينترسم يدوياً
+         عن طريق setCrosshairPosition، وما في ضمان إنها هي نفسها بتفعّل حدث
+         subscribeCrosshairMove بكل نسخ المكتبة — فبالاستدعاء المباشر بنضمن
+         إنها تشتغل دايماً. */
+      function syncCrosshairToCompare(time) {
         if (crosshairSyncingRef.current) return;
         const cChart = compareChartRef.current;
         const cSeries = compareSeriesRef.current;
         if (!cChart || !cSeries) return;
         crosshairSyncingRef.current = true;
         try {
-          if (!param.time) {
+          if (time == null) {
             cChart.clearCrosshairPosition();
           } else {
             const candles = compareCandlesRef.current || [];
-            let bar = candles.find((c) => c.time === param.time);
+            let bar = candles.find((c) => c.time === time);
             if (!bar && candles.length) {
               let bestDiff = Infinity;
               for (const c of candles) {
-                const diff = Math.abs(c.time - param.time);
+                const diff = Math.abs(c.time - time);
                 if (diff < bestDiff) { bestDiff = diff; bar = c; }
               }
             }
@@ -1993,6 +2037,9 @@ export default function ReplayClient({ userId }) {
           }
         } catch {}
         crosshairSyncingRef.current = false;
+      }
+      function onMainCrosshairSync(param) {
+        syncCrosshairToCompare(param.time ?? null);
       }
       chart.subscribeCrosshairMove(onMainCrosshairSync);
 
@@ -2077,8 +2124,8 @@ export default function ReplayClient({ userId }) {
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif",
         },
         grid: {
-          vertLines: { color: "rgba(201,162,75,0.05)", visible: true },
-          horzLines: { color: "rgba(201,162,75,0.05)", visible: true },
+          vertLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
+          horzLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
         },
         timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false },
         rightPriceScale: { borderColor: "#3a3a3a" },
@@ -3061,6 +3108,15 @@ export default function ReplayClient({ userId }) {
       <input type="color" value={val} onChange={(e) => onChange(e.target.value)}
         style={{ width: 40, height: 28, border: "1px solid #333", borderRadius: 6, background: "none", cursor: "pointer", padding: 0 }} />
     );
+    const toggleInput = (val, onChange) => (
+      <input type="checkbox" checked={val} onChange={(e) => onChange(e.target.checked)}
+        style={{ width: 18, height: 18, cursor: "pointer", accentColor: GOLD }} />
+    );
+    const numberInput = (val, onChange, min = 0, max = 40) => (
+      <input type="number" min={min} max={max} value={val}
+        onChange={(e) => onChange(Math.max(min, Math.min(max, Number(e.target.value) || 0)))}
+        style={{ width: 60, background: "#0d0d0d", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "4px 6px", fontSize: 12.5, textAlign: "center" }} />
+    );
     return (
       <div style={{
         position: "absolute", inset: 0, zIndex: 30, background: "#000000aa",
@@ -3068,12 +3124,33 @@ export default function ReplayClient({ userId }) {
       }} onClick={() => setSettingsOpen(false)}>
         <div
           onClick={(e) => e.stopPropagation()}
-          style={{ width: 300, background: "#161616", border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem" }}
+          style={{ width: 320, maxHeight: "80%", overflowY: "auto", background: "#161616", border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem" }}
         >
           <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 6, fontSize: 15 }}>⚙️ إعدادات الشارت</div>
+          <div style={{ fontSize: 11.5, color: "#777", margin: "4px 0 2px" }}>الألوان الأساسية</div>
           {row("لون خلفية الشارت", colorInput(chartSettings.bg, (v) => setChartSettings((s) => ({ ...s, bg: v }))))}
           {row("لون شمعة الصعود", colorInput(chartSettings.up, (v) => setChartSettings((s) => ({ ...s, up: v }))))}
           {row("لون شمعة الهبوط", colorInput(chartSettings.down, (v) => setChartSettings((s) => ({ ...s, down: v }))))}
+          <div style={{ fontSize: 11.5, color: "#777", margin: "10px 0 2px" }}>الشبكة ومؤشر التقاطع</div>
+          {row("إظهار الشبكة", toggleInput(chartSettings.gridVisible, (v) => setChartSettings((s) => ({ ...s, gridVisible: v }))))}
+          {row("لون الشبكة", colorInput(chartSettings.gridColor, (v) => setChartSettings((s) => ({ ...s, gridColor: v }))))}
+          {row("لون مؤشر التقاطع", colorInput(chartSettings.crosshairColor, (v) => setChartSettings((s) => ({ ...s, crosshairColor: v }))))}
+          <div style={{ fontSize: 11.5, color: "#777", margin: "10px 0 2px" }}>العلامة المائية</div>
+          {row("نص العلامة المائية", (
+            <input
+              type="text"
+              value={chartSettings.watermarkText}
+              onChange={(e) => setChartSettings((s) => ({ ...s, watermarkText: e.target.value }))}
+              placeholder="فارغ = مخفية"
+              style={{ width: 130, background: "#0d0d0d", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "4px 6px", fontSize: 12.5 }}
+            />
+          ))}
+          <div style={{ fontSize: 11.5, color: "#777", margin: "10px 0 2px" }}>هوامش محور السعر (%)</div>
+          {row("الهامش الأعلى", numberInput(chartSettings.scaleMarginTop, (v) => setChartSettings((s) => ({ ...s, scaleMarginTop: v }))))}
+          {row("الهامش الأسفل", numberInput(chartSettings.scaleMarginBottom, (v) => setChartSettings((s) => ({ ...s, scaleMarginBottom: v }))))}
+          <div style={{ fontSize: 10.5, color: "#666", marginTop: 10, lineHeight: 1.6 }}>
+            كل تغيير هون بينحفظ تلقائياً بالمتصفح وبيرجع لنفس الشكل بأي مرة تفتحي فيها الشارت من جديد.
+          </div>
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <button onClick={() => setChartSettings(DEFAULT_CHART_SETTINGS)} style={{ ...btnStyle("secondary"), flex: 1 }}>
               الافتراضي
