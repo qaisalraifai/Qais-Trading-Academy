@@ -1678,6 +1678,12 @@ export default function ReplayClient({ userId }) {
       reason: tradeReason.trim(),
       riskAmount, rewardAmount, rr, riskPercent,
       isLive: mode === "live",
+      // لازم نبعت priceSource/sourceSymbol هون بالظبط متل ما بتعمل أداة الباك تيست،
+      // وإلا صفقات "مباشر" المفتوحة من الاستعراض التاريخي بتضل بدون مصدر سعر،
+      // فبتظهر دايماً "⚠️ خطأ" بعمود السعر الحالي بالباك تيست ومتابعتها الحية
+      // بتفشل فوراً بدون أي طلب شبكة (أصل غير مدعوم للمتابعة الحية).
+      priceSource: mode === "live" ? "yahoo" : null,
+      sourceSymbol: mode === "live" ? info?.yahoo || null : null,
     }, userId);
 
     const { data, error } = await supabase.from("trades").insert(row).select().single();
