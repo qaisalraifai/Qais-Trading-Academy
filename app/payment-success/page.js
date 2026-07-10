@@ -17,18 +17,27 @@ export default function PaymentSuccessPage() {
     const checkSubscription = async () => {
       const {
         data: { user },
+        error: userError,
       } = await supabase.auth.getUser();
+
+      // 🔍 تشخيص مؤقت — احذفيه بعد ما نحل المشكلة
+      console.log("🔍 DEBUG user:", user ? { id: user.id, aud: user.aud, role: user.role } : null);
+      console.log("🔍 DEBUG userError:", userError);
 
       if (!user) {
         setStatus("timeout");
         return;
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("subscription_status")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
+
+      // 🔍 تشخيص مؤقت — احذفيه بعد ما نحل المشكلة
+      console.log("🔍 DEBUG profile:", profile);
+      console.log("🔍 DEBUG profileError:", profileError);
 
       if (profile?.subscription_status === "active") {
         setStatus("active");
