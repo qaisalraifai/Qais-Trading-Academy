@@ -79,16 +79,33 @@ export default function SignupPage() {
 
     const newUserId = signUpData?.user?.id;
 
-    await supabase.auth.signInWithPassword({ email, password });
+    if (!newUserId) {
+      setError("حدث خطأ أثناء إنشاء الحساب، حاول مرة أخرى");
+      setLoading(false);
+      return;
+    }
 
-    // إنشاء/تحديث صف profiles باسم المستخدم
-    if (newUserId) {
-      await supabase.from("profiles").upsert({
-        id: newUserId,
-        username: fullName.trim(),
-        role: "student",
-        subscription_status: "inactive",
-      });
+    // ننشئ صف profiles عبر السيرفر (Service Role) فوراً — هيك ما بيعتمد على
+    // وجود session نشطة بالمتصفح (متل حالة تفعيل الإيميل)، وما ممكن يفشل بصمت بسبب RLS
+    const createProfileRes = await fetch("/api/create-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: newUserId, username: fullName.trim() }),
+    });
+
+    if (!createProfileRes.ok) {
+      setError("تم إنشاء الحساب بس صار خطأ بإعداد الملف الشخصي، تواصلي معنا من فضلك");
+      setLoading(false);
+      return;
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError) {
+      // على الأغلب الإيميل محتاج تأكيد قبل ما يقدر يسجل دخول
+      setError("تم إنشاء حسابك! تحققي من إيميلك لتأكيد الحساب قبل تسجيل الدخول والمتابعة للدفع.");
+      setLoading(false);
+      return;
     }
 
     router.push("/payment");
