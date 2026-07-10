@@ -187,7 +187,18 @@ export default function HomePage() {
       </section>
 
       <footer style={styles.footer}>
-        © {new Date().getFullYear()} Qais Trading Academy — جميع الحقوق محفوظة
+        <div style={styles.footerLinks}>
+          <Link href="/terms" style={styles.footerLink}>الشروط والأحكام</Link>
+          <span style={styles.footerDot}>·</span>
+          <Link href="/privacy" style={styles.footerLink}>سياسة الخصوصية</Link>
+          <span style={styles.footerDot}>·</span>
+          <Link href="/refund-policy" style={styles.footerLink}>سياسة الاسترجاع</Link>
+          <span style={styles.footerDot}>·</span>
+          <a href="mailto:qaisalraifai@gmail.com" style={styles.footerLink}>تواصل معنا</a>
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          © {new Date().getFullYear()} Qais Trading Academy — جميع الحقوق محفوظة
+        </div>
       </footer>
     </div>
   );
@@ -255,4 +266,7 @@ const styles = {
   ctaSub: { color: textMuted, marginBottom: "2.5rem", fontSize: "1rem" },
 
   footer: { textAlign: "center", padding: "2rem", color: "#222", fontSize: "0.8rem", fontFamily: "'JetBrains Mono', monospace", borderTop: "1px solid #111" },
+  footerLinks: { display: "flex", justifyContent: "center", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" },
+  footerLink: { color: textMuted, textDecoration: "none", fontSize: "0.8rem" },
+  footerDot: { color: "#2a2520" },
 };
