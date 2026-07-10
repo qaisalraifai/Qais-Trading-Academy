@@ -66,7 +66,7 @@ export default function PaymentPage() {
         <p style={styles.logoSub}>QAIS TRADING ACADEMY</p>
         <div style={styles.divider} />
         <h1 style={styles.title}>انضم للأكاديمية</h1>
-        <p style={styles.subtitle}>استثمر في نفسك وابدأ رحلتك في عالم التداول</p>
+        <p style={styles.subtitle}>طوّر مهاراتك وابدأ رحلتك التعليمية في عالم التداول</p>
       </div>
 
       <div style={styles.card}>
@@ -81,7 +81,7 @@ export default function PaymentPage() {
           <li style={styles.feature}><span style={styles.check}>◆</span> وصول فوري لجميع المحاضرات</li>
           <li style={styles.feature}><span style={styles.check}>◆</span> عضوية Discord الحصرية</li>
           <li style={styles.feature}><span style={styles.check}>◆</span> دعم مباشر من المدرب</li>
-          <li style={styles.feature}><span style={styles.check}>◆</span> تحليلات وتوصيات حصرية</li>
+          <li style={styles.feature}><span style={styles.check}>◆</span> شروحات وتحليلات تعليمية حصرية</li>
         </ul>
 
         {!checkoutStarted && (
