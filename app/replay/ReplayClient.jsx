@@ -152,6 +152,26 @@ function saveActiveIndicators(list) {
   } catch {}
 }
 
+/* قوالب المؤشرات المحفوظة (مجموعات جاهزة تُحمّل بضغطة وحدة) - محلي بالمتصفح */
+const INDICATOR_TEMPLATES_KEY = "qta_indicator_templates_v1";
+function loadIndicatorTemplates() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(INDICATOR_TEMPLATES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function saveIndicatorTemplates(list) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(INDICATOR_TEMPLATES_KEY, JSON.stringify(list));
+  } catch {}
+}
+
 /* ===================== إعدادات لوحة المقارنة (نوع الشارت + ألوان)، تنحفظ محلياً بالمتصفح ===================== */
 const COMPARE_SETTINGS_KEY = "qta_compare_chart_settings_v1";
 const DEFAULT_COMPARE_SETTINGS = {
@@ -550,6 +570,12 @@ export default function ReplayClient({ userId }) {
   const [activeIndicators, setActiveIndicators] = useState([]);
   const [indicatorPanelOpen, setIndicatorPanelOpen] = useState(false);
   const [indicatorSearch, setIndicatorSearch] = useState("");
+  // instanceId المؤشر يلي فاتحة قائمته السريعة حالياً (عين/إعدادات/حذف) - زي الصورة المرجعية
+  const [indicatorQuickMenuFor, setIndicatorQuickMenuFor] = useState(null);
+  // instanceId المؤشر يلي فاتحة نافذة إعداداته الكاملة (الظهور/نمط/مدخلات)
+  const [indicatorSettingsFor, setIndicatorSettingsFor] = useState(null);
+  const [indicatorSettingsTab, setIndicatorSettingsTab] = useState("visibility"); // visibility | style | inputs
+  const [templatesPanelOpen, setTemplatesPanelOpen] = useState(false);
   // instanceId -> { def, series: { [lineKey]: ISeriesApi } }
   const indicatorSeriesRef = useRef(new Map());
   // مرآة دايماً محدّثة لـ activeIndicators، عشان أي كود جوا closure قديم
@@ -843,21 +869,34 @@ export default function ReplayClient({ userId }) {
       const def = getIndicatorDef(it.id);
       if (!def) return;
       const scaleId = def.type === "oscillator" ? `osc-${it.instanceId}` : "right";
+      const isVisible = it.style?.visible !== false;
       const series = {};
       def.lines.forEach((line) => {
         try {
           series[line.key] = line.isHistogram
             ? chart.addHistogramSeries({
-                color: line.color, priceScaleId: scaleId,
-                priceLineVisible: false, lastValueVisible: false, base: 0,
+                color: effectiveLineColor(it, line), priceScaleId: scaleId,
+                priceLineVisible: false, lastValueVisible: false, base: 0, visible: isVisible,
               })
             : chart.addLineSeries({
-                color: line.color, lineWidth: line.lineWidth || 1.4, priceScaleId: scaleId,
-                priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+                color: effectiveLineColor(it, line), lineWidth: effectiveLineWidth(it, line), priceScaleId: scaleId,
+                priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: isVisible,
               });
         } catch {}
       });
       map.set(it.instanceId, { def, series });
+    });
+    // نحدّث لون/سماكة/ظهور أي سيريز موجودة أصلاً كل مرة (مش بس وقت إنشائها) عشان
+    // تغيير الستايل من نافذة الإعدادات ينطبق فوراً بدون ما نهدم ونعيد بناء السيريز
+    activeIndicatorsRef.current.forEach((it) => {
+      const entry = map.get(it.instanceId);
+      if (!entry) return;
+      const isVisible = it.style?.visible !== false;
+      entry.def.lines.forEach((line) => {
+        const s = entry.series[line.key];
+        if (!s) return;
+        try { s.applyOptions({ color: effectiveLineColor(it, line), lineWidth: effectiveLineWidth(it, line), visible: isVisible }); } catch {}
+      });
     });
     applyIndicatorPaneMargins();
     recalcAllIndicatorData();
@@ -876,16 +915,43 @@ export default function ReplayClient({ userId }) {
     const def = getIndicatorDef(defId);
     if (!def) return;
     const instanceId = `${defId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    setActiveIndicators((prev) => [...prev, { instanceId, id: defId, params: defaultParamsFor(def) }]);
+    setActiveIndicators((prev) => [...prev, { instanceId, id: defId, params: defaultParamsFor(def), style: { visible: true, colors: {}, widths: {} } }]);
   }
   function removeIndicator(instanceId) {
     setActiveIndicators((prev) => prev.filter((it) => it.instanceId !== instanceId));
+    if (indicatorQuickMenuFor === instanceId) setIndicatorQuickMenuFor(null);
+    if (indicatorSettingsFor === instanceId) setIndicatorSettingsFor(null);
   }
   function updateIndicatorParam(instanceId, key, value) {
     setActiveIndicators((prev) => prev.map((it) => (it.instanceId === instanceId ? { ...it, params: { ...it.params, [key]: value } } : it)));
     // نحدّث الرسم فوراً بدون انتظار دورة رندر تانية
     setTimeout(() => recalcAllIndicatorData(), 0);
   }
+  /* ===== إعدادات الشكل/الظهور لكل مؤشر مفعّل (تبويبات: الظهور / نمط / مدخلات) ===== */
+  function toggleIndicatorVisible(instanceId) {
+    setActiveIndicators((prev) => prev.map((it) => {
+      if (it.instanceId !== instanceId) return it;
+      const style = it.style || { visible: true, colors: {}, widths: {} };
+      return { ...it, style: { ...style, visible: style.visible === false ? true : false } };
+    }));
+  }
+  function updateIndicatorLineColor(instanceId, lineKey, color) {
+    setActiveIndicators((prev) => prev.map((it) => {
+      if (it.instanceId !== instanceId) return it;
+      const style = it.style || { visible: true, colors: {}, widths: {} };
+      return { ...it, style: { ...style, colors: { ...style.colors, [lineKey]: color } } };
+    }));
+  }
+  function updateIndicatorLineWidth(instanceId, lineKey, width) {
+    setActiveIndicators((prev) => prev.map((it) => {
+      if (it.instanceId !== instanceId) return it;
+      const style = it.style || { visible: true, colors: {}, widths: {} };
+      return { ...it, style: { ...style, widths: { ...style.widths, [lineKey]: width } } };
+    }));
+  }
+  /* اللون/السماكة الفعليين لخط معيّن بمؤشر - القيمة المخصصة لو موجودة، وإلا افتراضي تعريف المؤشر */
+  function effectiveLineColor(it, line) { return it?.style?.colors?.[line.key] || line.color; }
+  function effectiveLineWidth(it, line) { return it?.style?.widths?.[line.key] || line.lineWidth || 1.4; }
 
   /* أي تغيير بإعدادات لوحة المقارنة (نوع الشارت أو ألوانه): نعيد بناء السيريز فوراً ونحفظ بالمتصفح.
      منقّاة بنفس بيانات الشمعة الحالية عشان يبان التغيير مباشرة بدون قفل/إعادة تحميل. */
@@ -3080,6 +3146,21 @@ export default function ReplayClient({ userId }) {
         )}
         <div style={{ width: 1, height: 22, background: "#242832" }} />
         <button onClick={toggleCompare} style={iconBtn(compareOpen)} title="اعرضي رمز ثاني بلوحة منفصلة أسفل الشارت للمقارنة"><ToolIcon id="compare2" /></button>
+        <button
+          onClick={() => setIndicatorPanelOpen((v) => !v)}
+          style={{ ...iconBtn(indicatorPanelOpen), position: "relative" }}
+          title="المؤشرات الفنية"
+        >
+          <ToolIcon id="indicators2" />
+          {activeIndicators.length > 0 && (
+            <span style={{
+              position: "absolute", top: 1, right: 1, minWidth: 13, height: 13, borderRadius: 7,
+              background: GOLD, color: "#1a1200", fontSize: 9, fontWeight: 800,
+              display: "flex", alignItems: "center", justifyContent: "center", padding: "0 2px",
+            }}>{activeIndicators.length}</span>
+          )}
+        </button>
+        <button onClick={() => setTemplatesPanelOpen((v) => !v)} style={iconBtn(templatesPanelOpen)} title="قوالب: احفظي أو حمّلي مجموعة مؤشرات/إعدادات جاهزة"><ToolIcon id="template2" /></button>
         <button onClick={handleExportImage} style={iconBtn(false)} title="تصدير كصورة"><ToolIcon id="camera" /></button>
         <button onClick={handleResetView} style={iconBtn(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي"><ToolIcon id="resetzoom" /></button>
         <button onClick={toggleFullscreen} style={iconBtn(isFullscreen)} title="شاشة كاملة"><ToolIcon id={isFullscreen ? "fullscreenExit" : "fullscreen"} /></button>
@@ -3299,6 +3380,10 @@ export default function ReplayClient({ userId }) {
         >
           <ToolIcon id={allDrawingsLocked ? "lock" : "unlock"} />
           <span style={labelStyle(allDrawingsLocked)}>قفل</span>
+        </button>
+        <button type="button" title="قوالب: احفظي أو حمّلي مجموعة مؤشرات جاهزة" onClick={(e) => { e.stopPropagation(); setTemplatesPanelOpen((v) => !v); }} style={sidebarBtnStyle(templatesPanelOpen)}>
+          <ToolIcon id="template2" />
+          <span style={labelStyle(templatesPanelOpen)}>قالب</span>
         </button>
         <button type="button" title="حذف كل الرسومات" onClick={(e) => { e.stopPropagation(); handleClearDrawings(); }} style={sidebarBtnStyle(false)}>
           <ToolIcon id="trash" />
@@ -3695,13 +3780,14 @@ export default function ReplayClient({ userId }) {
   /* نافذة إعدادات الشارت الكاملة — ستايل تريدنغ فيو بالظبط: قائمة تبويبات عالجانب
      (رمز / خط الحالة / المقاييس والخطوط / لوحة / تداول / تنبيهات / أحداث) ومحتوى كل
      تبويب بمنطقة قابلة للتمرير لحالها. كل تغيير بينطبق فوراً وبينحفظ محلياً بالمتصفح. */
-  /* شريط صغير تحت زر "المؤشرات" يعرض شرائح (chips) لكل مؤشر مفعّل حالياً،
-     كل شريحة فيها لون المؤشر + اسمه المختصر + زر حذف سريع */
+  /* شريط صغير أعلى يسار الشارت يعرض شرائح (chips) لكل مؤشر مفعّل حالياً - كل
+     شريحة فيها لون المؤشر + اسمه المختصر، وبفتحلها قائمة سريعة (عين/إعدادات/حذف)
+     بالضغط عليها - بالظبط متل قائمة الأدوات السريعة بمنصات التداول المعروفة */
   function renderActiveIndicatorsBar() {
     return (
       <div
         style={{
-          position: "absolute", top: 40, left: 8, zIndex: 6,
+          position: "absolute", top: 8, left: 8, zIndex: 6,
           display: "flex", flexWrap: "wrap", gap: 5, maxWidth: "70%",
           pointerEvents: "auto",
         }}
@@ -3709,27 +3795,53 @@ export default function ReplayClient({ userId }) {
         {activeIndicators.map((it) => {
           const def = getIndicatorDef(it.id);
           if (!def) return null;
+          const hidden = it.style?.visible === false;
           const mainColor = def.lines[0]?.color || GOLD;
+          const menuOpen = indicatorQuickMenuFor === it.instanceId;
           return (
-            <div
-              key={it.instanceId}
-              onClick={() => setIndicatorPanelOpen(true)}
-              title="اضغطي لتعديل إعدادات المؤشر"
-              style={{
-                display: "flex", alignItems: "center", gap: 5, cursor: "pointer",
-                background: "rgba(13,13,10,0.72)", backdropFilter: "blur(2px)",
-                border: `1px solid ${GOLD}22`, borderRadius: 6,
-                padding: "2px 4px 2px 6px", fontSize: 11, color: "#ddd",
-              }}
-            >
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: mainColor, flexShrink: 0 }} />
-              <span>{def.name}{def.params?.[0] ? ` (${it.params[def.params[0].key]})` : ""}</span>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); removeIndicator(it.instanceId); }}
-                style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: 12, padding: "0 2px", lineHeight: 1 }}
-                title="حذف المؤشر"
-              >✕</button>
+            <div key={it.instanceId} style={{ position: "relative" }}>
+              <div
+                onClick={() => setIndicatorQuickMenuFor((cur) => (cur === it.instanceId ? null : it.instanceId))}
+                title="اضغطي لخيارات سريعة (إظهار/إعدادات/حذف)"
+                style={{
+                  display: "flex", alignItems: "center", gap: 5, cursor: "pointer",
+                  background: menuOpen ? "rgba(30,28,18,0.9)" : "rgba(13,13,10,0.72)", backdropFilter: "blur(2px)",
+                  border: `1px solid ${menuOpen ? GOLD + "88" : GOLD + "22"}`, borderRadius: 6,
+                  padding: "2px 4px 2px 6px", fontSize: 11, color: hidden ? "#777" : "#ddd",
+                  opacity: hidden ? 0.6 : 1,
+                }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: mainColor, flexShrink: 0 }} />
+                <span>{def.name}{def.params?.[0] ? ` (${it.params[def.params[0].key]})` : ""}</span>
+              </div>
+              {menuOpen && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 9 }} onClick={() => setIndicatorQuickMenuFor(null)} />
+                  <div
+                    style={{
+                      position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 10,
+                      display: "flex", alignItems: "center", gap: 2, background: "#1a1a1a",
+                      border: `1px solid ${GOLD}33`, borderRadius: 8, padding: 3,
+                      boxShadow: "0 4px 14px rgba(0,0,0,0.4)",
+                    }}
+                  >
+                    <button type="button" title={hidden ? "إظهار" : "إخفاء"} onClick={(e) => { e.stopPropagation(); toggleIndicatorVisible(it.instanceId); }} style={{ ...quickMenuBtnStyle }}>
+                      <ToolIcon id={hidden ? "eyeOff" : "eye"} />
+                    </button>
+                    <button
+                      type="button" title="الإعدادات"
+                      onClick={(e) => { e.stopPropagation(); setIndicatorSettingsFor(it.instanceId); setIndicatorSettingsTab("visibility"); setIndicatorQuickMenuFor(null); }}
+                      style={{ ...quickMenuBtnStyle }}
+                    >
+                      <ToolIcon id="gear" />
+                    </button>
+                    <div style={{ width: 1, height: 18, background: "#333" }} />
+                    <button type="button" title="حذف المؤشر" onClick={(e) => { e.stopPropagation(); removeIndicator(it.instanceId); }} style={{ ...quickMenuBtnStyle, color: RED }}>
+                      <ToolIcon id="trash" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           );
         })}
@@ -3796,7 +3908,15 @@ export default function ReplayClient({ userId }) {
                   <div key={it.instanceId} style={{ padding: "6px 0", borderBottom: "1px solid #232323" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                       <span style={{ fontSize: 12.5, color: "#e5e5e5" }}>{def.name}</span>
-                      <button type="button" onClick={() => removeIndicator(it.instanceId)} style={{ ...paneCornerBtnStyle, color: RED, fontSize: 12 }}>حذف ✕</button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <button
+                          type="button"
+                          onClick={() => { setIndicatorSettingsFor(it.instanceId); setIndicatorSettingsTab("style"); }}
+                          title="إعدادات كاملة (الظهور/نمط/مدخلات)"
+                          style={{ ...paneCornerBtnStyle, fontSize: 13 }}
+                        >⚙️</button>
+                        <button type="button" onClick={() => removeIndicator(it.instanceId)} style={{ ...paneCornerBtnStyle, color: RED, fontSize: 12 }}>حذف ✕</button>
+                      </div>
                     </div>
                     {(def.params || []).length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
@@ -3840,6 +3960,192 @@ export default function ReplayClient({ userId }) {
 
           <div style={{ display: "flex", gap: 8, marginTop: 14, flexShrink: 0 }}>
             <button onClick={() => setIndicatorPanelOpen(false)} style={{ ...btnStyle("primary"), flex: 1 }}>تم</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* نافذة إعدادات مؤشر واحد مفعّل - بتبويبات أفقية فوق (الظهور / نمط / مدخلات)
+     بالظبط متل نوافذ الخصائص بمنصات التداول المعروفة: تبويب "الظهور" لإخفاء/إظهار
+     المؤشر، "نمط" لتغيير لون وسماكة كل خط فيه، و"مدخلات" لفتراته الرقمية (زي فترة SMA...الخ) */
+  function renderIndicatorSettingsDialog() {
+    const it = activeIndicators.find((x) => x.instanceId === indicatorSettingsFor);
+    if (!it) return null;
+    const def = getIndicatorDef(it.id);
+    if (!def) return null;
+    const hidden = it.style?.visible === false;
+    const SETTINGS_TABS = [
+      { key: "visibility", label: "الظهور" },
+      { key: "style", label: "نمط" },
+      { key: "inputs", label: "مدخلات" },
+    ];
+    const close = () => setIndicatorSettingsFor(null);
+    return (
+      <div style={{ position: "absolute", inset: 0, zIndex: 32, background: "#000000aa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: 420, maxWidth: "92%", maxHeight: "82%", background: "#161616",
+            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1rem 1.2rem",
+            display: "flex", flexDirection: "column", minHeight: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexShrink: 0 }}>
+            <div style={{ fontWeight: 700, color: GOLD_LIGHT, fontSize: 15 }}>{def.name}</div>
+            <button onClick={close} style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: 16 }}>✕</button>
+          </div>
+
+          <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #262626", marginBottom: 12, flexShrink: 0 }}>
+            {SETTINGS_TABS.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setIndicatorSettingsTab(t.key)}
+                style={{
+                  padding: "7px 14px", border: "none", background: "none", cursor: "pointer",
+                  fontSize: 13, fontWeight: indicatorSettingsTab === t.key ? 700 : 500,
+                  color: indicatorSettingsTab === t.key ? GOLD_LIGHT : "#999",
+                  borderBottom: `2px solid ${indicatorSettingsTab === t.key ? GOLD : "transparent"}`,
+                  marginBottom: -1,
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+            {indicatorSettingsTab === "visibility" && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0" }}>
+                <span style={{ fontSize: 13, color: "#ccc" }}>إظهار المؤشر على الشارت</span>
+                <input
+                  type="checkbox" checked={!hidden}
+                  onChange={() => toggleIndicatorVisible(it.instanceId)}
+                  style={{ width: 18, height: 18, cursor: "pointer", accentColor: GOLD }}
+                />
+              </div>
+            )}
+
+            {indicatorSettingsTab === "style" && (
+              <div>
+                {def.lines.map((line) => (
+                  <div key={line.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #232323", gap: 10 }}>
+                    <span style={{ fontSize: 12.5, color: "#e5e5e5" }}>{line.label}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="color"
+                        value={effectiveLineColor(it, line)}
+                        onChange={(e) => updateIndicatorLineColor(it.instanceId, line.key, e.target.value)}
+                        style={{ width: 34, height: 26, border: "1px solid #333", borderRadius: 6, background: "none", cursor: "pointer", padding: 0 }}
+                      />
+                      {!line.isHistogram && (
+                        <select
+                          value={effectiveLineWidth(it, line)}
+                          onChange={(e) => updateIndicatorLineWidth(it.instanceId, line.key, Number(e.target.value))}
+                          style={{ ...selectStyle, padding: "4px 6px", fontSize: 12 }}
+                        >
+                          {[1, 2, 3, 4].map((w) => (<option key={w} value={w}>{w}px</option>))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {indicatorSettingsTab === "inputs" && (
+              (def.params || []).length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {def.params.map((f) => (
+                    <div key={f.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #232323" }}>
+                      <span style={{ fontSize: 12.5, color: "#ccc" }}>{f.label}</span>
+                      <input
+                        type="number"
+                        value={it.params[f.key]}
+                        min={f.min} max={f.max} step={f.step || 1}
+                        onChange={(e) => updateIndicatorParam(it.instanceId, f.key, Number(e.target.value))}
+                        style={{ width: 70, background: "#0d0d0d", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "5px 7px", fontSize: 12.5, textAlign: "center" }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12.5, color: "#777", padding: "1rem 0", textAlign: "center" }}>هاد المؤشر ما إله مدخلات قابلة للتعديل</div>
+              )
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 14, flexShrink: 0 }}>
+            <button
+              onClick={() => { removeIndicator(it.instanceId); }}
+              style={{ ...btnStyle("secondary"), color: RED, flex: 1 }}
+            >🗑 حذف المؤشر</button>
+            <button onClick={close} style={{ ...btnStyle("primary"), flex: 1 }}>تم</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* لوحة القوالب: حفظ/تحميل مجموعة المؤشرات المفعّلة حالياً (مع فتراتها وألوانها)
+     كقالب باسم مخصص - محفوظة محلياً بالمتصفح، وقابلة للتحميل أو الحذف بأي وقت */
+  function renderTemplatesPanel() {
+    const templates = loadIndicatorTemplates();
+    const close = () => setTemplatesPanelOpen(false);
+    function saveCurrentAsTemplate() {
+      const name = window.prompt("اسم القالب:", `قالب ${templates.length + 1}`);
+      if (!name) return;
+      const next = [...templates.filter((t) => t.name !== name), { name, indicators: activeIndicators }];
+      saveIndicatorTemplates(next);
+      setTemplatesPanelOpen(false);
+      setTemplatesPanelOpen(true); // إعادة رندر فوري بالقائمة المحدثة
+    }
+    function applyTemplate(t) {
+      setActiveIndicators(t.indicators.map((it) => ({
+        ...it,
+        instanceId: `${it.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      })));
+      close();
+    }
+    function deleteTemplate(name) {
+      saveIndicatorTemplates(templates.filter((t) => t.name !== name));
+      setTemplatesPanelOpen(false);
+      setTemplatesPanelOpen(true);
+    }
+    return (
+      <div style={{ position: "absolute", inset: 0, zIndex: 31, background: "#000000aa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: 360, maxWidth: "92%", maxHeight: "78%", background: "#161616",
+            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem",
+            display: "flex", flexDirection: "column", minHeight: 0,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10, fontSize: 15, flexShrink: 0 }}>🗂 قوالب المؤشرات</div>
+          <button onClick={saveCurrentAsTemplate} style={{ ...btnStyle("secondary"), marginBottom: 10, flexShrink: 0 }}>
+            + احفظي المجموعة الحالية كقالب ({activeIndicators.length})
+          </button>
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+            {templates.length === 0 && (
+              <div style={{ fontSize: 12.5, color: "#777", padding: "1rem 0", textAlign: "center" }}>ما في قوالب محفوظة لسا</div>
+            )}
+            {templates.map((t) => (
+              <div key={t.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 4px", borderBottom: "1px solid #232323", gap: 8 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
+                  <div style={{ fontSize: 11, color: "#777" }}>{t.indicators.length} مؤشر</div>
+                </div>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  <button type="button" onClick={() => applyTemplate(t)} style={{ ...btnStyle("primary"), padding: "0.3rem 0.7rem", fontSize: 12 }}>تحميل</button>
+                  <button type="button" onClick={() => deleteTemplate(t.name)} style={{ ...paneCornerBtnStyle, color: RED, fontSize: 13 }}>🗑</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 14, flexShrink: 0 }}>
+            <button onClick={close} style={{ ...btnStyle("primary"), flex: 1 }}>تم</button>
           </div>
         </div>
       </div>
@@ -4274,20 +4580,10 @@ export default function ReplayClient({ userId }) {
                     </button>
                   </div>
                 )}
-                {!loading && allCandles.length > 0 && (
-                  <div style={paneCornerBadgeStyle("left")}>
-                    <button
-                      type="button"
-                      onClick={() => setIndicatorPanelOpen((v) => !v)}
-                      style={{ ...paneCornerBtnStyle, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}
-                      title="المؤشرات الفنية"
-                    >
-                      📈 المؤشرات{activeIndicators.length > 0 ? ` (${activeIndicators.length})` : ""}
-                    </button>
-                  </div>
-                )}
                 {!loading && allCandles.length > 0 && activeIndicators.length > 0 && renderActiveIndicatorsBar()}
                 {indicatorPanelOpen && renderIndicatorPanel()}
+                {indicatorSettingsFor && renderIndicatorSettingsDialog()}
+                {templatesPanelOpen && renderTemplatesPanel()}
                 <div
                   ref={chartContainerRef}
                   style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
@@ -4449,6 +4745,11 @@ function paneCornerBadgeStyle(side) {
 const paneCornerBtnStyle = {
   background: "none", border: "none", color: GOLD_LIGHT,
   cursor: "pointer", fontSize: 13, padding: "0 0.15rem", lineHeight: 1,
+};
+/* أزرار القائمة السريعة (عين/إعدادات/حذف) يلي بتنفتح تحت شريحة المؤشر */
+const quickMenuBtnStyle = {
+  width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+  background: "none", border: "none", borderRadius: 5, color: "#ccc", cursor: "pointer",
 };
 /* القاسم القابل للسحب بين الشارت الرئيسي ولوحة المقارنة - سطح واحد متصل بدون فراغ، زي تريدنغ فيو بالظبط */
 const dividerStyle = {
