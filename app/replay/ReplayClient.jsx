@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets";
 import { createClient } from "@/lib/supabase-client";
+import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
 
 const GOLD = "#C9A24B";
 const GOLD_LIGHT = "#E8C468";
@@ -126,6 +127,28 @@ function saveChartSettings(settings) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(CHART_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {}
+}
+
+/* ===================== المؤشرات الفنية المفعّلة (تنحفظ محلياً بالمتصفح) ===================== */
+const INDICATORS_KEY = "qta_active_indicators_v1";
+function loadActiveIndicators() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(INDICATORS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // نتأكد كل مؤشر محفوظ لسا موجود بالسجل (مثلاً بعد تحديث المكتبة) وإلا نتجاهله بهدوء
+    return parsed.filter((it) => it && it.instanceId && getIndicatorDef(it.id));
+  } catch {
+    return [];
+  }
+}
+function saveActiveIndicators(list) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(INDICATORS_KEY, JSON.stringify(list));
   } catch {}
 }
 
@@ -521,6 +544,19 @@ export default function ReplayClient({ userId }) {
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
 
+  /* ===================== أداة المؤشرات الفنية ===================== */
+  // activeIndicators: [{ instanceId, id, params }]. بتنحفظ محلياً بالمتصفح
+  // زي إعدادات الألوان، عشان تضل موجودة لما ترجعي تفتحي الصفحة.
+  const [activeIndicators, setActiveIndicators] = useState([]);
+  const [indicatorPanelOpen, setIndicatorPanelOpen] = useState(false);
+  const [indicatorSearch, setIndicatorSearch] = useState("");
+  // instanceId -> { def, series: { [lineKey]: ISeriesApi } }
+  const indicatorSeriesRef = useRef(new Map());
+  // مرآة دايماً محدّثة لـ activeIndicators، عشان أي كود جوا closure قديم
+  // (متل إنشاء الشارت اللي بياخد وقت بسبب dynamic import) يقرأ آخر قيمة فعلية
+  const activeIndicatorsRef = useRef([]);
+  useEffect(() => { activeIndicatorsRef.current = activeIndicators; }, [activeIndicators]);
+
   const [mode, setMode] = useState("live"); // "live" | "training"
   const [randomChart, setRandomChart] = useState(false);
 
@@ -675,7 +711,13 @@ export default function ReplayClient({ userId }) {
   useEffect(() => {
     setChartSettings(loadChartSettings());
     setCompareSettings(loadCompareSettings());
+    setActiveIndicators(loadActiveIndicators());
   }, []);
+
+  /* أي تغيير بلائحة المؤشرات المفعّلة: نحفظها بالمتصفح فوراً */
+  useEffect(() => {
+    saveActiveIndicators(activeIndicators);
+  }, [activeIndicators]);
 
   /* أي تغيير بالإعدادات: تطبيق فوري على الشارت + حفظ بالمتصفح (وتطبيق نفس لون الخلفية على لوحة المقارنة لو مفتوحة) */
   useEffect(() => {
@@ -727,7 +769,123 @@ export default function ReplayClient({ userId }) {
       });
     }
     saveChartSettings(chartSettings);
+    applyIndicatorPaneMargins();
   }, [chartSettings]);
+
+  /* ===================== منطق أداة المؤشرات الفنية ===================== */
+
+  /* بترسم كل خطوط المؤشر مجدداً من فوق صفر الشموع المعروضة حالياً - بتنستدعى
+     لما تتحدث بيانات الشارت (تيك حي/خطوة تدريب/تحميل جديد) أو لما ينضاف/يتعدّل مؤشر */
+  function recalcAllIndicatorData(candles) {
+    const list = candles || visibleCandlesRef.current;
+    if (!list || list.length === 0) return;
+    activeIndicatorsRef.current.forEach((it) => {
+      const def = getIndicatorDef(it.id);
+      const entry = indicatorSeriesRef.current.get(it.instanceId);
+      if (!def || !entry) return;
+      try {
+        const result = def.calc(list, it.params || defaultParamsFor(def));
+        def.lines.forEach((line) => {
+          const s = entry.series[line.key];
+          if (!s) return;
+          s.setData(result[line.key] || []);
+        });
+      } catch {
+        // مؤشر فشل حسابه (بيانات غير كافية لسا، مثلاً أول ما يضاف قبل تحميل الشموع) - نتجاهله بهدوء
+      }
+    });
+  }
+
+  /* بترتب اللوحات عمودياً: السعر فوق، وتحته لوحة مستقلة لكل مؤشر "oscillator" مفعّل
+     (RSI/MACD...الخ)، كل وحدة إلها محور سعر خاص فيها بحيث تنحسب تلقائياً بمعزل عن السعر */
+  function applyIndicatorPaneMargins() {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const oscInstances = activeIndicatorsRef.current.filter((it) => getIndicatorDef(it.id)?.type === "oscillator");
+    const n = oscInstances.length;
+    const regionBottom = Math.min(0.62, n * 0.17);
+    try {
+      chart.priceScale("right").applyOptions({
+        scaleMargins: {
+          top: (chartSettings.scaleMarginTop ?? 8) / 100,
+          bottom: n > 0 ? regionBottom + 0.03 : (chartSettings.scaleMarginBottom ?? 8) / 100,
+        },
+      });
+    } catch {}
+    const paneH = n > 0 ? regionBottom / n : 0;
+    oscInstances.forEach((it, i) => {
+      const start = (1 - regionBottom) + i * paneH;
+      const end = start + paneH * 0.84; // فجوة صغيرة بين كل لوحة والتانية
+      try {
+        chart.priceScale(`osc-${it.instanceId}`).applyOptions({
+          scaleMargins: { top: start, bottom: Math.max(0, 1 - end) },
+          borderVisible: false,
+        });
+      } catch {}
+    });
+  }
+
+  /* تزامن كامل بين activeIndicators (State) وسيريز lightweight-charts الفعلية على
+     الشارت: بتنشئ أي مؤشر ناقص، بتحذف أي مؤشر انشال، وبتحدّث ترتيب اللوحات */
+  function syncIndicatorSeries() {
+    const chart = chartRef.current;
+    const map = indicatorSeriesRef.current;
+    if (!chart) return;
+    const activeIds = new Set(activeIndicatorsRef.current.map((it) => it.instanceId));
+    for (const [instanceId, entry] of Array.from(map.entries())) {
+      if (!activeIds.has(instanceId)) {
+        Object.values(entry.series).forEach((s) => { try { chart.removeSeries(s); } catch {} });
+        map.delete(instanceId);
+      }
+    }
+    activeIndicatorsRef.current.forEach((it) => {
+      if (map.has(it.instanceId)) return;
+      const def = getIndicatorDef(it.id);
+      if (!def) return;
+      const scaleId = def.type === "oscillator" ? `osc-${it.instanceId}` : "right";
+      const series = {};
+      def.lines.forEach((line) => {
+        try {
+          series[line.key] = line.isHistogram
+            ? chart.addHistogramSeries({
+                color: line.color, priceScaleId: scaleId,
+                priceLineVisible: false, lastValueVisible: false, base: 0,
+              })
+            : chart.addLineSeries({
+                color: line.color, lineWidth: line.lineWidth || 1.4, priceScaleId: scaleId,
+                priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+              });
+        } catch {}
+      });
+      map.set(it.instanceId, { def, series });
+    });
+    applyIndicatorPaneMargins();
+    recalcAllIndicatorData();
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { syncIndicatorSeries(); }, [activeIndicators]);
+
+  /* بتنعاد كل سيريز المؤشرات المفعّلة من الصفر - لازم تنستدعى كل مرة الشارت نفسه
+     ينهدم ويتبنى من جديد (تبديل أصل/فريم...الخ)، لأن السيريز القديمة راحت مع الشارت القديم */
+  function rebuildIndicatorSeries() {
+    indicatorSeriesRef.current.clear();
+    syncIndicatorSeries();
+  }
+
+  function addIndicator(defId) {
+    const def = getIndicatorDef(defId);
+    if (!def) return;
+    const instanceId = `${defId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setActiveIndicators((prev) => [...prev, { instanceId, id: defId, params: defaultParamsFor(def) }]);
+  }
+  function removeIndicator(instanceId) {
+    setActiveIndicators((prev) => prev.filter((it) => it.instanceId !== instanceId));
+  }
+  function updateIndicatorParam(instanceId, key, value) {
+    setActiveIndicators((prev) => prev.map((it) => (it.instanceId === instanceId ? { ...it, params: { ...it.params, [key]: value } } : it)));
+    // نحدّث الرسم فوراً بدون انتظار دورة رندر تانية
+    setTimeout(() => recalcAllIndicatorData(), 0);
+  }
 
   /* أي تغيير بإعدادات لوحة المقارنة (نوع الشارت أو ألوانه): نعيد بناء السيريز فوراً ونحفظ بالمتصفح.
      منقّاة بنفس بيانات الشمعة الحالية عشان يبان التغيير مباشرة بدون قفل/إعادة تحميل. */
@@ -1794,6 +1952,7 @@ export default function ReplayClient({ userId }) {
 
       chartRef.current = chart;
       seriesRef.current = series;
+      rebuildIndicatorSeries();
 
       const handleResize = () => {
         if (!chartContainerRef.current) return;
@@ -2269,6 +2428,7 @@ export default function ReplayClient({ userId }) {
         chartRef.current.remove();
         chartRef.current = null;
         seriesRef.current = null;
+        indicatorSeriesRef.current.clear();
       }
     };
   }, []);
@@ -2684,6 +2844,7 @@ export default function ReplayClient({ userId }) {
       console.error("chart data error:", err);
       setError("صار خطأ بعرض بيانات هالفريم، جربي فريم/أصل تاني أو حدّثي الصفحة.");
     }
+    recalcAllIndicatorData(allCandles.slice(0, revealCount));
     prevRevealRef.current = revealCount;
     prevCandlesRef.current = allCandles;
     drawOverlay();
@@ -3534,6 +3695,157 @@ export default function ReplayClient({ userId }) {
   /* نافذة إعدادات الشارت الكاملة — ستايل تريدنغ فيو بالظبط: قائمة تبويبات عالجانب
      (رمز / خط الحالة / المقاييس والخطوط / لوحة / تداول / تنبيهات / أحداث) ومحتوى كل
      تبويب بمنطقة قابلة للتمرير لحالها. كل تغيير بينطبق فوراً وبينحفظ محلياً بالمتصفح. */
+  /* شريط صغير تحت زر "المؤشرات" يعرض شرائح (chips) لكل مؤشر مفعّل حالياً،
+     كل شريحة فيها لون المؤشر + اسمه المختصر + زر حذف سريع */
+  function renderActiveIndicatorsBar() {
+    return (
+      <div
+        style={{
+          position: "absolute", top: 40, left: 8, zIndex: 6,
+          display: "flex", flexWrap: "wrap", gap: 5, maxWidth: "70%",
+          pointerEvents: "auto",
+        }}
+      >
+        {activeIndicators.map((it) => {
+          const def = getIndicatorDef(it.id);
+          if (!def) return null;
+          const mainColor = def.lines[0]?.color || GOLD;
+          return (
+            <div
+              key={it.instanceId}
+              onClick={() => setIndicatorPanelOpen(true)}
+              title="اضغطي لتعديل إعدادات المؤشر"
+              style={{
+                display: "flex", alignItems: "center", gap: 5, cursor: "pointer",
+                background: "rgba(13,13,10,0.72)", backdropFilter: "blur(2px)",
+                border: `1px solid ${GOLD}22`, borderRadius: 6,
+                padding: "2px 4px 2px 6px", fontSize: 11, color: "#ddd",
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: mainColor, flexShrink: 0 }} />
+              <span>{def.name}{def.params?.[0] ? ` (${it.params[def.params[0].key]})` : ""}</span>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); removeIndicator(it.instanceId); }}
+                style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: 12, padding: "0 2px", lineHeight: 1 }}
+                title="حذف المؤشر"
+              >✕</button>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  /* نافذة اختيار وإدارة المؤشرات: بحث بأي اسم/اختصار + قائمة كل المؤشرات
+     مبوّبة (فوق السعر / لوحة مستقلة) + قسم "المضافة حالياً" لتعديل فتراتها أو حذفها */
+  function renderIndicatorPanel() {
+    const results = searchIndicators(indicatorSearch);
+    const overlays = results.filter((d) => d.type === "overlay");
+    const oscillators = results.filter((d) => d.type === "oscillator");
+    const indicatorRow = (def) => (
+      <div
+        key={def.id}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "8px 6px", borderBottom: "1px solid #232323", gap: 8,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: def.lines[0]?.color || GOLD, flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{def.name}</span>
+        </div>
+        <button type="button" onClick={() => addIndicator(def.id)} style={{ ...btnStyle("secondary"), padding: "0.3rem 0.7rem", fontSize: 12, flexShrink: 0 }}>
+          + إضافة
+        </button>
+      </div>
+    );
+    return (
+      <div
+        style={{ position: "absolute", inset: 0, zIndex: 30, background: "#000000aa", display: "flex", alignItems: "center", justifyContent: "center" }}
+        onClick={() => setIndicatorPanelOpen(false)}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: 480, maxWidth: "92%", maxHeight: "82%", background: "#161616",
+            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem",
+            display: "flex", flexDirection: "column", minHeight: 0,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10, fontSize: 15, flexShrink: 0 }}>📈 المؤشرات الفنية</div>
+
+          <input
+            type="text"
+            value={indicatorSearch}
+            onChange={(e) => setIndicatorSearch(e.target.value)}
+            placeholder="ابحثي عن أي مؤشر (بالعربي أو الانجليزي)... مثال: RSI, ماكد, بولينجر"
+            style={{
+              background: "#0d0d0d", border: "1px solid #333", borderRadius: 8, color: "#eee",
+              padding: "0.55rem 0.7rem", fontSize: 13, marginBottom: 10, flexShrink: 0,
+            }}
+          />
+
+          {activeIndicators.length > 0 && (
+            <div style={{ flexShrink: 0, marginBottom: 10, maxHeight: "34%", overflowY: "auto", border: `1px solid ${GOLD}22`, borderRadius: 8, padding: "0.4rem 0.6rem" }}>
+              <div style={{ fontSize: 11.5, color: "#777", fontWeight: 700, marginBottom: 4 }}>مضافة حالياً ({activeIndicators.length})</div>
+              {activeIndicators.map((it) => {
+                const def = getIndicatorDef(it.id);
+                if (!def) return null;
+                return (
+                  <div key={it.instanceId} style={{ padding: "6px 0", borderBottom: "1px solid #232323" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                      <span style={{ fontSize: 12.5, color: "#e5e5e5" }}>{def.name}</span>
+                      <button type="button" onClick={() => removeIndicator(it.instanceId)} style={{ ...paneCornerBtnStyle, color: RED, fontSize: 12 }}>حذف ✕</button>
+                    </div>
+                    {(def.params || []).length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+                        {def.params.map((f) => (
+                          <label key={f.key} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#999" }}>
+                            {f.label}
+                            <input
+                              type="number"
+                              value={it.params[f.key]}
+                              min={f.min} max={f.max} step={f.step || 1}
+                              onChange={(e) => updateIndicatorParam(it.instanceId, f.key, Number(e.target.value))}
+                              style={{ width: 56, background: "#0d0d0d", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "3px 5px", fontSize: 11.5, textAlign: "center" }}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+            {overlays.length > 0 && (
+              <>
+                <div style={{ fontSize: 11.5, color: "#777", fontWeight: 700, margin: "6px 0 2px" }}>مؤشرات فوق السعر</div>
+                {overlays.map(indicatorRow)}
+              </>
+            )}
+            {oscillators.length > 0 && (
+              <>
+                <div style={{ fontSize: 11.5, color: "#777", fontWeight: 700, margin: "12px 0 2px" }}>مؤشرات بلوحة مستقلة (زخم/تذبذب)</div>
+                {oscillators.map(indicatorRow)}
+              </>
+            )}
+            {results.length === 0 && (
+              <div style={{ fontSize: 12.5, color: "#777", padding: "1rem 0", textAlign: "center" }}>ما لقينا أي مؤشر بهالاسم</div>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 14, flexShrink: 0 }}>
+            <button onClick={() => setIndicatorPanelOpen(false)} style={{ ...btnStyle("primary"), flex: 1 }}>تم</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function renderSettingsDialog() {
     if (!settingsOpen) return null;
     const set = (patch) => setChartSettings((s) => ({ ...s, ...(typeof patch === "function" ? patch(s) : patch) }));
@@ -3962,6 +4274,20 @@ export default function ReplayClient({ userId }) {
                     </button>
                   </div>
                 )}
+                {!loading && allCandles.length > 0 && (
+                  <div style={paneCornerBadgeStyle("left")}>
+                    <button
+                      type="button"
+                      onClick={() => setIndicatorPanelOpen((v) => !v)}
+                      style={{ ...paneCornerBtnStyle, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}
+                      title="المؤشرات الفنية"
+                    >
+                      📈 المؤشرات{activeIndicators.length > 0 ? ` (${activeIndicators.length})` : ""}
+                    </button>
+                  </div>
+                )}
+                {!loading && allCandles.length > 0 && activeIndicators.length > 0 && renderActiveIndicatorsBar()}
+                {indicatorPanelOpen && renderIndicatorPanel()}
                 <div
                   ref={chartContainerRef}
                   style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
