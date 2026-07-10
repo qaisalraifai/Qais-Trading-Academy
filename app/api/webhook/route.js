@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
-import { Paddle } from "@paddle/paddle-node-sdk";
+import { Paddle, Environment } from "@paddle/paddle-node-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { kickMemberFromGuild } from "@/lib/discord";
 
-const paddle = new Paddle(process.env.PADDLE_API_KEY);
-
+// مفاتيح الـ sandbox بتبلش بـ pdl_sdbx_ — لازم نحدد الـ environment صح
+// وإلا Paddle بيرفض الطلب بخطأ "forbidden"
+const isSandbox = process.env.PADDLE_API_KEY?.startsWith("pdl_sdbx_");
+const paddle = new Paddle(process.env.PADDLE_API_KEY, {
+  environment: isSandbox ? Environment.sandbox : Environment.production,
+});
 // عميل Supabase بصلاحية Service Role (يتجاوز RLS) لأنه هاد كود سيرفر-لسيرفر موثوق من Paddle
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
