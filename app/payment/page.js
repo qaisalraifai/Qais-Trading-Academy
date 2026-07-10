@@ -1,20 +1,52 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { initializePaddle } from "@paddle/paddle-js";
+import { createClient } from "@/lib/supabase-client";
 
 export default function PaymentPage() {
   const [loading, setLoading] = useState(false);
+  const [paddle, setPaddle] = useState(null);
+  const supabase = createClient();
+
+  // منحمّل Paddle.js مرة وحدة لما الصفحة تفتح
+  useEffect(() => {
+    initializePaddle({
+      environment: process.env.NEXT_PUBLIC_PADDLE_ENV || "sandbox",
+      token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN,
+    }).then((instance) => setPaddle(instance));
+  }, []);
 
   async function handlePayment() {
+    if (!paddle) return; // Paddle.js لسا ما حمّل، منستنى
     setLoading(true);
-    const res = await fetch("/api/create-checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "subscription" }),
+
+    // لازم نعرف مين المستخدم الحالي حتى نربط الدفعة فيه بالـ Webhook لاحقاً
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setLoading(false);
+      window.location.href = "/login";
+      return;
+    }
+
+    // بنفتح نافذة الدفع مباشرة من المتصفح (Overlay Checkout)
+    // items فيها سعرين: رسوم التسجيل $300 لمرة وحدة + الاشتراك الشهري $100 المتكرر
+    paddle.Checkout.open({
+      items: [
+        { priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_SIGNUP, quantity: 1 },
+        { priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_MONTHLY, quantity: 1 },
+      ],
+      customer: { email: user.email },
+      customData: { user_id: user.id }, // Webhook بيستخدمها حتى يعرف مين المستخدم يفعّل اشتراكه
+      settings: {
+        successUrl: `${window.location.origin}/payment-success?type=subscription`,
+      },
     });
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
-    else setLoading(false);
+
+    setLoading(false);
   }
 
   return (
@@ -41,15 +73,15 @@ export default function PaymentPage() {
           <li style={styles.feature}><span style={styles.check}>◆</span> دعم مباشر من المدرب</li>
           <li style={styles.feature}><span style={styles.check}>◆</span> تحليلات وتوصيات حصرية</li>
         </ul>
-        <button style={styles.btn} onClick={handlePayment} disabled={loading}>
-          {loading ? "جاري التحويل..." : "ادفع $300 وابدأ الاشتراك"}
+        <button style={styles.btn} onClick={handlePayment} disabled={loading || !paddle}>
+          {loading ? "جاري التحويل..." : !paddle ? "جاري التحميل..." : "ادفع $300 وابدأ الاشتراك"}
         </button>
         <p style={styles.note}>
           بعد $300 رسوم التسجيل، بينسحب تلقائياً <strong style={{ color: "#D4AF37" }}>$100 كل شهر</strong> من نفس البطاقة لحد ما تلغي الاشتراك.
         </p>
       </div>
 
-      <p style={styles.footer}>🔒 جميع المدفوعات مؤمنة عبر Stripe · يمكنك الإلغاء بأي وقت</p>
+      <p style={styles.footer}>🔒 جميع المدفوعات مؤمنة عبر Paddle · يمكنك الإلغاء بأي وقت</p>
 
       {/* رابط الأدمن المخفي */}
       <Link href="/admin" style={styles.adminLink}>⚙</Link>
