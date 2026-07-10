@@ -3265,7 +3265,7 @@ export default function ReplayClient({ userId }) {
     const labelStyle = (active) => ({ fontSize: 10, fontWeight: 600, color: active ? "#1a1200" : "#8a8f99", lineHeight: 1.1 });
     return (
       <div style={{
-        flex: "0 0 auto", alignSelf: "stretch", marginLeft: 8, position: "relative",
+        flex: "0 0 auto", alignSelf: "stretch", position: "relative", zIndex: 10,
         display: "flex", flexDirection: "column", gap: 3,
         background: "#131722", border: "1px solid #242832", borderRadius: 10, padding: 6,
         boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
@@ -4556,7 +4556,7 @@ export default function ReplayClient({ userId }) {
             مش محصور بارتفاع اللوحة الرئيسية لحالها. الترتيب هون (المحتوى أولاً
             بالـ DOM ثم الشريط) مقصود: الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل
             ثابت عالشمال دايماً من غير ما نضطر نقلب اتجاه أي نص عربي جوا الشارت. */}
-        <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0, gap: 8 }}>
           <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
             {/* اللوحة الرئيسية - ارتفاعها الفعلي مضبوط مباشرة بالبكسل من JS (mainPaneRef)
                 عشان يضل مطابق تماماً لارتفاع الشارت نفسه (overflow:hidden هون بيمنعه
