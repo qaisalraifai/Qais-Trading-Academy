@@ -58,12 +58,34 @@ export async function POST(request) {
             updateData.subscription_end = null;
           }
 
-          const { error } = await supabaseAdmin
+          // منجرب update عادي الأول (ما بيلمس username/role الموجودين).
+          // منستخدم select() حتى نعرف هل فعلاً في صف تحدّث ولا لأ.
+          const { data: updated, error } = await supabaseAdmin
             .from("profiles")
             .update(updateData)
-            .eq("id", userId);
+            .eq("id", userId)
+            .select("id");
 
-          if (error) console.error("Failed to activate subscription:", error);
+          if (error) {
+            console.error("Failed to activate subscription:", error);
+          } else if (!updated || updated.length === 0) {
+            // ما في صف بهاد الـ id أصلاً — نادراً ما لازم يصير بعد إصلاح
+            // مسار التسجيل، بس هاد fallback أمان حتى ما تضيع دفعة ناجحة بصمت.
+            console.error(
+              `⚠️ profiles row missing for user ${userId} during payment — creating fallback row`
+            );
+            const { error: insertError } = await supabaseAdmin
+              .from("profiles")
+              .insert({
+                id: userId,
+                username: `user_${userId.slice(0, 8)}`,
+                role: "student",
+                ...updateData,
+              });
+            if (insertError) {
+              console.error("Fallback profile insert also failed:", insertError);
+            }
+          }
         } else if (subscriptionId) {
           // تجديد شهري لاحق: ما رح يكون فيه customData، فمنربطه بمعرف الاشتراك المخزن مسبقاً
           const subscription = await paddle.subscriptions.get(subscriptionId);
