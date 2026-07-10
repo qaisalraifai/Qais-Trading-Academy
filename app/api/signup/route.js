@@ -60,6 +60,11 @@ export async function POST(request) {
   });
 
   if (profileError) {
+    // لازم نلغي حساب الـ auth يلي انعمل، وإلا رح يضل عالق بدون profile
+    // (بالضبط نفس المشكلة يلي صلحناها بمسار /signup)
+    await supabase.auth.admin.deleteUser(authUser.user.id).catch((e) =>
+      console.error("Rollback of auth user failed:", e)
+    );
     return NextResponse.json({ error: profileError.message }, { status: 400 });
   }
 
