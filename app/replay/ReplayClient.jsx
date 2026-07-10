@@ -3787,7 +3787,7 @@ export default function ReplayClient({ userId }) {
     return (
       <div
         style={{
-          position: "absolute", top: 8, left: 8, zIndex: 6,
+          position: "absolute", top: 84, left: 10, zIndex: 7,
           display: "flex", flexWrap: "wrap", gap: 5, maxWidth: "70%",
           pointerEvents: "auto",
         }}
