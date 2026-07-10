@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
+import { Paddle } from "@paddle/paddle-node-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { kickMemberFromGuild } from "@/lib/discord";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const paddle = new Paddle(process.env.PADDLE_API_KEY);
 
-// عميل Supabase بصلاحية Service Role (يتجاوز RLS) لأنه هاد كود سيرفر-لسيرفر موثوق من Stripe
+// عميل Supabase بصلاحية Service Role (يتجاوز RLS) لأنه هاد كود سيرفر-لسيرفر موثوق من Paddle
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -13,76 +13,65 @@ const supabaseAdmin = createClient(
 
 export async function POST(request) {
   const body = await request.text(); // لازم نص خام (raw) عشان التحقق من التوقيع يشتغل
-  const signature = request.headers.get("stripe-signature");
+  const signature = request.headers.get("paddle-signature") || "";
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
+    // unmarshal بيتحقق من التوقيع ويرجع الحدث محلل جاهز، وبيرمي خطأ لو التوقيع غلط
+    event = await paddle.webhooks.unmarshal(
       body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET
+      process.env.PADDLE_WEBHOOK_SECRET,
+      signature
     );
   } catch (err) {
-    console.error("Webhook signature verification failed:", err.message);
+    console.error("Paddle webhook signature verification failed:", err.message);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   try {
-    switch (event.type) {
-      // ✅ أول دفعة ناجحة (تسجيل لمرة وحدة، أو أول دورة اشتراك شهري)
-      case "checkout.session.completed": {
-        const session = event.data.object;
-        const userId = session.client_reference_id || session.metadata?.user_id;
+    switch (event.eventType) {
+      // ✅ أي دفعة ناجحة — أول دفعة تسجيل، أو أي تجديد شهري لاحق
+      case "transaction.completed": {
+        const txn = event.data;
+        const userId = txn.customData?.user_id;
+        const subscriptionId = txn.subscriptionId;
 
-        if (!userId) {
-          console.error("No user_id found on checkout session:", session.id);
-          break;
-        }
+        if (userId) {
+          // أول دفعة: عندنا user_id مباشرة من الـ checkout (customData)
+          const updateData = {
+            subscription_status: "active",
+            paddle_customer_id: txn.customerId,
+          };
 
-        const updateData = {
-          subscription_status: "active",
-        };
+          if (subscriptionId) {
+            updateData.paddle_subscription_id = subscriptionId;
+            // منجيب تاريخ الفاتورة الجاية حتى نعرف امتى ينتهي الوصول لو ما تجدد
+            const subscription = await paddle.subscriptions.get(subscriptionId);
+            updateData.subscription_end = subscription.nextBilledAt
+              ? new Date(subscription.nextBilledAt).toISOString()
+              : null;
+          } else {
+            updateData.subscription_end = null;
+          }
 
-        // لو اشتراك شهري متكرر، خزّني معرّفات Stripe وتاريخ الانتهاء (نهاية الدورة الحالية)
-        if (session.mode === "subscription" && session.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(
-            session.subscription
-          );
-          updateData.stripe_customer_id = session.customer;
-          updateData.stripe_subscription_id = session.subscription;
-          updateData.subscription_end = new Date(
-            subscription.current_period_end * 1000
-          ).toISOString();
-        } else {
-          // دفعة لمرة وحدة (تسجيل) — بلا تاريخ انتهاء، الكرون ما رح يلغيها لأنها subscription_end فاضية
-          updateData.subscription_end = null;
-        }
+          const { error } = await supabaseAdmin
+            .from("profiles")
+            .update(updateData)
+            .eq("id", userId);
 
-        const { error } = await supabaseAdmin
-          .from("profiles")
-          .update(updateData)
-          .eq("id", userId);
-
-        if (error) console.error("Failed to activate subscription:", error);
-        break;
-      }
-
-      // 🔄 تجديد الاشتراك الشهري بنجاح — مدّ تاريخ الانتهاء
-      case "invoice.payment_succeeded": {
-        const invoice = event.data.object;
-        if (invoice.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(
-            invoice.subscription
-          );
+          if (error) console.error("Failed to activate subscription:", error);
+        } else if (subscriptionId) {
+          // تجديد شهري لاحق: ما رح يكون فيه customData، فمنربطه بمعرف الاشتراك المخزن مسبقاً
+          const subscription = await paddle.subscriptions.get(subscriptionId);
           const { error } = await supabaseAdmin
             .from("profiles")
             .update({
               subscription_status: "active",
-              subscription_end: new Date(
-                subscription.current_period_end * 1000
-              ).toISOString(),
+              subscription_end: subscription.nextBilledAt
+                ? new Date(subscription.nextBilledAt).toISOString()
+                : null,
             })
-            .eq("stripe_subscription_id", invoice.subscription);
+            .eq("paddle_subscription_id", subscriptionId);
 
           if (error) console.error("Failed to renew subscription:", error);
         }
@@ -90,14 +79,13 @@ export async function POST(request) {
       }
 
       // ❌ فشل الدفع أو إلغاء الاشتراك — عطّل الوصول واطرد من Discord
-      case "invoice.payment_failed":
-      case "customer.subscription.deleted": {
-        const obj = event.data.object;
-        const subscriptionId = obj.subscription || obj.id;
+      case "subscription.past_due":
+      case "subscription.canceled": {
+        const subscriptionId = event.data.id;
         const { data: updated, error } = await supabaseAdmin
           .from("profiles")
           .update({ subscription_status: "inactive" })
-          .eq("stripe_subscription_id", subscriptionId)
+          .eq("paddle_subscription_id", subscriptionId)
           .select("discord_id")
           .maybeSingle();
 
