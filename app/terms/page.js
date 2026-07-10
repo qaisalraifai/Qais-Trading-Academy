@@ -15,8 +15,8 @@ const sectionsAr = [
   {
     heading: "2. طبيعة الخدمة",
     body: [
-      "Qais Trading Academy عبارة عن منصة تعليمية رقمية تقدم محاضرات مسجلة ومباشرة، عضوية في مجتمع Discord خاص، اختبارات تفاعلية، وتحليلات وتوصيات تعليمية تتعلق بأسواق التداول المالي.",
-      "جميع المحتويات المقدمة هي لأغراض تعليمية بحتة، ولا تُعتبر نصيحة استثمارية أو مالية مُلزمة. القرارات الاستثمارية والمالية هي مسؤولية المستخدم وحده، ولا تتحمل المنصة أو القائمون عليها أي مسؤولية عن أي خسائر مالية ناتجة عن استخدام المحتوى التعليمي.",
+      "Qais Trading Academy عبارة عن منصة تعليمية رقمية تقدم محاضرات مسجلة ومباشرة، عضوية في مجتمع Discord خاص، اختبارات تفاعلية، وشروحات تعليمية للتحليل الفني وأساسيات أسواق التداول المالي.",
+      "جميع المحتويات المقدمة هي لأغراض تعليمية بحتة، ولا تُعتبر نصيحة استثمارية أو مالية مُلزمة. المنصة لا تقدم أي توصيات شراء أو بيع، ولا إشارات تداول مباشرة (Trading Signals)، ولا تدير أموال أو حسابات المستخدمين بأي شكل. القرارات الاستثمارية والمالية هي مسؤولية المستخدم وحده، ولا تتحمل المنصة أو القائمون عليها أي مسؤولية عن أي خسائر مالية ناتجة عن استخدام المحتوى التعليمي.",
     ],
   },
   {
@@ -63,7 +63,7 @@ const sectionsEn = [
     heading: "2. Nature of the Service",
     body: [
       "Qais Trading Academy is a digital education platform offering recorded and live lectures, access to a private Discord community, interactive quizzes, and educational analysis and insights related to financial trading markets.",
-      "All content provided is for educational purposes only and does not constitute financial or investment advice. Investment and financial decisions are the sole responsibility of the user, and the Platform and its operators bear no liability for any financial losses resulting from the use of the educational content.",
+      "All content provided is for educational purposes only and does not constitute financial or investment advice. The Platform does not provide buy/sell recommendations, trading signals, or portfolio/fund management of any kind. Investment and financial decisions are the sole responsibility of the user, and the Platform and its operators bear no liability for any financial losses resulting from the use of the educational content.",
     ],
   },
   {
