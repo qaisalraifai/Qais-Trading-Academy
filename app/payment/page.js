@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase-client";
 export default function PaymentPage() {
   const [loading, setLoading] = useState(false);
   const [paddle, setPaddle] = useState(null);
+  const [checkoutStarted, setCheckoutStarted] = useState(false); // لما تصير true، منعرض حاوية الدفع المدمجة
   const supabase = createClient();
 
   // منحمّل Paddle.js مرة وحدة لما الصفحة تفتح
@@ -32,21 +33,30 @@ export default function PaymentPage() {
       return;
     }
 
-    // بنفتح نافذة الدفع مباشرة من المتصفح (Overlay Checkout)
-    // items فيها سعرين: رسوم التسجيل $300 لمرة وحدة + الاشتراك الشهري $100 المتكرر
-    paddle.Checkout.open({
-      items: [
-        { priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_SIGNUP, quantity: 1 },
-        { priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_MONTHLY, quantity: 1 },
-      ],
-      customer: { email: user.email },
-      customData: { user_id: user.id }, // Webhook بيستخدمها حتى يعرف مين المستخدم يفعّل اشتراكه
-      settings: {
-        successUrl: `${window.location.origin}/payment-success?type=subscription`,
-      },
-    });
+    // منعرض حاوية الدفع أول شي حتى يصير عنصرها موجود فعلياً بالصفحة قبل ما نطلب من Paddle يعبيها
+    setCheckoutStarted(true);
 
-    setLoading(false);
+    // منستنى تيك واحد (frame) حتى React يخلص يرسم الـ div الجديدة، وبعدين منفتح الدفع المدمج جواها
+    requestAnimationFrame(() => {
+      paddle.Checkout.open({
+        items: [
+          { priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_SIGNUP, quantity: 1 },
+          { priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_MONTHLY, quantity: 1 },
+        ],
+        customer: { email: user.email },
+        customData: { user_id: user.id }, // Webhook بيستخدمها حتى يعرف مين المستخدم يفعّل اشتراكه
+        settings: {
+          displayMode: "inline", // مدمجة بالصفحة بدل نافذة منبثقة
+          frameTarget: "paddle-checkout-container", // اسم الـ class تبع الحاوية تحت
+          frameInitialHeight: "450",
+          frameStyle:
+            "width: 100%; min-width: 312px; background-color: transparent; border: none;",
+          theme: "dark",
+          successUrl: `${window.location.origin}/payment-success?type=subscription`,
+        },
+      });
+      setLoading(false);
+    });
   }
 
   return (
@@ -73,9 +83,18 @@ export default function PaymentPage() {
           <li style={styles.feature}><span style={styles.check}>◆</span> دعم مباشر من المدرب</li>
           <li style={styles.feature}><span style={styles.check}>◆</span> تحليلات وتوصيات حصرية</li>
         </ul>
-        <button style={styles.btn} onClick={handlePayment} disabled={loading || !paddle}>
-          {loading ? "جاري التحويل..." : !paddle ? "جاري التحميل..." : "ادفع $300 وابدأ الاشتراك"}
-        </button>
+
+        {!checkoutStarted && (
+          <button style={styles.btn} onClick={handlePayment} disabled={loading || !paddle}>
+            {loading ? "جاري التحويل..." : !paddle ? "جاري التحميل..." : "ادفع $300 وابدأ الاشتراك"}
+          </button>
+        )}
+
+        {/* حاوية الدفع المدمجة — Paddle بيعبيها بنفسه لما checkoutStarted تصير true */}
+        {checkoutStarted && (
+          <div className="paddle-checkout-container" style={styles.checkoutContainer} />
+        )}
+
         <p style={styles.note}>
           بعد $300 رسوم التسجيل، بينسحب تلقائياً <strong style={{ color: "#D4AF37" }}>$100 كل شهر</strong> من نفس البطاقة لحد ما تلغي الاشتراك.
         </p>
@@ -152,6 +171,10 @@ const styles = {
     fontWeight: "bold",
     cursor: "pointer",
     letterSpacing: "1px",
+  },
+  checkoutContainer: {
+    width: "100%",
+    minHeight: "450px",
   },
   note: { color: "#555", fontSize: "0.8rem", textAlign: "center", lineHeight: 1.6 },
   footer: { color: "#333", fontSize: "0.8rem", marginTop: "1.5rem" },
