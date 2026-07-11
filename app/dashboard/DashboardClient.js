@@ -22,7 +22,6 @@ const NAV_ITEMS = [
 ];
 
 const PLACEHOLDER_LABELS = {
-  accounts: "إدارة الحسابات",
   strategies: "الاستراتيجيات",
   reports: "التقارير",
   settings: "الإعدادات",
@@ -86,7 +85,7 @@ function FlagBadge({ children }) {
   );
 }
 
-export default function DashboardClient({ username }) {
+export default function DashboardClient({ username, isAdmin = false }) {
   const [trades, setTrades] = useState([]); // بترتيب زمني تصاعدي (الأقدم أولاً) - للرسم البياني
   const [rawTrades, setRawTrades] = useState([]); // الشكل الخام من قاعدة البيانات - تحتاجه أداة الباك تيست
   const [balance, setBalance] = useState(3000);
@@ -270,7 +269,7 @@ export default function DashboardClient({ username }) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => item.key !== "accounts" || isAdmin).map((item) => {
             const isActive = item.view === activeKey;
             const itemStyle = {
               display: "flex",
@@ -437,7 +436,9 @@ export default function DashboardClient({ username }) {
           </div>
         </div>
 
-        {activeKey === "lectures" ? (
+        {activeKey === "accounts" && isAdmin ? (
+          <AccountsView />
+        ) : activeKey === "lectures" ? (
           <LecturesView
             lectures={lectures}
             loading={lecturesLoading}
@@ -691,6 +692,227 @@ export default function DashboardClient({ username }) {
 }
 
 const cellStyle = { padding: "0.7rem", fontSize: 12, textAlign: "center", borderBottom: "1px solid #1a1a0f" };
+
+/* قسم إدارة الحسابات — يظهر فقط للأدمن، بنفس تصميم الداشبورد الذهبي */
+function AccountsView() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [busyId, setBusyId] = useState(null);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  async function fetchUsers() {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setUsers(data || []);
+    setLoading(false);
+  }
+
+  async function updateStatus(id, status) {
+    setBusyId(id);
+    try {
+      const res = await fetch("/api/admin/toggle-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id, status }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "صار خطأ، حاول مرة تانية");
+        return;
+      }
+      await fetchUsers();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const filtered = users.filter((u) => {
+    const matchSearch = (u.username || "").toLowerCase().includes(search.toLowerCase());
+    const matchFilter = filter === "all" || u.subscription_status === filter;
+    return matchSearch && matchFilter;
+  });
+
+  const stats = {
+    total: users.length,
+    active: users.filter((u) => u.subscription_status === "active").length,
+    inactive: users.filter((u) => u.subscription_status !== "active").length,
+    expiring: users.filter((u) => {
+      if (!u.subscription_end) return false;
+      const days = (new Date(u.subscription_end) - new Date()) / (1000 * 60 * 60 * 24);
+      return days > 0 && days <= 7;
+    }).length,
+  };
+
+  function statusBadge(status, endDate) {
+    if (status === "active") {
+      const days = endDate ? Math.ceil((new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+      if (days !== null && days <= 7) return { label: `ينتهي خلال ${days} يوم`, color: "#FF9800" };
+      return { label: "نشط", color: GREEN };
+    }
+    return { label: "منتهي", color: "#888" };
+  }
+
+  if (loading) {
+    return <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>...جاري تحميل بيانات المشتركين</div>;
+  }
+
+  return (
+    <>
+      {/* بطاقات إحصائيات احترافية */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.9rem", marginBottom: "1.4rem" }}>
+        {[
+          { label: "إجمالي المشتركين", value: stats.total, icon: "👥", color: GOLD_LIGHT },
+          { label: "اشتراكات نشطة", value: stats.active, icon: "✅", color: GREEN },
+          { label: "اشتراكات منتهية", value: stats.inactive, icon: "⛔", color: RED },
+          { label: "تنتهي خلال 7 أيام", value: stats.expiring, icon: "⏳", color: "#FF9800" },
+        ].map((s, i) => (
+          <div key={i} style={{ ...cardStyle, padding: "1rem" }}>
+            <FlagBadge>{s.icon}</FlagBadge>
+            <p style={{ color: "#777", fontSize: 11, margin: "0.7rem 0 0.3rem" }}>{s.label}</p>
+            <p style={{ color: s.color, fontSize: 24, fontWeight: 800, margin: 0 }}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* بحث وفلترة */}
+      <div style={{ ...cardStyle, padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: "1.2rem" }}>
+        <input
+          placeholder="🔍 بحث باسم المستخدم..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            background: "#0d0d0a",
+            border: `1px solid ${GOLD}33`,
+            color: "#fff",
+            padding: "0.6rem 1rem",
+            borderRadius: 10,
+            fontSize: 13,
+            width: 260,
+            outline: "none",
+          }}
+        />
+        <div style={{ display: "flex", gap: 8 }}>
+          {[["all", "الكل"], ["active", "نشط"], ["inactive", "منتهي"]].map(([val, label]) => (
+            <div
+              key={val}
+              onClick={() => setFilter(val)}
+              style={{
+                padding: "0.5rem 1rem",
+                borderRadius: 10,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                border: `1px solid ${filter === val ? GOLD : "#222"}`,
+                color: filter === val ? GOLD : "#888",
+                background: filter === val ? `${GOLD}18` : "transparent",
+              }}
+            >
+              {label}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* جدول المشتركين */}
+      <div style={{ ...cardStyle, padding: "1.3rem" }}>
+        <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: "0 0 1rem" }}>💳 الحسابات والاشتراكات والدفعات</p>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+            <thead>
+              <tr>
+                {["اسم المستخدم", "الصلاحية", "الحالة", "بداية الاشتراك", "نهاية الاشتراك", "تاريخ التسجيل", "معرّف الدفع (Paddle)", "إجراء"].map((h) => (
+                  <th key={h} style={{ color: "#666", fontSize: 11, padding: "0.7rem", borderBottom: `1px solid ${GOLD}22`, textAlign: "center", whiteSpace: "nowrap" }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: "center", color: "#444", padding: "2.5rem 0" }}>
+                    لا يوجد مشتركون مطابقون
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((u) => {
+                  const badge = statusBadge(u.subscription_status, u.subscription_end);
+                  return (
+                    <tr key={u.id}>
+                      <td style={cellStyle}>
+                        <span style={{ fontWeight: 700, color: "#fff" }}>{u.username || "—"}</span>
+                        {u.role === "admin" && (
+                          <span style={{ marginRight: 6, fontSize: 10, color: GOLD_LIGHT, border: `1px solid ${GOLD}44`, padding: "1px 6px", borderRadius: 6 }}>Admin</span>
+                        )}
+                      </td>
+                      <td style={cellStyle}>{u.role === "admin" ? "مالك المنصة" : "طالب"}</td>
+                      <td style={cellStyle}>
+                        <span
+                          style={{
+                            padding: "0.3rem 0.75rem",
+                            borderRadius: 20,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            backgroundColor: badge.color + "22",
+                            color: badge.color,
+                            border: `1px solid ${badge.color}55`,
+                          }}
+                        >
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td style={{ ...cellStyle, fontFamily: "monospace", color: "#999" }}>
+                        {u.subscription_start ? new Date(u.subscription_start).toLocaleDateString("ar") : "—"}
+                      </td>
+                      <td style={{ ...cellStyle, fontFamily: "monospace", color: "#999" }}>
+                        {u.subscription_end ? new Date(u.subscription_end).toLocaleDateString("ar") : "—"}
+                      </td>
+                      <td style={{ ...cellStyle, fontFamily: "monospace", color: "#999" }}>
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString("ar") : "—"}
+                      </td>
+                      <td style={{ ...cellStyle, fontFamily: "monospace", color: "#666", fontSize: 11 }}>
+                        {u.paddle_subscription_id || u.paddle_customer_id || "—"}
+                      </td>
+                      <td style={cellStyle}>
+                        {u.role === "admin" ? (
+                          <span style={{ color: "#555", fontSize: 12 }}>—</span>
+                        ) : u.subscription_status === "active" ? (
+                          <button
+                            disabled={busyId === u.id}
+                            onClick={() => updateStatus(u.id, "inactive")}
+                            style={{ background: "#2a1a1a", color: RED, border: "1px solid #4a2a2a", padding: "0.4rem 0.9rem", borderRadius: 8, cursor: "pointer", fontSize: 12 }}
+                          >
+                            {busyId === u.id ? "..." : "إلغاء"}
+                          </button>
+                        ) : (
+                          <button
+                            disabled={busyId === u.id}
+                            onClick={() => updateStatus(u.id, "active")}
+                            style={{ background: "#1a3a1a", color: GREEN, border: "1px solid #2a5a2a", padding: "0.4rem 0.9rem", borderRadius: 8, cursor: "pointer", fontSize: 12 }}
+                          >
+                            {busyId === u.id ? "..." : "تفعيل"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
 
 function LecturesView({ lectures, loading, selectedLecture, onSelect, onBack }) {
   if (loading) {
