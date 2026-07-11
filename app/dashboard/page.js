@@ -9,11 +9,12 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("username")
+    .select("username, role")
     .eq("id", user.id)
     .single();
 
   const username = profile?.username || user.email;
+  const isAdmin = profile?.role === "admin";
 
-  return <DashboardClient username={username} />;
+  return <DashboardClient username={username} isAdmin={isAdmin} />;
 }
