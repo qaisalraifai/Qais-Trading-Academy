@@ -25,7 +25,10 @@ export async function POST(request) {
   }
 
   const body = await request.json();
-  const { title, description, driveLink, order_index } = body;
+  const {
+    title, description, driveLink, order_index,
+    course_id, chapter, chapter_order, duration_minutes, difficulty, practice_type,
+  } = body;
 
   if (!title || !driveLink) {
     return NextResponse.json(
@@ -56,6 +59,12 @@ export async function POST(request) {
       description: description || null,
       youtube_video_id: fileId,
       order_index: finalOrder,
+      course_id: course_id || null,
+      chapter: chapter || null,
+      chapter_order: chapter_order === "" || chapter_order === undefined ? null : Number(chapter_order),
+      duration_seconds: duration_minutes ? Math.round(Number(duration_minutes) * 60) : null,
+      difficulty: difficulty || null,
+      practice_type: practice_type || null,
     })
     .select()
     .single();
