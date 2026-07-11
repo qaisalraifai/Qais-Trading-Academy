@@ -601,7 +601,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
         {activeKey === "accounts" && isAdmin ? (
           <AccountsAdminView />
         ) : activeKey === "calendar" ? (
-          <CalendarView events={economicEvents} loading={calendarLoading} isAdmin={isAdmin} onRefreshed={() => setEconomicEvents([])} />
+          <CalendarView events={economicEvents} loading={calendarLoading} isAdmin={isAdmin} />
         ) : activeKey === "lectures" ? (
           <LecturesView
             username={username}
@@ -972,13 +972,18 @@ function formatCountdown(diffMs) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function CalendarView({ events, loading, isAdmin, onRefreshed }) {
+function CalendarView({ events, loading, isAdmin }) {
   const [dayFilter, setDayFilter] = useState("all");
   const [impactFilter, setImpactFilter] = useState("all");
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [analysisTab, setAnalysisTab] = useState("overview");
   const [now, setNow] = useState(() => new Date());
+
+  // تحليل الذكاء الاصطناعي التلقائي: أول مشترك يفتح خبر عالي/متوسط التأثير من غير تحليل
+  // بيشغّل الطلب تلقائياً، والنتيجة تنخزن بقاعدة البيانات وتظهر لباقي المشتركين مباشرة.
+  const [localAiData, setLocalAiData] = useState({});
+  const [analyzingId, setAnalyzingId] = useState(null);
+  const [analysisFailedIds, setAnalysisFailedIds] = useState({});
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -988,19 +993,6 @@ function CalendarView({ events, loading, isAdmin, onRefreshed }) {
   useEffect(() => {
     setAnalysisTab("overview");
   }, [selectedId]);
-
-  async function handleManualRefresh() {
-    setRefreshing(true);
-    try {
-      const res = await fetch("/api/admin/refresh-calendar", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) onRefreshed?.();
-      else alert(data.error || "صار خطأ بالتحديث");
-    } catch (e) {
-      alert("تعذر الاتصال بالسيرفر");
-    }
-    setRefreshing(false);
-  }
 
   const filteredEvents = useMemo(() => {
     return events.filter((ev) => impactFilter === "all" || ev.impact === impactFilter);
@@ -1024,15 +1016,54 @@ function CalendarView({ events, loading, isAdmin, onRefreshed }) {
 
   // اختيار افتراضي: أهم خبر قادم، وإلا أول خبر بالقائمة
   const selectedEvent = useMemo(() => {
+    let found = null;
     if (selectedId) {
-      const found = events.find((e) => e.id === selectedId);
-      if (found) return found;
+      found = events.find((e) => e.id === selectedId) || null;
     }
-    const upcoming = events
-      .filter((e) => e.event_datetime && new Date(e.event_datetime) > now && (e.impact === "high" || e.impact === "medium"))
-      .sort((a, b) => new Date(a.event_datetime) - new Date(b.event_datetime));
-    return upcoming[0] || events[0] || null;
-  }, [selectedId, events, now]);
+    if (!found) {
+      const upcoming = events
+        .filter((e) => e.event_datetime && new Date(e.event_datetime) > now && (e.impact === "high" || e.impact === "medium"))
+        .sort((a, b) => new Date(a.event_datetime) - new Date(b.event_datetime));
+      found = upcoming[0] || events[0] || null;
+    }
+    if (found && localAiData[found.id]) {
+      return { ...found, ai_data: localAiData[found.id] };
+    }
+    return found;
+  }, [selectedId, events, now, localAiData]);
+
+  // لما تنفتح شاشة خبر ما إله تحليل بعد، شغّل التحليل تلقائياً بمجرد الضغط عليه.
+  useEffect(() => {
+    if (!selectedEvent) return;
+    if (selectedEvent.ai_data) return;
+    if (selectedEvent.impact !== "high" && selectedEvent.impact !== "medium") return;
+    if (analyzingId === selectedEvent.id) return;
+    if (analysisFailedIds[selectedEvent.id]) return;
+
+    let cancelled = false;
+    setAnalyzingId(selectedEvent.id);
+
+    fetch(`/api/economic-events/${selectedEvent.id}/analyze`, { method: "POST" })
+      .then(async (res) => ({ ok: res.ok, data: await res.json().catch(() => ({})) }))
+      .then(({ ok, data }) => {
+        if (cancelled) return;
+        if (ok && data?.event?.ai_data) {
+          setLocalAiData((prev) => ({ ...prev, [data.event.id]: data.event.ai_data }));
+        } else {
+          setAnalysisFailedIds((prev) => ({ ...prev, [selectedEvent.id]: true }));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAnalysisFailedIds((prev) => ({ ...prev, [selectedEvent.id]: true }));
+      })
+      .finally(() => {
+        if (!cancelled) setAnalyzingId(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEvent, analyzingId, analysisFailedIds]);
 
   const lastUpdated = useMemo(() => {
     const sorted = [...events].filter((e) => e.updated_at).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
@@ -1110,18 +1141,6 @@ function CalendarView({ events, loading, isAdmin, onRefreshed }) {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {isAdmin && (
-              <div
-                onClick={refreshing ? undefined : handleManualRefresh}
-                style={{
-                  border: `1px solid ${GOLD}44`, color: GOLD_LIGHT, fontSize: 12, fontWeight: 700,
-                  padding: "0.5rem 1rem", borderRadius: 8, cursor: refreshing ? "default" : "pointer",
-                  opacity: refreshing ? 0.6 : 1, whiteSpace: "nowrap",
-                }}
-              >
-                {refreshing ? "...جاري التحديث" : "🔄 تحديث الآن"}
-              </div>
-            )}
             {nextHighImpactEvent ? (
               <div style={{
                 textAlign: "center", border: "1px solid #EF535044", borderRadius: 12,
@@ -1352,8 +1371,12 @@ function CalendarView({ events, loading, isAdmin, onRefreshed }) {
                         <p style={{ color: "#B084F5", fontSize: 13, fontWeight: 700, margin: "0 0 8px" }}>📌 تحليل عام</p>
                         <p style={{ margin: 0, fontSize: 13, color: "#ccc", lineHeight: 1.9 }}>{buildFallbackAnalysis(selectedEvent)}</p>
                         {(selectedEvent.impact === "high" || selectedEvent.impact === "medium") && (
-                          <p style={{ margin: "12px 0 0", fontSize: 11, color: "#666" }}>
-                            🤖 سيتم استبدال هذا بتحليل ذكاء اصطناعي مفصّل يشمل السيناريوهات المحتملة ونصائح التداول قريباً.
+                          <p style={{ margin: "12px 0 0", fontSize: 11, color: analyzingId === selectedEvent.id ? "#B084F5" : "#666" }}>
+                            {analyzingId === selectedEvent.id
+                              ? "🤖 جاري إعداد تحليل الذكاء الاصطناعي المفصّل الآن..."
+                              : analysisFailedIds[selectedEvent.id]
+                              ? "⚠️ تعذر إعداد التحليل التفصيلي حالياً، رح تنعرض النتيجة تلقائياً بأقرب محاولة ناجحة."
+                              : "🤖 التحليل التفصيلي بيظهر تلقائياً خلال لحظات..."}
                           </p>
                         )}
                       </div>
