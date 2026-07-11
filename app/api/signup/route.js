@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import { logActivity } from "@/lib/activity-log";
 
 export async function POST(request) {
   const { username, password, inviteCode } = await request.json();
@@ -72,6 +73,8 @@ export async function POST(request) {
     .from("invite_codes")
     .update({ is_used: true, used_by: authUser.user.id })
     .eq("id", invite.id);
+
+  await logActivity(authUser.user.id, "note", "تم إنشاء الحساب");
 
   return NextResponse.json({ success: true });
 }
