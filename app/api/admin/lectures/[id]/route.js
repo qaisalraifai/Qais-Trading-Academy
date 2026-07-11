@@ -9,13 +9,22 @@ export async function PUT(request, { params }) {
   }
 
   const body = await request.json();
-  const { title, description, driveLink, order_index } = body;
+  const {
+    title, description, driveLink, order_index,
+    course_id, chapter, chapter_order, duration_minutes, difficulty, practice_type,
+  } = body;
 
   const updateData = {};
   if (title !== undefined) updateData.title = title;
   if (description !== undefined) updateData.description = description || null;
   if (driveLink !== undefined) updateData.youtube_video_id = extractDriveFileId(driveLink);
   if (order_index !== undefined && order_index !== "") updateData.order_index = order_index;
+  if (course_id !== undefined) updateData.course_id = course_id || null;
+  if (chapter !== undefined) updateData.chapter = chapter || null;
+  if (chapter_order !== undefined) updateData.chapter_order = chapter_order === "" ? null : Number(chapter_order);
+  if (duration_minutes !== undefined) updateData.duration_seconds = duration_minutes === "" ? null : Math.round(Number(duration_minutes) * 60);
+  if (difficulty !== undefined) updateData.difficulty = difficulty || null;
+  if (practice_type !== undefined) updateData.practice_type = practice_type || null;
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
