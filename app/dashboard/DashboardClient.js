@@ -1432,8 +1432,50 @@ function CalendarView({ events, loading, isAdmin, onRefreshed }) {
                 )}
 
                 {analysisTab === "historical" && (
-                  <div style={{ padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
-                    📜 قريباً — بيانات الأمثلة التاريخية لهذا النوع من الأخبار رح تُضاف لضمان دقة الأرقام.
+                  <div>
+                    {(aiData?.historical_examples || []).length === 0 ? (
+                      <div style={{ padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
+                        📜 التحليل الذكي بيولّد أمثلة تاريخية تلقائياً للأخبار متوسطة وعالية التأثير — رح تظهر هون بعد أول تحديث.
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
+                          {[...aiData.historical_examples]
+                            .sort((a, b) => (b.year || "").localeCompare(a.year || ""))
+                            .map((h, i) => {
+                              const dir = DIRECTION_STYLE[h.direction] || DIRECTION_STYLE.neutral;
+                              return (
+                                <div key={i} style={{
+                                  display: "flex", alignItems: "center", gap: 12, background: "#0d0d0a",
+                                  border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.7rem 0.9rem",
+                                }}>
+                                  <span style={{
+                                    fontSize: 12, fontWeight: 800, color: GOLD_LIGHT, minWidth: 44, textAlign: "center",
+                                    border: `1px solid ${GOLD}33`, borderRadius: 8, padding: "3px 6px",
+                                  }}>
+                                    {h.year}
+                                  </span>
+                                  <span style={{ fontSize: 15 }}>{dir.arrow}</span>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#eee" }}>
+                                      {h.asset} {h.symbol && <span style={{ color: "#666", fontWeight: 400 }}>({h.symbol})</span>}
+                                    </p>
+                                    {h.note && <p style={{ margin: "3px 0 0", fontSize: 11, color: "#888" }}>{h.note}</p>}
+                                  </div>
+                                  {h.change_pct && (
+                                    <span style={{ fontSize: 13, fontWeight: 800, color: dir.color, direction: "ltr" }}>
+                                      {h.direction === "down" ? "-" : "+"}{h.change_pct}%
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                        <p style={{ margin: "0.9rem 0 0", fontSize: 10.5, color: "#555" }}>
+                          * أمثلة توضيحية تقريبية مولّدة بالذكاء الاصطناعي لأخبار مشابهة، وليست بيانات موثّقة مضمونة الدقة.
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
 
