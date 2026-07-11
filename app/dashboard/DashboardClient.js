@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
 import BacktestClient from "../backtest/BacktestClient";
@@ -95,29 +95,50 @@ export default function DashboardClient({ username, isAdmin = false }) {
 
   // التنقل الداخلي داخل نفس الصفحة (بدون الخروج من الداشبورد)
   const [activeKey, setActiveKey] = useState("dashboard");
-  const [lectures, setLectures] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [allLectures, setAllLectures] = useState([]);
+  const [progressMap, setProgressMap] = useState({});
   const [lecturesLoading, setLecturesLoading] = useState(false);
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
   const [selectedLecture, setSelectedLecture] = useState(null);
 
   useEffect(() => {
-    if (activeKey !== "lectures" || lectures.length > 0) return;
+    if (activeKey !== "lectures" || courses.length > 0) return;
     let active = true;
     async function loadLectures() {
       setLecturesLoading(true);
       const supabase = createClient();
-      const { data } = await supabase
-        .from("lectures")
-        .select("*")
-        .order("order_index", { ascending: true });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const [{ data: coursesData }, { data: lecturesData }, progressResult] = await Promise.all([
+        supabase.from("courses").select("*").order("order_index", { ascending: true }),
+        supabase
+          .from("lectures")
+          .select("*")
+          .order("chapter_order", { ascending: true })
+          .order("order_index", { ascending: true }),
+        user
+          ? supabase.from("lecture_progress").select("*").eq("user_id", user.id)
+          : Promise.resolve({ data: [] }),
+      ]);
+
       if (!active) return;
-      setLectures(data || []);
+      const pMap = {};
+      (progressResult.data || []).forEach((p) => {
+        pMap[p.lecture_id] = p;
+      });
+      setCourses(coursesData || []);
+      setAllLectures(lecturesData || []);
+      setProgressMap(pMap);
       setLecturesLoading(false);
     }
     loadLectures();
     return () => {
       active = false;
     };
-  }, [activeKey, lectures.length]);
+  }, [activeKey, courses.length]);
 
   // نحدّث بيانات لوحة التحكم كل مرة نرجع لها (مثلاً بعد إضافة صفقات من تبويب الباك تيست)
   useEffect(() => {
@@ -291,7 +312,10 @@ export default function DashboardClient({ username, isAdmin = false }) {
                 key={item.key}
                 onClick={() => {
                   setActiveKey(item.view);
-                  if (item.view === "lectures") setSelectedLecture(null);
+                  if (item.view === "lectures") {
+                    setSelectedLecture(null);
+                    setSelectedCourseId(null);
+                  }
                 }}
                 style={itemStyle}
               >
@@ -441,8 +465,13 @@ export default function DashboardClient({ username, isAdmin = false }) {
           <AccountsAdminView />
         ) : activeKey === "lectures" ? (
           <LecturesView
-            lectures={lectures}
+            courses={courses}
+            allLectures={allLectures}
+            progressMap={progressMap}
             loading={lecturesLoading}
+            selectedCourseId={selectedCourseId}
+            onSelectCourse={setSelectedCourseId}
+            onBackToCourses={() => setSelectedCourseId(null)}
             selectedLecture={selectedLecture}
             onSelect={setSelectedLecture}
             onBack={() => setSelectedLecture(null)}
@@ -694,15 +723,103 @@ export default function DashboardClient({ username, isAdmin = false }) {
 
 const cellStyle = { padding: "0.7rem", fontSize: 12, textAlign: "center", borderBottom: "1px solid #1a1a0f" };
 
-function LecturesView({ lectures, loading, selectedLecture, onSelect, onBack }) {
+const DIFFICULTY_LABELS = {
+  beginner: { label: "مبتدئ", color: "#4CAF50" },
+  intermediate: { label: "متوسط", color: "#FFA726" },
+  advanced: { label: "متقدم", color: "#EF5350" },
+};
+
+const LECTURE_FILTERS = [
+  { key: "all", label: "الكل" },
+  { key: "completed", label: "مكتملة" },
+  { key: "incomplete", label: "غير مكتملة" },
+  { key: "favorite", label: "المفضلة" },
+];
+
+function formatDuration(seconds) {
+  if (!seconds) return null;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function formatLastWatched(dateStr) {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "اليوم";
+  if (diffDays === 1) return "أمس";
+  if (diffDays < 7) return `منذ ${diffDays} أيام`;
+  return date.toLocaleDateString("ar-EG", { day: "numeric", month: "short" });
+}
+
+function LecturesView({
+  courses, allLectures, progressMap, loading,
+  selectedCourseId, onSelectCourse, onBackToCourses,
+  selectedLecture, onSelect, onBack,
+}) {
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+
+  const courseStats = useMemo(() => {
+    return courses.map((course) => {
+      const courseLectures = allLectures.filter((l) => l.course_id === course.id);
+      const totalLessons = courseLectures.length;
+      const totalSeconds = courseLectures.reduce((sum, l) => sum + (l.duration_seconds || 0), 0);
+      const completedCount = courseLectures.filter((l) => progressMap[l.id]?.completed).length;
+      const progressPct = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+      return { ...course, totalLessons, totalHours: totalSeconds / 3600, completedCount, progressPct };
+    });
+  }, [courses, allLectures, progressMap]);
+
+  const selectedCourse = courseStats.find((c) => c.id === selectedCourseId) || null;
+
+  const chapters = useMemo(() => {
+    if (!selectedCourseId) return [];
+    const courseLectures = allLectures.filter((l) => l.course_id === selectedCourseId);
+    const order = [];
+    const map = new Map();
+    courseLectures.forEach((lecture) => {
+      const chapterName = lecture.chapter || "عام";
+      if (!map.has(chapterName)) {
+        map.set(chapterName, { name: chapterName, order: lecture.chapter_order ?? 999, lectures: [] });
+        order.push(chapterName);
+      }
+      map.get(chapterName).lectures.push({ ...lecture, progress: progressMap[lecture.id] || null });
+    });
+    return order.map((name) => map.get(name)).sort((a, b) => a.order - b.order);
+  }, [selectedCourseId, allLectures, progressMap]);
+
+  const filteredChapters = useMemo(() => {
+    return chapters
+      .map((chapter) => {
+        const filteredLectures = chapter.lectures.filter((lecture) => {
+          const matchesSearch = !search.trim() || lecture.title?.toLowerCase().includes(search.trim().toLowerCase());
+          const isCompleted = !!lecture.progress?.completed;
+          const isFavorite = !!lecture.progress?.favorite;
+          let matchesFilter = true;
+          if (filter === "completed") matchesFilter = isCompleted;
+          else if (filter === "incomplete") matchesFilter = !isCompleted;
+          else if (filter === "favorite") matchesFilter = isFavorite;
+          return matchesSearch && matchesFilter;
+        });
+        return { ...chapter, filteredLectures };
+      })
+      .filter((chapter) => chapter.filteredLectures.length > 0);
+  }, [chapters, search, filter]);
+
   if (loading) {
     return (
       <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>
-        ...جاري تحميل المحاضرات
+        ...جاري تحميل البرامج التعليمية
       </div>
     );
   }
 
+  /* المستوى 3: مشغل الفيديو */
   if (selectedLecture) {
     return (
       <div style={{ ...cardStyle, padding: "1.3rem" }}>
@@ -714,7 +831,7 @@ function LecturesView({ lectures, loading, selectedLecture, onSelect, onBack }) 
             )}
           </div>
           <div onClick={onBack} style={{ color: GOLD, fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
-            ← قائمة المحاضرات
+            ← رجوع للمحاضرات
           </div>
         </div>
 
@@ -739,54 +856,201 @@ function LecturesView({ lectures, loading, selectedLecture, onSelect, onBack }) 
     );
   }
 
-  return (
-    <div style={{ ...cardStyle, padding: "1.3rem" }}>
-      <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: "0 0 1rem" }}>🎓 المحاضرات</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
-        {lectures.length === 0 ? (
-          <div style={{ color: "#444", fontSize: 13, textAlign: "center", padding: "2rem 0" }}>
-            لا توجد محاضرات بعد
+  /* المستوى 2: فصول ومحاضرات كورس معيّن */
+  if (selectedCourse) {
+    return (
+      <div style={{ ...cardStyle, padding: "1.3rem" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ fontSize: 26 }}>{selectedCourse.icon}</div>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{selectedCourse.title}</h2>
           </div>
-        ) : (
-          lectures.map((lecture, index) => (
-            <div
-              key={lecture.id}
-              onClick={() => onSelect(lecture)}
-              style={{
-                background: "#0d0d0a",
-                border: `1px solid ${GOLD}22`,
-                borderRadius: 12,
-                padding: "1rem 1.2rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "1rem",
-                cursor: "pointer",
-              }}
-            >
-              <div
+          <div onClick={onBackToCourses} style={{ color: GOLD, fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
+            ← البرامج التعليمية
+          </div>
+        </div>
+
+        {/* بحث وفلترة */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", marginBottom: "1.5rem" }}>
+          <input
+            type="text"
+            placeholder="🔍 البحث عن محاضرة..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              flex: "1 1 200px",
+              background: "#0d0d0a",
+              border: `1px solid ${GOLD}33`,
+              borderRadius: 10,
+              padding: "0.6rem 1rem",
+              color: "#fff",
+              fontSize: 13,
+              outline: "none",
+            }}
+          />
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            {LECTURE_FILTERS.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: "50%",
-                  background: `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 800,
-                  color: "#000",
-                  fontSize: 15,
-                  flexShrink: 0,
+                  background: filter === f.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0d0d0a",
+                  color: filter === f.key ? "#000" : "#999",
+                  border: filter === f.key ? "none" : `1px solid ${GOLD}22`,
+                  borderRadius: 8,
+                  padding: "0.55rem 0.9rem",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
                 }}
               >
-                {index + 1}
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
+          {filteredChapters.map((chapter) => {
+            const total = chapter.lectures.length;
+            const completed = chapter.lectures.filter((l) => l.progress?.completed).length;
+            const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+            return (
+              <div key={chapter.name}>
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                    <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>{chapter.name}</h3>
+                    <span style={{ fontSize: 11, color: GOLD, fontWeight: 700 }}>
+                      {pct}% &nbsp;·&nbsp; {completed} / {total} درس
+                    </span>
+                  </div>
+                  <div style={{ width: "100%", height: 5, background: "#1a1a0a", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`, borderRadius: 3 }} />
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
+                  {chapter.filteredLectures.map((lecture) => {
+                    const diff = DIFFICULTY_LABELS[lecture.difficulty];
+                    const isCompleted = !!lecture.progress?.completed;
+                    const watchedPct = lecture.progress?.watched_pct || 0;
+                    const lastWatched = formatLastWatched(lecture.progress?.last_watched_at);
+                    const duration = formatDuration(lecture.duration_seconds);
+
+                    return (
+                      <div
+                        key={lecture.id}
+                        onClick={() => onSelect(lecture)}
+                        style={{
+                          background: "#0d0d0a",
+                          border: isCompleted ? "1px solid #4CAF5044" : `1px solid ${GOLD}22`,
+                          borderRadius: 12,
+                          padding: "0.9rem 1.1rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "1rem",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div style={{
+                          width: 36, height: 36, borderRadius: "50%",
+                          background: isCompleted ? "#4CAF5022" : `${GOLD}22`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 15, flexShrink: 0,
+                        }}>
+                          {isCompleted ? "✅" : "▶️"}
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>{lecture.title}</div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.55rem", marginTop: 4, fontSize: 11, color: "#777" }}>
+                            {duration && <span>⏱ {duration}</span>}
+                            {diff && <span style={{ color: diff.color }}>🟢 {diff.label}</span>}
+                            {lecture.practice_type && <span>🧪 تمرين تطبيقي</span>}
+                            {lastWatched && <span>📅 آخر مشاهدة: {lastWatched}</span>}
+                          </div>
+                          {!isCompleted && watchedPct > 0 && (
+                            <div style={{ width: "100%", height: 3, background: "#1a1a0a", borderRadius: 2, overflow: "hidden", marginTop: 6 }}>
+                              <div style={{ width: `${watchedPct}%`, height: "100%", background: `${GOLD}88`, borderRadius: 2 }} />
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+                          {lecture.progress?.favorite && <span style={{ fontSize: 13 }}>⭐</span>}
+                          <div style={{ color: GOLD, fontSize: 14 }}>←</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>{lecture.title}</div>
-                {lecture.description && (
-                  <div style={{ color: "#666", fontSize: 12, marginTop: 3 }}>{lecture.description}</div>
+            );
+          })}
+
+          {filteredChapters.length === 0 && (
+            <div style={{ color: "#444", fontSize: 13, textAlign: "center", padding: "2rem 0" }}>
+              لا توجد نتائج مطابقة.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* المستوى 1: بطاقات البرامج التعليمية الثلاثة */
+  return (
+    <div style={{ ...cardStyle, padding: "1.3rem" }}>
+      <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: "0 0 1rem" }}>🎓 البرامج التعليمية</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
+        {courseStats.length === 0 ? (
+          <div style={{ color: "#444", fontSize: 13, textAlign: "center", padding: "2rem 0", gridColumn: "1 / -1" }}>
+            لا توجد برامج تعليمية بعد
+          </div>
+        ) : (
+          courseStats.map((course) => (
+            <div
+              key={course.id}
+              onClick={() => onSelectCourse(course.id)}
+              style={{
+                background: "#0d0d0a",
+                border: `1px solid ${GOLD}33`,
+                borderRadius: 14,
+                padding: "1.25rem",
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.75rem",
+              }}
+            >
+              <div style={{ fontSize: 32 }}>{course.icon}</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: "#fff" }}>{course.title}</div>
+                {course.description && (
+                  <div style={{ color: "#777", fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>{course.description}</div>
                 )}
               </div>
-              <div style={{ color: GOLD, fontSize: 14 }}>←</div>
+              <div style={{ display: "flex", gap: "0.9rem", fontSize: 11, color: "#999" }}>
+                <span>📚 {course.totalLessons} درس</span>
+                <span>⏱ {course.totalHours.toFixed(1)} ساعة</span>
+              </div>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: GOLD, marginBottom: 5 }}>
+                  <span>التقدم</span>
+                  <span>{course.progressPct}%</span>
+                </div>
+                <div style={{ width: "100%", height: 6, background: "#1a1a0a", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{ width: `${course.progressPct}%`, height: "100%", background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`, borderRadius: 4 }} />
+                </div>
+              </div>
+              <div style={{
+                background: `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})`,
+                color: "#000", fontWeight: 700, fontSize: 12, textAlign: "center",
+                padding: "0.55rem", borderRadius: 8,
+              }}>
+                {course.progressPct > 0 ? "متابعة" : "ابدأ الآن"}
+              </div>
             </div>
           ))
         )}
