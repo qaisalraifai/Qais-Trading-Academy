@@ -18,7 +18,7 @@ export async function middleware(request) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const protectedPaths = ["/dashboard", "/lecture", "/quiz", "/backtest", "/replay", "/discord"];
+  const protectedPaths = ["/dashboard", "/lecture", "/course", "/quiz", "/backtest", "/replay", "/discord"];
   const isProtected = protectedPaths.some((p) => request.nextUrl.pathname.startsWith(p));
 
   // لو مش مسجل دخول
@@ -47,5 +47,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/lecture/:path*", "/quiz/:path*", "/backtest/:path*", "/replay/:path*", "/discord/:path*"],
+  matcher: ["/dashboard/:path*", "/lecture/:path*", "/course/:path*", "/quiz/:path*", "/backtest/:path*", "/replay/:path*", "/discord/:path*"],
 };
