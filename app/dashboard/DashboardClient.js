@@ -1023,6 +1023,32 @@ function CalendarView({ events, loading, isAdmin, onRefreshed }) {
     return sorted[0]?.updated_at || null;
   }, [events]);
 
+  const todayStr = useMemo(() => now.toISOString().slice(0, 10), [now]);
+
+  const todayEvents = useMemo(
+    () => events.filter((e) => e.event_date === todayStr),
+    [events, todayStr]
+  );
+
+  const todayStats = useMemo(() => ({
+    total: todayEvents.length,
+    high: todayEvents.filter((e) => e.impact === "high").length,
+    medium: todayEvents.filter((e) => e.impact === "medium").length,
+    low: todayEvents.filter((e) => e.impact === "low").length,
+    completed: todayEvents.filter((e) => e.actual).length,
+    upcoming: todayEvents.filter((e) => !e.actual).length,
+  }), [todayEvents]);
+
+  const nextHighImpactEvent = useMemo(() => {
+    return events
+      .filter((e) => e.event_datetime && new Date(e.event_datetime) > now && e.impact === "high")
+      .sort((a, b) => new Date(a.event_datetime) - new Date(b.event_datetime))[0] || null;
+  }, [events, now]);
+
+  const nextHighImpactCountdown = nextHighImpactEvent
+    ? formatCountdown(new Date(nextHighImpactEvent.event_datetime) - now)
+    : null;
+
   function formatArabicDate(dateStr) {
     const d = new Date(dateStr + "T00:00:00");
     return d.toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "long" });
@@ -1044,31 +1070,83 @@ function CalendarView({ events, loading, isAdmin, onRefreshed }) {
 
   return (
     <div>
-      {/* رأس القسم */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: "1.1rem" }}>
-        <div>
-          <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#fff" }}>🧠 Market Intelligence Center</p>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#777" }}>
-            التقويم الاقتصادي وتحليل تأثير الأخبار على الأسواق
-            {lastUpdated && (
-              <span style={{ color: "#555" }}>
-                {" "}· آخر تحديث: {new Date(lastUpdated).toLocaleString("ar-EG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-          </p>
-        </div>
-        {isAdmin && (
-          <div
-            onClick={refreshing ? undefined : handleManualRefresh}
-            style={{
-              border: `1px solid ${GOLD}44`, color: GOLD_LIGHT, fontSize: 12, fontWeight: 700,
-              padding: "0.5rem 1rem", borderRadius: 8, cursor: refreshing ? "default" : "pointer",
-              opacity: refreshing ? 0.6 : 1, whiteSpace: "nowrap",
-            }}
-          >
-            {refreshing ? "...جاري التحديث" : "🔄 تحديث الآن"}
+      {/* Hero */}
+      <div style={{
+        ...cardStyle, padding: "1.3rem 1.5rem", marginBottom: "1rem",
+        background: `linear-gradient(135deg, ${GOLD}14, #0d0d0a 60%)`,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#fff" }}>📊 Market Intelligence Center</p>
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
+              التقويم الاقتصادي وتحليل تأثير الأخبار على الأسواق
+              {lastUpdated && (
+                <span style={{ color: "#555" }}>
+                  {" "}· آخر تحديث: {new Date(lastUpdated).toLocaleString("ar-EG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+            </p>
+            <div style={{ display: "flex", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, color: "#8BC34A", fontWeight: 700 }}>🟢 {todayStats.low} أخبار منخفضة</span>
+              <span style={{ fontSize: 12, color: "#FFA726", fontWeight: 700 }}>🟡 {todayStats.medium} متوسطة</span>
+              <span style={{ fontSize: 12, color: "#EF5350", fontWeight: 700 }}>🔴 {todayStats.high} عالية التأثير</span>
+            </div>
           </div>
-        )}
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {isAdmin && (
+              <div
+                onClick={refreshing ? undefined : handleManualRefresh}
+                style={{
+                  border: `1px solid ${GOLD}44`, color: GOLD_LIGHT, fontSize: 12, fontWeight: 700,
+                  padding: "0.5rem 1rem", borderRadius: 8, cursor: refreshing ? "default" : "pointer",
+                  opacity: refreshing ? 0.6 : 1, whiteSpace: "nowrap",
+                }}
+              >
+                {refreshing ? "...جاري التحديث" : "🔄 تحديث الآن"}
+              </div>
+            )}
+            {nextHighImpactEvent ? (
+              <div style={{
+                textAlign: "center", border: "1px solid #EF535044", borderRadius: 12,
+                padding: "0.7rem 1.1rem", background: "#EF535011", minWidth: 190,
+              }}>
+                <p style={{ margin: 0, fontSize: 10, color: "#999" }}>🔴 الخبر القادم عالي التأثير</p>
+                <p style={{ margin: "5px 0 3px", fontSize: 13, fontWeight: 800, color: "#fff" }}>
+                  {CURRENCY_FLAGS[nextHighImpactEvent.currency] || "🌐"} {nextHighImpactEvent.event_title}
+                </p>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#EF5350", direction: "ltr" }}>
+                  {nextHighImpactCountdown || "--"}
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                textAlign: "center", border: `1px solid ${GOLD}33`, borderRadius: 12,
+                padding: "0.7rem 1.1rem", minWidth: 190, color: "#666", fontSize: 11.5,
+              }}>
+                لا يوجد أخبار عالية التأثير قادمة حالياً
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* بطاقات الإحصائيات */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.8rem", marginBottom: "1.1rem" }}>
+        {[
+          { label: "أخبار اليوم", value: todayStats.total, color: GOLD_LIGHT, icon: "🗓️" },
+          { label: "عالية التأثير", value: todayStats.high, color: "#EF5350", icon: "🔴" },
+          { label: "منتهية", value: todayStats.completed, color: "#3DDC84", icon: "✅" },
+          { label: "قادمة", value: todayStats.upcoming, color: "#4FA0F5", icon: "⏳" },
+        ].map((s, i) => (
+          <div key={i} style={{ ...cardStyle, padding: "0.9rem 1rem", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 20 }}>{s.icon}</span>
+            <div>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#888" }}>{s.label}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div style={{ display: "flex", gap: "1.2rem", alignItems: "flex-start" }}>
