@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
 import { kickMemberFromGuild } from "@/lib/discord";
+import { logActivity } from "@/lib/activity-log";
 
 export async function POST(request) {
   const auth = await requireAdmin();
@@ -40,6 +41,8 @@ export async function POST(request) {
       console.error("Discord kick error:", e)
     );
   }
+
+  await logActivity(userId, status === "active" ? "renew" : "note", status === "active" ? "تفعيل الاشتراك من لوحة التحكم" : "إلغاء الاشتراك من لوحة التحكم");
 
   return NextResponse.json({ success: true });
 }
