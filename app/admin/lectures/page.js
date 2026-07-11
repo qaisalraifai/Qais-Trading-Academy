@@ -5,13 +5,34 @@ import { createClient } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const emptyForm = { title: "", description: "", driveLink: "", order_index: "" };
+const emptyForm = {
+  title: "", description: "", driveLink: "", order_index: "",
+  course_id: "", chapter: "", chapter_order: "", duration_minutes: "",
+  difficulty: "", practice_type: "",
+};
+
+const DIFFICULTY_OPTIONS = [
+  { value: "", label: "بدون تحديد" },
+  { value: "beginner", label: "🟢 مبتدئ" },
+  { value: "intermediate", label: "🟡 متوسط" },
+  { value: "advanced", label: "🔴 متقدم" },
+];
+
+const PRACTICE_OPTIONS = [
+  { value: "", label: "بدون تمرين تطبيقي" },
+  { value: "support_resistance", label: "الدعم والمقاومة" },
+  { value: "fvg", label: "FVG" },
+  { value: "order_block", label: "Order Block" },
+  { value: "bos_choch", label: "BOS / CHOCH" },
+  { value: "custom", label: "تمرين مخصص آخر" },
+];
 
 export default function AdminLecturesPage() {
   const supabase = createClient();
   const router = useRouter();
 
   const [lectures, setLectures] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -23,6 +44,7 @@ export default function AdminLecturesPage() {
   useEffect(() => {
     checkAdmin();
     fetchLectures();
+    fetchCourses();
   }, []);
 
   async function checkAdmin() {
@@ -41,6 +63,12 @@ export default function AdminLecturesPage() {
     setLoading(false);
   }
 
+  async function fetchCourses() {
+    const res = await fetch("/api/admin/courses");
+    const data = await res.json();
+    if (res.ok) setCourses(data.courses || []);
+  }
+
   function openAddForm() {
     setEditingId(null);
     setForm(emptyForm);
@@ -55,6 +83,12 @@ export default function AdminLecturesPage() {
       description: lecture.description || "",
       driveLink: lecture.youtube_video_id || "",
       order_index: lecture.order_index ?? "",
+      course_id: lecture.course_id || "",
+      chapter: lecture.chapter || "",
+      chapter_order: lecture.chapter_order ?? "",
+      duration_minutes: lecture.duration_seconds ? Math.round(lecture.duration_seconds / 60 * 10) / 10 : "",
+      difficulty: lecture.difficulty || "",
+      practice_type: lecture.practice_type || "",
     });
     setError("");
     setShowForm(true);
@@ -150,7 +184,68 @@ export default function AdminLecturesPage() {
               placeholder="وصف مختصر للمحاضرة..."
             />
 
-            <label style={s.label}>الترتيب (اختياري)</label>
+            <label style={s.label}>الكورس</label>
+            <select
+              style={s.input}
+              value={form.course_id}
+              onChange={(e) => setForm({ ...form, course_id: e.target.value })}
+            >
+              <option value="">بدون تحديد</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>{c.icon} {c.title}</option>
+              ))}
+            </select>
+
+            <label style={s.label}>الفصل (Chapter)</label>
+            <input
+              style={s.input}
+              value={form.chapter}
+              onChange={(e) => setForm({ ...form, chapter: e.target.value })}
+              placeholder="مثلاً: أساسيات الفوركس، Order Blocks..."
+            />
+
+            <label style={s.label}>ترتيب الفصل (اختياري)</label>
+            <input
+              type="number"
+              style={s.input}
+              value={form.chapter_order}
+              onChange={(e) => setForm({ ...form, chapter_order: e.target.value })}
+              placeholder="يحدد ترتيب ظهور الفصل ضمن الكورس"
+            />
+
+            <label style={s.label}>مدة الفيديو (بالدقائق)</label>
+            <input
+              type="number"
+              step="0.1"
+              style={s.input}
+              value={form.duration_minutes}
+              onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
+              placeholder="مثلاً: 12.5"
+            />
+
+            <label style={s.label}>مستوى الصعوبة</label>
+            <select
+              style={s.input}
+              value={form.difficulty}
+              onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
+            >
+              {DIFFICULTY_OPTIONS.map((d) => (
+                <option key={d.value} value={d.value}>{d.label}</option>
+              ))}
+            </select>
+
+            <label style={s.label}>التطبيق العملي بعد الدرس</label>
+            <select
+              style={s.input}
+              value={form.practice_type}
+              onChange={(e) => setForm({ ...form, practice_type: e.target.value })}
+            >
+              {PRACTICE_OPTIONS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+
+            <label style={s.label}>الترتيب العام (اختياري)</label>
             <input
               type="number"
               style={s.input}
@@ -180,25 +275,31 @@ export default function AdminLecturesPage() {
           <table style={s.table}>
             <thead>
               <tr>
-                {["الترتيب", "العنوان", "Drive File ID", "إجراءات"].map((h, i) => (
+                {["الترتيب", "العنوان", "الكورس", "الفصل", "الصعوبة", "إجراءات"].map((h, i) => (
                   <th key={i} style={s.th}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {lectures.map((lecture) => (
-                <tr key={lecture.id} style={s.tr}>
-                  <td style={s.td}><span style={s.mono}>{lecture.order_index}</span></td>
-                  <td style={s.td}><span style={s.username}>{lecture.title}</span></td>
-                  <td style={s.td}><span style={s.mono}>{lecture.youtube_video_id}</span></td>
-                  <td style={s.td}>
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      <button onClick={() => openEditForm(lecture)} style={s.btnEdit}>تعديل</button>
-                      <button onClick={() => handleDelete(lecture.id, lecture.title)} style={s.btnDanger}>حذف</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {lectures.map((lecture) => {
+                const course = courses.find((c) => c.id === lecture.course_id);
+                const diff = DIFFICULTY_OPTIONS.find((d) => d.value === lecture.difficulty);
+                return (
+                  <tr key={lecture.id} style={s.tr}>
+                    <td style={s.td}><span style={s.mono}>{lecture.order_index}</span></td>
+                    <td style={s.td}><span style={s.username}>{lecture.title}</span></td>
+                    <td style={s.td}><span style={s.mono}>{course ? `${course.icon} ${course.title}` : "—"}</span></td>
+                    <td style={s.td}><span style={s.mono}>{lecture.chapter || "—"}</span></td>
+                    <td style={s.td}><span style={s.mono}>{diff?.value ? diff.label : "—"}</span></td>
+                    <td style={s.td}>
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <button onClick={() => openEditForm(lecture)} style={s.btnEdit}>تعديل</button>
+                        <button onClick={() => handleDelete(lecture.id, lecture.title)} style={s.btnDanger}>حذف</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
