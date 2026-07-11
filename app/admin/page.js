@@ -1,21 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+import { gold, s, glass, transition } from "./styles";
+import StatCard from "./components/StatCard";
+import Toolbar from "./components/Toolbar";
+import FilterChips from "./components/FilterChips";
+import KpiRow from "./components/KpiRow";
+import { SubscriptionsTrendChart, RevenueBarChart } from "./components/Charts";
+import UsersTable from "./components/UsersTable";
+import UserDrawer from "./components/UserDrawer";
+import ActivityFeed from "./components/ActivityFeed";
+import QuickActions from "./components/QuickActions";
+
 export default function AdminPage() {
   const supabase = createClient();
   const router = useRouter();
+
   const [users, setUsers] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [period, setPeriod] = useState("all");
+  const [statuses, setStatuses] = useState([]);
+  const [sort, setSort] = useState("newest");
+  const [chips, setChips] = useState([]);
+
+  const [drawerUserId, setDrawerUserId] = useState(null);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     checkAdmin();
+  }, []);
+
+  useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, period, statuses, sort]);
+
+  useEffect(() => {
+    fetchStats();
+    fetchFeed();
+    const interval = setInterval(fetchFeed, 20000);
+    return () => clearInterval(interval);
   }, []);
 
   async function checkAdmin() {
@@ -26,53 +58,172 @@ export default function AdminPage() {
   }
 
   async function fetchUsers() {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setUsers(data || []);
+    setLoading(true);
+    const params = new URLSearchParams({ search, period, sort, status: statuses.join(",") });
+    const res = await fetch(`/api/admin/users?${params}`);
+    const data = await res.json();
+    setUsers(data.users || []);
     setLoading(false);
   }
 
-  async function updateStatus(id, status) {
-    const res = await fetch("/api/admin/toggle-subscription", {
+  async function fetchStats() {
+    const res = await fetch("/api/admin/stats");
+    const data = await res.json();
+    setStats(data);
+  }
+
+  async function fetchFeed() {
+    const res = await fetch("/api/admin/activity");
+    const data = await res.json();
+    setFeed(data.items || []);
+  }
+
+  const fetchDetail = useCallback(async (userId) => {
+    const res = await fetch(`/api/admin/users/${userId}`);
+    return res.json();
+  }, []);
+
+  function showToast(msg, isError = false) {
+    setToast({ msg, isError });
+    setTimeout(() => setToast(null), 2800);
+  }
+
+  async function callAction(userId, action, payload = {}) {
+    const res = await fetch(`/api/admin/users/${userId}/action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: id, status }),
+      body: JSON.stringify({ action, payload }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      alert(data.error || "صار خطأ، حاولي مرة تانية");
-      return;
-    }
-    fetchUsers();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { showToast(data.error || "صار خطأ", true); return false; }
+    return true;
   }
 
-  const filtered = users.filter(u => {
-    const matchSearch = u.username?.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === "all" || u.subscription_status === filter;
-    return matchSearch && matchFilter;
+  // فلترة إضافية من Chips وتقاطعها مع plan الحقيقي بعد ما توصل البيانات
+  const chipFiltered = users.filter((u) => {
+    if (chips.length === 0) return true;
+    return chips.some((chip) => {
+      if (chip === "vip") return u.plan === "vip";
+      if (chip === "elite") return u.plan === "elite";
+      if (chip === "trial") return u.plan === "trial";
+      if (chip === "expired") return u.subscription_status !== "active";
+      if (chip === "cancelled") return u.subscription_status === "inactive" && !u.suspended;
+      if (chip === "pending") return u.subscription_status === "inactive" && u.daysLeft === null;
+      return true;
+    });
   });
 
-  const stats = {
-    total: users.length,
-    active: users.filter(u => u.subscription_status === "active").length,
-    inactive: users.filter(u => u.subscription_status === "inactive").length,
-    expiring: users.filter(u => {
-      if (!u.subscription_end) return false;
-      const days = (new Date(u.subscription_end) - new Date()) / (1000 * 60 * 60 * 24);
-      return days > 0 && days <= 7;
-    }).length,
-  };
-
-  function statusBadge(status, endDate) {
-    if (status === "active") {
-      const days = endDate ? Math.ceil((new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24)) : null;
-      if (days !== null && days <= 7) return { label: `ينتهي بـ ${days} أيام`, color: "#C9A24B" };
-      return { label: "نشط", color: "#4CAF50" };
-    }
-    return { label: "منتهي", color: "#666" };
+  function toggleStatus(v) {
+    setStatuses((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]));
   }
+  function toggleChip(v) {
+    setChips((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]));
+  }
+
+  // إجراءات الجدول / القائمة المنسدلة
+  async function handleTableAction(key, user) {
+    if (key === "view") { setDrawerUserId(user.id); return; }
+    if (key === "edit") { setDrawerUserId(user.id); return; }
+    if (key === "renew") {
+      const ok = await callAction(user.id, "renew");
+      if (ok) { showToast(`تم تجديد اشتراك ${user.username}`); fetchUsers(); fetchStats(); fetchFeed(); }
+      return;
+    }
+    if (key === "email") {
+      const title = prompt("عنوان الإشعار:");
+      if (!title) return;
+      const message = prompt("نص الإشعار:") || "";
+      const ok = await callAction(user.id, "notify", { title, message });
+      if (ok) showToast("تم إرسال الإشعار");
+      return;
+    }
+    if (key === "suspend") {
+      if (!confirm(`تأكيد إيقاف حساب ${user.username}؟`)) return;
+      const ok = await callAction(user.id, "suspend");
+      if (ok) { showToast(`تم إيقاف ${user.username}`); fetchUsers(); fetchFeed(); }
+      return;
+    }
+    if (key === "delete") {
+      if (!confirm(`تأكيد حذف حساب ${user.username} نهائياً؟ لا يمكن التراجع.`)) return;
+      const res = await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
+      if (res.ok) { showToast(`تم حذف ${user.username}`); fetchUsers(); fetchStats(); }
+      else showToast("فشل الحذف", true);
+      return;
+    }
+  }
+
+  // إجراءات الـ Drawer
+  async function handleDrawerAction(key, profile, form) {
+    if (key === "save_edit") {
+      const res = await fetch(`/api/admin/users/${profile.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) { showToast("تم الحفظ"); fetchUsers(); }
+      else showToast("فشل الحفظ", true);
+      return;
+    }
+    if (key === "suspend" || key === "unsuspend") {
+      const ok = await callAction(profile.id, key);
+      if (ok) { showToast(key === "suspend" ? "تم الإيقاف" : "تم رفع الإيقاف"); fetchUsers(); setDrawerUserId(null); }
+      return;
+    }
+    if (key === "delete") {
+      if (!confirm("تأكيد حذف الحساب نهائياً؟")) return;
+      const res = await fetch(`/api/admin/users/${profile.id}`, { method: "DELETE" });
+      if (res.ok) { showToast("تم الحذف"); setDrawerUserId(null); fetchUsers(); fetchStats(); }
+      return;
+    }
+  }
+
+  // Quick Actions (+)
+  async function handleAddUser(form) {
+    const res = await fetch("/api/admin/quick-add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "add_user", payload: form }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) { showToast("تمت إضافة المستخدم"); fetchUsers(); fetchStats(); }
+    else showToast(data.error || "فشل الإضافة", true);
+  }
+  async function handleNotifyBroadcast(form) {
+    const res = await fetch("/api/admin/quick-add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "broadcast_notification", payload: form }),
+    });
+    if (res.ok) showToast("تم إرسال الإشعار للجميع");
+    else showToast("فشل الإرسال", true);
+  }
+  async function handleCreateCoupon(form) {
+    const res = await fetch("/api/admin/coupons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) showToast(`تم إنشاء الكوبون ${form.code}`);
+    else showToast(data.error || "فشل الإنشاء", true);
+  }
+  async function handleExtendUser(form) {
+    if (!form.userId) return showToast("اختر مستخدم", true);
+    const ok = await callAction(form.userId, "extend", { days: Number(form.days) || 30 });
+    if (ok) { showToast("تم التمديد"); fetchUsers(); fetchStats(); }
+  }
+  async function handleDiscountUser(form) {
+    if (!form.userId) return showToast("اختر مستخدم", true);
+    const ok = await callAction(form.userId, "discount", { percent: Number(form.percent) || 0 });
+    if (ok) showToast("تم منح الخصم");
+  }
+
+  function handleExport() {
+    window.open("/api/admin/export", "_blank");
+  }
+
+  const cards = stats?.cards;
+  const trend = stats?.charts?.signupsTrend?.map((d) => d.value) || [];
 
   return (
     <div style={s.page}>
@@ -84,117 +235,84 @@ export default function AdminPage() {
           <h1 style={s.headerTitle}>Qais Trading Academy</h1>
         </div>
         <div style={{ display: "flex", gap: "0.75rem" }}>
-          <Link href="/admin/lectures" style={s.lecturesBtn}>📚 إدارة المحاضرات</Link>
-          <button onClick={() => { supabase.auth.signOut(); router.push("/login"); }} style={s.logoutBtn}>
-            تسجيل الخروج
-          </button>
+          <Link href="/admin/lectures" style={{ ...s.btn, textDecoration: "none" }}>📚 إدارة المحاضرات</Link>
+          <button onClick={() => { supabase.auth.signOut(); router.push("/login"); }} style={s.btn}>تسجيل الخروج</button>
         </div>
       </header>
 
-      <div style={s.statsRow}>
-        {[
-          { label: "إجمالي المشتركين", value: stats.total, color: "#C9A24B" },
-          { label: "اشتراكات نشطة", value: stats.active, color: "#4CAF50" },
-          { label: "اشتراكات منتهية", value: stats.inactive, color: "#666" },
-          { label: "تنتهي خلال 7 أيام", value: stats.expiring, color: "#FF9800" },
-        ].map((s2, i) => (
-          <div key={i} style={s.statCard}>
-            <span style={{ ...s.statNum, color: s2.color }}>{s2.value}</span>
-            <span style={s.statLabel}>{s2.label}</span>
-          </div>
-        ))}
+      {/* الإحصائيات */}
+      <div style={{ ...s.section, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+        <StatCard icon="👥" label="إجمالي المستخدمين" value={cards?.totalUsers ?? 0} color={gold} sparkline={trend} sub="آخر 30 يوم" />
+        <StatCard icon="🟢" label="نشطون الآن" value={cards?.activeNow ?? 0} color="#4CAF50" sub="آخر 15 دقيقة" />
+        <StatCard icon="💎" label="أعضاء VIP" value={cards?.vipCount ?? 0} color="#B26FE0" />
+        <StatCard icon="📈" label="معدل التجديد" value={cards?.renewalRate ?? 0} suffix="%" color="#4FA8E0" />
+        <StatCard icon="💰" label="الإيرادات الشهرية" value={cards?.monthlyRevenue ?? 0} prefix="$" color={gold} />
+        <StatCard icon="💵" label="الإيرادات الكلية" value={cards?.totalRevenue ?? 0} prefix="$" color={gold} />
+        <StatCard icon="⌛" label="تنتهي خلال 7 أيام" value={cards?.expiringSoon ?? 0} color="#FF9800" />
+        <StatCard icon="❌" label="اشتراكات منتهية" value={cards?.expiredCount ?? 0} color="#8b8b8b" />
       </div>
 
-      <div style={s.toolbar}>
-        <input
-          placeholder="بحث باسم المستخدم..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={s.searchInput}
+      <div style={s.divider} />
+
+      {/* الرسوم البيانية */}
+      <div style={{ ...s.section, display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+        <SubscriptionsTrendChart data={stats?.charts?.signupsTrend} />
+        <RevenueBarChart data={stats?.charts?.revenueByMonth} />
+      </div>
+
+      {/* KPIs */}
+      <div style={s.section}>
+        <KpiRow kpis={stats?.kpis} />
+      </div>
+
+      <div style={s.divider} />
+
+      {/* Toolbar + Chips */}
+      <div style={{ ...s.section, display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <Toolbar
+          search={search} setSearch={setSearch}
+          period={period} setPeriod={setPeriod}
+          statuses={statuses} toggleStatus={toggleStatus}
+          sort={sort} setSort={setSort}
+          onExport={handleExport}
         />
-        <div style={s.filterBtns}>
-          {[["all", "الكل"], ["active", "نشط"], ["inactive", "منتهي"]].map(([val, label]) => (
-            <button key={val} onClick={() => setFilter(val)} style={{ ...s.filterBtn, ...(filter === val ? s.filterBtnActive : {}) }}>
-              {label}
-            </button>
-          ))}
+        <FilterChips active={chips} toggle={toggleChip} />
+      </div>
+
+      {/* الجدول + Activity Feed */}
+      <div style={{ ...s.section, display: "flex", gap: "1rem", alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ flex: "3 1 640px", minWidth: 320 }}>
+          <UsersTable users={chipFiltered} loading={loading} onOpenUser={(u) => setDrawerUserId(u.id)} onAction={handleTableAction} />
+        </div>
+        <div style={{ flex: "1 1 260px", minWidth: 260 }}>
+          <ActivityFeed items={feed} />
         </div>
       </div>
 
-      <div style={s.tableWrap}>
-        {loading ? (
-          <p style={s.loading}>جاري التحميل...</p>
-        ) : (
-          <table style={s.table}>
-            <thead>
-              <tr>
-                {["اسم المستخدم", "الحالة", "بداية الاشتراك", "نهاية الاشتراك", "تاريخ التسجيل", "إجراء"].map((h, i) => (
-                  <th key={i} style={s.th}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((user) => {
-                const badge = statusBadge(user.subscription_status, user.subscription_end);
-                return (
-                  <tr key={user.id} style={s.tr}>
-                    <td style={s.td}><span style={s.username}>{user.username || "—"}</span></td>
-                    <td style={s.td}>
-                      <span style={{ ...s.badge, backgroundColor: badge.color + "22", color: badge.color, border: `1px solid ${badge.color}44` }}>
-                        {badge.label}
-                      </span>
-                    </td>
-                    <td style={s.td}><span style={s.mono}>{user.subscription_start ? new Date(user.subscription_start).toLocaleDateString("ar") : "—"}</span></td>
-                    <td style={s.td}><span style={s.mono}>{user.subscription_end ? new Date(user.subscription_end).toLocaleDateString("ar") : "—"}</span></td>
-                    <td style={s.td}><span style={s.mono}>{new Date(user.created_at).toLocaleDateString("ar")}</span></td>
-                    <td style={s.td}>
-                      {user.subscription_status === "active" ? (
-                        <button onClick={() => updateStatus(user.id, "inactive")} style={s.btnDanger}>إلغاء</button>
-                      ) : (
-                        <button onClick={() => updateStatus(user.id, "active")} style={s.btnSuccess}>تفعيل</button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {filtered.length === 0 && (
-                <tr><td colSpan={6} style={{ ...s.td, textAlign: "center", color: "#444", padding: "3rem" }}>لا يوجد مستخدمون</td></tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {drawerUserId && (
+        <UserDrawer userId={drawerUserId} onClose={() => setDrawerUserId(null)} onAction={handleDrawerAction} fetchDetail={fetchDetail} />
+      )}
+
+      <QuickActions
+        users={users}
+        onAddUser={handleAddUser}
+        onNotifyBroadcast={handleNotifyBroadcast}
+        onCreateCoupon={handleCreateCoupon}
+        onExtendUser={handleExtendUser}
+        onDiscountUser={handleDiscountUser}
+      />
+
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 28, right: 28, zIndex: 300,
+          ...glass, padding: "0.8rem 1.3rem",
+          color: toast.isError ? "#ef5350" : "#4CAF50",
+          borderColor: toast.isError ? "#ef535055" : "#4CAF5055",
+          fontSize: "0.85rem", transition,
+        }}>
+          {toast.msg}
+        </div>
+      )}
     </div>
   );
 }
-
-const gold = "#C9A24B";
-const ink = "#050505";
-const s = {
-  page: { backgroundColor: ink, color: "#E8E0D0", direction: "rtl", fontFamily: "'Inter', sans-serif", minHeight: "100vh", padding: "0 0 4rem" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2rem 3rem", borderBottom: "1px solid #141414" },
-  headerSub: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.75rem", letterSpacing: "2px", marginBottom: "0.25rem" },
-  headerTitle: { fontSize: "1.4rem", fontWeight: 800 },
-  logoutBtn: { background: "none", border: "1px solid #222", color: "#666", padding: "0.5rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" },
-  lecturesBtn: { background: "none", border: "1px solid #C9A24B44", color: gold, padding: "0.5rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center" },
-  statsRow: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1px", backgroundColor: "#111", margin: "2rem 3rem", border: "1px solid #111" },
-  statCard: { backgroundColor: "#0d0d0d", padding: "1.75rem 2rem", display: "flex", flexDirection: "column", gap: "0.4rem" },
-  statNum: { fontFamily: "'JetBrains Mono', monospace", fontSize: "2rem", fontWeight: 500 },
-  statLabel: { color: "#555", fontSize: "0.8rem" },
-  toolbar: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 3rem", marginBottom: "1rem", gap: "1rem", flexWrap: "wrap" },
-  searchInput: { backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a", color: "#E8E0D0", padding: "0.6rem 1rem", borderRadius: "4px", fontSize: "0.9rem", width: "280px", outline: "none" },
-  filterBtns: { display: "flex", gap: "0.5rem" },
-  filterBtn: { background: "none", border: "1px solid #1a1a1a", color: "#555", padding: "0.5rem 1rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" },
-  filterBtnActive: { borderColor: gold, color: gold },
-  tableWrap: { margin: "0 3rem", border: "1px solid #111", borderRadius: "4px", overflow: "hidden" },
-  table: { width: "100%", borderCollapse: "collapse" },
-  th: { backgroundColor: "#0a0a0a", padding: "1rem 1.25rem", textAlign: "right", fontSize: "0.78rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111" },
-  tr: { borderBottom: "1px solid #0d0d0d" },
-  td: { padding: "1rem 1.25rem", fontSize: "0.88rem", verticalAlign: "middle" },
-  username: { color: "#E8E0D0", fontWeight: 500 },
-  badge: { padding: "0.3rem 0.75rem", borderRadius: "999px", fontSize: "0.78rem", fontWeight: 500 },
-  mono: { fontFamily: "'JetBrains Mono', monospace", color: "#555", fontSize: "0.82rem" },
-  btnSuccess: { backgroundColor: "#1a3a1a", color: "#4CAF50", border: "1px solid #2a5a2a", padding: "0.4rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.82rem" },
-  btnDanger: { backgroundColor: "#2a1a1a", color: "#ef5350", border: "1px solid #4a2a2a", padding: "0.4rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.82rem" },
-  loading: { textAlign: "center", padding: "3rem", color: "#444" },
-};
