@@ -950,6 +950,17 @@ function buildFallbackAnalysis(event) {
   return `بشكل عام، إذا جاءت قراءة "${event?.event_title || "هذا الخبر"}" أعلى من التوقعات، فغالباً ما يدعم ذلك ${info.name} ويُشكّل ضغطاً على ${info.assets}. أما إذا جاءت القراءة أقل من المتوقع، فالسيناريو المعتاد هو العكس: ضعف نسبي في ${info.name} ودعم لتلك الأصول. باعتبار هذا خبراً ${impactLabel} التأثير، يُنصح بمتابعة الحركة السعرية عن كثب وقت صدور البيانات، والانتباه لاحتمال التقلب المفاجئ خصوصاً إذا جاءت النتيجة بعيدة عن التوقعات.`;
 }
 
+const GENERIC_TIPS_BEFORE = [
+  "تجنّب فتح صفقات جديدة قبل دقائق من صدور الخبر مباشرة",
+  "راقب اتساع السبريد (Spread) فقد يزيد بشكل كبير قبل الحدث",
+  "قلّل حجم اللوت إذا كنت لسا داخل صفقة قبل الخبر",
+];
+const GENERIC_TIPS_AFTER = [
+  "انتظر إغلاق الشمعة الأولى بعد الخبر قبل الدخول لتفادي الحركة الوهمية",
+  "استخدم وقف خسارة (Stop Loss) واضح نظراً لاحتمال التقلب العالي",
+  "قارن الرقم الفعلي بالتوقع لتحديد اتجاه السوق الأرجح",
+];
+
 function formatCountdown(diffMs) {
   if (diffMs <= 0) return null;
   const totalSeconds = Math.floor(diffMs / 1000);
@@ -966,12 +977,17 @@ function CalendarView({ events, loading, isAdmin, onRefreshed }) {
   const [impactFilter, setImpactFilter] = useState("all");
   const [refreshing, setRefreshing] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [analysisTab, setAnalysisTab] = useState("overview");
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    setAnalysisTab("overview");
+  }, [selectedId]);
 
   async function handleManualRefresh() {
     setRefreshing(true);
@@ -1245,143 +1261,199 @@ function CalendarView({ events, loading, isAdmin, onRefreshed }) {
             </div>
           ) : (
             <>
-              {/* هيدر الخبر المختار */}
-              <div style={{ ...cardStyle, padding: "1.1rem 1.4rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{
-                    background: impact.bg, color: impact.color, fontSize: 11, fontWeight: 700,
-                    padding: "4px 12px", borderRadius: 20, whiteSpace: "nowrap",
-                  }}>
-                    {impact.dot} {impact.label}
-                  </span>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>{selectedEvent.event_title}</p>
-                    <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
-                      {flag} {selectedEvent.currency} · {formatArabicDate(selectedEvent.event_date)} · {selectedEvent.event_time}
-                    </p>
+              {/* بطاقة الخبر المختار */}
+              <div style={{ ...cardStyle, padding: "1.2rem 1.4rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: "1rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{
+                      background: impact.bg, color: impact.color, fontSize: 11, fontWeight: 700,
+                      padding: "4px 12px", borderRadius: 20, whiteSpace: "nowrap",
+                    }}>
+                      {impact.dot} {impact.label}
+                    </span>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>
+                        {flag} {selectedEvent.event_title}
+                      </p>
+                      <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
+                        {selectedEvent.currency} · {formatArabicDate(selectedEvent.event_date)} · {selectedEvent.event_time}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                {countdown && (
-                  <div style={{ textAlign: "center", border: `1px solid ${GOLD}33`, borderRadius: 10, padding: "0.5rem 1rem" }}>
-                    <p style={{ margin: 0, fontSize: 10, color: "#888" }}>العد التنازلي للخبر</p>
-                    <p style={{ margin: "3px 0 0", fontSize: 16, fontWeight: 800, color: impact.color, direction: "ltr" }}>{countdown}</p>
+
+                {/* السابق / التوقع / الفعلي / العد التنازلي */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.7rem" }}>
+                  {[
+                    { label: "السابق", value: selectedEvent.previous },
+                    { label: "التوقع", value: selectedEvent.forecast },
+                    { label: "الفعلي", value: selectedEvent.actual, gold: true },
+                    { label: "العد التنازلي", value: countdown, live: true },
+                  ].map((s, i) => (
+                    <div key={i} style={{ background: "#0d0d0a", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.7rem", textAlign: "center" }}>
+                      <p style={{ margin: 0, fontSize: 10.5, color: "#888" }}>{s.label}</p>
+                      <p style={{
+                        margin: "5px 0 0", fontSize: 15, fontWeight: 800, direction: s.live ? "ltr" : undefined,
+                        color: s.value ? (s.gold ? GOLD_LIGHT : s.live ? impact.color : "#fff") : "#444",
+                      }}>
+                        {s.value || "--"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* مؤشر قوة التأثير المتوقع */}
+                <div style={{ marginTop: "1rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                    <span style={{ fontSize: 11, color: "#888" }}>قوة التأثير المتوقع على السوق</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: impact.color }}>{impact.label}</span>
+                  </div>
+                  <div style={{ height: 7, borderRadius: 6, background: "#1a1a12", overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%", borderRadius: 6, background: impact.color,
+                      width: selectedEvent.impact === "high" ? "100%" : selectedEvent.impact === "medium" ? "62%" : "30%",
+                      transition: "width .4s ease",
+                    }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabs التحليل */}
+              <div style={{ ...cardStyle, padding: "1.2rem 1.3rem" }}>
+                <div style={{ display: "flex", gap: 6, marginBottom: "1.1rem", flexWrap: "wrap" }}>
+                  {[
+                    { key: "overview", label: "Overview", icon: "🧭" },
+                    { key: "technical", label: "Technical View", icon: "🎯" },
+                    { key: "historical", label: "Historical Data", icon: "📜" },
+                    { key: "plan", label: "Trading Plan", icon: "⚠️" },
+                  ].map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={() => setAnalysisTab(t.key)}
+                      style={{
+                        background: analysisTab === t.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0d0d0a",
+                        color: analysisTab === t.key ? "#000" : "#999",
+                        border: analysisTab === t.key ? "none" : `1px solid ${GOLD}22`,
+                        borderRadius: 8, padding: "0.5rem 0.9rem", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                      }}
+                    >
+                      {t.icon} {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                {analysisTab === "overview" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    {!aiData ? (
+                      <div style={{
+                        background: "linear-gradient(135deg, #1a1030, #0d0d0a)", border: "1px solid #7c5cff33",
+                        borderRadius: 14, padding: "1.2rem 1.4rem",
+                      }}>
+                        <p style={{ color: "#B084F5", fontSize: 13, fontWeight: 700, margin: "0 0 8px" }}>📌 تحليل عام</p>
+                        <p style={{ margin: 0, fontSize: 13, color: "#ccc", lineHeight: 1.9 }}>{buildFallbackAnalysis(selectedEvent)}</p>
+                        {(selectedEvent.impact === "high" || selectedEvent.impact === "medium") && (
+                          <p style={{ margin: "12px 0 0", fontSize: 11, color: "#666" }}>
+                            🤖 سيتم استبدال هذا بتحليل ذكاء اصطناعي مفصّل يشمل السيناريوهات المحتملة ونصائح التداول قريباً.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{
+                          background: "linear-gradient(135deg, #1a1030, #0d0d0a)", border: "1px solid #7c5cff44",
+                          borderRadius: 14, padding: "1.2rem 1.4rem", display: "flex", gap: "1.2rem", alignItems: "center", flexWrap: "wrap",
+                        }}>
+                          <div style={{
+                            width: 90, height: 90, borderRadius: "50%", flexShrink: 0,
+                            background: `conic-gradient(#7c5cff ${aiData.confidence * 3.6}deg, #1a1a2a 0deg)`,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>
+                            <div style={{ width: 68, height: 68, borderRadius: "50%", background: "#0d0d14", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                              <span style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>{aiData.confidence}%</span>
+                              <span style={{ fontSize: 9, color: "#999" }}>ثقة التحليل</span>
+                            </div>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 220 }}>
+                            <p style={{ color: "#B084F5", fontSize: 13, fontWeight: 700, margin: "0 0 6px" }}>🤖 تحليل الذكاء الاصطناعي</p>
+                            <p style={{ margin: 0, fontSize: 13, color: "#ddd", lineHeight: 1.8 }}>{aiData.summary}</p>
+                          </div>
+                        </div>
+
+                        {aiData.scenarios?.length > 0 && (
+                          <div>
+                            <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, margin: "0 0 0.9rem" }}>📊 السيناريوهات المتوقعة</p>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.8rem" }}>
+                              {aiData.scenarios.map((sc, i) => (
+                                <div key={i} style={{ background: "#0d0d0a", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem" }}>
+                                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#eee" }}>{sc.title}</p>
+                                  <p style={{ margin: "8px 0 4px", fontSize: 20, fontWeight: 800, color: GOLD_LIGHT }}>{sc.probability}%</p>
+                                  <p style={{ margin: "0 0 6px", fontSize: 11, color: "#f5c542" }}>{"⭐".repeat(Math.max(1, Math.min(5, sc.stars || 1)))}</p>
+                                  <p style={{ margin: 0, fontSize: 11, color: "#888", lineHeight: 1.6 }}>{sc.description}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
-              </div>
 
-              {/* التوقع / السابق / الفعلي */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.8rem" }}>
-                {[
-                  { label: "التوقع", value: selectedEvent.forecast },
-                  { label: "السابق", value: selectedEvent.previous },
-                  { label: "الفعلي", value: selectedEvent.actual },
-                ].map((s, i) => (
-                  <div key={i} style={{ ...cardStyle, padding: "0.8rem", textAlign: "center" }}>
-                    <p style={{ margin: 0, fontSize: 11, color: "#888" }}>{s.label}</p>
-                    <p style={{ margin: "5px 0 0", fontSize: 16, fontWeight: 800, color: s.value ? (i === 2 ? GOLD_LIGHT : "#fff") : "#444" }}>
-                      {s.value || "--"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              {!aiData ? (
-                <div style={{
-                  background: "linear-gradient(135deg, #1a1030, #0d0d0a)", border: "1px solid #7c5cff33",
-                  borderRadius: 14, padding: "1.2rem 1.4rem",
-                }}>
-                  <p style={{ color: "#B084F5", fontSize: 13, fontWeight: 700, margin: "0 0 8px" }}>📌 تحليل عام</p>
-                  <p style={{ margin: 0, fontSize: 13, color: "#ccc", lineHeight: 1.9 }}>{buildFallbackAnalysis(selectedEvent)}</p>
-                  {(selectedEvent.impact === "high" || selectedEvent.impact === "medium") && (
-                    <p style={{ margin: "12px 0 0", fontSize: 11, color: "#666" }}>
-                      🤖 سيتم استبدال هذا بتحليل ذكاء اصطناعي مفصّل يشمل السيناريوهات المحتملة ونصائح التداول قريباً.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {/* تأثير الخبر على الأصول */}
-                  <div style={{ ...cardStyle, padding: "1.1rem 1.3rem" }}>
-                    <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, margin: "0 0 0.9rem" }}>🎯 تأثير الخبر على الأصول</p>
+                {analysisTab === "technical" && (
+                  aiData?.assets?.length > 0 ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                      {(aiData.assets || []).map((a, i) => {
+                      {aiData.assets.map((a, i) => {
                         const dir = DIRECTION_STYLE[a.direction] || DIRECTION_STYLE.neutral;
+                        const strengthPct = a.strength === "strong" ? 90 : a.strength === "medium" ? 55 : 25;
                         return (
-                          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: i < aiData.assets.length - 1 ? "1px solid #1a1a0f" : "none" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span>{dir.arrow}</span>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: "#eee" }}>{a.name}</span>
-                              <span style={{ fontSize: 11, color: "#666" }}>{a.symbol}</span>
+                          <div key={i} style={{ padding: "0.6rem 0", borderBottom: i < aiData.assets.length - 1 ? "1px solid #1a1a0f" : "none" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span>{dir.arrow}</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: "#eee" }}>{a.name}</span>
+                                <span style={{ fontSize: 11, color: "#666" }}>{a.symbol}</span>
+                              </div>
+                              <span style={{ fontSize: 11.5, color: dir.color, fontWeight: 700 }}>
+                                {a.direction === "up" ? "إيجابي" : a.direction === "down" ? "سلبي" : "محايد"} {STRENGTH_LABEL_AR[a.strength] || ""}
+                              </span>
                             </div>
-                            <span style={{ fontSize: 11.5, color: dir.color, fontWeight: 700 }}>
-                              {a.direction === "up" ? "إيجابي" : a.direction === "down" ? "سلبي" : "محايد"} {STRENGTH_LABEL_AR[a.strength] || ""}
-                            </span>
+                            <div style={{ height: 6, borderRadius: 6, background: "#1a1a12", overflow: "hidden" }}>
+                              <div style={{ height: "100%", borderRadius: 6, background: dir.color, width: `${strengthPct}%` }} />
+                            </div>
                           </div>
                         );
                       })}
                     </div>
+                  ) : (
+                    <div style={{ padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
+                      لا يتوفر تحليل فني تفصيلي لهذا الخبر بعد.
+                    </div>
+                  )
+                )}
+
+                {analysisTab === "historical" && (
+                  <div style={{ padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
+                    📜 قريباً — بيانات الأمثلة التاريخية لهذا النوع من الأخبار رح تُضاف لضمان دقة الأرقام.
                   </div>
+                )}
 
-                  {/* تحليل الذكاء الاصطناعي */}
-                  <div style={{
-                    background: "linear-gradient(135deg, #1a1030, #0d0d0a)", border: "1px solid #7c5cff44",
-                    borderRadius: 14, padding: "1.2rem 1.4rem", display: "flex", gap: "1.2rem", alignItems: "center", flexWrap: "wrap",
-                  }}>
-                    <div style={{
-                      width: 90, height: 90, borderRadius: "50%", flexShrink: 0,
-                      background: `conic-gradient(#7c5cff ${aiData.confidence * 3.6}deg, #1a1a2a 0deg)`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <div style={{ width: 68, height: 68, borderRadius: "50%", background: "#0d0d14", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>{aiData.confidence}%</span>
-                        <span style={{ fontSize: 9, color: "#999" }}>ثقة التحليل</span>
-                      </div>
+                {analysisTab === "plan" && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.2rem" }}>
+                    <div>
+                      <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#888", fontWeight: 700 }}>قبل الخبر</p>
+                      {(aiData?.tips_before?.length > 0 ? aiData.tips_before : GENERIC_TIPS_BEFORE).map((tip, i) => (
+                        <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#ccc" }}>❌ {tip}</p>
+                      ))}
                     </div>
-                    <div style={{ flex: 1, minWidth: 220 }}>
-                      <p style={{ color: "#B084F5", fontSize: 13, fontWeight: 700, margin: "0 0 6px" }}>🤖 تحليل الذكاء الاصطناعي</p>
-                      <p style={{ margin: 0, fontSize: 13, color: "#ddd", lineHeight: 1.8 }}>{aiData.summary}</p>
+                    <div>
+                      <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#888", fontWeight: 700 }}>بعد الخبر</p>
+                      {(aiData?.tips_after?.length > 0 ? aiData.tips_after : GENERIC_TIPS_AFTER).map((tip, i) => (
+                        <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#ccc" }}>✅ {tip}</p>
+                      ))}
                     </div>
                   </div>
-
-                  {/* السيناريوهات المتوقعة */}
-                  {aiData.scenarios?.length > 0 && (
-                    <div style={{ ...cardStyle, padding: "1.1rem 1.3rem" }}>
-                      <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, margin: "0 0 0.9rem" }}>📊 السيناريوهات المتوقعة</p>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.8rem" }}>
-                        {aiData.scenarios.map((sc, i) => (
-                          <div key={i} style={{ background: "#0d0d0a", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem" }}>
-                            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#eee" }}>{sc.title}</p>
-                            <p style={{ margin: "8px 0 4px", fontSize: 20, fontWeight: 800, color: GOLD_LIGHT }}>{sc.probability}%</p>
-                            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#f5c542" }}>{"⭐".repeat(Math.max(1, Math.min(5, sc.stars || 1)))}</p>
-                            <p style={{ margin: 0, fontSize: 11, color: "#888", lineHeight: 1.6 }}>{sc.description}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* نصائح التداول */}
-                  {(aiData.tips_before?.length > 0 || aiData.tips_after?.length > 0) && (
-                    <div style={{ ...cardStyle, padding: "1.1rem 1.3rem" }}>
-                      <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, margin: "0 0 0.9rem" }}>⚠️ نصائح التداول</p>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.2rem" }}>
-                        <div>
-                          <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#888", fontWeight: 700 }}>قبل الخبر</p>
-                          {(aiData.tips_before || []).map((tip, i) => (
-                            <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#ccc" }}>❌ {tip}</p>
-                          ))}
-                        </div>
-                        <div>
-                          <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#888", fontWeight: 700 }}>بعد الخبر</p>
-                          {(aiData.tips_after || []).map((tip, i) => (
-                            <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#ccc" }}>✅ {tip}</p>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
+                )}
+              </div>
 
             </>
           )}
