@@ -477,38 +477,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
           })}
         </div>
 
-        {/* بطاقة ترقية Elite Access */}
-        <div
-          style={{
-            marginTop: "1.4rem",
-            background: `linear-gradient(135deg, ${GOLD}1a, #0d0d0a)`,
-            border: `1px solid ${GOLD}44`,
-            borderRadius: 14,
-            padding: "1rem",
-            textAlign: "center",
-          }}
-        >
-          <span style={{ fontSize: 22 }}>💎</span>
-          <p style={{ color: GOLD_LIGHT, fontSize: 13, fontWeight: 800, margin: "6px 0 2px" }}>Elite Access</p>
-          <p style={{ color: "#888", fontSize: 10.5, margin: "0 0 0.8rem", lineHeight: 1.5 }}>احصل على تجربة تعليمية بدون حدود</p>
-          <Link href="/payment" style={{ textDecoration: "none" }}>
-            <div
-              style={{
-                background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                color: "#1a1200",
-                fontSize: 12,
-                fontWeight: 800,
-                padding: "0.55rem",
-                borderRadius: 8,
-                cursor: "pointer",
-              }}
-            >
-              ترقية الآن
-            </div>
-          </Link>
-        </div>
-
-        <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: 4, paddingTop: "1.2rem", borderTop: "1px solid #1a1a0a" }}>
+        <div style={{ marginTop: "1.4rem", display: "flex", flexDirection: "column", gap: 4, paddingTop: "1.2rem", borderTop: "1px solid #1a1a0a" }}>
           <Link href="/discord" style={{ textDecoration: "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.7rem 0.9rem", color: "#5865F2", fontSize: 13 }}>
               <span>🎮</span>
@@ -958,6 +927,29 @@ const DIRECTION_STYLE = {
 
 const STRENGTH_LABEL_AR = { strong: "قوي", medium: "متوسط", weak: "ضعيف" };
 
+const CURRENCY_ANALYSIS_INFO = {
+  USD: { name: "الدولار الأمريكي", assets: "الذهب (XAUUSD) والمؤشرات الأمريكية مثل ناسداك وS&P 500" },
+  EUR: { name: "اليورو", assets: "زوج EURUSD والمؤشرات الأوروبية" },
+  GBP: { name: "الجنيه الإسترليني", assets: "زوج GBPUSD ومؤشر FTSE" },
+  JPY: { name: "الين الياباني", assets: "زوج USDJPY ومؤشر نيكاي" },
+  CHF: { name: "الفرنك السويسري", assets: "زوج USDCHF" },
+  CAD: { name: "الدولار الكندي", assets: "زوج USDCAD وأسعار النفط" },
+  AUD: { name: "الدولار الأسترالي", assets: "زوج AUDUSD والمعادن الصناعية" },
+  NZD: { name: "الدولار النيوزيلندي", assets: "زوج NZDUSD" },
+  CNY: { name: "اليوان الصيني", assets: "الأسواق الآسيوية والذهب" },
+};
+
+// تحليل عام مبدئي يظهر فوراً لأي خبر إلى حين توفر التحليل التفصيلي بالذكاء الاصطناعي
+function buildFallbackAnalysis(event) {
+  const info = CURRENCY_ANALYSIS_INFO[event?.currency] || {
+    name: event?.currency || "العملة المرتبطة بالخبر",
+    assets: "الأصول والمؤشرات المرتبطة بها",
+  };
+  const impactLabel = event?.impact === "high" ? "مرتفع" : event?.impact === "medium" ? "متوسط" : "محدود";
+
+  return `بشكل عام، إذا جاءت قراءة "${event?.event_title || "هذا الخبر"}" أعلى من التوقعات، فغالباً ما يدعم ذلك ${info.name} ويُشكّل ضغطاً على ${info.assets}. أما إذا جاءت القراءة أقل من المتوقع، فالسيناريو المعتاد هو العكس: ضعف نسبي في ${info.name} ودعم لتلك الأصول. باعتبار هذا خبراً ${impactLabel} التأثير، يُنصح بمتابعة الحركة السعرية عن كثب وقت صدور البيانات، والانتباه لاحتمال التقلب المفاجئ خصوصاً إذا جاءت النتيجة بعيدة عن التوقعات.`;
+}
+
 function formatCountdown(diffMs) {
   if (diffMs <= 0) return null;
   const totalSeconds = Math.floor(diffMs / 1000);
@@ -1216,10 +1208,17 @@ function CalendarView({ events, loading, isAdmin, onRefreshed }) {
               </div>
 
               {!aiData ? (
-                <div style={{ ...cardStyle, padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
-                  {selectedEvent.impact === "low"
-                    ? "التحليل الذكي متوفر فقط للأخبار متوسطة وعالية التأثير."
-                    : "التحليل قيد التحضير — رح يظهر بعد التحديث القادم للتقويم."}
+                <div style={{
+                  background: "linear-gradient(135deg, #1a1030, #0d0d0a)", border: "1px solid #7c5cff33",
+                  borderRadius: 14, padding: "1.2rem 1.4rem",
+                }}>
+                  <p style={{ color: "#B084F5", fontSize: 13, fontWeight: 700, margin: "0 0 8px" }}>📌 تحليل عام</p>
+                  <p style={{ margin: 0, fontSize: 13, color: "#ccc", lineHeight: 1.9 }}>{buildFallbackAnalysis(selectedEvent)}</p>
+                  {(selectedEvent.impact === "high" || selectedEvent.impact === "medium") && (
+                    <p style={{ margin: "12px 0 0", fontSize: 11, color: "#666" }}>
+                      🤖 سيتم استبدال هذا بتحليل ذكاء اصطناعي مفصّل يشمل السيناريوهات المحتملة ونصائح التداول قريباً.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <>
@@ -1306,11 +1305,6 @@ function CalendarView({ events, loading, isAdmin, onRefreshed }) {
                 </>
               )}
 
-              {/* أمثلة تاريخية - مؤجلة */}
-              <div style={{ ...cardStyle, padding: "1.1rem 1.3rem", opacity: 0.6 }}>
-                <p style={{ color: "#888", fontSize: 13, fontWeight: 700, margin: "0 0 0.4rem" }}>📜 أمثلة تاريخية</p>
-                <p style={{ margin: 0, fontSize: 12, color: "#666" }}>قريباً — رح تُضاف يدوياً من لوحة الأدمن لضمان دقة الأرقام.</p>
-              </div>
             </>
           )}
         </div>
