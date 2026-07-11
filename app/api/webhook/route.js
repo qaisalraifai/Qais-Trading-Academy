@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Paddle, Environment } from "@paddle/paddle-node-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { kickMemberFromGuild } from "@/lib/discord";
+import { logActivity } from "@/lib/activity-log";
 
 // مفاتيح الـ sandbox بتبلش بـ pdl_sdbx_ — لازم نحدد الـ environment صح
 // وإلا Paddle بيرفض الطلب بخطأ "forbidden"
@@ -14,6 +15,23 @@ const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+// يسجل صف بجدول payments بشكل موحّد
+async function recordPayment(userId, txn) {
+  if (!userId) return;
+  const amount = txn?.details?.totals?.total
+    ? Number(txn.details.totals.total) / 100
+    : 0;
+  const currency = txn?.currencyCode || "USD";
+  await supabaseAdmin.from("payments").insert({
+    user_id: userId,
+    amount,
+    currency,
+    status: "paid",
+    method: "paddle",
+    invoice_url: txn?.invoiceUrl || null,
+  });
+}
 
 export async function POST(request) {
   const body = await request.text(); // لازم نص خام (raw) عشان التحقق من التوقيع يشتغل
@@ -86,10 +104,14 @@ export async function POST(request) {
               console.error("Fallback profile insert also failed:", insertError);
             }
           }
+          await recordPayment(userId, txn);
+          await logActivity(userId, "renew", "دفعة ناجحة — تفعيل الاشتراك", {
+            subscriptionId,
+          });
         } else if (subscriptionId) {
           // تجديد شهري لاحق: ما رح يكون فيه customData، فمنربطه بمعرف الاشتراك المخزن مسبقاً
           const subscription = await paddle.subscriptions.get(subscriptionId);
-          const { error } = await supabaseAdmin
+          const { data: renewed, error } = await supabaseAdmin
             .from("profiles")
             .update({
               subscription_status: "active",
@@ -97,9 +119,18 @@ export async function POST(request) {
                 ? new Date(subscription.nextBilledAt).toISOString()
                 : null,
             })
-            .eq("paddle_subscription_id", subscriptionId);
+            .eq("paddle_subscription_id", subscriptionId)
+            .select("id")
+            .maybeSingle();
 
-          if (error) console.error("Failed to renew subscription:", error);
+          if (error) {
+            console.error("Failed to renew subscription:", error);
+          } else if (renewed?.id) {
+            await recordPayment(renewed.id, txn);
+            await logActivity(renewed.id, "renew", "تجديد الاشتراك الشهري", {
+              subscriptionId,
+            });
+          }
         }
         break;
       }
@@ -112,14 +143,23 @@ export async function POST(request) {
           .from("profiles")
           .update({ subscription_status: "inactive" })
           .eq("paddle_subscription_id", subscriptionId)
-          .select("discord_id")
+          .select("id, discord_id")
           .maybeSingle();
 
         if (error) {
           console.error("Failed to deactivate subscription:", error);
-        } else if (updated?.discord_id) {
-          await kickMemberFromGuild(updated.discord_id).catch((e) =>
-            console.error("Discord kick error:", e)
+        } else if (updated) {
+          if (updated.discord_id) {
+            await kickMemberFromGuild(updated.discord_id).catch((e) =>
+              console.error("Discord kick error:", e)
+            );
+          }
+          const isFailed = event.eventType === "subscription.past_due";
+          await logActivity(
+            updated.id,
+            isFailed ? "payment_failed" : "note",
+            isFailed ? "فشل الدفع" : "تم إلغاء الاشتراك",
+            { subscriptionId }
           );
         }
         break;
