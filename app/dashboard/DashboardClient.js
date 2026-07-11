@@ -855,25 +855,41 @@ function AccountsView() {
                       </td>
                       <td style={cellStyle}>{u.role === "admin" ? "مالك المنصة" : "طالب"}</td>
                       <td style={cellStyle}>
-                        <span
-                          style={{
-                            padding: "0.3rem 0.75rem",
-                            borderRadius: 20,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            backgroundColor: badge.color + "22",
-                            color: badge.color,
-                            border: `1px solid ${badge.color}55`,
-                          }}
-                        >
-                          {badge.label}
-                        </span>
+                        {u.role === "admin" ? (
+                          <span
+                            style={{
+                              padding: "0.3rem 0.75rem",
+                              borderRadius: 20,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              backgroundColor: GOLD + "22",
+                              color: GOLD_LIGHT,
+                              border: `1px solid ${GOLD}55`,
+                            }}
+                          >
+                            ♾️ مدى الحياة
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              padding: "0.3rem 0.75rem",
+                              borderRadius: 20,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              backgroundColor: badge.color + "22",
+                              color: badge.color,
+                              border: `1px solid ${badge.color}55`,
+                            }}
+                          >
+                            {badge.label}
+                          </span>
+                        )}
                       </td>
                       <td style={{ ...cellStyle, fontFamily: "monospace", color: "#999" }}>
                         {u.subscription_start ? new Date(u.subscription_start).toLocaleDateString("ar") : "—"}
                       </td>
                       <td style={{ ...cellStyle, fontFamily: "monospace", color: "#999" }}>
-                        {u.subscription_end ? new Date(u.subscription_end).toLocaleDateString("ar") : "—"}
+                        {u.role === "admin" ? "بدون انتهاء" : u.subscription_end ? new Date(u.subscription_end).toLocaleDateString("ar") : "—"}
                       </td>
                       <td style={{ ...cellStyle, fontFamily: "monospace", color: "#999" }}>
                         {u.created_at ? new Date(u.created_at).toLocaleDateString("ar") : "—"}
