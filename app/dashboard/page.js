@@ -9,12 +9,19 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("username, role")
+    .select("username, role, subscription_end, current_streak, longest_streak")
     .eq("id", user.id)
     .single();
 
   const username = profile?.username || user.email;
   const isAdmin = profile?.role === "admin";
 
-  return <DashboardClient username={username} isAdmin={isAdmin} />;
+  return (
+    <DashboardClient
+      username={username}
+      isAdmin={isAdmin}
+      subscriptionEnd={profile?.subscription_end || null}
+      currentStreak={profile?.current_streak || 0}
+    />
+  );
 }
