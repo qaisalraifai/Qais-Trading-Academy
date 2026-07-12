@@ -3,6 +3,7 @@ import { Paddle, Environment } from "@paddle/paddle-node-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { kickMemberFromGuild } from "@/lib/discord";
 import { logActivity } from "@/lib/activity-log";
+import { recordCommissionsForPayment } from "@/lib/affiliate";
 
 // مفاتيح الـ sandbox بتبلش بـ pdl_sdbx_ — لازم نحدد الـ environment صح
 // وإلا Paddle بيرفض الطلب بخطأ "forbidden"
@@ -16,21 +17,36 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// يسجل صف بجدول payments بشكل موحّد
+// يسجل صف بجدول payments بشكل موحّد، وبعدين يحسب عمولات المسوّقين (لو في) على هاي الدفعة
 async function recordPayment(userId, txn) {
   if (!userId) return;
   const amount = txn?.details?.totals?.total
     ? Number(txn.details.totals.total) / 100
     : 0;
   const currency = txn?.currencyCode || "USD";
-  await supabaseAdmin.from("payments").insert({
-    user_id: userId,
+  const { data: payment, error } = await supabaseAdmin
+    .from("payments")
+    .insert({
+      user_id: userId,
+      amount,
+      currency,
+      status: "paid",
+      method: "paddle",
+      invoice_url: txn?.invoiceUrl || null,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("recordPayment insert failed:", error.message);
+    return;
+  }
+
+  await recordCommissionsForPayment(supabaseAdmin, {
+    paidUserId: userId,
+    paymentId: payment?.id,
     amount,
-    currency,
-    status: "paid",
-    method: "paddle",
-    invoice_url: txn?.invoiceUrl || null,
-  });
+  }).catch((e) => console.error("recordCommissionsForPayment error:", e));
 }
 
 export async function POST(request) {
