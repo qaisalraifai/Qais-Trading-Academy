@@ -43,6 +43,11 @@ export default function LegalPage({ titleAr, titleEn, sectionsAr, sectionsEn, la
         ))}
       </div>
 
+      <div style={styles.contactBox}>
+        <p style={styles.contactLabel}>{isAr ? "للتواصل معنا:" : "Contact us:"}</p>
+        <a href="mailto:qaisalraifai@gmail.com" style={styles.contactEmail}>qaisalraifai@gmail.com</a>
+      </div>
+
       <div style={styles.footerLinks}>
         <Link href="/terms" style={styles.footerLink}>{isAr ? "الشروط والأحكام" : "Terms of Service"}</Link>
         <span style={styles.dot}>•</span>
@@ -112,6 +117,18 @@ const styles = {
   section: { display: "flex", flexDirection: "column", gap: "0.6rem" },
   sectionTitle: { color: gold, fontSize: "1.05rem", fontWeight: "bold" },
   paragraph: { color: "#aaa", fontSize: "0.95rem", lineHeight: 1.9, margin: 0 },
+  contactBox: {
+    width: "100%",
+    maxWidth: "720px",
+    marginTop: "1.5rem",
+    textAlign: "center",
+    padding: "1.25rem",
+    border: "1px solid #1a1a1a",
+    borderRadius: "6px",
+    backgroundColor: "#0f0f0f",
+  },
+  contactLabel: { color: "#666", fontSize: "0.85rem", margin: "0 0 0.4rem" },
+  contactEmail: { color: gold, fontSize: "1rem", textDecoration: "none", fontWeight: "bold" },
   footerLinks: {
     marginTop: "2.5rem",
     display: "flex",
