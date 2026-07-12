@@ -1,7 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
+const OLD_HOST = "qais-trading-academy.vercel.app";
+const CANONICAL_ORIGIN = "https://www.qta-academy.store";
+
 export async function middleware(request) {
+  // 1) لو الطلب جاي من الدومين القديم (vercel.app)، منحوّله بشكل دائم (308)
+  //    للدومين الجديد — هيك Google بمرور الوقت بيشيل الرابط القديم من نتائج
+  //    البحث ويعرض بس الدومين الجديد.
+  const host = request.headers.get("host") || "";
+  if (host === OLD_HOST) {
+    const target = new URL(request.nextUrl.pathname + request.nextUrl.search, CANONICAL_ORIGIN);
+    return NextResponse.redirect(target, 301);
+  }
+
   let response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
@@ -47,5 +59,7 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/lecture/:path*", "/course/:path*", "/quiz/:path*", "/backtest/:path*", "/replay/:path*", "/discord/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|logo.jpg).*)",
+  ],
 };
