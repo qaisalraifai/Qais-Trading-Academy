@@ -1,5 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import NotificationBell from "../components/NotificationBell";
+import Leaderboard from "./components/Leaderboard";
+import Badges from "./components/Badges";
+import BonusWheel from "./components/BonusWheel";
+import MarketingKit from "./components/MarketingKit";
+import RecentActivity from "./components/RecentActivity";
 
 const GOLD = "#C9A24B";
 const BG = "#050505";
@@ -97,7 +103,7 @@ export default function AffiliateClient() {
   }
 
   function copyLink() {
-    const link = `${siteOrigin}/signup?ref=${data?.affiliateCode}`;
+    const link = `${siteOrigin}/r/${data?.affiliateCode}`;
     navigator.clipboard.writeText(link).then(() => {
       setCopyState("تم النسخ ✓");
       setTimeout(() => setCopyState(""), 2000);
@@ -116,6 +122,10 @@ export default function AffiliateClient() {
 
   return (
     <div style={s.page}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "-1rem" }}>
+        {status === "approved" && <NotificationBell />}
+      </div>
+
       <div style={s.header}>
         <p style={s.eyebrow}>QAIS TRADING ACADEMY</p>
         <h1 style={s.title}>برنامج التسويق بالعمولة</h1>
@@ -163,7 +173,7 @@ export default function AffiliateClient() {
           <div style={s.card}>
             <p style={s.sectionTitle}>رابط الإحالة الخاص فيك</p>
             <div style={s.linkRow}>
-              <span style={s.linkText}>{siteOrigin}/signup?ref={data.affiliateCode}</span>
+              <span style={s.linkText}>{siteOrigin}/r/{data.affiliateCode}</span>
               <button onClick={copyLink} style={s.copyBtn}>{copyState || "نسخ"}</button>
             </div>
           </div>
@@ -183,6 +193,28 @@ export default function AffiliateClient() {
               <p style={s.statValue}>${fmt(data.earnings.paid)}</p>
             </div>
           </div>
+
+          {/* تتبّع النقرات / Conversion Funnel */}
+          {data.funnel && (
+            <div style={s.card}>
+              <p style={s.sectionTitle}>أداء رابطك</p>
+              <div style={s.grid3}>
+                <div style={s.networkCard}>
+                  <p style={s.statLabel}>عدد الزيارات</p>
+                  <p style={s.statValue}>{data.funnel.clicks}</p>
+                </div>
+                <div style={s.networkCard}>
+                  <p style={s.statLabel}>نسبة التحويل</p>
+                  <p style={s.statValue}>{data.funnel.conversionRate.toFixed(1)}%</p>
+                  <p style={s.networkSub}>{data.funnel.signups} تسجيل من {data.funnel.clicks} زيارة</p>
+                </div>
+                <div style={s.networkCard}>
+                  <p style={s.statLabel}>ربح كل نقرة (EPC)</p>
+                  <p style={s.statValue}>${fmt(data.funnel.epc)}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* الشبكة */}
           <div style={s.card}>
@@ -237,6 +269,12 @@ export default function AffiliateClient() {
               </p>
             )}
           </div>
+
+          <RecentActivity />
+          <BonusWheel />
+          <Badges />
+          <Leaderboard />
+          <MarketingKit />
 
           {/* سجل الدفعات */}
           <div style={s.card}>
