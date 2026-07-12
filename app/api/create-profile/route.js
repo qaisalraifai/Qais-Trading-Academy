@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 // session نشطة (لو تفعيل الإيميل مطلوب)، وبالتالي أي insert/upsert من
 // المتصفح (anon/authenticated الوهمي) ممكن يفشل بصمت بسبب RLS.
 export async function POST(request) {
-  const { userId, username } = await request.json();
+  const { userId, username, ref } = await request.json();
 
   if (!userId || !username) {
     return NextResponse.json(
@@ -29,6 +29,20 @@ export async function POST(request) {
     );
   }
 
+  // لو المستخدم اجى عبر رابط مسوّق (?ref=CODE)، منربطه فيه (referred_by)
+  // بس لو المسوّق فعلاً موجود ومفعّل — وما بنسمح إنه الشخص يحيل نفسه
+  let referredBy = null;
+  if (ref) {
+    const { data: affiliate } = await supabase
+      .from("profiles")
+      .select("id, affiliate_status")
+      .eq("affiliate_code", ref.trim())
+      .maybeSingle();
+    if (affiliate && affiliate.affiliate_status === "approved" && affiliate.id !== userId) {
+      referredBy = affiliate.id;
+    }
+  }
+
   const { error: profileError } = await supabase
     .from("profiles")
     .upsert(
@@ -37,6 +51,7 @@ export async function POST(request) {
         username: username.trim(),
         role: "student",
         subscription_status: "inactive",
+        ...(referredBy ? { referred_by: referredBy } : {}),
       },
       { onConflict: "id", ignoreDuplicates: false }
     );
