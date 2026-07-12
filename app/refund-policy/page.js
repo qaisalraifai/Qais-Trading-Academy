@@ -1,53 +1,54 @@
 import LegalPage from "@/app/components/legal/LegalPage";
 
 export const metadata = {
-  title: "سياسة الخصوصية | Qais Trading Academy",
-  description: "سياسة الخصوصية الخاصة بمنصة وعضوية Qais Trading Academy.",
+  title: "سياسة الاسترجاع | Qais Trading Academy",
+  description: "سياسة الاسترجاع الخاصة بمنصة وعضوية Qais Trading Academy.",
 };
 
 const sectionsAr = [
   {
     heading: "1. مقدمة",
     body: [
-      "نحن في Qais Trading Academy نحترم خصوصيتك ونلتزم بحماية بياناتك الشخصية. توضح هذه السياسة نوع البيانات التي نجمعها، وكيفية استخدامها وحمايتها.",
+      "توضح هذه الصفحة سياسة استرجاع الأموال الخاصة باشتراكات وعضويات Qais Trading Academy (\"المنصة\"). نهدف إلى ضمان تجربة عادلة وشفافة لجميع المشتركين.",
     ],
   },
   {
-    heading: "2. البيانات التي نجمعها",
+    heading: "2. فترة الاسترجاع",
     body: [
-      "عند التسجيل واستخدام المنصة، قد نجمع: الاسم، البريد الإلكتروني، معرّف حساب Discord (عند الربط)، وبيانات الاشتراك والدفع (عبر مزود الدفع Paddle، دون تخزين تفاصيل بطاقتك لدينا مباشرة).",
-      "قد نجمع أيضاً بيانات استخدام عامة مثل تقدمك في المحاضرات والاختبارات لأغراض تحسين تجربتك التعليمية.",
+      "يحق للمشترك الجديد طلب استرجاع كامل المبلغ المدفوع خلال 7 أيام من تاريخ أول عملية اشتراك، بشرط ألا يكون قد تجاوز نسبة محدودة من استهلاك المحتوى التعليمي (المحاضرات المسجلة والمباشرة) خلال هذه الفترة.",
+      "بعد انقضاء مدة الـ 7 أيام، لا يحق للمشترك طلب استرجاع عن نفس دورة الفوترة، وتبقى العضوية سارية حتى نهاية الفترة المدفوعة كما هو موضح في الشروط والأحكام.",
     ],
   },
   {
-    heading: "3. كيفية استخدام البيانات",
+    heading: "3. الاشتراك الشهري المتجدد",
     body: [
-      "نستخدم بياناتك لتفعيل وإدارة اشتراكك، منحك الوصول للمحاضرات وعضوية Discord، التواصل معك بخصوص حسابك، وتحسين جودة الخدمة المقدمة.",
-      "لا نقوم ببيع أو تأجير بياناتك الشخصية لأي طرف ثالث لأغراض تسويقية.",
+      "نظراً لطبيعة الاشتراك الشهري المتجدد تلقائياً، فإن إلغاء الاشتراك لا يعني استرجاعاً فورياً للرسوم؛ بل يوقف التجديد التلقائي للدورة القادمة فقط، ويستمر الوصول للمحتوى حتى نهاية الفترة المدفوعة الحالية.",
+      "رسوم التسجيل الأولية (إن وُجدت) غير قابلة للاسترجاع بعد مرور فترة الـ 7 أيام المذكورة أعلاه.",
     ],
   },
   {
-    heading: "4. مشاركة البيانات مع أطراف ثالثة",
+    heading: "4. الحالات المستثناة من الاسترجاع",
     body: [
-      "نشارك بعض بياناتك مع مزودي خدمات موثوقين ضروريين لتشغيل المنصة، مثل: Paddle (معالجة المدفوعات)، Supabase (تخزين قاعدة البيانات)، وDiscord (إدارة العضوية المجتمعية). هؤلاء المزودون ملزمون بحماية بياناتك وفق سياساتهم الخاصة.",
+      "لا يحق طلب الاسترجاع في الحالات التالية: تجاوز فترة السماح المحددة (7 أيام)، إثبات استخدام مكثف أو كامل للمحتوى التعليمي خلال فترة السماح، أو إنهاء الحساب بسبب مخالفة الشروط والأحكام (مثل مشاركة بيانات الدخول أو المحتوى مع طرف ثالث).",
     ],
   },
   {
-    heading: "5. أمان البيانات",
+    heading: "5. آلية تقديم طلب الاسترجاع",
     body: [
-      "نتخذ إجراءات تقنية وتنظيمية معقولة لحماية بياناتك من الوصول غير المصرح به أو الفقدان أو الإفصاح غير القانوني.",
+      "لتقديم طلب استرجاع، يُرجى التواصل معنا عبر البريد الإلكتروني qaisalraifai@gmail.com مرفقاً بريد الحساب المسجل وتاريخ الاشتراك وسبب الطلب.",
+      "تتم مراجعة الطلبات المستوفية للشروط ومعالجتها خلال مدة أقصاها 14 يوم عمل، ويُعاد المبلغ إلى وسيلة الدفع الأصلية المستخدمة عبر مزود الدفع Paddle.",
     ],
   },
   {
-    heading: "6. حقوقك",
+    heading: "6. التعديلات على السياسة",
     body: [
-      "يحق لك في أي وقت طلب الاطلاع على بياناتك الشخصية المخزنة لدينا، تصحيحها، أو طلب حذفها (مع مراعاة أي التزامات قانونية أو تعاقدية قد تمنع الحذف الفوري في بعض الحالات).",
+      "قد نقوم بتحديث سياسة الاسترجاع من وقت لآخر. سيتم إشعار المستخدمين بأي تغييرات جوهرية عبر البريد الإلكتروني المسجل أو عبر إشعار على المنصة، ولا تسري التغييرات بأثر رجعي على اشتراكات قائمة تم الدفع عنها مسبقاً.",
     ],
   },
   {
     heading: "7. التواصل",
     body: [
-      "لأي استفسار متعلق بخصوصيتك أو بياناتك، يمكنكم التواصل معنا عبر البريد الإلكتروني qaisalraifai@gmail.com أو عبر قنوات الدعم المتاحة على المنصة أو Discord.",
+      "لأي استفسار متعلق بسياسة الاسترجاع، يمكنكم التواصل معنا عبر البريد الإلكتروني qaisalraifai@gmail.com أو عبر قنوات الدعم المتاحة على المنصة أو Discord.",
     ],
   },
 ];
@@ -56,57 +57,58 @@ const sectionsEn = [
   {
     heading: "1. Introduction",
     body: [
-      "At Qais Trading Academy, we respect your privacy and are committed to protecting your personal data. This policy explains what data we collect, and how we use and protect it.",
+      "This page explains the refund policy for Qais Trading Academy (\"the Platform\") subscriptions and memberships. We aim to ensure a fair and transparent experience for all subscribers.",
     ],
   },
   {
-    heading: "2. Data We Collect",
+    heading: "2. Refund Window",
     body: [
-      "When you register and use the Platform, we may collect: your name, email address, Discord account ID (when linked), and subscription/payment data (processed via our payment provider, Paddle, without us storing your card details directly).",
-      "We may also collect general usage data, such as your progress through lectures and quizzes, to improve your learning experience.",
+      "New subscribers may request a full refund within 7 days of their first subscription payment, provided they have not exceeded a limited amount of consumption of the educational content (recorded and live lectures) during this period.",
+      "After the 7-day window has passed, no refund can be requested for that billing cycle, and the membership remains active until the end of the paid period, as described in the Terms of Service.",
     ],
   },
   {
-    heading: "3. How We Use Your Data",
+    heading: "3. Recurring Monthly Subscription",
     body: [
-      "We use your data to activate and manage your subscription, grant you access to lectures and the Discord community, communicate with you regarding your account, and improve the quality of the service.",
-      "We do not sell or rent your personal data to any third party for marketing purposes.",
+      "Because the subscription renews automatically on a monthly basis, cancelling it does not trigger an immediate refund; it only stops the automatic renewal of the next cycle, and access continues until the end of the current paid period.",
+      "The initial registration fee (if applicable) is non-refundable once the 7-day window above has elapsed.",
     ],
   },
   {
-    heading: "4. Sharing Data with Third Parties",
+    heading: "4. Exceptions to Refunds",
     body: [
-      "We share some of your data with trusted service providers necessary to operate the Platform, such as: Paddle (payment processing), Supabase (database storage), and Discord (community membership management). These providers are bound to protect your data under their own policies.",
+      "Refunds will not be granted in the following cases: the 7-day grace period has passed, evidence of extensive or complete use of the educational content during the grace period, or account termination due to a violation of the Terms of Service (such as sharing login credentials or content with a third party).",
     ],
   },
   {
-    heading: "5. Data Security",
+    heading: "5. How to Request a Refund",
     body: [
-      "We take reasonable technical and organizational measures to protect your data from unauthorized access, loss, or unlawful disclosure.",
+      "To request a refund, please contact us at qaisalraifai@gmail.com with your registered account email, subscription date, and reason for the request.",
+      "Eligible requests are reviewed and processed within a maximum of 14 business days, and the amount is refunded to the original payment method via our payment provider, Paddle.",
     ],
   },
   {
-    heading: "6. Your Rights",
+    heading: "6. Changes to This Policy",
     body: [
-      "You have the right at any time to request access to your personal data held by us, request corrections, or request deletion (subject to any legal or contractual obligations that may prevent immediate deletion in certain cases).",
+      "We may update this refund policy from time to time. Users will be notified of any material changes via their registered email or a notice on the Platform, and changes will not apply retroactively to existing subscriptions already paid for.",
     ],
   },
   {
     heading: "7. Contact",
     body: [
-      "For any questions regarding your privacy or data, please reach out via email at qaisalraifai@gmail.com or through the support channels available on the Platform or Discord.",
+      "For any questions regarding this refund policy, please reach out via email at qaisalraifai@gmail.com or through the support channels available on the Platform or Discord.",
     ],
   },
 ];
 
-export default function PrivacyPage() {
+export default function RefundPolicyPage() {
   return (
     <LegalPage
-      titleAr="سياسة الخصوصية"
-      titleEn="Privacy Policy"
+      titleAr="سياسة الاسترجاع"
+      titleEn="Refund Policy"
       sectionsAr={sectionsAr}
       sectionsEn={sectionsEn}
-      lastUpdated="July 10, 2026"
+      lastUpdated="July 12, 2026"
     />
   );
 }
