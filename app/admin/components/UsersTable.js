@@ -41,6 +41,7 @@ const actionsList = [
   ["view", "👁 عرض"],
   ["edit", "✏ تعديل"],
   ["renew", "🔄 تجديد"],
+  ["activate_free", "🎁 تفعيل مجاني"],
   ["email", "📧 إشعار"],
   ["suspend", "🚫 إيقاف"],
   ["delete", "🗑 حذف"],
