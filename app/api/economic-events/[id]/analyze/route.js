@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { analyzeExistingEvent } from "@/lib/economic-calendar";
 
+// السقف الافتراضي على Vercel هو 10 ثواني بس، واستدعاء Gemini لتحليل مفصّل
+// ممكن ياخد أكتر من هيك. رفعناه لـ 60 ثانية (أقصى حد مسموح بخطة Hobby).
+export const maxDuration = 60;
+
 // أي مستخدم مسجّل دخول (مو بس أدمن) يقدر يطلب تحليل خبر معيّن.
 // أول مشترك يفتح الخبر بيشغّل التحليل، وبعدها التحليل يصير محفوظ بقاعدة البيانات
 // وبيطلع فوراً لباقي المشتركين بدون ما يتكرر استدعاء الذكاء الاصطناعي.
