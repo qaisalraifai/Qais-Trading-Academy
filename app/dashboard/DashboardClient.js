@@ -1065,6 +1065,43 @@ function CalendarView({ events, loading, isAdmin }) {
     };
   }, [selectedEvent, analyzingId, analysisFailedIds]);
 
+  // Polling: لو الخبر لسا ما إله ai_data (سواء إحنا يلي طلبنا التحليل أو مشترك
+  // تاني بجلسة ثانية، أو الـ cron)، نتأكد كل كم ثانية إذا خلص التحليل بقاعدة
+  // البيانات ونحدّث الواجهة تلقائياً — بدون ما يحتاج المستخدم يعمل Refresh يدوي.
+  useEffect(() => {
+    if (!selectedEvent) return;
+    if (selectedEvent.ai_data) return;
+    if (selectedEvent.impact !== "high" && selectedEvent.impact !== "medium") return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 20; // حد أقصى تقريبي دقيقتين قبل ما نوقف المحاولة
+
+    const interval = setInterval(async () => {
+      attempts += 1;
+      if (attempts > maxAttempts) {
+        clearInterval(interval);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/economic-events/${selectedEvent.id}`);
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (res.ok && data?.event?.ai_data) {
+          setLocalAiData((prev) => ({ ...prev, [data.event.id]: data.event.ai_data }));
+          clearInterval(interval);
+        }
+      } catch {
+        // تجاهل الخطأ وحاول بالمرة الجاية
+      }
+    }, 6000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [selectedEvent?.id, selectedEvent?.ai_data]);
+
   const lastUpdated = useMemo(() => {
     const sorted = [...events].filter((e) => e.updated_at).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
     return sorted[0]?.updated_at || null;
