@@ -69,16 +69,12 @@ function ActionsMenu({ user, onAction }) {
     setOpen((o) => !o);
   }
 
-  // سكّر القائمة لو المستخدم مرّر الجدول أو غيّر حجم الشاشة، حتى ما تضل عالقة بمكان غلط
+  // سكّر القائمة لو تغيّر حجم الشاشة، حتى ما تضل عالقة بمكان غلط
   useEffect(() => {
     if (!open) return;
     const close = () => setOpen(false);
-    window.addEventListener("scroll", close, true);
     window.addEventListener("resize", close);
-    return () => {
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-    };
+    return () => window.removeEventListener("resize", close);
   }, [open]);
 
   return (
