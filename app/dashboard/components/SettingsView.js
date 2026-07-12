@@ -121,7 +121,8 @@ export default function SettingsView({ username }) {
     );
   }
 
-  const { profile, payments, managementUrls } = data;
+  const { profile, payments, managementUrls, card } = data;
+  const hasPaddleSubscription = Boolean(profile.paddle_subscription_id);
   const planInfo = PLAN_INFO[profile.plan] || PLAN_INFO.member;
   const isActive = profile.subscription_status === "active";
 
@@ -223,6 +224,108 @@ export default function SettingsView({ username }) {
         )}
       </SectionCard>
 
+      {/* 2.5 طريقة الدفع */}
+      <SectionCard title="طريقة الدفع" icon="💳">
+        {card ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 32,
+                  borderRadius: 6,
+                  background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 16,
+                  flexShrink: 0,
+                }}
+              >
+                💳
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff", textTransform: "capitalize" }}>
+                  {card.brand || "بطاقة"} •••• {card.last4}
+                </p>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "#888" }}>مرتبطة باشتراكك الحالي عبر Paddle</p>
+              </div>
+            </div>
+            {managementUrls?.updatePaymentMethod && (
+              <a
+                href={managementUrls.updatePaymentMethod}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  border: `1px solid ${GOLD}66`,
+                  color: GOLD_LIGHT,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  padding: "0.55rem 1.1rem",
+                  borderRadius: 10,
+                  textDecoration: "none",
+                }}
+              >
+                تغيير البطاقة
+              </a>
+            )}
+          </div>
+        ) : hasPaddleSubscription ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <p style={{ margin: 0, fontSize: 13, color: "#888" }}>ما قدرنا نجيب تفاصيل بطاقتك المسجلة حالياً.</p>
+            {managementUrls?.updatePaymentMethod ? (
+              <a
+                href={managementUrls.updatePaymentMethod}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
+                  color: "#1a1200",
+                  fontWeight: 800,
+                  fontSize: 13,
+                  padding: "0.6rem 1.2rem",
+                  borderRadius: 10,
+                  textDecoration: "none",
+                }}
+              >
+                إدارة طريقة الدفع
+              </a>
+            ) : (
+              <a
+                href="mailto:qaisalraifai@gmail.com"
+                style={{ fontSize: 12, color: GOLD_LIGHT, textDecoration: "underline" }}
+              >
+                تواصل مع الدعم
+              </a>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>ما في طريقة دفع مضافة</p>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>ضيف بطاقة حتى تفعّل اشتراكك وتوصل لكل الميزات.</p>
+            </div>
+            <a
+              href="/payment"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
+                color: "#1a1200",
+                fontWeight: 800,
+                fontSize: 13,
+                padding: "0.6rem 1.3rem",
+                borderRadius: 10,
+                textDecoration: "none",
+              }}
+            >
+              <span>➕</span><span>إضافة طريقة دفع</span>
+            </a>
+          </div>
+        )}
+      </SectionCard>
+
       {/* 3. التجديد */}
       <SectionCard title="التجديد" icon="🔄">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
@@ -258,16 +361,6 @@ export default function SettingsView({ username }) {
           </button>
         </div>
 
-        {managementUrls?.updatePaymentMethod && (
-          <a
-            href={managementUrls.updatePaymentMethod}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ display: "block", marginTop: 14, fontSize: 12, color: GOLD_LIGHT, textDecoration: "underline" }}
-          >
-            تحديث بطاقة الدفع عبر Paddle ←
-          </a>
-        )}
       </SectionCard>
 
       {/* 4. تغيير الخطة */}
