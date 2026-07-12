@@ -1,0 +1,10 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#000000"/>
+  <line x1="0" y1="315" x2="1200" y2="315" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="90" y="280" font-family="Arial, sans-serif" font-size="22" letter-spacing="5" fill="#C9A24B">QTA</text>
+  <text x="90" y="360" font-family="Arial, sans-serif" font-size="52" font-weight="800" fill="#E8E0D0">التداول مو حظ.</text>
+  <text x="90" y="420" font-family="Arial, sans-serif" font-size="52" font-weight="800" fill="#C9A24B">التداول منهج.</text>
+  <text x="90" y="480" font-family="Arial, sans-serif" font-size="20" fill="#6B6560">Qais Trading Academy — انضم اليوم</text>
+  <rect x="850" y="440" width="260" height="56" rx="8" fill="none" stroke="#C9A24B" stroke-width="1.5"/>
+  <text x="980" y="475" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#C9A24B">ابدأ الآن ←</text>
+</svg>

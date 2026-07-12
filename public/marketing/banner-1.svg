@@ -1,0 +1,21 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d0d0d"/>
+      <stop offset="100%" stop-color="#050505"/>
+    </linearGradient>
+    <linearGradient id="goldText" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#E8C874"/>
+      <stop offset="100%" stop-color="#C9A24B"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg1)"/>
+  <circle cx="1050" cy="80" r="220" fill="#C9A24B" opacity="0.08"/>
+  <circle cx="120" cy="560" r="180" fill="#C9A24B" opacity="0.06"/>
+  <rect x="60" y="60" width="1080" height="510" rx="18" fill="none" stroke="#C9A24B" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="600" y="230" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" letter-spacing="6" fill="#C9A24B">QAIS TRADING ACADEMY</text>
+  <text x="600" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="58" font-weight="800" fill="url(#goldText)">ابدأ رحلتك في التداول الاحترافي</text>
+  <text x="600" y="390" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#B8B0A0">محاضرات مباشرة · تدريب عملي 6 أشهر · Backtest حقيقي</text>
+  <rect x="450" y="440" width="300" height="60" rx="10" fill="#C9A24B"/>
+  <text x="600" y="479" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#080600">سجّل الآن</text>
+</svg>
