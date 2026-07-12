@@ -240,7 +240,7 @@ export default function AdminPage() {
           <h1 style={s.headerTitle}>Qais Trading Academy</h1>
         </div>
         <div style={{ display: "flex", gap: "0.75rem" }}>
-          <Link href="/admin/lectures" style={{ ...s.btn, textDecoration: "none" }}>📚 إدارة المحاضرات</Link>
+          <Link href="/admin/lectures" style={{ ...s.btn, textDecoration: "none" }}>📚 إدارة المحاضرات</Link> <Link href="/admin/affiliates" style={{ ...s.btn, textDecoration: "none" }}>🤝 برنامج المسوّقين</Link>
           <button onClick={() => { supabase.auth.signOut(); router.push("/login"); }} style={s.btn}>تسجيل الخروج</button>
         </div>
       </header>
