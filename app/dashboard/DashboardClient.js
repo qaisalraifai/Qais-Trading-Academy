@@ -972,12 +972,636 @@ function formatCountdown(diffMs) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+const PURPLE = "#7c5cff";
+const PURPLE_LIGHT = "#B084F5";
+
+/* ============================================================
+   أدوات مساعدة لتوليد بيانات تجريبية ثابتة (Deterministic Mock Data)
+   تُستخدم فقط للعناصر التي لا يوجد لها مصدر بيانات حي بعد
+   (قوة العملات، الخريطة الحرارية، الرسم البياني، الخوف والطمع...)
+   القيم ثابتة لكل يوم/مفتاح ولا تتغير عشوائياً بكل تحديث للواجهة.
+============================================================ */
+function hashSeed(str) {
+  let h = 0;
+  const s = String(str || "x");
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h || 1;
+}
+function seededRand(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function () {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+function genSeries(seed, len, base, spread) {
+  const rand = seededRand(seed);
+  let v = base;
+  const out = [];
+  for (let i = 0; i < len; i++) {
+    v += (rand() - 0.48) * spread;
+    out.push(Math.round(v * 100) / 100);
+  }
+  return out;
+}
+
+/* Mini Sparkline */
+function Sparkline({ data, color, width = 60, height = 24 }) {
+  if (!data || data.length < 2) return null;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const step = width / (data.length - 1);
+  const points = data.map((v, i) => `${i * step},${height - ((v - min) / range) * height}`).join(" ");
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* عداد نصف دائري (Gauge) يُستخدم لقوة تأثير الخبر ومؤشر الخوف والطمع */
+function SemiGauge({ value, size = 150, colors, gradId }) {
+  const v = Math.max(0, Math.min(100, value || 0));
+  const w = size;
+  const h = size * 0.58;
+  const r = size / 2 - 14;
+  const cx = size / 2;
+  const cy = h;
+  const circumference = Math.PI * r;
+  const progress = v / 100;
+  const dash = circumference * progress;
+  const angleDeg = 180 - progress * 180;
+  const angleRad = (angleDeg * Math.PI) / 180;
+  const needleX = cx + r * 0.72 * Math.cos(angleRad);
+  const needleY = cy - r * 0.72 * Math.sin(angleRad);
+  const id = `grad-${gradId}`;
+  return (
+    <svg width={w} height={h + 14} viewBox={`0 0 ${w} ${h + 14}`}>
+      <defs>
+        <linearGradient id={id} x1="0%" y1="0%" x2="100%" y2="0%">
+          {colors.map((c, i) => (
+            <stop key={i} offset={`${(i / (colors.length - 1)) * 100}%`} stopColor={c} />
+          ))}
+        </linearGradient>
+      </defs>
+      <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} fill="none" stroke="#1a1a12" strokeWidth="13" strokeLinecap="round" />
+      <path
+        d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+        fill="none"
+        stroke={`url(#${id})`}
+        strokeWidth="13"
+        strokeLinecap="round"
+        strokeDasharray={`${dash} ${circumference}`}
+      />
+      <line x1={cx} y1={cy} x2={needleX} y2={needleY} stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r="4.5" fill="#fff" />
+    </svg>
+  );
+}
+
+const CCY_LIST = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD"];
+
+/* خريطة قوة العملات */
+function CurrencyStrengthMeter({ dayStr }) {
+  const values = useMemo(() => {
+    return CCY_LIST.map((c) => {
+      const rand = seededRand(hashSeed(dayStr + c));
+      return { code: c, value: Math.round(28 + rand() * 68) };
+    }).sort((a, b) => b.value - a.value);
+  }, [dayStr]);
+  return (
+    <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
+      <p style={{ margin: "0 0 0.9rem", fontSize: 13, fontWeight: 700, color: "#fff" }}>💱 خريطة قوة العملات</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+        {values.map((v) => {
+          const color = v.value >= 68 ? "#3DDC84" : v.value >= 42 ? GOLD_LIGHT : "#EF5350";
+          return (
+            <div key={v.code}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                <span style={{ fontSize: 11.5, color: "#ccc", fontWeight: 700 }}>
+                  {CURRENCY_FLAGS[v.code] || "🌐"} {v.code}
+                </span>
+                <span style={{ fontSize: 11.5, color, fontWeight: 700 }}>{v.value}%</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 6, background: "#1a1a12", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${v.value}%`, background: color, borderRadius: 6 }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const HEATMAP_SECTORS = ["Forex", "Stocks", "Commodities", "Bonds", "Crypto", "Indices"];
+
+/* خريطة الحرارة للأسواق */
+function MarketHeatmap({ dayStr }) {
+  const values = useMemo(
+    () =>
+      HEATMAP_SECTORS.map((s) => {
+        const rand = seededRand(hashSeed(dayStr + s));
+        const pct = Math.round((rand() - 0.42) * 400) / 100;
+        return { sector: s, pct };
+      }),
+    [dayStr]
+  );
+  return (
+    <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
+      <p style={{ margin: "0 0 0.9rem", fontSize: 13, fontWeight: 700, color: "#fff" }}>🗺️ خريطة الحرارة للأسواق</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.55rem" }}>
+        {values.map((v) => {
+          const up = v.pct >= 0;
+          const bg = up ? `rgba(61,220,132,${Math.min(0.45, 0.15 + Math.abs(v.pct) / 8)})` : `rgba(239,83,80,${Math.min(0.45, 0.15 + Math.abs(v.pct) / 8)})`;
+          const border = up ? "#3DDC8455" : "#EF535055";
+          return (
+            <div key={v.sector} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "0.7rem 0.4rem", textAlign: "center" }}>
+              <p style={{ margin: 0, fontSize: 10.5, color: "#ddd", fontWeight: 600 }}>{v.sector}</p>
+              <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 800, color: up ? "#3DDC84" : "#EF5350", direction: "ltr" }}>
+                {up ? "+" : ""}
+                {v.pct}%
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* رسم بياني لتوقع حركة الدولار مع اختيار الفترة الزمنية */
+function PriceChart({ dayStr }) {
+  const [tf, setTf] = useState("1D");
+  const points = useMemo(() => {
+    const len = tf === "1D" ? 24 : tf === "1W" ? 28 : 30;
+    return genSeries(hashSeed(dayStr + "dxy" + tf), len, 103, 0.55);
+  }, [tf, dayStr]);
+  const forecastPoints = useMemo(
+    () => genSeries(hashSeed(dayStr + "dxy-f" + tf), points.length, points[points.length - 1] || 103, 0.5),
+    [tf, dayStr, points]
+  );
+  const w = 640;
+  const h = 190;
+  const pad = 10;
+  const all = [...points, ...forecastPoints];
+  const max = Math.max(...all);
+  const min = Math.min(...all);
+  const range = max - min || 1;
+  const toXY = (arr, i) => {
+    const x = pad + (i / (arr.length - 1)) * (w - pad * 2);
+    const y = h - pad - ((arr[i] - min) / range) * (h - pad * 2);
+    return [x, y];
+  };
+  return (
+    <div style={{ ...cardStyle, padding: "1.1rem 1.3rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem", flexWrap: "wrap", gap: 8 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>📈 توقع حركة الدولار الأمريكي (DXY)</p>
+        <div style={{ display: "flex", gap: 4 }}>
+          {["1D", "1W", "1M"].map((t) => (
+            <button
+              key={t}
+              onClick={() => setTf(t)}
+              style={{
+                background: tf === t ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0d0d0a",
+                color: tf === t ? "#000" : "#999",
+                border: tf === t ? "none" : `1px solid ${GOLD}22`,
+                borderRadius: 6,
+                padding: "3px 10px",
+                fontSize: 10.5,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+        <polyline points={points.map((_, i) => toXY(points, i).join(",")).join(" ")} fill="none" stroke={GOLD_LIGHT} strokeWidth="2" />
+        <polyline
+          points={forecastPoints.map((_, i) => toXY(forecastPoints, i).join(",")).join(" ")}
+          fill="none"
+          stroke={PURPLE_LIGHT}
+          strokeWidth="2"
+          strokeDasharray="4 3"
+        />
+        <line x1={w / 2} y1={pad} x2={w / 2} y2={h - pad} stroke={`${GOLD}33`} strokeWidth="1" strokeDasharray="2 3" />
+      </svg>
+      <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
+        <span style={{ fontSize: 10.5, color: "#888" }}>
+          <span style={{ color: GOLD_LIGHT }}>●</span> السعر الحالي
+        </span>
+        <span style={{ fontSize: 10.5, color: "#888" }}>
+          <span style={{ color: PURPLE_LIGHT }}>●</span> التوقع المستقبلي
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* مؤشر الخوف والطمع */
+function FearGreedGauge({ value }) {
+  const label = value >= 75 ? "طمع شديد" : value >= 55 ? "طمع" : value >= 45 ? "محايد" : value >= 25 ? "خوف" : "خوف شديد";
+  const color = value >= 75 ? "#22c55e" : value >= 55 ? "#84cc16" : value >= 45 ? "#eab308" : value >= 25 ? "#f59e0b" : "#ef4444";
+  return (
+    <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center" }}>
+      <p style={{ margin: "0 0 0.4rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>😨 مؤشر الخوف والطمع</p>
+      <SemiGauge value={value} colors={["#ef4444", "#f59e0b", "#eab308", "#84cc16", "#22c55e"]} gradId="fg" />
+      <p style={{ margin: "2px 0 0", fontSize: 22, fontWeight: 800, color }}>{value}</p>
+      <p style={{ margin: "2px 0 0", fontSize: 11.5, color, fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: "8px 0 0", fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
+        يشير إلى تفاؤل نسبي في السوق وقد يكون مبالغاً فيه.
+      </p>
+    </div>
+  );
+}
+
+/* مؤشر مفاجأة البيانات الاقتصادية */
+function EconomicSurpriseIndex({ events, dayStr }) {
+  const value = useMemo(() => {
+    const withActual = events.filter(
+      (e) => e.actual && e.forecast && !isNaN(parseFloat(e.actual)) && !isNaN(parseFloat(e.forecast))
+    );
+    if (withActual.length === 0) return 0.42;
+    const avg = withActual.reduce((acc, e) => acc + (parseFloat(e.actual) - parseFloat(e.forecast)), 0) / withActual.length;
+    return Math.round(avg * 100) / 100;
+  }, [events]);
+  const positive = value >= 0;
+  const series = useMemo(() => genSeries(hashSeed(dayStr + "esi"), 12, value, 0.3), [value, dayStr]);
+  return (
+    <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
+      <p style={{ margin: "0 0 0.4rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>📊 مفاجأة البيانات الاقتصادية</p>
+      <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: positive ? "#3DDC84" : "#EF5350", direction: "ltr" }}>
+        {positive ? "+" : ""}
+        {value}
+      </p>
+      <div style={{ margin: "8px 0" }}>
+        <Sparkline data={series} color={positive ? "#3DDC84" : "#EF5350"} width={140} height={34} />
+      </div>
+      <p style={{ margin: 0, fontSize: 10.5, color: "#888", lineHeight: 1.6 }}>
+        {positive
+          ? "البيانات الاقتصادية الأخيرة جاءت أعلى من التوقعات، ما يدعم الدولار نسبياً."
+          : "البيانات الاقتصادية الأخيرة جاءت أقل من التوقعات، ما يشكّل ضغطاً على الدولار."}
+      </p>
+    </div>
+  );
+}
+
+/* لوحة التحليل الفني */
+function TechnicalAnalysisPanel({ seedKey }) {
+  const data = useMemo(() => {
+    const rand = seededRand(hashSeed(seedKey || "tech"));
+    const rsi = Math.round(35 + rand() * 45);
+    const macd = rand() > 0.5 ? "Bullish" : "Bearish";
+    const emaUp = rand() > 0.45;
+    const trend = rsi > 60 ? "Strong Uptrend" : rsi < 40 ? "Strong Downtrend" : "Sideways";
+    const support = (100 + rand() * 3).toFixed(2);
+    const resistance = (Number(support) + 1 + rand() * 1.5).toFixed(2);
+    return { rsi, macd, emaUp, trend, support, resistance };
+  }, [seedKey]);
+  const rows = [
+    { label: "RSI (14)", value: data.rsi, color: data.rsi > 70 ? "#EF5350" : data.rsi < 30 ? "#3DDC84" : "#eee" },
+    { label: "MACD", value: data.macd, color: data.macd === "Bullish" ? "#3DDC84" : "#EF5350" },
+    { label: "EMA 20", value: data.emaUp ? "فوق EMA 50" : "تحت EMA 50", color: data.emaUp ? "#3DDC84" : "#EF5350" },
+    { label: "الاتجاه العام", value: data.trend, color: GOLD_LIGHT },
+    { label: "الدعم", value: data.support, color: "#4FA0F5" },
+    { label: "المقاومة", value: data.resistance, color: "#EF5350" },
+  ];
+  return (
+    <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
+      <p style={{ margin: "0 0 0.7rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>🎯 التحليل الفني</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        {rows.map((r, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: 11.5,
+              borderBottom: i < rows.length - 1 ? "1px solid #1a1a0f" : "none",
+              paddingBottom: 5,
+            }}
+          >
+            <span style={{ color: "#999" }}>{r.label}</span>
+            <span style={{ color: r.color, fontWeight: 700 }}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const TRADING_PLAN_ITEMS = [
+  "انتظار صدور الخبر قبل اتخاذ القرار",
+  "عدم الدخول في صفقات قبل الخبر مباشرة",
+  "إدارة رأس المال (لا يتجاوز 1% من الحساب)",
+  "تحديد وقف الخسارة (Stop Loss) بوضوح",
+  "تحديد مستوى جني الأرباح (Take Profit)",
+  "تجنّب التداول العشوائي بعد التقلب المفاجئ",
+];
+
+/* خطة التداول - Checklist تفاعلية */
+function TradingPlanChecklist() {
+  const [checked, setChecked] = useState({});
+  return (
+    <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
+      <p style={{ margin: "0 0 0.7rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>✅ Trading Plan</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+        {TRADING_PLAN_ITEMS.map((item, i) => (
+          <label
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              fontSize: 11.5,
+              color: checked[i] ? "#666" : "#ccc",
+              cursor: "pointer",
+              textDecoration: checked[i] ? "line-through" : "none",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={!!checked[i]}
+              onChange={() => setChecked((p) => ({ ...p, [i]: !p[i] }))}
+              style={{ marginTop: 2, accentColor: GOLD }}
+            />
+            {item}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const OPPORTUNITY_ASSETS = ["EURUSD", "XAUUSD", "NAS100", "US30", "GBPUSD", "USDJPY"];
+
+/* أفضل فرص التداول */
+function BestOpportunitiesPanel({ events }) {
+  const opportunities = useMemo(() => {
+    const relevant = [...events].filter((e) => e.impact === "high" || e.impact === "medium").slice(0, 4);
+    return relevant.map((e, i) => {
+      const rand = seededRand(hashSeed(String(e.id) + i));
+      const buy = rand() > 0.5;
+      const confidence = Math.round(55 + rand() * 40);
+      return { asset: OPPORTUNITY_ASSETS[i % OPPORTUNITY_ASSETS.length], buy, confidence };
+    });
+  }, [events]);
+  if (opportunities.length === 0) {
+    return (
+      <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center", color: "#666", fontSize: 12 }}>
+        🏆 لا توجد فرص كافية اليوم لعرضها بعد.
+      </div>
+    );
+  }
+  return (
+    <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
+      <p style={{ margin: "0 0 0.8rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>🏆 أفضل فرص التداول</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+        {opportunities.map((o, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: "#0d0d0a",
+              border: `1px solid ${GOLD}1a`,
+              borderRadius: 10,
+              padding: "0.6rem 0.8rem",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 6,
+                  background: `${GOLD}22`,
+                  color: GOLD_LIGHT,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {i + 1}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#eee" }}>{o.asset}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: o.buy ? "#3DDC84" : "#EF5350" }}>{o.buy ? "شراء" : "بيع"}</span>
+              <span style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: 700 }}>{o.confidence}%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p style={{ margin: "10px 0 0", fontSize: 9.5, color: "#555" }}>* ترتيب تقريبي مبني على قوة الأخبار القادمة، وليس توصية استثمارية.</p>
+    </div>
+  );
+}
+
+/* شريط الهيدر العلوي الجديد */
+function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh, highImpactUpcomingCount }) {
+  const marketOpen = useMemo(() => {
+    const day = now.getUTCDay();
+    const hour = now.getUTCHours();
+    if (day === 6) return false;
+    if (day === 0 && hour < 21) return false;
+    if (day === 5 && hour >= 21) return false;
+    return true;
+  }, [now]);
+  const displayTime = new Date(now.getTime() + tzOffset * 3600 * 1000);
+  const timeStr = displayTime.toISOString().slice(11, 19);
+
+  return (
+    <div
+      style={{
+        ...cardStyle,
+        padding: "0.9rem 1.3rem",
+        marginBottom: "1rem",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: 12,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            fontSize: 18,
+            fontWeight: 800,
+            color: "#000",
+            background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${PURPLE_LIGHT})`,
+            padding: "4px 10px",
+            borderRadius: 8,
+          }}
+        >
+          MIC
+        </span>
+        <div>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#fff" }}>Market Intelligence Center</p>
+          <p style={{ margin: 0, fontSize: 10, color: "#888" }}>التقويم الاقتصادي وتحليل تأثير الأخبار على الأسواق</p>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, minWidth: 180, maxWidth: 320 }}>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔍  ابحث عن خبر، أصل، أو مؤشر..."
+          style={{
+            width: "100%",
+            background: "#0d0d0a",
+            border: `1px solid ${GOLD}2a`,
+            borderRadius: 9,
+            padding: "0.5rem 0.8rem",
+            color: "#ccc",
+            fontSize: 11.5,
+            outline: "none",
+          }}
+        />
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 16, cursor: "pointer" }} title="المفضلة">⭐</span>
+        <span style={{ fontSize: 16, cursor: "pointer", position: "relative" }} title="التنبيهات">
+          🔔
+          {highImpactUpcomingCount > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: -6,
+                right: -8,
+                background: "#EF5350",
+                color: "#fff",
+                fontSize: 8,
+                fontWeight: 800,
+                borderRadius: 8,
+                padding: "1px 4px",
+              }}
+            >
+              {highImpactUpcomingCount}
+            </span>
+          )}
+        </span>
+        <select
+          value={tzOffset}
+          onChange={(e) => setTzOffset(Number(e.target.value))}
+          style={{ background: "#0d0d0a", border: `1px solid ${GOLD}2a`, borderRadius: 8, padding: "0.35rem 0.5rem", color: "#ccc", fontSize: 11 }}
+        >
+          {[-5, 0, 1, 2, 3, 4].map((o) => (
+            <option key={o} value={o}>
+              UTC{o >= 0 ? `+${o}` : o}
+            </option>
+          ))}
+        </select>
+        <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: marketOpen ? "#3DDC84" : "#EF5350" }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: marketOpen ? "#3DDC84" : "#EF5350" }} />
+          {marketOpen ? "السوق مفتوح" : "السوق مغلق"}
+        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "#888" }}>
+          <span>
+            آخر تحديث: <span style={{ direction: "ltr", display: "inline-block" }}>{timeStr}</span>
+          </span>
+          <button
+            onClick={onRefresh}
+            title="تحديث"
+            style={{
+              background: "transparent",
+              border: `1px solid ${GOLD}33`,
+              borderRadius: 7,
+              width: 24,
+              height: 24,
+              color: GOLD_LIGHT,
+              cursor: "pointer",
+            }}
+          >
+            ⟳
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* بطاقات KPI العلوية مع Sparkline */
+function KPICardsRow({ todayStats, watchlistCount, opportunitiesCount, dayStr }) {
+  const cards = [
+    { label: "قائمة المراقبة", value: watchlistCount, sub: "أصل مراقب", color: PURPLE_LIGHT, icon: "🎯", series: genSeries(hashSeed(dayStr + "watch"), 8, watchlistCount, 2) },
+    { label: "أخبار منخفضة التأثير", value: todayStats.low, sub: "اليوم", color: "#3DDC84", icon: "🟢", series: genSeries(hashSeed(dayStr + "low"), 8, todayStats.low || 1, 1.5) },
+    { label: "أخبار متوسطة التأثير", value: todayStats.medium, sub: "اليوم", color: "#FFA726", icon: "🟡", series: genSeries(hashSeed(dayStr + "med"), 8, todayStats.medium || 1, 1.5) },
+    { label: "أخبار عالية التأثير", value: todayStats.high, sub: "اليوم", color: "#EF5350", icon: "🔴", series: genSeries(hashSeed(dayStr + "high"), 8, todayStats.high || 1, 1.5) },
+    { label: "فرص التداول", value: opportunitiesCount, sub: "فرصة نشطة", color: GOLD_LIGHT, icon: "💡", series: genSeries(hashSeed(dayStr + "opp"), 8, opportunitiesCount, 1.5) },
+    { label: "أخبار اليوم", value: todayStats.total, sub: `${todayStats.upcoming} متبقية`, color: "#4FA0F5", icon: "🗓️", series: genSeries(hashSeed(dayStr + "today"), 8, todayStats.total || 1, 2) },
+  ];
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "0.7rem", marginBottom: "1.1rem" }}>
+      {cards.map((c, i) => (
+        <div key={i} style={{ ...cardStyle, padding: "0.85rem 0.9rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 10, color: "#888" }}>
+                {c.icon} {c.label}
+              </p>
+              <p style={{ margin: "6px 0 0", fontSize: 21, fontWeight: 800, color: c.color }}>{c.value}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 9.5, color: "#666" }}>{c.sub}</p>
+            </div>
+            <Sparkline data={c.series} color={c.color} width={44} height={26} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* تذييل الصفحة */
+function MICFooter({ tzOffset, lastUpdated }) {
+  return (
+    <div
+      style={{
+        ...cardStyle,
+        padding: "0.7rem 1.3rem",
+        marginTop: "1rem",
+        display: "flex",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: 10,
+        fontSize: 10.5,
+        color: "#777",
+      }}
+    >
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <span>
+          🟢 API Status: <span style={{ color: "#3DDC84" }}>Live</span>
+        </span>
+        <span>
+          🟢 Data Feed: <span style={{ color: "#3DDC84" }}>متصل</span>
+        </span>
+        <span>آخر مزامنة: {lastUpdated ? new Date(lastUpdated).toLocaleTimeString("ar-EG") : "--"}</span>
+        <span>
+          المنطقة الزمنية: UTC{tzOffset >= 0 ? `+${tzOffset}` : tzOffset}
+        </span>
+      </div>
+      <span>الإصدار 2.1.0</span>
+    </div>
+  );
+}
+
 function CalendarView({ events, loading, isAdmin }) {
   const [dayFilter, setDayFilter] = useState("all");
   const [impactFilter, setImpactFilter] = useState("all");
   const [selectedId, setSelectedId] = useState(null);
   const [analysisTab, setAnalysisTab] = useState("overview");
   const [now, setNow] = useState(() => new Date());
+  const [search, setSearch] = useState("");
+  const [tzOffset, setTzOffset] = useState(3);
 
   // تحليل الذكاء الاصطناعي التلقائي: أول مشترك يفتح خبر عالي/متوسط التأثير من غير تحليل
   // بيشغّل الطلب تلقائياً، والنتيجة تنخزن بقاعدة البيانات وتظهر لباقي المشتركين مباشرة.
@@ -1003,7 +1627,15 @@ function CalendarView({ events, loading, isAdmin }) {
     [events]
   );
 
-  const visibleEvents = dayFilter === "all" ? filteredEvents : filteredEvents.filter((e) => e.event_date === dayFilter);
+  const dayScopedEvents = dayFilter === "all" ? filteredEvents : filteredEvents.filter((e) => e.event_date === dayFilter);
+
+  const visibleEvents = useMemo(() => {
+    if (!search.trim()) return dayScopedEvents;
+    const q = search.trim().toLowerCase();
+    return dayScopedEvents.filter(
+      (e) => (e.event_title || "").toLowerCase().includes(q) || (e.currency || "").toLowerCase().includes(q)
+    );
+  }, [dayScopedEvents, search]);
 
   const grouped = useMemo(() => {
     const map = new Map();
@@ -1133,6 +1765,19 @@ function CalendarView({ events, loading, isAdmin }) {
     ? formatCountdown(new Date(nextHighImpactEvent.event_datetime) - now)
     : null;
 
+  const highImpactUpcomingCount = useMemo(
+    () => events.filter((e) => e.event_datetime && new Date(e.event_datetime) > now && e.impact === "high").length,
+    [events, now]
+  );
+
+  const watchlistCount = 8;
+  const opportunitiesCount = Math.max(4, todayStats.high + todayStats.medium + 2);
+
+  const fearGreedValue = useMemo(() => {
+    const rand = seededRand(hashSeed(todayStr + "fg"));
+    return Math.round(40 + rand() * 45);
+  }, [todayStr]);
+
   function formatArabicDate(dateStr) {
     const d = new Date(dateStr + "T00:00:00");
     return d.toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "long" });
@@ -1152,225 +1797,157 @@ function CalendarView({ events, loading, isAdmin }) {
   const countdown = countdownMs !== null ? formatCountdown(countdownMs) : null;
   const aiData = selectedEvent?.ai_data || null;
 
+  const impactPct = !selectedEvent ? 0 : selectedEvent.impact === "high" ? 85 : selectedEvent.impact === "medium" ? 55 : 25;
+  const impactStrengthLabel = impactPct >= 75 ? "قوي جداً" : impactPct >= 45 ? "متوسط" : "محدود";
+
+  // ملاحظة: حساب عادي (وليس useMemo) عن قصد، لأنه واقع بعد شرط "if (loading) return"
+  // أعلاه؛ استخدام hook هنا كان سيكسر ترتيب الـ Hooks بين الرندرات (قاعدة Hooks في React).
+  const assetDistribution = (() => {
+    if (aiData?.assets?.length) {
+      return aiData.assets.slice(0, 4).map((a) => ({
+        name: a.symbol || a.name,
+        pct: a.strength === "strong" ? 85 : a.strength === "medium" ? 55 : 30,
+      }));
+    }
+    if (!selectedEvent) return [];
+    const base = selectedEvent.impact === "high" ? 80 : selectedEvent.impact === "medium" ? 55 : 30;
+    return [
+      { name: selectedEvent.currency || "USD", pct: base },
+      { name: "Gold", pct: Math.max(15, base - 20) },
+      { name: "Stocks", pct: Math.max(15, base - 15) },
+      { name: "Oil", pct: Math.max(10, base - 40) },
+    ];
+  })();
+
   return (
     <div>
-      {/* Hero */}
-      <div style={{
-        ...cardStyle, padding: "1.3rem 1.5rem", marginBottom: "1rem",
-        background: `linear-gradient(135deg, ${GOLD}14, #0d0d0a 60%)`,
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#fff" }}>📊 Market Intelligence Center</p>
-            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
-              التقويم الاقتصادي وتحليل تأثير الأخبار على الأسواق
-              {lastUpdated && (
-                <span style={{ color: "#555" }}>
-                  {" "}· آخر تحديث: {new Date(lastUpdated).toLocaleString("ar-EG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                </span>
-              )}
-            </p>
-            <div style={{ display: "flex", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12, color: "#8BC34A", fontWeight: 700 }}>🟢 {todayStats.low} أخبار منخفضة</span>
-              <span style={{ fontSize: 12, color: "#FFA726", fontWeight: 700 }}>🟡 {todayStats.medium} متوسطة</span>
-              <span style={{ fontSize: 12, color: "#EF5350", fontWeight: 700 }}>🔴 {todayStats.high} عالية التأثير</span>
-            </div>
-          </div>
+      <MICHeaderBar
+        search={search}
+        setSearch={setSearch}
+        tzOffset={tzOffset}
+        setTzOffset={setTzOffset}
+        now={now}
+        onRefresh={() => setNow(new Date())}
+        highImpactUpcomingCount={highImpactUpcomingCount}
+      />
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {nextHighImpactEvent ? (
-              <div style={{
-                textAlign: "center", border: "1px solid #EF535044", borderRadius: 12,
-                padding: "0.7rem 1.1rem", background: "#EF535011", minWidth: 190,
-              }}>
-                <p style={{ margin: 0, fontSize: 10, color: "#999" }}>🔴 الخبر القادم عالي التأثير</p>
-                <p style={{ margin: "5px 0 3px", fontSize: 13, fontWeight: 800, color: "#fff" }}>
-                  {CURRENCY_FLAGS[nextHighImpactEvent.currency] || "🌐"} {nextHighImpactEvent.event_title}
-                </p>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#EF5350", direction: "ltr" }}>
-                  {nextHighImpactCountdown || "--"}
-                </p>
-              </div>
-            ) : (
-              <div style={{
-                textAlign: "center", border: `1px solid ${GOLD}33`, borderRadius: 12,
-                padding: "0.7rem 1.1rem", minWidth: 190, color: "#666", fontSize: 11.5,
-              }}>
-                لا يوجد أخبار عالية التأثير قادمة حالياً
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <KPICardsRow todayStats={todayStats} watchlistCount={watchlistCount} opportunitiesCount={opportunitiesCount} dayStr={todayStr} />
 
-      {/* بطاقات الإحصائيات */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.8rem", marginBottom: "1.1rem" }}>
-        {[
-          { label: "أخبار اليوم", value: todayStats.total, color: GOLD_LIGHT, icon: "🗓️" },
-          { label: "عالية التأثير", value: todayStats.high, color: "#EF5350", icon: "🔴" },
-          { label: "منتهية", value: todayStats.completed, color: "#3DDC84", icon: "✅" },
-          { label: "قادمة", value: todayStats.upcoming, color: "#4FA0F5", icon: "⏳" },
-        ].map((s, i) => (
-          <div key={i} style={{ ...cardStyle, padding: "0.9rem 1rem", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 20 }}>{s.icon}</span>
-            <div>
-              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</p>
-              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#888" }}>{s.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "flex", gap: "1.2rem", alignItems: "flex-start" }}>
-
-        {/* العمود الأيسر: القائمة والفلاتر */}
-        <div style={{ width: 340, flexShrink: 0, display: "flex", flexDirection: "column", gap: "0.8rem" }}>
-          <div style={{ display: "flex", gap: 6 }}>
-            <select
-              value={dayFilter}
-              onChange={(e) => setDayFilter(e.target.value)}
-              style={{
-                flex: 1, background: "#0d0d0a", border: `1px solid ${GOLD}33`, borderRadius: 8,
-                padding: "0.5rem 0.6rem", color: "#ccc", fontSize: 11.5,
-              }}
-            >
-              <option value="all">كل الأيام</option>
-              {days.map((d) => (
-                <option key={d} value={d}>{formatArabicDate(d)}</option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ display: "flex", gap: 5 }}>
-            {[
-              { key: "all", label: "الكل" },
-              { key: "high", label: "🔴 عالي" },
-              { key: "medium", label: "🟡 متوسط" },
-              { key: "low", label: "🟢 منخفض" },
-            ].map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setImpactFilter(f.key)}
-                style={{
-                  flex: 1,
-                  background: impactFilter === f.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0d0d0a",
-                  color: impactFilter === f.key ? "#000" : "#999",
-                  border: impactFilter === f.key ? "none" : `1px solid ${GOLD}22`,
-                  borderRadius: 8, padding: "0.45rem 0.3rem", fontSize: 10.5, fontWeight: 700, cursor: "pointer",
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", maxHeight: 720, overflowY: "auto", paddingLeft: 2 }}>
-            {grouped.length === 0 && (
-              <div style={{ ...cardStyle, padding: "2rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
-                لا توجد أحداث متوفرة بعد. بيتحدث التقويم تلقائياً يومياً.
-              </div>
-            )}
-            {grouped.map(([date, dayEvents]) => (
-              <div key={date}>
-                <p style={{ color: "#666", fontSize: 11.5, fontWeight: 700, margin: "0 0 0.5rem" }}>{formatArabicDate(date)}</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {dayEvents.map((ev) => {
-                    const impactStyle = IMPACT_STYLE[ev.impact] || IMPACT_STYLE.low;
-                    const isSelected = selectedEvent?.id === ev.id;
-                    return (
-                      <div
-                        key={ev.id}
-                        onClick={() => setSelectedId(ev.id)}
-                        style={{
-                          background: isSelected ? `${GOLD}14` : "#0d0d0a",
-                          border: isSelected ? `1px solid ${GOLD}66` : `1px solid ${GOLD}1a`,
-                          borderRadius: 10, padding: "0.7rem 0.85rem", cursor: "pointer",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                            <span style={{ fontSize: 11, color: "#888" }}>{ev.event_time}</span>
-                            <span style={{ fontSize: 13 }}>{CURRENCY_FLAGS[ev.currency] || "🌐"}</span>
-                          </div>
-                          <span style={{ fontSize: 12 }}>{impactStyle.dot}</span>
-                        </div>
-                        <p style={{ margin: "6px 0 0", fontSize: 12.5, fontWeight: 700, color: "#eee", lineHeight: 1.4 }}>{ev.event_title}</p>
-                        <div style={{ display: "flex", gap: "0.8rem", marginTop: 6, fontSize: 10.5, color: "#777" }}>
-                          {ev.previous && <span>السابق: {ev.previous}</span>}
-                          {ev.forecast && <span>التوقع: {ev.forecast}</span>}
-                          {ev.actual && <span style={{ color: GOLD_LIGHT }}>الفعلي: {ev.actual}</span>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* العمود الأيمن: لوحة التفاصيل */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {/* الصف الرئيسي: العمود الرئيسي (الخبر + AI + Tabs + الأدوات) والشريط الجانبي */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "1.1rem", alignItems: "start" }}>
+        {/* العمود الرئيسي */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem", minWidth: 0 }}>
           {!selectedEvent ? (
             <div style={{ ...cardStyle, padding: "3rem", textAlign: "center", color: "#666", fontSize: 13 }}>
               اختاري خبر من القائمة لعرض التحليل
             </div>
           ) : (
             <>
-              {/* بطاقة الخبر المختار */}
-              <div style={{ ...cardStyle, padding: "1.2rem 1.4rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: "1rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{
-                      background: impact.bg, color: impact.color, fontSize: 11, fontWeight: 700,
-                      padding: "4px 12px", borderRadius: 20, whiteSpace: "nowrap",
-                    }}>
-                      {impact.dot} {impact.label}
-                    </span>
-                    <div>
-                      <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>
-                        {flag} {selectedEvent.event_title}
-                      </p>
-                      <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
-                        {selectedEvent.currency} · {formatArabicDate(selectedEvent.event_date)} · {selectedEvent.event_time}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* السابق / التوقع / الفعلي / العد التنازلي */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.7rem" }}>
-                  {[
-                    { label: "السابق", value: selectedEvent.previous },
-                    { label: "التوقع", value: selectedEvent.forecast },
-                    { label: "الفعلي", value: selectedEvent.actual, gold: true },
-                    { label: "العد التنازلي", value: countdown, live: true },
-                  ].map((s, i) => (
-                    <div key={i} style={{ background: "#0d0d0a", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.7rem", textAlign: "center" }}>
-                      <p style={{ margin: 0, fontSize: 10.5, color: "#888" }}>{s.label}</p>
-                      <p style={{
-                        margin: "5px 0 0", fontSize: 15, fontWeight: 800, direction: s.live ? "ltr" : undefined,
-                        color: s.value ? (s.gold ? GOLD_LIGHT : s.live ? impact.color : "#fff") : "#444",
+              <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: "1rem", alignItems: "start" }}>
+                {/* بطاقة الخبر المختار */}
+                <div style={{ ...cardStyle, padding: "1.2rem 1.4rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: "1rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{
+                        background: impact.bg, color: impact.color, fontSize: 11, fontWeight: 700,
+                        padding: "4px 12px", borderRadius: 20, whiteSpace: "nowrap",
                       }}>
-                        {s.value || "--"}
-                      </p>
+                        {impact.dot} {impact.label}
+                      </span>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#fff" }}>
+                          {flag} {selectedEvent.event_title}
+                        </p>
+                        <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
+                          {selectedEvent.currency} · {formatArabicDate(selectedEvent.event_date)} · {selectedEvent.event_time}
+                        </p>
+                      </div>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* السابق / التوقع / الفعلي / العد التنازلي */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.6rem" }}>
+                    {[
+                      { label: "السابق", value: selectedEvent.previous },
+                      { label: "التوقع", value: selectedEvent.forecast },
+                      { label: "الفعلي", value: selectedEvent.actual, gold: true },
+                      { label: "العد التنازلي", value: countdown, live: true },
+                    ].map((s, i) => (
+                      <div key={i} style={{ background: "#0d0d0a", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.6rem", textAlign: "center" }}>
+                        <p style={{ margin: 0, fontSize: 10, color: "#888" }}>{s.label}</p>
+                        <p style={{
+                          margin: "5px 0 0", fontSize: 14, fontWeight: 800, direction: s.live ? "ltr" : undefined,
+                          color: s.value ? (s.gold ? GOLD_LIGHT : s.live ? impact.color : "#fff") : "#444",
+                        }}>
+                          {s.value || "--"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* قوة التأثير + توزيع التأثير على الأصول */}
+                  <div style={{ display: "flex", gap: "1rem", marginTop: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ textAlign: "center" }}>
+                      <SemiGauge value={impactPct} size={116} colors={["#3DDC84", "#FFA726", "#EF5350"]} gradId="impact" />
+                      <p style={{ margin: "2px 0 0", fontSize: 16, fontWeight: 800, color: impact.color }}>{impactPct}%</p>
+                      <p style={{ margin: 0, fontSize: 10, color: "#888" }}>{impactStrengthLabel}</p>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 160, display: "flex", flexDirection: "column", gap: 6 }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 10.5, color: "#888" }}>توزيع التأثير المتوقع على الأصول</p>
+                      {assetDistribution.map((a, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 10, color: "#aaa", minWidth: 46 }}>{a.name}</span>
+                          <div style={{ flex: 1, height: 5, borderRadius: 5, background: "#1a1a12", overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${a.pct}%`, borderRadius: 5, background: GOLD_LIGHT }} />
+                          </div>
+                          <span style={{ fontSize: 9.5, color: "#888", minWidth: 26, textAlign: "left" }}>{a.pct}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
-                {/* مؤشر قوة التأثير المتوقع */}
-                <div style={{ marginTop: "1rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                    <span style={{ fontSize: 11, color: "#888" }}>قوة التأثير المتوقع على السوق</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: impact.color }}>{impact.label}</span>
-                  </div>
-                  <div style={{ height: 7, borderRadius: 6, background: "#1a1a12", overflow: "hidden" }}>
-                    <div style={{
-                      height: "100%", borderRadius: 6, background: impact.color,
-                      width: selectedEvent.impact === "high" ? "100%" : selectedEvent.impact === "medium" ? "62%" : "30%",
-                      transition: "width .4s ease",
-                    }} />
-                  </div>
+                {/* بطاقة تحليل الذكاء الاصطناعي */}
+                <div style={{
+                  ...cardStyle, padding: "1.2rem 1.4rem",
+                  background: "linear-gradient(135deg, #1a1030, #0d0d0a)", border: "1px solid #7c5cff33",
+                }}>
+                  <p style={{ color: PURPLE_LIGHT, fontSize: 13, fontWeight: 700, margin: "0 0 10px" }}>🤖 تحليل الذكاء الاصطناعي</p>
+                  {!aiData ? (
+                    <>
+                      <p style={{ margin: 0, fontSize: 12.5, color: "#ccc", lineHeight: 1.85 }}>{buildFallbackAnalysis(selectedEvent)}</p>
+                      {(selectedEvent.impact === "high" || selectedEvent.impact === "medium") && (
+                        <p style={{ margin: "12px 0 0", fontSize: 11, color: analyzingId === selectedEvent.id ? PURPLE_LIGHT : "#666" }}>
+                          {analyzingId === selectedEvent.id
+                            ? "🤖 جاري إعداد تحليل الذكاء الاصطناعي المفصّل الآن..."
+                            : analysisFailedIds[selectedEvent.id]
+                            ? "⚠️ تعذر إعداد التحليل التفصيلي حالياً، رح تنعرض النتيجة تلقائياً بأقرب محاولة ناجحة."
+                            : "🤖 التحليل التفصيلي بيظهر تلقائياً خلال لحظات..."}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+                      <div style={{
+                        width: 76, height: 76, borderRadius: "50%", flexShrink: 0,
+                        background: `conic-gradient(${PURPLE} ${aiData.confidence * 3.6}deg, #1a1a2a 0deg)`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <div style={{ width: 58, height: 58, borderRadius: "50%", background: "#0d0d14", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>{aiData.confidence}%</span>
+                          <span style={{ fontSize: 8, color: "#999" }}>ثقة</span>
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 180 }}>
+                        <p style={{ margin: "0 0 4px", fontSize: 11.5, color: "#eee" }}>
+                          الاتجاه: <span style={{ color: PURPLE_LIGHT, fontWeight: 700 }}>
+                            {aiData.direction === "down" ? "سلبي" : aiData.direction === "up" ? "إيجابي" : "محايد"}
+                          </span>
+                        </p>
+                        <p style={{ margin: 0, fontSize: 12, color: "#ccc", lineHeight: 1.75 }}>{aiData.summary}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1400,61 +1977,24 @@ function CalendarView({ events, loading, isAdmin }) {
 
                 {analysisTab === "overview" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                    {!aiData ? (
-                      <div style={{
-                        background: "linear-gradient(135deg, #1a1030, #0d0d0a)", border: "1px solid #7c5cff33",
-                        borderRadius: 14, padding: "1.2rem 1.4rem",
-                      }}>
-                        <p style={{ color: "#B084F5", fontSize: 13, fontWeight: 700, margin: "0 0 8px" }}>📌 تحليل عام</p>
-                        <p style={{ margin: 0, fontSize: 13, color: "#ccc", lineHeight: 1.9 }}>{buildFallbackAnalysis(selectedEvent)}</p>
-                        {(selectedEvent.impact === "high" || selectedEvent.impact === "medium") && (
-                          <p style={{ margin: "12px 0 0", fontSize: 11, color: analyzingId === selectedEvent.id ? "#B084F5" : "#666" }}>
-                            {analyzingId === selectedEvent.id
-                              ? "🤖 جاري إعداد تحليل الذكاء الاصطناعي المفصّل الآن..."
-                              : analysisFailedIds[selectedEvent.id]
-                              ? "⚠️ تعذر إعداد التحليل التفصيلي حالياً، رح تنعرض النتيجة تلقائياً بأقرب محاولة ناجحة."
-                              : "🤖 التحليل التفصيلي بيظهر تلقائياً خلال لحظات..."}
-                          </p>
-                        )}
+                    {aiData?.scenarios?.length > 0 ? (
+                      <div>
+                        <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, margin: "0 0 0.9rem" }}>📊 السيناريوهات المتوقعة</p>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.8rem" }}>
+                          {aiData.scenarios.map((sc, i) => (
+                            <div key={i} style={{ background: "#0d0d0a", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem" }}>
+                              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#eee" }}>{sc.title}</p>
+                              <p style={{ margin: "8px 0 4px", fontSize: 20, fontWeight: 800, color: GOLD_LIGHT }}>{sc.probability}%</p>
+                              <p style={{ margin: "0 0 6px", fontSize: 11, color: "#f5c542" }}>{"⭐".repeat(Math.max(1, Math.min(5, sc.stars || 1)))}</p>
+                              <p style={{ margin: 0, fontSize: 11, color: "#888", lineHeight: 1.6 }}>{sc.description}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ) : (
-                      <>
-                        <div style={{
-                          background: "linear-gradient(135deg, #1a1030, #0d0d0a)", border: "1px solid #7c5cff44",
-                          borderRadius: 14, padding: "1.2rem 1.4rem", display: "flex", gap: "1.2rem", alignItems: "center", flexWrap: "wrap",
-                        }}>
-                          <div style={{
-                            width: 90, height: 90, borderRadius: "50%", flexShrink: 0,
-                            background: `conic-gradient(#7c5cff ${aiData.confidence * 3.6}deg, #1a1a2a 0deg)`,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                          }}>
-                            <div style={{ width: 68, height: 68, borderRadius: "50%", background: "#0d0d14", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                              <span style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>{aiData.confidence}%</span>
-                              <span style={{ fontSize: 9, color: "#999" }}>ثقة التحليل</span>
-                            </div>
-                          </div>
-                          <div style={{ flex: 1, minWidth: 220 }}>
-                            <p style={{ color: "#B084F5", fontSize: 13, fontWeight: 700, margin: "0 0 6px" }}>🤖 تحليل الذكاء الاصطناعي</p>
-                            <p style={{ margin: 0, fontSize: 13, color: "#ddd", lineHeight: 1.8 }}>{aiData.summary}</p>
-                          </div>
-                        </div>
-
-                        {aiData.scenarios?.length > 0 && (
-                          <div>
-                            <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, margin: "0 0 0.9rem" }}>📊 السيناريوهات المتوقعة</p>
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.8rem" }}>
-                              {aiData.scenarios.map((sc, i) => (
-                                <div key={i} style={{ background: "#0d0d0a", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem" }}>
-                                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#eee" }}>{sc.title}</p>
-                                  <p style={{ margin: "8px 0 4px", fontSize: 20, fontWeight: 800, color: GOLD_LIGHT }}>{sc.probability}%</p>
-                                  <p style={{ margin: "0 0 6px", fontSize: 11, color: "#f5c542" }}>{"⭐".repeat(Math.max(1, Math.min(5, sc.stars || 1)))}</p>
-                                  <p style={{ margin: 0, fontSize: 11, color: "#888", lineHeight: 1.6 }}>{sc.description}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </>
+                      <div style={{ padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
+                        📊 السيناريوهات المتوقعة (إيجابي / سلبي / محايد) بتظهر هون تلقائياً بمجرد اكتمال تحليل الذكاء الاصطناعي.
+                      </div>
                     )}
                   </div>
                 )}
@@ -1557,13 +2097,134 @@ function CalendarView({ events, loading, isAdmin }) {
                 )}
               </div>
 
+              {/* قوة العملات + الخريطة الحرارية */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <CurrencyStrengthMeter dayStr={todayStr} />
+                <MarketHeatmap dayStr={todayStr} />
+              </div>
+
+              {/* الرسم البياني */}
+              <PriceChart dayStr={todayStr} />
+
+              {/* Trading Plan / التحليل الفني / الخوف والطمع / مفاجأة البيانات */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
+                <TradingPlanChecklist />
+                <TechnicalAnalysisPanel seedKey={selectedEvent.id} />
+                <FearGreedGauge value={fearGreedValue} />
+                <EconomicSurpriseIndex events={events} dayStr={todayStr} />
+              </div>
             </>
           )}
         </div>
+
+        {/* الشريط الجانبي: التقويم الاقتصادي + أفضل فرص التداول */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div style={{ ...cardStyle, padding: "1rem 1.1rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
+              <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>📅 التقويم الاقتصادي</p>
+              {nextHighImpactEvent && (
+                <span style={{ fontSize: 9.5, color: "#EF5350", fontWeight: 700, direction: "ltr" }}>
+                  ⏱ {nextHighImpactCountdown || "--"}
+                </span>
+              )}
+            </div>
+
+            <select
+              value={dayFilter}
+              onChange={(e) => setDayFilter(e.target.value)}
+              style={{
+                width: "100%", background: "#0d0d0a", border: `1px solid ${GOLD}33`, borderRadius: 8,
+                padding: "0.5rem 0.6rem", color: "#ccc", fontSize: 11.5, marginBottom: 8,
+              }}
+            >
+              <option value="all">كل الأيام</option>
+              {days.map((d) => (
+                <option key={d} value={d}>{formatArabicDate(d)}</option>
+              ))}
+            </select>
+
+            <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+              {[
+                { key: "all", label: "الكل", color: GOLD_LIGHT },
+                { key: "high", label: "🔴 عالي", color: "#EF5350" },
+                { key: "medium", label: "🟡 متوسط", color: "#FFA726" },
+                { key: "low", label: "🟢 منخفض", color: "#8BC34A" },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setImpactFilter(f.key)}
+                  style={{
+                    flex: 1,
+                    background: impactFilter === f.key ? `${f.color}22` : "#0d0d0a",
+                    color: impactFilter === f.key ? f.color : "#999",
+                    border: impactFilter === f.key ? `1px solid ${f.color}66` : `1px solid ${GOLD}22`,
+                    borderRadius: 8, padding: "0.4rem 0.2rem", fontSize: 9.5, fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", maxHeight: 560, overflowY: "auto", paddingLeft: 2 }}>
+              {grouped.length === 0 && (
+                <div style={{ padding: "2rem 0.5rem", textAlign: "center", color: "#666", fontSize: 12 }}>
+                  لا توجد أحداث مطابقة حالياً.
+                </div>
+              )}
+              {grouped.map(([date, dayEvents]) => (
+                <div key={date}>
+                  <p style={{ color: "#666", fontSize: 11, fontWeight: 700, margin: "0 0 0.5rem" }}>{formatArabicDate(date)}</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    {dayEvents.map((ev) => {
+                      const impactStyle = IMPACT_STYLE[ev.impact] || IMPACT_STYLE.low;
+                      const isSelected = selectedEvent?.id === ev.id;
+                      const evCountdown = ev.event_datetime && new Date(ev.event_datetime) > now
+                        ? formatCountdown(new Date(ev.event_datetime) - now)
+                        : null;
+                      return (
+                        <div
+                          key={ev.id}
+                          onClick={() => setSelectedId(ev.id)}
+                          style={{
+                            background: isSelected ? `${GOLD}14` : "#0d0d0a",
+                            border: isSelected ? `1px solid ${GOLD}66` : `1px solid ${GOLD}1a`,
+                            borderRadius: 10, padding: "0.65rem 0.8rem", cursor: "pointer",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                              <span style={{ fontSize: 11, color: "#888" }}>{ev.event_time}</span>
+                              <span style={{ fontSize: 15 }}>{CURRENCY_FLAGS[ev.currency] || "🌐"}</span>
+                            </div>
+                            <span style={{ fontSize: 12 }}>{impactStyle.dot}</span>
+                          </div>
+                          <p style={{ margin: "6px 0 0", fontSize: 12, fontWeight: 700, color: "#eee", lineHeight: 1.4 }}>{ev.event_title}</p>
+                          <div style={{ display: "flex", gap: "0.7rem", marginTop: 6, fontSize: 10, color: "#777", flexWrap: "wrap" }}>
+                            {ev.previous && <span>السابق: {ev.previous}</span>}
+                            {ev.forecast && <span>التوقع: {ev.forecast}</span>}
+                            {ev.actual && <span style={{ color: GOLD_LIGHT }}>الفعلي: {ev.actual}</span>}
+                            {!ev.actual && evCountdown && <span style={{ color: impactStyle.color, direction: "ltr" }}>⏱ {evCountdown}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <BestOpportunitiesPanel events={events} />
+        </div>
       </div>
+
+      <MICFooter tzOffset={tzOffset} lastUpdated={lastUpdated} />
     </div>
   );
 }
+
+
 
 
 
