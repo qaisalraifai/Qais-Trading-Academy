@@ -98,6 +98,9 @@ export default function PaymentPage() {
         <p style={styles.note}>
           بعد $300 رسوم التسجيل، بينسحب تلقائياً <strong style={{ color: "#D4AF37" }}>$100 كل شهر</strong> من نفس البطاقة لحد ما تلغي الاشتراك.
         </p>
+        <p style={styles.taxNote}>
+          الأسعار المعروضة قابلة لتطبيق ضرائب حسب موقعك — بيتم احتسابها وعرضها بوضوح قبل إتمام الدفع.
+        </p>
       </div>
 
       <p style={styles.footer}>🔒 جميع المدفوعات مؤمنة عبر Paddle · يمكنك الإلغاء بأي وقت</p>
@@ -177,6 +180,7 @@ const styles = {
     minHeight: "450px",
   },
   note: { color: "#555", fontSize: "0.8rem", textAlign: "center", lineHeight: 1.6 },
+  taxNote: { color: "#3a3a3a", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5, marginTop: "-0.75rem" },
   footer: { color: "#333", fontSize: "0.8rem", marginTop: "1.5rem" },
   adminLink: {
     position: "fixed",

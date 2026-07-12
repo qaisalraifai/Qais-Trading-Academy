@@ -176,6 +176,45 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Pricing */}
+      <section style={styles.section} id="pricing">
+        <Reveal><p style={styles.eyebrow}>الأسعار</p></Reveal>
+        <Reveal delay={0.1}><h2 style={styles.sectionTitle}>سعر واضح، بدون مفاجآت</h2></Reveal>
+
+        <Reveal delay={0.2}>
+          <div style={styles.priceCard}>
+            <h3 style={styles.priceCardTitle}>عضوية Qais Trading Academy</h3>
+            <div style={styles.priceRow}>
+              <span style={styles.priceCurrency}>$</span>
+              <span style={styles.priceNum}>300</span>
+              <span style={styles.pricePeriod}>عند التسجيل</span>
+            </div>
+            <p style={styles.priceRenewal}>ثم <strong style={{ color: gold }}>$100</strong> شهرياً بشكل تلقائي لحد ما تلغي الاشتراك</p>
+
+            <ul style={styles.priceFeatures}>
+              {[
+                "وصول فوري لجميع المحاضرات المسجلة والمباشرة",
+                "عضوية Discord الحصرية",
+                "تدريب 6 أشهر على حساب ديمو",
+                "دعم مباشر من المدرب",
+              ].map((f, i) => (
+                <li key={i} style={styles.priceFeatureItem}>
+                  <span style={styles.featureIcon}>◆</span> {f}
+                </li>
+              ))}
+            </ul>
+
+            <Link href="/signup" style={{ ...styles.btnPrimary, width: "100%", textAlign: "center", boxSizing: "border-box" }}>
+              اشترك الآن — $300
+            </Link>
+
+            <p style={styles.priceTaxNote}>
+              الأسعار بالدولار الأمريكي (USD) وقابلة لتطبيق ضرائب حسب موقعك — بيتم احتسابها وعرضها بشكل واضح قبل إتمام الدفع عند الـ Checkout.
+            </p>
+          </div>
+        </Reveal>
+      </section>
+
       {/* CTA */}
       <section style={styles.ctaSection}>
         <GlowOrb size="500px" color="#C9A24B" blur="100px" top="50%" left="50%" opacity={0.1} />
@@ -253,6 +292,29 @@ const styles = {
   cardCode: { fontFamily: "'JetBrains Mono', monospace", color: textMuted, fontSize: "0.72rem", letterSpacing: "1px" },
   cardTitle: { fontSize: "1.15rem", color: gold, margin: "0.75rem 0", fontWeight: 700 },
   cardDesc: { color: textMuted, fontSize: "0.9rem", lineHeight: 1.75 },
+
+  priceCard: {
+    backgroundColor: cardBg,
+    border: `1px solid ${goldDim}66`,
+    borderRadius: "10px",
+    padding: "2.75rem 2.5rem",
+    maxWidth: "440px",
+    margin: "0 auto",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "1.25rem",
+    textAlign: "center",
+  },
+  priceCardTitle: { fontSize: "1.15rem", fontWeight: 700, color: textSoft, margin: 0 },
+  priceRow: { display: "flex", alignItems: "baseline", gap: "0.35rem", justifyContent: "center" },
+  priceCurrency: { color: gold, fontSize: "1.3rem" },
+  priceNum: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "3.2rem", fontWeight: 700, lineHeight: 1 },
+  pricePeriod: { color: textMuted, fontSize: "0.85rem" },
+  priceRenewal: { color: textMuted, fontSize: "0.88rem", margin: 0 },
+  priceFeatures: { listStyle: "none", padding: 0, margin: "0.5rem 0", width: "100%", display: "flex", flexDirection: "column", gap: "0.65rem" },
+  priceFeatureItem: { color: textMuted, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "flex-start" },
+  priceTaxNote: { color: "#555", fontSize: "0.75rem", lineHeight: 1.6, margin: 0 },
 
   featuresSection: { backgroundColor: "#080808", padding: "5rem 3rem", borderTop: "1px solid #111", borderBottom: "1px solid #111" },
   featuresInner: { maxWidth: "900px", margin: "0 auto", display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "4rem", alignItems: "center" },

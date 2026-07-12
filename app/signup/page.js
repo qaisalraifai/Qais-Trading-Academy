@@ -214,8 +214,10 @@ useEffect(() => {
             <div style={s.priceRow}>
               <span style={s.priceNum}>300</span>
               <span style={s.priceCurrency}>USD</span>
+              <span style={s.pricePeriod}>عند التسجيل</span>
             </div>
-            <p style={s.priceNote}>* التجديد الشهري بعد انتهاء الاشتراك: $100 فقط</p>
+            <p style={s.priceNote}>ثم $100 شهرياً بشكل تلقائي لحد ما تلغي الاشتراك</p>
+            <p style={s.priceTaxNote}>الأسعار قابلة لتطبيق ضرائب حسب موقعك، بيتم احتسابها وعرضها بوضوح عند الدفع.</p>
           </div>
         </Reveal>
       </section>
@@ -309,6 +311,8 @@ const s = {
   priceNum: { fontFamily: "'JetBrains Mono', monospace", fontSize: "3.5rem", fontWeight: 700, color: gold },
   priceCurrency: { color: "#888", fontSize: "1.1rem" },
   priceNote: { color: "#444", fontSize: "0.78rem" },
+  pricePeriod: { color: "#666", fontSize: "0.85rem" },
+  priceTaxNote: { color: "#3a3a3a", fontSize: "0.7rem", marginTop: "0.5rem", lineHeight: 1.5 },
 
   formSection: { position: "relative", zIndex: 1, padding: "3rem", display: "flex", justifyContent: "center" },
   card: { backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: "8px", padding: "3rem 2.5rem", width: "100%", maxWidth: "500px" },
