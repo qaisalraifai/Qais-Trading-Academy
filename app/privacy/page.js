@@ -47,7 +47,7 @@ const sectionsAr = [
   {
     heading: "7. التواصل",
     body: [
-      "لأي استفسار متعلق بخصوصيتك أو بياناتك، يمكنكم التواصل معنا عبر قنوات الدعم المتاحة على المنصة أو عبر Discord.",
+      "لأي استفسار متعلق بخصوصيتك أو بياناتك، يمكنكم التواصل معنا عبر البريد الإلكتروني qaisalraifai@gmail.com أو عبر قنوات الدعم المتاحة على المنصة أو Discord.",
     ],
   },
 ];
@@ -94,7 +94,7 @@ const sectionsEn = [
   {
     heading: "7. Contact",
     body: [
-      "For any questions regarding your privacy or data, please reach out via the support channels available on the Platform or through Discord.",
+      "For any questions regarding your privacy or data, please reach out via email at qaisalraifai@gmail.com or through the support channels available on the Platform or Discord.",
     ],
   },
 ];
