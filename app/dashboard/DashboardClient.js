@@ -977,37 +977,6 @@ function formatCountdown(diffMs) {
 const PURPLE = "#7c5cff";
 const PURPLE_LIGHT = "#B084F5";
 
-/* ============================================================
-   أدوات مساعدة لتوليد بيانات تجريبية ثابتة (Deterministic Mock Data)
-   تُستخدم فقط للعناصر التي لا يوجد لها مصدر بيانات حي بعد
-   (قوة العملات، الخريطة الحرارية، الرسم البياني، الخوف والطمع...)
-   القيم ثابتة لكل يوم/مفتاح ولا تتغير عشوائياً بكل تحديث للواجهة.
-============================================================ */
-function hashSeed(str) {
-  let h = 0;
-  const s = String(str || "x");
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h || 1;
-}
-function seededRand(seed) {
-  let s = seed % 2147483647;
-  if (s <= 0) s += 2147483646;
-  return function () {
-    s = (s * 16807) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
-function genSeries(seed, len, base, spread) {
-  const rand = seededRand(seed);
-  let v = base;
-  const out = [];
-  for (let i = 0; i < len; i++) {
-    v += (rand() - 0.48) * spread;
-    out.push(Math.round(v * 100) / 100);
-  }
-  return out;
-}
-
 /* Mini Sparkline */
 function Sparkline({ data, color, width = 60, height = 24 }) {
   if (!data || data.length < 2) return null;
@@ -1065,234 +1034,367 @@ function SemiGauge({ value, size = 150, colors, gradId }) {
 
 const CCY_LIST = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD"];
 
-/* خريطة قوة العملات */
-function CurrencyStrengthMeter({ dayStr }) {
+/* صف تحميل/خطأ موحّد لبطاقات البيانات الحية */
+function LiveCardStatus({ label }) {
+  return <p style={{ margin: 0, fontSize: 11, color: "#666", textAlign: "center", padding: "0.6rem 0" }}>{label}</p>;
+}
+
+/* خريطة قوة العملات — بيانات حقيقية محسوبة من أزواج الفوركس الفعلية عبر Yahoo Finance */
+function CurrencyStrengthMeter({ snapshot, loading, error }) {
   const values = useMemo(() => {
-    return CCY_LIST.map((c) => {
-      const rand = seededRand(hashSeed(dayStr + c));
-      return { code: c, value: Math.round(28 + rand() * 68) };
-    }).sort((a, b) => b.value - a.value);
-  }, [dayStr]);
+    if (!snapshot?.currencies) return [];
+    return CCY_LIST.map((c) => ({ code: c, value: snapshot.currencies[c] }))
+      .filter((v) => v.value != null)
+      .sort((a, b) => b.value - a.value);
+  }, [snapshot]);
+
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
-      <p style={{ margin: "0 0 0.9rem", fontSize: 13, fontWeight: 700, color: "#fff" }}>💱 خريطة قوة العملات</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-        {values.map((v) => {
-          const color = v.value >= 68 ? "#3DDC84" : v.value >= 42 ? GOLD_LIGHT : "#EF5350";
-          return (
-            <div key={v.code}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                <span style={{ fontSize: 11.5, color: "#ccc", fontWeight: 700 }}>
-                  {CURRENCY_FLAGS[v.code] || "🌐"} {v.code}
-                </span>
-                <span style={{ fontSize: 11.5, color, fontWeight: 700 }}>{v.value}%</span>
-              </div>
-              <div style={{ height: 6, borderRadius: 6, background: "#1a1a12", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${v.value}%`, background: color, borderRadius: 6 }} />
-              </div>
-            </div>
-          );
-        })}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>💱 خريطة قوة العملات</p>
+        <span style={{ fontSize: 8.5, color: "#555" }}>Yahoo Finance</span>
       </div>
+      {loading && !snapshot ? (
+        <LiveCardStatus label="⏳ جاري تحميل بيانات السوق الحية..." />
+      ) : error && values.length === 0 ? (
+        <LiveCardStatus label="⚠️ تعذر تحميل البيانات الحية حالياً" />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+          {values.map((v) => {
+            const color = v.value >= 68 ? "#3DDC84" : v.value >= 42 ? GOLD_LIGHT : "#EF5350";
+            return (
+              <div key={v.code}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                  <span style={{ fontSize: 11.5, color: "#ccc", fontWeight: 700 }}>
+                    {CURRENCY_FLAGS[v.code] || "🌐"} {v.code}
+                  </span>
+                  <span style={{ fontSize: 11.5, color, fontWeight: 700 }}>{v.value}%</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 6, background: "#1a1a12", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${v.value}%`, background: color, borderRadius: 6 }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 const HEATMAP_SECTORS = ["Forex", "Stocks", "Commodities", "Bonds", "Crypto", "Indices"];
+const HEATMAP_SYMBOL_LABEL = { Forex: "DXY", Stocks: "S&P 500", Commodities: "Gold", Bonds: "TLT", Crypto: "Bitcoin", Indices: "Nasdaq" };
 
-/* خريطة الحرارة للأسواق */
-function MarketHeatmap({ dayStr }) {
-  const values = useMemo(
-    () =>
-      HEATMAP_SECTORS.map((s) => {
-        const rand = seededRand(hashSeed(dayStr + s));
-        const pct = Math.round((rand() - 0.42) * 400) / 100;
-        return { sector: s, pct };
-      }),
-    [dayStr]
-  );
+/* خريطة الحرارة للأسواق — نسبة تغيّر يومية حقيقية لرمز ممثّل بكل قطاع (Yahoo Finance) */
+function MarketHeatmap({ snapshot, loading, error }) {
+  const values = snapshot?.heatmap || [];
+  const hasData = values.some((v) => v.pct != null);
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
-      <p style={{ margin: "0 0 0.9rem", fontSize: 13, fontWeight: 700, color: "#fff" }}>🗺️ خريطة الحرارة للأسواق</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.55rem" }}>
-        {values.map((v) => {
-          const up = v.pct >= 0;
-          const bg = up ? `rgba(61,220,132,${Math.min(0.45, 0.15 + Math.abs(v.pct) / 8)})` : `rgba(239,83,80,${Math.min(0.45, 0.15 + Math.abs(v.pct) / 8)})`;
-          const border = up ? "#3DDC8455" : "#EF535055";
-          return (
-            <div key={v.sector} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "0.7rem 0.4rem", textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: 10.5, color: "#ddd", fontWeight: 600 }}>{v.sector}</p>
-              <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 800, color: up ? "#3DDC84" : "#EF5350", direction: "ltr" }}>
-                {up ? "+" : ""}
-                {v.pct}%
-              </p>
-            </div>
-          );
-        })}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>🗺️ خريطة الحرارة للأسواق</p>
+        <span style={{ fontSize: 8.5, color: "#555" }}>Yahoo Finance</span>
       </div>
+      {loading && !snapshot ? (
+        <LiveCardStatus label="⏳ جاري تحميل بيانات السوق الحية..." />
+      ) : error && !hasData ? (
+        <LiveCardStatus label="⚠️ تعذر تحميل البيانات الحية حالياً" />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.55rem" }}>
+          {HEATMAP_SECTORS.map((sector) => {
+            const v = values.find((x) => x.sector === sector);
+            if (!v || v.pct == null) {
+              return (
+                <div key={sector} style={{ background: "#0d0d0a", border: `1px solid ${GOLD}18`, borderRadius: 10, padding: "0.7rem 0.4rem", textAlign: "center" }}>
+                  <p style={{ margin: 0, fontSize: 10.5, color: "#666", fontWeight: 600 }}>{sector}</p>
+                  <p style={{ margin: "5px 0 0", fontSize: 12, color: "#444" }}>--</p>
+                </div>
+              );
+            }
+            const up = v.pct >= 0;
+            const bg = up ? `rgba(61,220,132,${Math.min(0.45, 0.15 + Math.abs(v.pct) / 8)})` : `rgba(239,83,80,${Math.min(0.45, 0.15 + Math.abs(v.pct) / 8)})`;
+            const border = up ? "#3DDC8455" : "#EF535055";
+            return (
+              <div key={sector} title={HEATMAP_SYMBOL_LABEL[sector]} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "0.7rem 0.4rem", textAlign: "center" }}>
+                <p style={{ margin: 0, fontSize: 10.5, color: "#ddd", fontWeight: 600 }}>{sector}</p>
+                <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 800, color: up ? "#3DDC84" : "#EF5350", direction: "ltr" }}>
+                  {up ? "+" : ""}
+                  {v.pct}%
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 /* رسم بياني لتوقع حركة الدولار مع اختيار الفترة الزمنية */
-function PriceChart({ dayStr }) {
+/* رسم بياني حقيقي لحركة DXY (مؤشر الدولار) من Yahoo Finance + متوسط متحرك SMA(5) حقيقي مشتق من نفس البيانات */
+function PriceChart() {
   const [tf, setTf] = useState("1D");
-  const points = useMemo(() => {
-    const len = tf === "1D" ? 24 : tf === "1W" ? 28 : 30;
-    return genSeries(hashSeed(dayStr + "dxy" + tf), len, 103, 0.55);
-  }, [tf, dayStr]);
-  const forecastPoints = useMemo(
-    () => genSeries(hashSeed(dayStr + "dxy-f" + tf), points.length, points[points.length - 1] || 103, 0.5),
-    [tf, dayStr, points]
-  );
+  const [chartData, setChartData] = useState(null);
+  const [chartLoading, setChartLoading] = useState(true);
+  const [chartError, setChartError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setChartLoading(true);
+    setChartError(null);
+    fetch(`/api/market-intelligence?type=chart&tf=${tf}`)
+      .then(async (res) => ({ ok: res.ok, data: await res.json().catch(() => ({})) }))
+      .then(({ ok, data }) => {
+        if (cancelled) return;
+        if (ok && data?.points?.length > 1) setChartData(data);
+        else setChartError(data?.error || "لا تتوفر بيانات كافية حالياً");
+      })
+      .catch(() => {
+        if (!cancelled) setChartError("تعذر الاتصال بمصدر البيانات");
+      })
+      .finally(() => {
+        if (!cancelled) setChartLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tf]);
+
+  const points = chartData?.points?.map((p) => p.close) || [];
+  const sma5 = useMemo(() => {
+    if (points.length < 5) return [];
+    return points.map((_, i) => {
+      if (i < 4) return null;
+      const slice = points.slice(i - 4, i + 1);
+      return slice.reduce((a, b) => a + b, 0) / 5;
+    });
+  }, [points]);
+
   const w = 640;
   const h = 190;
   const pad = 10;
-  const all = [...points, ...forecastPoints];
-  const max = Math.max(...all);
-  const min = Math.min(...all);
+  const validSma = sma5.filter((v) => v != null);
+  const all = [...points, ...validSma];
+  const max = all.length ? Math.max(...all) : 1;
+  const min = all.length ? Math.min(...all) : 0;
   const range = max - min || 1;
-  const toXY = (arr, i) => {
-    const x = pad + (i / (arr.length - 1)) * (w - pad * 2);
-    const y = h - pad - ((arr[i] - min) / range) * (h - pad * 2);
+  const toXY = (i, v) => {
+    const x = pad + (i / Math.max(1, points.length - 1)) * (w - pad * 2);
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
     return [x, y];
   };
+
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.3rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem", flexWrap: "wrap", gap: 8 }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>📈 توقع حركة الدولار الأمريكي (DXY)</p>
-        <div style={{ display: "flex", gap: 4 }}>
-          {["1D", "1W", "1M"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setTf(t)}
-              style={{
-                background: tf === t ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0d0d0a",
-                color: tf === t ? "#000" : "#999",
-                border: tf === t ? "none" : `1px solid ${GOLD}22`,
-                borderRadius: 6,
-                padding: "3px 10px",
-                fontSize: 10.5,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              {t}
-            </button>
-          ))}
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>
+          📈 حركة الدولار الأمريكي (DXY) {chartData?.points?.length ? <span style={{ color: GOLD_LIGHT }}>{points[points.length - 1]?.toFixed(2)}</span> : null}
+        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 8.5, color: "#555" }}>Yahoo Finance</span>
+          <div style={{ display: "flex", gap: 4 }}>
+            {["1D", "1W", "1M"].map((t) => (
+              <button
+                key={t}
+                onClick={() => setTf(t)}
+                style={{
+                  background: tf === t ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0d0d0a",
+                  color: tf === t ? "#000" : "#999",
+                  border: tf === t ? "none" : `1px solid ${GOLD}22`,
+                  borderRadius: 6,
+                  padding: "3px 10px",
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-      <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
-        <polyline points={points.map((_, i) => toXY(points, i).join(",")).join(" ")} fill="none" stroke={GOLD_LIGHT} strokeWidth="2" />
-        <polyline
-          points={forecastPoints.map((_, i) => toXY(forecastPoints, i).join(",")).join(" ")}
-          fill="none"
-          stroke={PURPLE_LIGHT}
-          strokeWidth="2"
-          strokeDasharray="4 3"
-        />
-        <line x1={w / 2} y1={pad} x2={w / 2} y2={h - pad} stroke={`${GOLD}33`} strokeWidth="1" strokeDasharray="2 3" />
-      </svg>
-      <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
-        <span style={{ fontSize: 10.5, color: "#888" }}>
-          <span style={{ color: GOLD_LIGHT }}>●</span> السعر الحالي
-        </span>
-        <span style={{ fontSize: 10.5, color: "#888" }}>
-          <span style={{ color: PURPLE_LIGHT }}>●</span> التوقع المستقبلي
-        </span>
-      </div>
+
+      {chartLoading && !chartData ? (
+        <LiveCardStatus label="⏳ جاري تحميل بيانات DXY الحية..." />
+      ) : chartError && points.length < 2 ? (
+        <LiveCardStatus label={`⚠️ ${chartError}`} />
+      ) : (
+        <>
+          <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+            <polyline points={points.map((v, i) => toXY(i, v).join(",")).join(" ")} fill="none" stroke={GOLD_LIGHT} strokeWidth="2" />
+            <polyline
+              points={sma5.map((v, i) => (v == null ? null : toXY(i, v).join(","))).filter(Boolean).join(" ")}
+              fill="none"
+              stroke={PURPLE_LIGHT}
+              strokeWidth="1.6"
+              strokeDasharray="4 3"
+            />
+          </svg>
+          <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
+            <span style={{ fontSize: 10.5, color: "#888" }}>
+              <span style={{ color: GOLD_LIGHT }}>●</span> السعر الفعلي
+            </span>
+            <span style={{ fontSize: 10.5, color: "#888" }}>
+              <span style={{ color: PURPLE_LIGHT }}>●</span> متوسط متحرك SMA(5)
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-/* مؤشر الخوف والطمع */
-function FearGreedGauge({ value }) {
-  const label = value >= 75 ? "طمع شديد" : value >= 55 ? "طمع" : value >= 45 ? "محايد" : value >= 25 ? "خوف" : "خوف شديد";
-  const color = value >= 75 ? "#22c55e" : value >= 55 ? "#84cc16" : value >= 45 ? "#eab308" : value >= 25 ? "#f59e0b" : "#ef4444";
+/* مؤشر الخوف والطمع — مشتق من مؤشر VIX الحقيقي (Yahoo Finance): كل ما ارتفع VIX زاد الخوف، وكل ما انخفض زاد الطمع */
+function FearGreedGauge({ snapshot, loading, error }) {
+  const value = snapshot?.fearGreed;
+  const label = value == null ? null : value >= 75 ? "طمع شديد" : value >= 55 ? "طمع" : value >= 45 ? "محايد" : value >= 25 ? "خوف" : "خوف شديد";
+  const color = value == null ? "#888" : value >= 75 ? "#22c55e" : value >= 55 ? "#84cc16" : value >= 45 ? "#eab308" : value >= 25 ? "#f59e0b" : "#ef4444";
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center" }}>
-      <p style={{ margin: "0 0 0.4rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>😨 مؤشر الخوف والطمع</p>
-      <SemiGauge value={value} colors={["#ef4444", "#f59e0b", "#eab308", "#84cc16", "#22c55e"]} gradId="fg" />
-      <p style={{ margin: "2px 0 0", fontSize: 22, fontWeight: 800, color }}>{value}</p>
-      <p style={{ margin: "2px 0 0", fontSize: 11.5, color, fontWeight: 700 }}>{label}</p>
-      <p style={{ margin: "8px 0 0", fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
-        يشير إلى تفاؤل نسبي في السوق وقد يكون مبالغاً فيه.
-      </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>😨 مؤشر الخوف والطمع</p>
+        <span style={{ fontSize: 8.5, color: "#555" }}>VIX</span>
+      </div>
+      {loading && !snapshot ? (
+        <LiveCardStatus label="⏳ جاري التحميل..." />
+      ) : value == null ? (
+        <LiveCardStatus label="⚠️ تعذر تحميل مؤشر VIX حالياً" />
+      ) : (
+        <>
+          <SemiGauge value={value} colors={["#ef4444", "#f59e0b", "#eab308", "#84cc16", "#22c55e"]} gradId="fg" />
+          <p style={{ margin: "2px 0 0", fontSize: 22, fontWeight: 800, color }}>{value}</p>
+          <p style={{ margin: "2px 0 0", fontSize: 11.5, color, fontWeight: 700 }}>{label}</p>
+          <p style={{ margin: "8px 0 0", fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
+            محسوب من مؤشر التقلب VIX ({snapshot.vix?.price ?? "--"})، وهو مقياس تقريبي وليس مؤشر CNN الرسمي.
+          </p>
+        </>
+      )}
     </div>
   );
 }
 
-/* مؤشر مفاجأة البيانات الاقتصادية */
-function EconomicSurpriseIndex({ events, dayStr }) {
+/* مؤشر مفاجأة البيانات الاقتصادية — القيمة والاتجاه التاريخي محسوبان من أخبار حقيقية
+   (actual مقابل forecast) المخزّنة فعلياً بقاعدة البيانات، وليست بيانات وهمية */
+function EconomicSurpriseIndex({ events }) {
+  const withActual = useMemo(
+    () => events.filter((e) => e.actual && e.forecast && !isNaN(parseFloat(e.actual)) && !isNaN(parseFloat(e.forecast))),
+    [events]
+  );
   const value = useMemo(() => {
-    const withActual = events.filter(
-      (e) => e.actual && e.forecast && !isNaN(parseFloat(e.actual)) && !isNaN(parseFloat(e.forecast))
-    );
-    if (withActual.length === 0) return 0.42;
+    if (withActual.length === 0) return null;
     const avg = withActual.reduce((acc, e) => acc + (parseFloat(e.actual) - parseFloat(e.forecast)), 0) / withActual.length;
     return Math.round(avg * 100) / 100;
-  }, [events]);
-  const positive = value >= 0;
-  const series = useMemo(() => genSeries(hashSeed(dayStr + "esi"), 12, value, 0.3), [value, dayStr]);
+  }, [withActual]);
+
+  // اتجاه تاريخي حقيقي: متوسط المفاجأة لكل يوم فيه أخبار actual، مرتب زمنياً
+  const series = useMemo(() => {
+    const byDate = new Map();
+    withActual.forEach((e) => {
+      const diff = parseFloat(e.actual) - parseFloat(e.forecast);
+      if (!byDate.has(e.event_date)) byDate.set(e.event_date, []);
+      byDate.get(e.event_date).push(diff);
+    });
+    return Array.from(byDate.entries())
+      .sort((a, b) => (a[0] > b[0] ? 1 : -1))
+      .map(([, diffs]) => diffs.reduce((a, b) => a + b, 0) / diffs.length);
+  }, [withActual]);
+
+  const positive = value != null && value >= 0;
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
       <p style={{ margin: "0 0 0.4rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>📊 مفاجأة البيانات الاقتصادية</p>
-      <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: positive ? "#3DDC84" : "#EF5350", direction: "ltr" }}>
-        {positive ? "+" : ""}
-        {value}
-      </p>
-      <div style={{ margin: "8px 0" }}>
-        <Sparkline data={series} color={positive ? "#3DDC84" : "#EF5350"} width={140} height={34} />
-      </div>
-      <p style={{ margin: 0, fontSize: 10.5, color: "#888", lineHeight: 1.6 }}>
-        {positive
-          ? "البيانات الاقتصادية الأخيرة جاءت أعلى من التوقعات، ما يدعم الدولار نسبياً."
-          : "البيانات الاقتصادية الأخيرة جاءت أقل من التوقعات، ما يشكّل ضغطاً على الدولار."}
-      </p>
+      {value == null ? (
+        <LiveCardStatus label="لا توجد أخبار صدر لها رقم فعلي بعد ضمن النطاق المعروض" />
+      ) : (
+        <>
+          <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: positive ? "#3DDC84" : "#EF5350", direction: "ltr" }}>
+            {positive ? "+" : ""}
+            {value}
+          </p>
+          {series.length >= 2 && (
+            <div style={{ margin: "8px 0" }}>
+              <Sparkline data={series} color={positive ? "#3DDC84" : "#EF5350"} width={140} height={34} />
+            </div>
+          )}
+          <p style={{ margin: 0, fontSize: 10.5, color: "#888", lineHeight: 1.6 }}>
+            {positive
+              ? "البيانات الاقتصادية اللي صدرت جاءت بمعدّل أعلى من التوقعات، ما يدعم الدولار نسبياً."
+              : "البيانات الاقتصادية اللي صدرت جاءت بمعدّل أقل من التوقعات، ما يشكّل ضغطاً على الدولار."}
+          </p>
+        </>
+      )}
     </div>
   );
 }
 
-/* لوحة التحليل الفني */
-function TechnicalAnalysisPanel({ seedKey }) {
-  const data = useMemo(() => {
-    const rand = seededRand(hashSeed(seedKey || "tech"));
-    const rsi = Math.round(35 + rand() * 45);
-    const macd = rand() > 0.5 ? "Bullish" : "Bearish";
-    const emaUp = rand() > 0.45;
-    const trend = rsi > 60 ? "Strong Uptrend" : rsi < 40 ? "Strong Downtrend" : "Sideways";
-    const support = (100 + rand() * 3).toFixed(2);
-    const resistance = (Number(support) + 1 + rand() * 1.5).toFixed(2);
-    return { rsi, macd, emaUp, trend, support, resistance };
-  }, [seedKey]);
-  const rows = [
-    { label: "RSI (14)", value: data.rsi, color: data.rsi > 70 ? "#EF5350" : data.rsi < 30 ? "#3DDC84" : "#eee" },
-    { label: "MACD", value: data.macd, color: data.macd === "Bullish" ? "#3DDC84" : "#EF5350" },
-    { label: "EMA 20", value: data.emaUp ? "فوق EMA 50" : "تحت EMA 50", color: data.emaUp ? "#3DDC84" : "#EF5350" },
-    { label: "الاتجاه العام", value: data.trend, color: GOLD_LIGHT },
-    { label: "الدعم", value: data.support, color: "#4FA0F5" },
-    { label: "المقاومة", value: data.resistance, color: "#EF5350" },
+/* لوحة التحليل الفني — مؤشرات RSI/MACD/EMA/دعم/مقاومة محسوبة فعلياً من شموع يومية
+   حقيقية (Yahoo Finance) للرمز المرتبط بعملة الخبر المختار */
+function TechnicalAnalysisPanel({ currency }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetch(`/api/market-intelligence?type=technical&currency=${encodeURIComponent(currency || "USD")}`)
+      .then(async (res) => ({ ok: res.ok, data: await res.json().catch(() => ({})) }))
+      .then(({ ok, data: d }) => {
+        if (cancelled) return;
+        if (ok) setData(d);
+        else setError(d?.error || "تعذر حساب التحليل الفني");
+      })
+      .catch(() => {
+        if (!cancelled) setError("تعذر الاتصال بمصدر البيانات");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currency]);
+
+  const rows = data && [
+    { label: "RSI (14)", value: data.rsi ?? "--", color: data.rsi > 70 ? "#EF5350" : data.rsi < 30 ? "#3DDC84" : "#eee" },
+    { label: "MACD", value: data.macd || "--", color: data.macd === "Bullish" ? "#3DDC84" : "#EF5350" },
+    { label: "EMA 20", value: data.emaUp == null ? "--" : data.emaUp ? "فوق EMA 50" : "تحت EMA 50", color: data.emaUp ? "#3DDC84" : "#EF5350" },
+    { label: "الاتجاه العام", value: data.trend || "--", color: GOLD_LIGHT },
+    { label: "الدعم", value: data.support ?? "--", color: "#4FA0F5" },
+    { label: "المقاومة", value: data.resistance ?? "--", color: "#EF5350" },
   ];
+
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
-      <p style={{ margin: "0 0 0.7rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>🎯 التحليل الفني</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-        {rows.map((r, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: 11.5,
-              borderBottom: i < rows.length - 1 ? "1px solid #1a1a0f" : "none",
-              paddingBottom: 5,
-            }}
-          >
-            <span style={{ color: "#999" }}>{r.label}</span>
-            <span style={{ color: r.color, fontWeight: 700 }}>{r.value}</span>
-          </div>
-        ))}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.7rem" }}>
+        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>🎯 التحليل الفني ({data?.symbol || currency})</p>
+        <span style={{ fontSize: 8.5, color: "#555" }}>يومي · Yahoo Finance</span>
       </div>
+      {loading && !data ? (
+        <LiveCardStatus label="⏳ جاري حساب المؤشرات..." />
+      ) : error && !data ? (
+        <LiveCardStatus label={`⚠️ ${error}`} />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {rows.map((r, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 11.5,
+                borderBottom: i < rows.length - 1 ? "1px solid #1a1a0f" : "none",
+                paddingBottom: 5,
+              }}
+            >
+              <span style={{ color: "#999" }}>{r.label}</span>
+              <span style={{ color: r.color, fontWeight: 700 }}>{r.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1340,19 +1442,38 @@ function TradingPlanChecklist() {
   );
 }
 
-const OPPORTUNITY_ASSETS = ["EURUSD", "XAUUSD", "NAS100", "US30", "GBPUSD", "USDJPY"];
+const CCY_ASSET_LABEL = { USD: "DXY", EUR: "EURUSD", GBP: "GBPUSD", JPY: "USDJPY", AUD: "AUDUSD", CAD: "USDCAD", CHF: "USDCHF", NZD: "NZDUSD" };
 
-/* أفضل فرص التداول */
-function BestOpportunitiesPanel({ events }) {
+/* أفضل فرص التداول — الإشارة (شراء/بيع) والثقة مشتقّتان من قوة العملة الفعلية
+   (نفس بيانات خريطة قوة العملات الحية) للأخبار عالية/متوسطة التأثير اليوم،
+   وليست عشوائية. إشارة اتجاهية تقريبية وليست توصية استثمارية. */
+function BestOpportunitiesPanel({ events, snapshot }) {
   const opportunities = useMemo(() => {
-    const relevant = [...events].filter((e) => e.impact === "high" || e.impact === "medium").slice(0, 4);
-    return relevant.map((e, i) => {
-      const rand = seededRand(hashSeed(String(e.id) + i));
-      const buy = rand() > 0.5;
-      const confidence = Math.round(55 + rand() * 40);
-      return { asset: OPPORTUNITY_ASSETS[i % OPPORTUNITY_ASSETS.length], buy, confidence };
-    });
-  }, [events]);
+    if (!snapshot?.currencies) return [];
+    const relevant = [...events].filter((e) => (e.impact === "high" || e.impact === "medium") && snapshot.currencies[e.currency] != null);
+    const seen = new Set();
+    const out = [];
+    for (const e of relevant) {
+      if (seen.has(e.currency)) continue;
+      seen.add(e.currency);
+      const strength = snapshot.currencies[e.currency];
+      out.push({
+        asset: CCY_ASSET_LABEL[e.currency] || e.currency,
+        buy: strength >= 50,
+        confidence: Math.round(50 + Math.abs(strength - 50)),
+      });
+      if (out.length >= 4) break;
+    }
+    return out;
+  }, [events, snapshot]);
+
+  if (!snapshot) {
+    return (
+      <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center", color: "#666", fontSize: 12 }}>
+        ⏳ جاري تحميل بيانات السوق الحية لاستنتاج الفرص...
+      </div>
+    );
+  }
   if (opportunities.length === 0) {
     return (
       <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center", color: "#666", fontSize: 12 }}>
@@ -1362,7 +1483,10 @@ function BestOpportunitiesPanel({ events }) {
   }
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
-      <p style={{ margin: "0 0 0.8rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>🏆 أفضل فرص التداول</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
+        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>🏆 أفضل فرص التداول</p>
+        <span style={{ fontSize: 8.5, color: "#555" }}>مبني على قوة العملة الحية</span>
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
         {opportunities.map((o, i) => (
           <div
@@ -1403,7 +1527,7 @@ function BestOpportunitiesPanel({ events }) {
           </div>
         ))}
       </div>
-      <p style={{ margin: "10px 0 0", fontSize: 9.5, color: "#555" }}>* ترتيب تقريبي مبني على قوة الأخبار القادمة، وليس توصية استثمارية.</p>
+      <p style={{ margin: "10px 0 0", fontSize: 9.5, color: "#555" }}>* إشارة اتجاهية تقريبية مبنية على قوة حركة العملة الفعلية اليوم، وليست توصية استثمارية.</p>
     </div>
   );
 }
@@ -1534,29 +1658,28 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
 }
 
 /* بطاقات KPI العلوية مع Sparkline */
-function KPICardsRow({ todayStats, watchlistCount, opportunitiesCount, dayStr }) {
+/* بطاقات KPI — كل الأرقام هون حقيقية 100%: محسوبة من أخبار قاعدة البيانات
+   الفعلية لليوم الحالي، وعدد فرص التداول مشتق من نفس منطق BestOpportunitiesPanel
+   (عملات لها أخبار عالية/متوسطة التأثير اليوم وبيانات قوة حية متوفرة لها).
+   ما في Sparkline وهمي هون لأنه ما في مصدر بيانات حقيقي لتاريخ عدد الأخبار. */
+function KPICardsRow({ todayStats, activeCurrenciesCount, opportunitiesCount, opportunitiesReady }) {
   const cards = [
-    { label: "قائمة المراقبة", value: watchlistCount, sub: "أصل مراقب", color: PURPLE_LIGHT, icon: "🎯", series: genSeries(hashSeed(dayStr + "watch"), 8, watchlistCount, 2) },
-    { label: "أخبار منخفضة التأثير", value: todayStats.low, sub: "اليوم", color: "#3DDC84", icon: "🟢", series: genSeries(hashSeed(dayStr + "low"), 8, todayStats.low || 1, 1.5) },
-    { label: "أخبار متوسطة التأثير", value: todayStats.medium, sub: "اليوم", color: "#FFA726", icon: "🟡", series: genSeries(hashSeed(dayStr + "med"), 8, todayStats.medium || 1, 1.5) },
-    { label: "أخبار عالية التأثير", value: todayStats.high, sub: "اليوم", color: "#EF5350", icon: "🔴", series: genSeries(hashSeed(dayStr + "high"), 8, todayStats.high || 1, 1.5) },
-    { label: "فرص التداول", value: opportunitiesCount, sub: "فرصة نشطة", color: GOLD_LIGHT, icon: "💡", series: genSeries(hashSeed(dayStr + "opp"), 8, opportunitiesCount, 1.5) },
-    { label: "أخبار اليوم", value: todayStats.total, sub: `${todayStats.upcoming} متبقية`, color: "#4FA0F5", icon: "🗓️", series: genSeries(hashSeed(dayStr + "today"), 8, todayStats.total || 1, 2) },
+    { label: "عملات نشطة اليوم", value: activeCurrenciesCount, sub: "عملة لها خبر اليوم", color: PURPLE_LIGHT, icon: "🎯" },
+    { label: "أخبار منخفضة التأثير", value: todayStats.low, sub: "اليوم", color: "#3DDC84", icon: "🟢" },
+    { label: "أخبار متوسطة التأثير", value: todayStats.medium, sub: "اليوم", color: "#FFA726", icon: "🟡" },
+    { label: "أخبار عالية التأثير", value: todayStats.high, sub: "اليوم", color: "#EF5350", icon: "🔴" },
+    { label: "فرص التداول", value: opportunitiesReady ? opportunitiesCount : "--", sub: "مبنية على قوة العملة الحية", color: GOLD_LIGHT, icon: "💡" },
+    { label: "أخبار اليوم", value: todayStats.total, sub: `${todayStats.upcoming} متبقية`, color: "#4FA0F5", icon: "🗓️" },
   ];
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "0.7rem", marginBottom: "1.1rem" }}>
       {cards.map((c, i) => (
         <div key={i} style={{ ...cardStyle, padding: "0.85rem 0.9rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <p style={{ margin: 0, fontSize: 10, color: "#888" }}>
-                {c.icon} {c.label}
-              </p>
-              <p style={{ margin: "6px 0 0", fontSize: 21, fontWeight: 800, color: c.color }}>{c.value}</p>
-              <p style={{ margin: "2px 0 0", fontSize: 9.5, color: "#666" }}>{c.sub}</p>
-            </div>
-            <Sparkline data={c.series} color={c.color} width={44} height={26} />
-          </div>
+          <p style={{ margin: 0, fontSize: 10, color: "#888" }}>
+            {c.icon} {c.label}
+          </p>
+          <p style={{ margin: "6px 0 0", fontSize: 21, fontWeight: 800, color: c.color }}>{c.value}</p>
+          <p style={{ margin: "2px 0 0", fontSize: 9.5, color: "#666" }}>{c.sub}</p>
         </div>
       ))}
     </div>
@@ -1610,6 +1733,44 @@ function CalendarView({ events, loading, isAdmin }) {
   const [localAiData, setLocalAiData] = useState({});
   const [analyzingId, setAnalyzingId] = useState(null);
   const [analysisFailedIds, setAnalysisFailedIds] = useState({});
+
+  // لقطة بيانات السوق الحية (قوة العملات + الخريطة الحرارية + VIX/الخوف والطمع)
+  // مصدرها Yahoo Finance عبر /api/market-intelligence — تتحدث تلقائياً كل دقيقتين
+  // وكمان عند الضغط على زر التحديث بالهيدر.
+  const [marketSnapshot, setMarketSnapshot] = useState(null);
+  const [marketSnapshotLoading, setMarketSnapshotLoading] = useState(true);
+  const [marketSnapshotError, setMarketSnapshotError] = useState(null);
+  const [snapshotRefreshTick, setSnapshotRefreshTick] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMarketSnapshotLoading(true);
+    fetch("/api/market-intelligence?type=snapshot")
+      .then(async (res) => ({ ok: res.ok, data: await res.json().catch(() => ({})) }))
+      .then(({ ok, data }) => {
+        if (cancelled) return;
+        if (ok) {
+          setMarketSnapshot(data);
+          setMarketSnapshotError(null);
+        } else {
+          setMarketSnapshotError(data?.error || "تعذر تحميل بيانات السوق");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMarketSnapshotError("تعذر الاتصال بمصدر البيانات");
+      })
+      .finally(() => {
+        if (!cancelled) setMarketSnapshotLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [snapshotRefreshTick]);
+
+  useEffect(() => {
+    const t = setInterval(() => setSnapshotRefreshTick((n) => n + 1), 120000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -1772,13 +1933,20 @@ function CalendarView({ events, loading, isAdmin }) {
     [events, now]
   );
 
-  const watchlistCount = 8;
-  const opportunitiesCount = Math.max(4, todayStats.high + todayStats.medium + 2);
+  // عدد العملات النشطة فعلياً اليوم (لها خبر واحد على الأقل بقاعدة البيانات)
+  const activeCurrenciesCount = useMemo(
+    () => new Set(todayEvents.map((e) => e.currency).filter(Boolean)).size,
+    [todayEvents]
+  );
 
-  const fearGreedValue = useMemo(() => {
-    const rand = seededRand(hashSeed(todayStr + "fg"));
-    return Math.round(40 + rand() * 45);
-  }, [todayStr]);
+  // عدد فرص التداول = نفس منطق BestOpportunitiesPanel بالضبط (عملات لأخبار
+  // عالية/متوسطة التأثير اليوم وموجود لها قوة عملة حقيقية بلقطة السوق الحية)
+  const opportunitiesCount = useMemo(() => {
+    if (!marketSnapshot?.currencies) return 0;
+    const relevant = todayEvents.filter((e) => (e.impact === "high" || e.impact === "medium") && marketSnapshot.currencies[e.currency] != null);
+    return new Set(relevant.map((e) => e.currency)).size;
+  }, [todayEvents, marketSnapshot]);
+  const opportunitiesReady = !!marketSnapshot?.currencies;
 
   function formatArabicDate(dateStr) {
     const d = new Date(dateStr + "T00:00:00");
@@ -1829,11 +1997,19 @@ function CalendarView({ events, loading, isAdmin }) {
         tzOffset={tzOffset}
         setTzOffset={setTzOffset}
         now={now}
-        onRefresh={() => setNow(new Date())}
+        onRefresh={() => {
+          setNow(new Date());
+          setSnapshotRefreshTick((n) => n + 1);
+        }}
         highImpactUpcomingCount={highImpactUpcomingCount}
       />
 
-      <KPICardsRow todayStats={todayStats} watchlistCount={watchlistCount} opportunitiesCount={opportunitiesCount} dayStr={todayStr} />
+      <KPICardsRow
+        todayStats={todayStats}
+        activeCurrenciesCount={activeCurrenciesCount}
+        opportunitiesCount={opportunitiesCount}
+        opportunitiesReady={opportunitiesReady}
+      />
 
       {/* الصف الرئيسي: العمود الرئيسي (الخبر + AI + Tabs + الأدوات) والشريط الجانبي */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "1.1rem", alignItems: "start" }}>
@@ -2101,19 +2277,19 @@ function CalendarView({ events, loading, isAdmin }) {
 
               {/* قوة العملات + الخريطة الحرارية */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <CurrencyStrengthMeter dayStr={todayStr} />
-                <MarketHeatmap dayStr={todayStr} />
+                <CurrencyStrengthMeter snapshot={marketSnapshot} loading={marketSnapshotLoading} error={marketSnapshotError} />
+                <MarketHeatmap snapshot={marketSnapshot} loading={marketSnapshotLoading} error={marketSnapshotError} />
               </div>
 
               {/* الرسم البياني */}
-              <PriceChart dayStr={todayStr} />
+              <PriceChart />
 
               {/* Trading Plan / التحليل الفني / الخوف والطمع / مفاجأة البيانات */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
                 <TradingPlanChecklist />
-                <TechnicalAnalysisPanel seedKey={selectedEvent.id} />
-                <FearGreedGauge value={fearGreedValue} />
-                <EconomicSurpriseIndex events={events} dayStr={todayStr} />
+                <TechnicalAnalysisPanel currency={selectedEvent.currency} />
+                <FearGreedGauge snapshot={marketSnapshot} loading={marketSnapshotLoading} error={marketSnapshotError} />
+                <EconomicSurpriseIndex events={events} />
               </div>
             </>
           )}
@@ -2217,7 +2393,7 @@ function CalendarView({ events, loading, isAdmin }) {
             </div>
           </div>
 
-          <BestOpportunitiesPanel events={events} />
+          <BestOpportunitiesPanel events={todayEvents} snapshot={marketSnapshot} />
         </div>
       </div>
 
