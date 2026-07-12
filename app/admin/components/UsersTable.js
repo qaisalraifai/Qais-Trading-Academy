@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { gold, glass, transition, monoStack, statusColors, planColors, daysLeftColor, timeAgo } from "../styles";
 
 const roleBadge = {
@@ -49,23 +49,56 @@ const actionsList = [
 
 function ActionsMenu({ user, onAction }) {
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
+
+  function toggle() {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const menuWidth = 170;
+      const menuHeight = actionsList.length * 40 + 12;
+      let left = rect.left;
+      let top = rect.bottom + 6;
+      // ما تطلع برا حدود الشاشة يمين/يسار
+      if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
+      if (left < 8) left = 8;
+      // لو ما في مكان تحت الزر، افتحها لفوق بدل ما تنقطع
+      if (top + menuHeight > window.innerHeight - 8) top = rect.top - menuHeight - 6;
+      setCoords({ top, left });
+    }
+    setOpen((o) => !o);
+  }
+
+  // سكّر القائمة لو المستخدم مرّر الجدول أو غيّر حجم الشاشة، حتى ما تضل عالقة بمكان غلط
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
   return (
     <div style={{ position: "relative" }}>
       <button
-        onClick={() => setOpen((o) => !o)}
+        ref={btnRef}
+        onClick={toggle}
         style={{ background: "none", border: "1px solid #222", color: "#999", width: 30, height: 30, borderRadius: 8, cursor: "pointer" }}
       >
         ⚙
       </button>
       {open && (
         <>
-          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 200 }} />
           <div
             style={{
-              position: "absolute",
-              left: 0,
-              top: 36,
-              zIndex: 50,
+              position: "fixed",
+              top: coords.top,
+              left: coords.left,
+              zIndex: 210,
               background: "#0d0d0d",
               border: "1px solid #222",
               borderRadius: 10,
