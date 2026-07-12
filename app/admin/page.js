@@ -298,14 +298,16 @@ export default function AdminPage() {
         <UserDrawer userId={drawerUserId} onClose={() => setDrawerUserId(null)} onAction={handleDrawerAction} fetchDetail={fetchDetail} />
       )}
 
-      <QuickActions
-        users={users}
-        onAddUser={handleAddUser}
-        onNotifyBroadcast={handleNotifyBroadcast}
-        onCreateCoupon={handleCreateCoupon}
-        onExtendUser={handleExtendUser}
-        onDiscountUser={handleDiscountUser}
-      />
+      {!drawerUserId && (
+        <QuickActions
+          users={users}
+          onAddUser={handleAddUser}
+          onNotifyBroadcast={handleNotifyBroadcast}
+          onCreateCoupon={handleCreateCoupon}
+          onExtendUser={handleExtendUser}
+          onDiscountUser={handleDiscountUser}
+        />
+      )}
 
       {toast && (
         <div style={{
