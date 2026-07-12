@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import { createNotification } from "@/lib/notifications";
 
 // ينشئ صف profiles مباشرة بعد supabase.auth.signUp()، باستخدام Service Role
 // (يتجاوز RLS تماماً) — لأنه بلحظة التسجيل المستخدم لسا ممكن يكون بدون
@@ -62,6 +63,30 @@ export async function POST(request) {
       { error: profileError.message },
       { status: 400 }
     );
+  }
+
+  // لو اجى عن طريق رابط تتبّع /r/[code]، منربط النقرة الأصلية بهاد الحساب الجديد
+  // (Conversion Funnel: نقرة → تسجيل) عن طريق cookie الـ click id يلي حطيناها بـ /r/[code].
+  try {
+    const clickId = request.cookies.get("qta_click_id")?.value;
+    if (clickId) {
+      await supabase
+        .from("affiliate_clicks")
+        .update({ converted_user_id: userId, converted_at: new Date().toISOString() })
+        .eq("id", clickId)
+        .is("converted_user_id", null);
+    }
+  } catch (e) {
+    console.error("click conversion link failed:", e.message);
+  }
+
+  if (referredBy) {
+    await createNotification(supabase, referredBy, {
+      type: "referral_joined",
+      title: "👋 عضو جديد بشبكتك",
+      message: `${username.trim()} سجّل حساب عن طريق رابطك — العمولة بتتسجل تلقائياً أول ما يدفع اشتراكه`,
+      link: "/affiliate",
+    });
   }
 
   return NextResponse.json({ success: true });
