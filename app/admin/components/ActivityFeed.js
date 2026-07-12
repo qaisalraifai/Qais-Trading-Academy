@@ -9,6 +9,7 @@ const icons = {
   note: "⚪",
   extended: "🟢",
   discount: "🟡",
+  free_activation: "🎁",
 };
 
 export default function ActivityFeed({ items }) {
