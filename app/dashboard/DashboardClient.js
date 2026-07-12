@@ -478,7 +478,13 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
         </div>
 
         <div style={{ marginTop: "1.4rem", display: "flex", flexDirection: "column", gap: 4, paddingTop: "1.2rem", borderTop: "1px solid #1a1a0a" }}>
-          <Link href="/discord" style={{ textDecoration: "none" }}>
+  <Link href="/affiliate" style={{ textDecoration: "none" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.7rem 0.9rem", color: GOLD, fontSize: 13 }}>
+      <span>🤝</span>
+      <span>برنامج التسويق بالعمولة</span>
+    </div>
+  </Link>
+  <Link href="/discord" style={{ textDecoration: "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.7rem 0.9rem", color: "#5865F2", fontSize: 13 }}>
               <span>🎮</span>
               <span>مجتمع Discord</span>
