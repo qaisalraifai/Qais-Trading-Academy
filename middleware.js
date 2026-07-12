@@ -30,7 +30,7 @@ export async function middleware(request) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const protectedPaths = ["/dashboard", "/lecture", "/course", "/quiz", "/backtest", "/replay", "/discord"];
+  const protectedPaths = ["/dashboard", "/lecture", "/course", "/quiz", "/backtest", "/replay", "/discord", "/affiliate"];
   const isProtected = protectedPaths.some((p) => request.nextUrl.pathname.startsWith(p));
 
   // لو مش مسجل دخول
