@@ -138,8 +138,10 @@ export default function AdminPage() {
       return;
     }
     if (key === "activate_free") {
+      alert(`تجربة: تم استقبال الضغطة لحساب ${user.username}`); // مؤقت للتشخيص — رح نشيله بعدين
       const ok = await callAction(user.id, "activate_free");
       if (ok) { showToast(`تم تفعيل وصول مجاني لـ ${user.username}`); fetchUsers(); fetchStats(); fetchFeed(); }
+      else alert("فشل الطلب — شوف Console"); // مؤقت للتشخيص
       return;
     }
     if (key === "suspend") {
