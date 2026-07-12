@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { gold, glass, transition, monoStack, statusColors, planColors, daysLeftColor, timeAgo } from "../styles";
 
 const roleBadge = {
@@ -38,91 +38,50 @@ function Avatar({ user }) {
 }
 
 const actionsList = [
-  ["view", "👁 عرض"],
-  ["edit", "✏ تعديل"],
-  ["renew", "🔄 تجديد"],
-  ["activate_free", "🎁 تفعيل مجاني"],
-  ["email", "📧 إشعار"],
-  ["suspend", "🚫 إيقاف"],
-  ["delete", "🗑 حذف"],
+  ["view", "👁", "عرض"],
+  ["edit", "✏", "تعديل"],
+  ["renew", "🔄", "تجديد"],
+  ["activate_free", "🎁", "تفعيل مجاني"],
+  ["email", "📧", "إشعار"],
+  ["suspend", "🚫", "إيقاف"],
+  ["delete", "🗑", "حذف"],
 ];
 
-function ActionsMenu({ user, onAction }) {
-  const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState({ top: 0, left: 0 });
-  const btnRef = useRef(null);
-
-  function toggle() {
-    if (!open && btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      const menuWidth = 170;
-      const menuHeight = actionsList.length * 40 + 12;
-      let left = rect.left;
-      let top = rect.bottom + 6;
-      // ما تطلع برا حدود الشاشة يمين/يسار
-      if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
-      if (left < 8) left = 8;
-      // لو ما في مكان تحت الزر، افتحها لفوق بدل ما تنقطع
-      if (top + menuHeight > window.innerHeight - 8) top = rect.top - menuHeight - 6;
-      setCoords({ top, left });
-    }
-    setOpen((o) => !o);
-  }
-
-  // سكّر القائمة لو تغيّر حجم الشاشة، حتى ما تضل عالقة بمكان غلط
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    window.addEventListener("resize", close);
-    return () => window.removeEventListener("resize", close);
-  }, [open]);
-
+function ActionsBar({ user, onAction }) {
   return (
-    <div style={{ position: "relative" }}>
-      <button
-        ref={btnRef}
-        onClick={toggle}
-        style={{ background: "none", border: "1px solid #222", color: "#999", width: 30, height: 30, borderRadius: 8, cursor: "pointer" }}
-      >
-        ⚙
-      </button>
-      {open && (
-        <>
-          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 200 }} />
-          <div
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", justifyContent: "flex-start" }}
+    >
+      {actionsList.map(([key, icon, label]) => {
+        if (key === "activate_free" && user.role === "admin") return null; // ما تظهر لحساب الأدمن، مو محتاجها
+        return (
+          <button
+            key={key}
+            title={label}
+            onClick={() => onAction(key, user)}
             style={{
-              position: "fixed",
-              top: coords.top,
-              left: coords.left,
-              zIndex: 210,
-              background: "#0d0d0d",
+              background: "none",
               border: "1px solid #222",
-              borderRadius: 10,
-              minWidth: 150,
-              boxShadow: "0 12px 30px rgba(0,0,0,0.6)",
-              overflow: "hidden",
+              color: key === "delete" ? "#ef5350" : "#999",
+              width: 28,
+              height: 28,
+              minWidth: 28,
+              borderRadius: 7,
+              cursor: "pointer",
+              fontSize: "0.85rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition,
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = key === "delete" ? "#ef5350" : gold; e.currentTarget.style.background = "#161616"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#222"; e.currentTarget.style.background = "none"; }}
           >
-            {actionsList.map(([key, label]) => (
-              <div
-                key={key}
-                onClick={() => { setOpen(false); onAction(key, user); }}
-                style={{
-                  padding: "0.6rem 0.9rem",
-                  fontSize: "0.82rem",
-                  color: key === "delete" ? "#ef5350" : "#ccc",
-                  cursor: "pointer",
-                  transition,
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#161616")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-              >
-                {label}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+            {icon}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -136,7 +95,7 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
         <p style={{ textAlign: "center", padding: "3rem", color: "#444" }}>جاري التحميل...</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1180 }}>
             <thead>
               <tr>
                 {["", "الاسم", "الرتبة", "الخطة", "البداية", "النهاية", "الأيام المتبقية", "المدفوع", "الحالة", "آخر دخول", ""].map((h, i) => (
@@ -183,7 +142,7 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
                   <td style={{ padding: "0.85rem 1.1rem" }}><StatusDot user={user} /></td>
                   <td style={{ padding: "0.85rem 1.1rem", color: "#555", fontSize: "0.78rem" }}>{timeAgo(user.last_login_at)}</td>
                   <td style={{ padding: "0.85rem 1.1rem" }} onClick={(e) => e.stopPropagation()}>
-                    <ActionsMenu user={user} onAction={onAction} />
+                    <ActionsBar user={user} onAction={onAction} />
                   </td>
                 </tr>
               ))}
