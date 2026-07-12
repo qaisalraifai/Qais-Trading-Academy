@@ -15,6 +15,7 @@ import UsersTable from "./components/UsersTable";
 import UserDrawer from "./components/UserDrawer";
 import ActivityFeed from "./components/ActivityFeed";
 import QuickActions from "./components/QuickActions";
+import AffiliatesPanel from "./components/AffiliatesPanel";
 
 export default function AdminPage() {
   const supabase = createClient();
@@ -240,7 +241,7 @@ export default function AdminPage() {
           <h1 style={s.headerTitle}>Qais Trading Academy</h1>
         </div>
         <div style={{ display: "flex", gap: "0.75rem" }}>
-          <Link href="/admin/lectures" style={{ ...s.btn, textDecoration: "none" }}>📚 إدارة المحاضرات</Link> <Link href="/admin/affiliates" style={{ ...s.btn, textDecoration: "none" }}>🤝 برنامج المسوّقين</Link>
+          <Link href="/admin/lectures" style={{ ...s.btn, textDecoration: "none" }}>📚 إدارة المحاضرات</Link>
           <button onClick={() => { supabase.auth.signOut(); router.push("/login"); }} style={s.btn}>تسجيل الخروج</button>
         </div>
       </header>
@@ -292,6 +293,13 @@ export default function AdminPage() {
         <div style={{ flex: "1 1 260px", minWidth: 260 }}>
           <ActivityFeed items={feed} />
         </div>
+      </div>
+
+      <div style={s.divider} />
+
+      {/* برنامج التسويق بالعمولة */}
+      <div style={s.section}>
+        <AffiliatesPanel />
       </div>
 
       {drawerUserId && (
