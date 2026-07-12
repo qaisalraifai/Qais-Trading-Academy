@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 import { createNotification } from "@/lib/notifications";
+import { placeNewMember } from "@/lib/binary-tree";
+import { logActivity } from "@/lib/activity-log";
 
 // ينشئ صف profiles مباشرة بعد supabase.auth.signUp()، باستخدام Service Role
 // (يتجاوز RLS تماماً) — لأنه بلحظة التسجيل المستخدم لسا ممكن يكون بدون
@@ -12,6 +14,14 @@ export async function POST(request) {
   if (!userId || !username) {
     return NextResponse.json(
       { error: "بيانات ناقصة" },
+      { status: 400 }
+    );
+  }
+
+  // خطة الشجرة الثنائية: التسجيل بدون كود دعوة (راعي) غير مسموح
+  if (!ref) {
+    return NextResponse.json(
+      { error: "لازم كود دعوة صحيح للتسجيل" },
       { status: 400 }
     );
   }
@@ -30,19 +40,23 @@ export async function POST(request) {
     );
   }
 
-  // لو المستخدم اجى عبر رابط مسوّق (?ref=CODE)، منربطه فيه (referred_by)
-  // بس لو المسوّق فعلاً موجود ومفعّل — وما بنسمح إنه الشخص يحيل نفسه
-  let referredBy = null;
-  if (ref) {
-    const { data: affiliate } = await supabase
-      .from("profiles")
-      .select("id, affiliate_status")
-      .eq("affiliate_code", ref.trim())
-      .maybeSingle();
-    if (affiliate && affiliate.affiliate_status === "approved" && affiliate.id !== userId) {
-      referredBy = affiliate.id;
-    }
+  // لازم نتحقق إنه كود الدعوة فعلاً يعود لمسوّق موجود ومفعّل — وما بنسمح
+  // إنه الشخص يحيل نفسه. هاد الراعي (sponsor) هو نفسه اللي رح يُستخدم
+  // بمحرك وضع الشجرة الثنائية تحت.
+  const { data: affiliate } = await supabase
+    .from("profiles")
+    .select("id, affiliate_status")
+    .eq("affiliate_code", ref.trim())
+    .maybeSingle();
+
+  if (!affiliate || affiliate.affiliate_status !== "approved" || affiliate.id === userId) {
+    return NextResponse.json(
+      { error: "كود الدعوة غير صحيح أو غير مفعّل" },
+      { status: 400 }
+    );
   }
+
+  const referredBy = affiliate.id;
 
   const { error: profileError } = await supabase
     .from("profiles")
@@ -52,7 +66,7 @@ export async function POST(request) {
         username: username.trim(),
         role: "student",
         subscription_status: "inactive",
-        ...(referredBy ? { referred_by: referredBy } : {}),
+        referred_by: referredBy,
       },
       { onConflict: "id", ignoreDuplicates: false }
     );
@@ -63,6 +77,18 @@ export async function POST(request) {
       { error: profileError.message },
       { status: 400 }
     );
+  }
+
+  // وضع العضو الجديد بالشجرة الثنائية تحت راعيه (أقرب مكان فاضٍ بشجرته)
+  try {
+    await placeNewMember(supabase, userId, referredBy);
+  } catch (e) {
+    console.error("placeNewMember failed:", e.message);
+    // ما منفشل التسجيل كله بسبب هيك — الحساب موجود ومربوط بالراعي (referred_by)،
+    // بس بدون مكان بالشجرة. لازم يتحل يدوياً من الأدمن أو retry لاحقاً.
+    await logActivity(userId, "note", "⚠️ فشل وضع العضو بالشجرة الثنائية", {
+      error: e.message,
+    }).catch(() => {});
   }
 
   // لو اجى عن طريق رابط تتبّع /r/[code]، منربط النقرة الأصلية بهاد الحساب الجديد
