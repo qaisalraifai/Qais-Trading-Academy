@@ -42,9 +42,16 @@ export default function SignupPage() {
   const [country, setCountry] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [waitingConfirm, setWaitingConfirm] = useState(false);
   const [logoY, setLogoY] = useState(0);
   const router = useRouter();
   const supabase = createClient();
+  const pollRef = useRef(null);
+
+  // نوقف أي polling شغال لو المستخدم طلع من الصفحة
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
 
   useEffect(() => {
     let frame;
@@ -104,19 +111,30 @@ export default function SignupPage() {
 
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (signInError) {
-      // على الأغلب الإيميل محتاج تأكيد قبل ما يقدر يسجل دخول
-      setError("تم إنشاء حسابك! تحققي من إيميلك لتأكيد الحساب قبل تسجيل الدخول والمتابعة للدفع.");
-      setLoading(false);
+    if (!signInError) {
+      router.push("/payment");
       return;
     }
 
-    router.push("/payment");
+    // الإيميل محتاج تأكيد. بدل ما نوقف هون، منضل نحاول نسجل دخول كل
+    // كم ثانية بالخلفية — لما يضغط المستخدم رابط التأكيد (حتى لو من
+    // جهاز تاني متل التلفون)، أول محاولة بعدها رح تنجح، ومنكمل تلقائياً.
+    setLoading(false);
+    setWaitingConfirm(true);
+
+    pollRef.current = setInterval(async () => {
+      const { error: retryError } = await supabase.auth.signInWithPassword({ email, password });
+      if (!retryError) {
+        clearInterval(pollRef.current);
+        router.push("/payment");
+      }
+    }, 3000);
   }
 
   return (
     <div style={s.page}>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+      <style>{`@keyframes qta-spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Floating background orbs */}
       <div style={{ ...s.orb, width: "500px", height: "500px", top: "-100px", left: "-150px", background: "radial-gradient(circle, #B8915A22 0%, transparent 70%)" }} />
@@ -201,6 +219,16 @@ export default function SignupPage() {
             <h2 style={s.formTitle}>إنشاء حساب جديد</h2>
             <p style={s.formSub}>أنشئ حسابك وانتقل لصفحة الدفع</p>
 
+            {waitingConfirm ? (
+              <div style={s.waitBox}>
+                <div style={s.spinner} />
+                <p style={s.waitTitle}>بانتظار تأكيد إيميلك…</p>
+                <p style={s.waitText}>
+                  أرسلنا رابط تأكيد لإيميلك ({email}). افتحيه من أي جهاز (حتى لو تلفونك)،
+                  وهاي الصفحة رح تكمّل لحالها لصفحة الدفع فور ما تأكدي — بس خليها مفتوحة.
+                </p>
+              </div>
+            ) : (
             <div style={s.form}>
               {[
                 { label: "الاسم الكامل", type: "text", placeholder: "مثال: قيس الريفاعي", value: fullName, set: setFullName },
@@ -230,6 +258,7 @@ onChange={(e) => f.set(e.target.value)}
                 {loading ? "جاري الإنشاء..." : "إنشاء الحساب والمتابعة للدفع ←"}
               </button>
             </div>
+            )}
 
             <p style={s.linkText}>عندك حساب؟ <Link href="/login" style={s.link}>سجل دخول</Link></p>
           </div>
@@ -284,6 +313,10 @@ const s = {
   input: { backgroundColor: "#080808", border: "1px solid #1e1e1e", color: "#E8E0D0", padding: "0.8rem 1rem", borderRadius: "4px", fontSize: "0.95rem", outline: "none", direction: "ltr", textAlign: "right" },
   btn: { backgroundColor: gold, color: "#080600", padding: "1rem", borderRadius: "4px", border: "none", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer", marginTop: "0.5rem" },
   error: { color: "#ef4444", fontSize: "0.85rem", textAlign: "center" },
+  waitBox: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem", padding: "1.5rem 0" },
+  spinner: { width: "38px", height: "38px", borderRadius: "50%", border: "3px solid #1e1e1e", borderTopColor: gold, animation: "qta-spin 0.8s linear infinite" },
+  waitTitle: { color: "#E8E0D0", fontSize: "1.05rem", fontWeight: 700 },
+  waitText: { color: "#6B6560", fontSize: "0.88rem", lineHeight: 1.8, textAlign: "center" },
   linkText: { color: "#444", fontSize: "0.85rem", textAlign: "center", marginTop: "1.5rem" },
   link: { color: gold, textDecoration: "none" },
 
