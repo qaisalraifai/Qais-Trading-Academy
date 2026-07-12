@@ -137,6 +137,12 @@ export default function AdminPage() {
       if (ok) showToast("تم إرسال الإشعار");
       return;
     }
+    if (key === "activate_free") {
+      if (!confirm(`تفعيل وصول مجاني (بدون دفع) لحساب ${user.username}؟`)) return;
+      const ok = await callAction(user.id, "activate_free");
+      if (ok) { showToast(`تم تفعيل وصول مجاني لـ ${user.username}`); fetchUsers(); fetchStats(); fetchFeed(); }
+      return;
+    }
     if (key === "suspend") {
       if (!confirm(`تأكيد إيقاف حساب ${user.username}؟`)) return;
       const ok = await callAction(user.id, "suspend");
