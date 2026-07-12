@@ -15,6 +15,7 @@ const activityIcons = {
   discount: "🟡",
   coupon_created: "🟡",
   extended: "🟢",
+  free_activation: "🎁",
 };
 
 function Row({ label, value }) {
@@ -164,6 +165,9 @@ export default function UserDrawer({ userId, onClose, onAction, fetchDetail }) {
               ) : (
                 <>
                   <button onClick={() => setEditing(true)} style={actionBtnStyle()}>✏ Edit</button>
+                  {p.role !== "admin" && (
+                    <button onClick={() => onAction("activate_free", p)} style={actionBtnStyle("#4CAF50")}>🎁 تفعيل مجاني</button>
+                  )}
                   <button onClick={() => onAction(p.suspended ? "unsuspend" : "suspend", p)} style={actionBtnStyle("#FF9800")}>{p.suspended ? "✅ رفع الإيقاف" : "🚫 Suspend"}</button>
                   <button onClick={() => onAction("delete", p)} style={actionBtnStyle("#ef5350")}>🗑 Delete</button>
                 </>
