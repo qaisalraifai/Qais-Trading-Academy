@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import AddPaymentMethodModal from "./AddPaymentMethodModal";
 
 const GOLD = "#C9A24B";
 const GOLD_LIGHT = "#E8C468";
@@ -50,6 +51,7 @@ export default function SettingsView({ username }) {
   const [couponCode, setCouponCode] = useState("");
   const [couponBusy, setCouponBusy] = useState(false);
   const [couponResult, setCouponResult] = useState(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   useEffect(() => {
     load();
@@ -251,53 +253,40 @@ export default function SettingsView({ username }) {
                 <p style={{ margin: "3px 0 0", fontSize: 12, color: "#888" }}>مرتبطة باشتراكك الحالي عبر Paddle</p>
               </div>
             </div>
-            {managementUrls?.updatePaymentMethod && (
-              <a
-                href={managementUrls.updatePaymentMethod}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  border: `1px solid ${GOLD}66`,
-                  color: GOLD_LIGHT,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  padding: "0.55rem 1.1rem",
-                  borderRadius: 10,
-                  textDecoration: "none",
-                }}
-              >
-                تغيير البطاقة
-              </a>
-            )}
+            <button
+              onClick={() => setPaymentModalOpen(true)}
+              style={{
+                border: `1px solid ${GOLD}66`,
+                background: "transparent",
+                color: GOLD_LIGHT,
+                fontSize: 13,
+                fontWeight: 700,
+                padding: "0.55rem 1.1rem",
+                borderRadius: 10,
+                cursor: "pointer",
+              }}
+            >
+              تغيير البطاقة
+            </button>
           </div>
         ) : hasPaddleSubscription ? (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
             <p style={{ margin: 0, fontSize: 13, color: "#888" }}>ما قدرنا نجيب تفاصيل بطاقتك المسجلة حالياً.</p>
-            {managementUrls?.updatePaymentMethod ? (
-              <a
-                href={managementUrls.updatePaymentMethod}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                  color: "#1a1200",
-                  fontWeight: 800,
-                  fontSize: 13,
-                  padding: "0.6rem 1.2rem",
-                  borderRadius: 10,
-                  textDecoration: "none",
-                }}
-              >
-                إدارة طريقة الدفع
-              </a>
-            ) : (
-              <a
-                href="mailto:qaisalraifai@gmail.com"
-                style={{ fontSize: 12, color: GOLD_LIGHT, textDecoration: "underline" }}
-              >
-                تواصل مع الدعم
-              </a>
-            )}
+            <button
+              onClick={() => setPaymentModalOpen(true)}
+              style={{
+                background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
+                color: "#1a1200",
+                border: "none",
+                fontWeight: 800,
+                fontSize: 13,
+                padding: "0.6rem 1.2rem",
+                borderRadius: 10,
+                cursor: "pointer",
+              }}
+            >
+              إدارة طريقة الدفع
+            </button>
           </div>
         ) : (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
@@ -305,26 +294,33 @@ export default function SettingsView({ username }) {
               <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>ما في طريقة دفع مضافة</p>
               <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>ضيف بطاقة حتى تفعّل اشتراكك وتوصل لكل الميزات.</p>
             </div>
-            <a
-              href="/payment"
+            <button
+              onClick={() => setPaymentModalOpen(true)}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
                 background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
                 color: "#1a1200",
+                border: "none",
                 fontWeight: 800,
                 fontSize: 13,
                 padding: "0.6rem 1.3rem",
                 borderRadius: 10,
-                textDecoration: "none",
+                cursor: "pointer",
               }}
             >
               <span>➕</span><span>إضافة طريقة دفع</span>
-            </a>
+            </button>
           </div>
         )}
       </SectionCard>
+
+      <AddPaymentMethodModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        managementUrls={managementUrls}
+      />
 
       {/* 3. التجديد */}
       <SectionCard title="التجديد" icon="🔄">
