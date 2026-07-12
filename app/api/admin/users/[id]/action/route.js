@@ -54,6 +54,22 @@ export async function POST(request, { params }) {
       return NextResponse.json({ success: true });
     }
 
+    case "activate_free": {
+      // تفعيل وصول مجاني بدون دفع — الحساب يضل role=student، فقط subscription_status=active
+      // subscription_end = null يعني ما فيه انتهاء (الكرون جوب ما بيلمسه لأنه بيفحص فقط لما يكون subscription_end أقل من اليوم)
+      const now = new Date();
+      await supabase
+        .from("profiles")
+        .update({
+          subscription_status: "active",
+          subscription_start: now.toISOString(),
+          subscription_end: null,
+        })
+        .eq("id", id);
+      await logActivity(id, "free_activation", "تم تفعيل وصول مجاني (بدون دفع) من لوحة التحكم");
+      return NextResponse.json({ success: true });
+    }
+
     case "renew": {
       const now = new Date();
       const end = new Date();
