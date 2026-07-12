@@ -1,4 +1,5 @@
 export const metadata = {
+  metadataBase: new URL("https://www.qta-academy.store"),
   title: "Qais Trading Academy | QTA",
   description:
     "أكاديمية Qais Trading Academy لتعليم التداول من الأساسيات حتى الاحترافية — أساسيات التداول، التحليل الأساسي، ICT، SK، تدريب 6 أشهر على حساب ديمو، وBacktest مستمر. محاضرات مباشرة ومسجلة.",
@@ -12,7 +13,7 @@ export const metadata = {
     "Backtest",
   ],
   verification: {
-    google: "VxbiUCbzBZo1Wub4cYuknsfLrMoT_4G_LevBCXeMVkg",
+    google: "y3K0SdO26agCZv7Fs_4sYw7y2pbNyZO3slIJ6MCdmCs",
   },
   icons: {
     icon: "/logo.jpg",
