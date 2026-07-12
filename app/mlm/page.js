@@ -1,0 +1,221 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase-client";
+
+const GOLD = "#C9A24B";
+const BG = "#050505";
+const CARD = "#0d0d0d";
+const BORDER = "#1a1a1a";
+
+const BONUS_LABELS = {
+  direct: "عمولة مباشرة",
+  renewal: "عمولة تجديد",
+  binary: "عمولة ثنائية",
+  matching: "عمولة مطابقة",
+  rank: "مكافأة رتبة",
+  leadership: "صندوق قيادة",
+  infinity: "Infinity Bonus",
+  fast_start: "انطلاقة سريعة",
+  achievement: "مكافأة إنجاز",
+};
+
+function fmt(n) {
+  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function Card({ children, style }) {
+  return (
+    <div
+      style={{
+        background: CARD,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 16,
+        padding: "1.5rem",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function TreeSlot({ label, child }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        background: "#0a0a0a",
+        border: `1px dashed ${child ? GOLD + "55" : "#2a2a2a"}`,
+        borderRadius: 12,
+        padding: "1rem",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: "0.7rem", color: "#777", marginBottom: 6 }}>{label}</div>
+      {child ? (
+        <>
+          <div style={{ fontWeight: 700 }}>{child.username}</div>
+          <div style={{ fontSize: "0.7rem", color: child.is_active_member ? "#4CAF50" : "#888", marginTop: 4 }}>
+            {child.is_active_member ? "نشط" : "غير نشط"}
+          </div>
+        </>
+      ) : (
+        <div style={{ color: "#555", fontSize: "0.85rem" }}>مكان فاضي</div>
+      )}
+    </div>
+  );
+}
+
+export default function MlmPage() {
+  const router = useRouter();
+  const supabase = createClient();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function load() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    try {
+      const res = await fetch("/api/mlm/my-summary");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "فشل التحميل");
+      setData(json);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ background: BG, color: "#E8E0D0", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>
+        جاري التحميل...
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div style={{ background: BG, color: "#ef4444", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>
+        {error || "خطأ غير متوقع"}
+      </div>
+    );
+  }
+
+  const { profile, rank, nextRank, tree, wallets, recentCommissions } = data;
+  const totalTeamCv = Number(profile.cvLeft || 0) + Number(profile.cvRight || 0);
+
+  return (
+    <div style={{ background: BG, color: "#E8E0D0", minHeight: "100vh", padding: "2.5rem 3rem", direction: "rtl", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ marginBottom: "2rem" }}>
+        <div style={{ color: GOLD, fontSize: "0.75rem", letterSpacing: 2, marginBottom: 4 }}>QAIS TRADING ACADEMY</div>
+        <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0 }}>مركز الشبكة الخاص بي</h1>
+      </div>
+
+      {/* الرتبة */}
+      <Card style={{ marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+          <div>
+            <div style={{ fontSize: "0.75rem", color: "#888" }}>الرتبة الحالية</div>
+            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: GOLD }}>{rank?.name_ar || "بدون رتبة"}</div>
+          </div>
+          <div style={{ textAlign: "left" }}>
+            <div style={{ fontSize: "0.75rem", color: profile.isActiveMember ? "#4CAF50" : "#ef4444" }}>
+              {profile.isActiveMember ? "● عضوية نشطة" : "● عضوية غير نشطة"}
+            </div>
+            <div style={{ fontSize: "0.7rem", color: "#666", marginTop: 2 }}>
+              آخر تجديد: {profile.lastRenewalAt ? new Date(profile.lastRenewalAt).toLocaleDateString("ar") : "—"}
+            </div>
+          </div>
+        </div>
+
+        {nextRank && (
+          <div style={{ marginTop: "1.2rem", paddingTop: "1.2rem", borderTop: `1px solid ${BORDER}` }}>
+            <div style={{ fontSize: "0.75rem", color: "#888", marginBottom: 6 }}>
+              للترقية لرتبة {nextRank.name_ar}: {profile.directCount}/{nextRank.min_direct_members} مباشرين — {fmt(totalTeamCv)}/{fmt(nextRank.min_total_cv)} CV
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <div style={{ flex: 1, height: 6, borderRadius: 3, background: "#1a1a1a", overflow: "hidden" }}>
+                <div style={{ width: `${Math.min(100, (profile.directCount / nextRank.min_direct_members) * 100)}%`, height: "100%", background: GOLD }} />
+              </div>
+              <div style={{ flex: 1, height: 6, borderRadius: 3, background: "#1a1a1a", overflow: "hidden" }}>
+                <div style={{ width: `${Math.min(100, (totalTeamCv / nextRank.min_total_cv) * 100)}%`, height: "100%", background: GOLD }} />
+              </div>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* المحافظ */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+        {[
+          ["محفظة العمولات", wallets.commission],
+          ["محفظة المكافآت", wallets.bonus],
+          ["محفظة الكاش باك", wallets.cashback],
+          ["محفظة السحب", wallets.withdrawal],
+        ].map(([label, value]) => (
+          <Card key={label}>
+            <div style={{ fontSize: "0.75rem", color: "#888", marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: "1.3rem", fontWeight: 800 }}>{fmt(value)} <span style={{ fontSize: "0.75rem", color: "#888" }}>دينار</span></div>
+          </Card>
+        ))}
+      </div>
+
+      {/* الشجرة الثنائية */}
+      <Card style={{ marginBottom: "1.5rem" }}>
+        <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "1rem" }}>شجرتي الثنائية (المباشرة تحتي)</div>
+        <div style={{ display: "flex", gap: "1rem" }}>
+          <TreeSlot label="الرجل اليسرى" child={tree.leftChild} />
+          <TreeSlot label="الرجل اليمنى" child={tree.rightChild} />
+        </div>
+        <div style={{ display: "flex", gap: "1rem", marginTop: "1rem", fontSize: "0.8rem", color: "#888" }}>
+          <div>CV يسار: <strong style={{ color: "#E8E0D0" }}>{fmt(profile.cvLeft)}</strong></div>
+          <div>CV يمين: <strong style={{ color: "#E8E0D0" }}>{fmt(profile.cvRight)}</strong></div>
+          <div>غير مُطابق (Carry): <strong style={{ color: "#E8E0D0" }}>{fmt(profile.carryLeft)} / {fmt(profile.carryRight)}</strong></div>
+        </div>
+      </Card>
+
+      {/* آخر العمولات */}
+      <Card>
+        <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "1rem" }}>آخر العمولات</div>
+        {recentCommissions.length === 0 ? (
+          <div style={{ color: "#555", fontSize: "0.85rem" }}>لا يوجد عمولات بعد</div>
+        ) : (
+          <div style={{ display: "grid", gap: "0.6rem" }}>
+            {recentCommissions.map((c, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "0.6rem 0.8rem",
+                  background: "#0a0a0a",
+                  borderRadius: 8,
+                  fontSize: "0.85rem",
+                }}
+              >
+                <span>{BONUS_LABELS[c.bonus_type] || c.bonus_type}</span>
+                <span style={{ color: GOLD, fontWeight: 700 }}>{fmt(c.amount)} دينار</span>
+                <span style={{ color: "#666" }}>{new Date(c.created_at).toLocaleDateString("ar")}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
