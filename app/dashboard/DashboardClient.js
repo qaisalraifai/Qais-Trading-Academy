@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-client";
 import BacktestClient from "../backtest/BacktestClient";
 import ReplayClient from "../replay/ReplayClient";
 import AccountsAdminView from "./components/AccountsAdminView";
+import SettingsView from "./components/SettingsView";
 
 const GOLD = "#C9A24B";
 const GOLD_LIGHT = "#E8C468";
@@ -26,7 +27,6 @@ const NAV_ITEMS = [
 const PLACEHOLDER_LABELS = {
   strategies: "الاستراتيجيات",
   reports: "التقارير",
-  settings: "الإعدادات",
 };
 
 const MARKETS = [
@@ -619,6 +619,8 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
           />
         ) : activeKey === "replay" ? (
           <ReplayClient userId={userId} />
+        ) : activeKey === "settings" ? (
+          <SettingsView username={username} />
         ) : activeKey === "backtest" ? (
           userId ? (
             <BacktestClient
