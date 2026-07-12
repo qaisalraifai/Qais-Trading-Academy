@@ -47,6 +47,25 @@ const actionsList = [
   ["delete", "🗑", "حذف"],
 ];
 
+async function activateFreeDirect(user) {
+  try {
+    const res = await fetch(`/api/admin/users/${user.id}/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "activate_free", payload: {} }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      alert(`✅ تم تفعيل وصول مجاني لحساب ${user.username}`);
+      window.location.reload();
+    } else {
+      alert(`❌ فشل الطلب (${res.status}): ${data.error || "خطأ غير معروف"}`);
+    }
+  } catch (err) {
+    alert(`❌ خطأ بالاتصال: ${err.message}`);
+  }
+}
+
 function ActionsBar({ user, onAction }) {
   return (
     <div
@@ -55,11 +74,12 @@ function ActionsBar({ user, onAction }) {
     >
       {actionsList.map(([key, icon, label]) => {
         if (key === "activate_free" && user.role === "admin") return null; // ما تظهر لحساب الأدمن، مو محتاجها
+        const isFree = key === "activate_free";
         return (
           <button
             key={key}
             title={label}
-            onClick={() => onAction(key, user)}
+            onClick={() => (isFree ? activateFreeDirect(user) : onAction(key, user))}
             style={{
               background: "none",
               border: "1px solid #222",
