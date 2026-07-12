@@ -45,14 +45,23 @@ export default function SignupPage() {
   const [waitingConfirm, setWaitingConfirm] = useState(false);
   const [logoY, setLogoY] = useState(0);
   const router = useRouter();
-  const supabase = createClient();
-  const pollRef = useRef(null);
+const supabase = createClient();
+const pollRef = useRef(null);
+const refCodeRef = useRef(null);
 
-  // نوقف أي polling شغال لو المستخدم طلع من الصفحة
-  useEffect(() => {
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, []);
+// نوقف أي polling شغال لو المستخدم طلع من الصفحة
+useEffect(() => {
+  return () => { if (pollRef.current) clearInterval(pollRef.current); };
+}, []);
 
+// نلتقط كود المسوّق من الرابط (?ref=CODE) لو المستخدم اجى عبر رابط دعوة مسوّق
+useEffect(() => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) refCodeRef.current = ref.trim();
+  } catch (e) {}
+}, []);
   useEffect(() => {
     let frame;
     let start = null;
@@ -100,7 +109,7 @@ export default function SignupPage() {
     const createProfileRes = await fetch("/api/create-profile", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: newUserId, username: fullName.trim() }),
+      body: JSON.stringify({ userId: newUserId, username: fullName.trim(), ref: refCodeRef.current }),
     });
 
     if (!createProfileRes.ok) {
