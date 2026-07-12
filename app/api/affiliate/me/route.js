@@ -74,6 +74,20 @@ export async function GET(request) {
     .eq("affiliate_id", user.id)
     .order("created_at", { ascending: false });
 
+  // إحصائيات تتبّع النقرات: عدد الزيارات، معدل التحويل، وربح كل نقرة (EPC)
+  const { data: clickRows } = await admin
+    .from("affiliate_clicks")
+    .select("id, converted_user_id")
+    .eq("affiliate_id", user.id);
+  const totalClicks = clickRows?.length || 0;
+  const totalConversions = (clickRows || []).filter((c) => c.converted_user_id).length;
+  const funnel = {
+    clicks: totalClicks,
+    signups: totalConversions,
+    conversionRate: totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0,
+    epc: totalClicks > 0 ? earnings.totalEarned / totalClicks : 0,
+  };
+
   return NextResponse.json({
     ...base,
     network: {
@@ -83,5 +97,6 @@ export async function GET(request) {
     },
     earnings,
     payouts: payouts || [],
+    funnel,
   });
 }
