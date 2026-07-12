@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { kickMemberFromGuild } from "@/lib/discord";
 import { logActivity } from "@/lib/activity-log";
 import { recordCommissionsForPayment } from "@/lib/affiliate";
+import { processMlmCommissionsForPayment } from "@/lib/compensation-engine";
 
 // مفاتيح الـ sandbox بتبلش بـ pdl_sdbx_ — لازم نحدد الـ environment صح
 // وإلا Paddle بيرفض الطلب بخطأ "forbidden"
@@ -18,7 +19,7 @@ const supabaseAdmin = createClient(
 );
 
 // يسجل صف بجدول payments بشكل موحّد، وبعدين يحسب عمولات المسوّقين (لو في) على هاي الدفعة
-async function recordPayment(userId, txn) {
+async function recordPayment(userId, txn, isFirstPayment) {
   if (!userId) return;
   const amount = txn?.details?.totals?.total
     ? Number(txn.details.totals.total) / 100
@@ -42,11 +43,19 @@ async function recordPayment(userId, txn) {
     return;
   }
 
+  // النظام القديم (3 مستويات، نسبة من قيمة الدفعة) — يضل شغال متل ما هو
   await recordCommissionsForPayment(supabaseAdmin, {
     paidUserId: userId,
     paymentId: payment?.id,
     amount,
   }).catch((e) => console.error("recordCommissionsForPayment error:", e));
+
+  // نظام الخطة الجديد (CV + شجرة ثنائية + Direct/Renewal Bonus) — مستقل تمامًا
+  await processMlmCommissionsForPayment(supabaseAdmin, {
+    userId,
+    paymentId: payment?.id,
+    isFirstPayment,
+  }).catch((e) => console.error("processMlmCommissionsForPayment error:", e));
 }
 
 export async function POST(request) {
@@ -120,7 +129,7 @@ export async function POST(request) {
               console.error("Fallback profile insert also failed:", insertError);
             }
           }
-          await recordPayment(userId, txn);
+          await recordPayment(userId, txn, true);
           await logActivity(userId, "renew", "دفعة ناجحة — تفعيل الاشتراك", {
             subscriptionId,
           });
@@ -142,7 +151,7 @@ export async function POST(request) {
           if (error) {
             console.error("Failed to renew subscription:", error);
           } else if (renewed?.id) {
-            await recordPayment(renewed.id, txn);
+            await recordPayment(renewed.id, txn, false);
             await logActivity(renewed.id, "renew", "تجديد الاشتراك الشهري", {
               subscriptionId,
             });
