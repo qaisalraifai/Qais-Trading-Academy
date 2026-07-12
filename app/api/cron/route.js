@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { kickMemberFromGuild } from "@/lib/discord";
 import { runMonthlyMatchingBonus } from "@/lib/matching-engine";
 import { runMonthlyLeadershipPool } from "@/lib/leadership-engine";
+import { runMonthlyInfinityBonus } from "@/lib/infinity-engine";
 
 export async function GET(request) {
   // تحقق من Authorization header
@@ -58,6 +59,7 @@ export async function GET(request) {
   // (الكرون هذا حسب الإعداد الحالي شغال يوميًا أو ساعي — هاد الشرط يمنع تكرار الدفع)
   let matchingResult = null;
   let leadershipResult = null;
+  let infinityResult = null;
   const today = new Date();
   if (today.getDate() === 1) {
     matchingResult = await runMonthlyMatchingBonus(supabase).catch((e) => {
@@ -66,6 +68,10 @@ export async function GET(request) {
     });
     leadershipResult = await runMonthlyLeadershipPool(supabase).catch((e) => {
       console.error("runMonthlyLeadershipPool failed:", e.message);
+      return null;
+    });
+    infinityResult = await runMonthlyInfinityBonus(supabase).catch((e) => {
+      console.error("runMonthlyInfinityBonus failed:", e.message);
       return null;
     });
   }
@@ -79,6 +85,7 @@ export async function GET(request) {
     mlmDeactivated: deactivatedMlm?.length || 0,
     matchingResult,
     leadershipResult,
+    infinityResult,
     timestamp: now,
   });
 }
