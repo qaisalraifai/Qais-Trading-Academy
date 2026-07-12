@@ -20,6 +20,15 @@ export async function GET(request) {
     const { data, error } = await supabase.auth.verifyOtp({ type, token_hash });
 
     if (!error && data?.user) {
+      // لو النوع "تسجيل جديد" (signup) ما منوديه عالدفع من هون —
+      // ممكن يكون فاتح الرابط من جهاز/متصفح تاني غير يلي سجل منه
+      // (متل ما بيصير لما يفتح الإيميل من التلفون). بنعرضله صفحة
+      // تأكيد بسيطة، والجهاز الأصلي (اللابتوب مثلاً) هو يلي رح يتابع
+      // لحاله تلقائياً (شوف signup/page.js).
+      if (type === "signup") {
+        return NextResponse.redirect(`${origin}/auth/confirmed`);
+      }
+
       const admin = createAdminClient();
       const { data: profile } = await admin
         .from("profiles")
