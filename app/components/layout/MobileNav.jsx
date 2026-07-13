@@ -46,10 +46,10 @@ export default function MobileNav({
           <button
             type="button"
             onClick={onClose}
-            className="absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-md border border-gold-400/15 bg-surface-1 text-text-muted transition-colors hover:text-gold-200"
+            className="absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-md border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 ease-premium hover:rotate-90 hover:text-gold-200"
             aria-label="إغلاق"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
 
           <Sidebar

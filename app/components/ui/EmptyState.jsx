@@ -18,8 +18,8 @@ export default function EmptyState({
       )}
     >
       {Icon && (
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-gold-400/15 bg-gold-400/5">
-          <Icon className="h-7 w-7 text-gold-400/60" aria-hidden />
+        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-gold-400/20 bg-gold-400/5 shadow-glow-sm">
+          <Icon className="h-9 w-9 animate-pulse-soft text-gold-400/70" aria-hidden />
         </div>
       )}
       {title && (

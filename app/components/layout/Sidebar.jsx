@@ -19,10 +19,16 @@ function NavButton({ item, isActive, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={cn("nav-item w-full text-right", isActive ? "nav-item-active" : "nav-item-inactive")}
+      className={cn("nav-item group w-full text-right", isActive ? "nav-item-active" : "nav-item-inactive")}
       aria-current={isActive ? "page" : undefined}
     >
-      <Icon className="h-4 w-4 shrink-0" aria-hidden />
+      <Icon
+        className={cn(
+          "h-5 w-5 shrink-0 transition-all duration-300 ease-premium group-hover:scale-110",
+          isActive && "drop-shadow-[0_0_6px_rgba(212,175,55,0.6)]"
+        )}
+        aria-hidden
+      />
       <span className="flex-1 truncate">{item.label}</span>
       {item.comingSoon && (
         <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-text-muted">
@@ -43,8 +49,8 @@ function FooterLink({ item }) {
         : "text-text-muted hover:text-text-secondary";
 
   const content = (
-    <div className={cn("nav-item nav-item-inactive", colorClass)}>
-      <Icon className="h-4 w-4 shrink-0" aria-hidden />
+    <div className={cn("nav-item group nav-item-inactive", colorClass)}>
+      <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
       <span>{item.label}</span>
     </div>
   );
@@ -85,7 +91,7 @@ export default function Sidebar({
     >
       <div className="mb-5 rounded-lg border border-gold-400/20 bg-gradient-to-bl from-gold-400/10 to-surface-1 p-4">
         <div className="mb-1 flex items-center gap-2 text-xs font-bold text-gold-200">
-          <VipIcon className="h-3.5 w-3.5" aria-hidden />
+          <VipIcon className="h-[1.1rem] w-[1.1rem] animate-pulse-soft text-gold-300" aria-hidden />
           <span>{VIP_CARD.title}</span>
         </div>
         <p className="text-sm font-extrabold text-text-primary">{VIP_CARD.subtitle}</p>
@@ -129,13 +135,13 @@ export default function Sidebar({
         type="button"
         onClick={() => onNavigate(HOME_NAV.view)}
         className={cn(
-          "mb-4 flex w-full items-center justify-center gap-2 rounded-md px-3.5 py-3",
+          "group mb-4 flex w-full items-center justify-center gap-2 rounded-md px-3.5 py-3",
           "gold-gradient-bg text-sm font-extrabold text-ink shadow-glow-sm",
-          "transition-all duration-300 hover:shadow-glow hover:brightness-110",
+          "transition-all duration-300 hover:shadow-glow hover:brightness-110 hover:-translate-y-0.5",
           activeKey === HOME_NAV.view && "ring-2 ring-gold-200/30"
         )}
       >
-        <HomeIcon className="h-4 w-4" aria-hidden />
+        <HomeIcon className="h-5 w-5 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
         <span>{HOME_NAV.label}</span>
       </button>
 
@@ -157,9 +163,9 @@ export default function Sidebar({
         <button
           type="button"
           onClick={onLogout}
-          className="nav-item nav-item-inactive w-full text-right text-text-muted hover:text-loss"
+          className="nav-item group nav-item-inactive w-full text-right text-text-muted hover:text-loss"
         >
-          <LogoutIcon className="h-4 w-4 shrink-0" aria-hidden />
+          <LogoutIcon className="h-5 w-5 shrink-0 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
           <span>{LOGOUT_ITEM.label}</span>
         </button>
       </div>

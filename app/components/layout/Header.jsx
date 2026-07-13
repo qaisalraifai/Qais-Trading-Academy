@@ -28,10 +28,10 @@ export default function Header({
           <button
             type="button"
             onClick={onMenuToggle}
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-gold-400/15 bg-surface-1 text-text-secondary transition-all duration-300 hover:border-gold-400/30 hover:text-gold-200 lg:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-md border border-gold-400/15 bg-surface-1 text-text-secondary transition-all duration-300 ease-premium hover:scale-110 hover:border-gold-400/40 hover:text-gold-200 lg:hidden"
             aria-label="فتح القائمة"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-6 w-6" />
           </button>
         )}
 
@@ -58,18 +58,18 @@ export default function Header({
       <div className="flex shrink-0 items-center gap-2 md:gap-3">
         <button
           type="button"
-          className="hidden h-9 w-9 items-center justify-center rounded-full border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 hover:border-gold-400/30 hover:text-gold-200 sm:flex"
+          className="hidden h-10 w-10 items-center justify-center rounded-full border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 ease-premium hover:scale-110 hover:border-gold-400/40 hover:text-gold-200 hover:shadow-glow-sm sm:flex"
           aria-label="الإشعارات"
         >
-          <Bell className="h-4 w-4" />
+          <Bell className="h-5 w-5" />
         </button>
 
         <button
           type="button"
-          className="hidden h-9 w-9 items-center justify-center rounded-full border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 hover:border-gold-400/30 hover:text-gold-200 sm:flex"
+          className="hidden h-10 w-10 items-center justify-center rounded-full border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 ease-premium hover:scale-110 hover:border-gold-400/40 hover:text-gold-200 hover:shadow-glow-sm sm:flex"
           aria-label="المحادثات"
         >
-          <MessageSquare className="h-4 w-4" />
+          <MessageSquare className="h-5 w-5" />
         </button>
 
         <div className="hidden items-center gap-2 md:flex">

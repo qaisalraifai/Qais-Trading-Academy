@@ -320,7 +320,7 @@ const styles = {
   featuresDesc: { color: textMuted, fontSize: "1rem", lineHeight: 1.9 },
   featureList: { listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "1.25rem" },
   featureItem: { color: textSoft, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "0.75rem" },
-  featureIcon: { color: gold, fontSize: "0.6rem" },
+  featureIcon: { color: gold, fontSize: "1rem", display: "inline-block", animation: "pulseSoft 2s ease-in-out infinite" },
 
   ctaSection: { position: "relative", padding: "6rem 3rem 7rem", textAlign: "center", overflow: "hidden" },
   ctaTitle: { fontSize: "2.5rem", fontWeight: 900, marginBottom: "1rem", letterSpacing: "-0.5px" },

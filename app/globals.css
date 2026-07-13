@@ -117,6 +117,14 @@
   .eyebrow {
     @apply font-mono text-[0.7rem] font-medium uppercase tracking-[0.15em] text-gold-400;
   }
+
+  .icon-interactive {
+    @apply transition-transform duration-300 ease-premium;
+  }
+
+  .icon-interactive:hover {
+    transform: scale(1.12);
+  }
 }
 
 @layer utilities {

@@ -46,13 +46,13 @@ export default function ProfileHeaderCard({
           </p>
           <p className="mt-1 text-xs text-text-muted md:text-sm">{welcomeSubtitle}</p>
         </div>
-        <Sparkles className="hidden h-5 w-5 text-gold-300/60 sm:block" aria-hidden />
+        <Sparkles className="hidden h-6 w-6 animate-pulse-soft text-gold-300/70 sm:block" aria-hidden />
         <button
           type="button"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 hover:border-gold-400/30 hover:text-gold-200"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 ease-premium hover:scale-110 hover:border-gold-400/40 hover:text-gold-200 hover:shadow-glow-sm"
           aria-label="الإشعارات"
         >
-          <Bell className="h-4 w-4" />
+          <Bell className="h-5 w-5" />
         </button>
       </div>
     </Card>

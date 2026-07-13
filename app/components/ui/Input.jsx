@@ -12,7 +12,7 @@ export default function Input({
     <div className="relative w-full">
       {Icon && (
         <Icon
-          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
+          className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-text-muted transition-colors duration-300"
           aria-hidden
         />
       )}

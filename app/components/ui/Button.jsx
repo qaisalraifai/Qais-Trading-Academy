@@ -37,7 +37,7 @@ export default function Button({
       type="button"
       disabled={isDisabled}
       className={cn(
-        "inline-flex items-center justify-center font-sans transition-all duration-300 ease-premium",
+        "group inline-flex items-center justify-center font-sans transition-all duration-300 ease-premium",
         "disabled:cursor-not-allowed disabled:opacity-50",
         variants[variant],
         sizes[size],
@@ -49,9 +49,13 @@ export default function Button({
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
       ) : (
         <>
-          {Icon && iconPosition === "start" && <Icon className="h-4 w-4 shrink-0" aria-hidden />}
+          {Icon && iconPosition === "start" && (
+            <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
+          )}
           {children}
-          {Icon && iconPosition === "end" && <Icon className="h-4 w-4 shrink-0" aria-hidden />}
+          {Icon && iconPosition === "end" && (
+            <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
+          )}
         </>
       )}
     </button>
