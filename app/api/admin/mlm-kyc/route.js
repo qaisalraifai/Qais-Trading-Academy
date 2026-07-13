@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, requireAdminRole } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
 
 const BUCKET = "kyc-documents";
@@ -36,7 +36,7 @@ export async function GET(request) {
 
 // POST: يوافق/يرفض — { userId, action: "verify" | "reject", note }
 export async function POST(request) {
-  const { user, error, status } = await requireAdmin();
+  const { user, error, status } = await requireAdminRole(["compliance_manager"]);
   if (error) return NextResponse.json({ error }, { status });
 
   const { userId, action, note } = await request.json();

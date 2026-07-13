@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, requireAdminRole } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
 import { creditWallet } from "@/lib/wallets";
 
@@ -44,7 +44,7 @@ export async function GET(request) {
 
 // POST: يلغي عمولة موجودة — { commissionId, note }. بيرجّع المبلغ من محفظة المستفيد
 export async function POST(request) {
-  const { user, error, status } = await requireAdmin();
+  const { user, error, status } = await requireAdminRole(["financial_manager"]);
   if (error) return NextResponse.json({ error }, { status });
 
   const { commissionId, note } = await request.json();

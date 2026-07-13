@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, requireAdminRole } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
 import { creditWallet } from "@/lib/wallets";
 
@@ -27,7 +27,7 @@ export async function GET(request) {
 
 // POST: يوافق أو يرفض طلب سحب — { withdrawalId, action: "approve" | "reject", note }
 export async function POST(request) {
-  const { user, error, status } = await requireAdmin();
+  const { user, error, status } = await requireAdminRole(["financial_manager"]);
   if (error) return NextResponse.json({ error }, { status });
 
   const { withdrawalId, action, note } = await request.json();

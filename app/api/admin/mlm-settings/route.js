@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, requireAdminRole } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
 import { getAllSettings, updateSetting } from "@/lib/mlm-settings";
 import { logActivity } from "@/lib/activity-log";
@@ -16,7 +16,7 @@ export async function GET() {
 
 // POST: يعدّل إعداد واحد { key, value }
 export async function POST(request) {
-  const { user, error, status } = await requireAdmin();
+  const { user, error, status } = await requireAdminRole([]); // super_admin بس (فارغة = ولا دور إضافي مسموح)
   if (error) return NextResponse.json({ error }, { status });
 
   const { key, value } = await request.json();
