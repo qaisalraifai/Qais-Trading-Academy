@@ -308,10 +308,10 @@ export default function AdminLecturesPage() {
   );
 }
 
-const gold = "#C9A24B";
-const ink = "#050505";
+const gold = "#D4AF37";
+const ink = "#000000";
 const s = {
-  page: { backgroundColor: ink, color: "#E8E0D0", direction: "rtl", fontFamily: "'Inter', sans-serif", minHeight: "100vh", padding: "0 0 4rem" },
+  page: { backgroundColor: ink, color: "#FFFFFF", direction: "rtl", fontFamily: "'Inter', sans-serif", minHeight: "100vh", padding: "0 0 4rem" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2rem 3rem", borderBottom: "1px solid #141414" },
   headerSub: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.75rem", letterSpacing: "2px", marginBottom: "0.25rem" },
   headerTitle: { fontSize: "1.4rem", fontWeight: 800 },
@@ -322,7 +322,7 @@ const s = {
   th: { backgroundColor: "#0a0a0a", padding: "1rem 1.25rem", textAlign: "right", fontSize: "0.78rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111" },
   tr: { borderBottom: "1px solid #0d0d0d" },
   td: { padding: "1rem 1.25rem", fontSize: "0.88rem", verticalAlign: "middle" },
-  username: { color: "#E8E0D0", fontWeight: 500 },
+  username: { color: "#FFFFFF", fontWeight: 500 },
   mono: { fontFamily: "'JetBrains Mono', monospace", color: "#555", fontSize: "0.82rem" },
   btnEdit: { backgroundColor: "#1a2a3a", color: "#5b9bd5", border: "1px solid #2a3a5a", padding: "0.4rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.82rem" },
   btnDanger: { backgroundColor: "#2a1a1a", color: "#ef5350", border: "1px solid #4a2a2a", padding: "0.4rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.82rem" },
@@ -331,7 +331,7 @@ const s = {
   formCard: { backgroundColor: "#0d0d0d", border: `1px solid ${gold}44`, borderRadius: "8px", padding: "2rem", width: "100%", maxWidth: "480px", display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "90vh", overflowY: "auto" },
   formTitle: { fontSize: "1.2rem", fontWeight: 700, marginBottom: "0.75rem" },
   label: { fontSize: "0.82rem", color: "#999", marginTop: "0.75rem" },
-  input: { backgroundColor: "#141414", border: "1px solid #222", color: "#E8E0D0", padding: "0.7rem 0.9rem", borderRadius: "4px", fontSize: "0.9rem", outline: "none", fontFamily: "inherit" },
+  input: { backgroundColor: "#141414", border: "1px solid #222", color: "#FFFFFF", padding: "0.7rem 0.9rem", borderRadius: "4px", fontSize: "0.9rem", outline: "none", fontFamily: "inherit" },
   hint: { fontSize: "0.75rem", color: "#555", marginTop: "0.15rem" },
   errorText: { color: "#ef5350", fontSize: "0.85rem", marginTop: "0.5rem" },
   formActions: { display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" },

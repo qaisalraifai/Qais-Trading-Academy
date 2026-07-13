@@ -18,7 +18,7 @@ export default async function LecturePage({ params }) {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1a1200 0%, #0a0a0a 60%)",
+      background: "radial-gradient(ellipse at top, #1a1608 0%, #0a0a0a 60%)",
       color: "#fff",
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
@@ -28,23 +28,23 @@ export default async function LecturePage({ params }) {
       <div style={{
         width: 280,
         background: "linear-gradient(180deg, #111108 0%, #0a0a0a 100%)",
-        borderLeft: "1px solid #C9A24B22",
+        borderLeft: "1px solid #D4AF3722",
         padding: "1.5rem 1rem",
         display: "flex", flexDirection: "column", gap: "0.5rem",
         overflowY: "auto",
       }}>
         {/* Logo + Title */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "1px solid #1a1a0a" }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #C9A24B", overflow: "hidden", flexShrink: 0 }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #D4AF37", overflow: "hidden", flexShrink: 0 }}>
             <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
           <div>
-            <p style={{ color: "#C9A24B", fontSize: 9, letterSpacing: 2, margin: 0 }}>QTA</p>
+            <p style={{ color: "#D4AF37", fontSize: 9, letterSpacing: 2, margin: 0 }}>QTA</p>
             <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, margin: 0 }}>المحاضرات</p>
           </div>
         </div>
 
-        <Link href="/lecture" style={{ color: "#C9A24B", textDecoration: "none", fontSize: 12, marginBottom: "0.5rem", display: "block" }}>
+        <Link href="/lecture" style={{ color: "#D4AF37", textDecoration: "none", fontSize: 12, marginBottom: "0.5rem", display: "block" }}>
           ← قائمة المحاضرات
         </Link>
 
@@ -53,16 +53,16 @@ export default async function LecturePage({ params }) {
             <div style={{
               padding: "0.75rem 1rem",
               borderRadius: 10,
-              background: l.id === params.id ? "linear-gradient(135deg, #C9A24B22, #a07a2e11)" : "transparent",
-              border: l.id === params.id ? "1px solid #C9A24B44" : "1px solid transparent",
-              color: l.id === params.id ? "#C9A24B" : "#666",
+              background: l.id === params.id ? "linear-gradient(135deg, #D4AF3722, #9C7A2211)" : "transparent",
+              border: l.id === params.id ? "1px solid #D4AF3744" : "1px solid transparent",
+              color: l.id === params.id ? "#D4AF37" : "#666",
               fontSize: 13,
               cursor: "pointer",
               display: "flex", alignItems: "center", gap: 10,
             }}>
               <div style={{
                 width: 26, height: 26, borderRadius: "50%",
-                background: l.id === params.id ? "linear-gradient(135deg, #C9A24B, #a07a2e)" : "#1a1a0a",
+                background: l.id === params.id ? "linear-gradient(135deg, #D4AF37, #9C7A22)" : "#1a1a0a",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 11, fontWeight: 700, color: l.id === params.id ? "#000" : "#555",
                 flexShrink: 0,
@@ -79,7 +79,7 @@ export default async function LecturePage({ params }) {
       <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column" }}>
         {/* Header */}
         <div style={{ marginBottom: "1.5rem" }}>
-          <p style={{ color: "#C9A24B", fontSize: 11, letterSpacing: 3, margin: "0 0 8px" }}>QAIS TRADING ACADEMY</p>
+          <p style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 3, margin: "0 0 8px" }}>QAIS TRADING ACADEMY</p>
           <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>{lecture.title}</h2>
           {lecture.description && (
             <p style={{ color: "#666", margin: "8px 0 0", fontSize: 14 }}>{lecture.description}</p>
@@ -91,7 +91,7 @@ export default async function LecturePage({ params }) {
           position: "relative", width: "100%", paddingTop: "56.25%",
           background: "#000", borderRadius: 16, overflow: "hidden",
           boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-          border: "1px solid #C9A24B22",
+          border: "1px solid #D4AF3722",
         }}>
           <iframe
             src={`https://www.youtube.com/embed/${lecture.youtube_video_id}?rel=0&modestbranding=1`}

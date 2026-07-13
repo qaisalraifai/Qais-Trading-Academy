@@ -4,31 +4,31 @@
 
 @layer base {
   :root {
-    --gold-50: #fdf8ec;
-    --gold-100: #f5e6b8;
-    --gold-200: #e8c468;
+    --gold-50: #fdfaf0;
+    --gold-100: #f7eab8;
+    --gold-200: #f2d57e;
     --gold-300: #d4af37;
-    --gold-400: #c9a24b;
-    --gold-500: #a07a2e;
-    --gold-600: #8b6914;
+    --gold-400: #c9a227;
+    --gold-500: #9c7a22;
+    --gold-600: #7a5f14;
 
-    --ink: #050505;
-    --surface-0: #0a0a0a;
-    --surface-1: #0d0d0a;
-    --surface-2: #14120a;
-    --surface-3: #1a1508;
+    --ink: #000000;
+    --surface-0: #000000;
+    --surface-1: #0a0a0a;
+    --surface-2: #121212;
+    --surface-3: #1a1a1a;
 
-    --text-primary: #f0ebe0;
-    --text-secondary: #9a9590;
-    --text-muted: #6b6560;
+    --text-primary: #ffffff;
+    --text-secondary: #b8b8b8;
+    --text-muted: #7a7a7a;
 
     --profit: #10b981;
     --loss: #ef4444;
     --warning: #f59e0b;
     --info: #4fa8e0;
 
-    --glass-bg: rgba(255, 255, 255, 0.03);
-    --glass-border: rgba(201, 162, 75, 0.16);
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(212, 175, 55, 0.2);
     --glass-blur: 14px;
 
     --radius-sm: 8px;
@@ -36,8 +36,8 @@
     --radius-lg: 16px;
     --radius-xl: 20px;
 
-    --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.35);
-    --shadow-glow: 0 0 30px rgba(201, 162, 75, 0.33);
+    --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 30px rgba(212, 175, 55, 0.35);
     --transition-premium: 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
@@ -50,7 +50,7 @@
   body {
     @apply bg-ink text-text-primary font-sans;
     background-image:
-      radial-gradient(ellipse at top, #1a1200 0%, var(--surface-0) 60%),
+      radial-gradient(ellipse at top, #1a1608 0%, var(--surface-0) 60%),
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
     background-attachment: fixed;
   }

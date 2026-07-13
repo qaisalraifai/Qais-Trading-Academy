@@ -32,7 +32,7 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1a1200 0%, #0a0a0a 60%)",
+      background: "radial-gradient(ellipse at top, #1a1608 0%, #0a0a0a 60%)",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: "'Segoe UI', sans-serif", direction: "rtl", padding: "2rem",
     }}>
@@ -42,8 +42,8 @@ export default function LoginPage() {
         <div style={{ position: "relative" }}>
           <div style={{
             width: 100, height: 100, borderRadius: "50%",
-            border: "2px solid #C9A24B",
-            boxShadow: "0 0 30px #C9A24B55, 0 0 60px #C9A24B22",
+            border: "2px solid #D4AF37",
+            boxShadow: "0 0 30px #D4AF3755, 0 0 60px #D4AF3722",
             overflow: "hidden",
           }}>
             <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -51,7 +51,7 @@ export default function LoginPage() {
         </div>
 
         <div style={{ textAlign: "center" }}>
-          <p style={{ color: "#C9A24B", letterSpacing: 4, fontSize: 11, margin: "0 0 8px" }}>Q T A</p>
+          <p style={{ color: "#D4AF37", letterSpacing: 4, fontSize: 11, margin: "0 0 8px" }}>Q T A</p>
           <h1 style={{ color: "#fff", fontSize: 28, margin: "0 0 6px", fontWeight: 800 }}>تسجيل الدخول</h1>
           <p style={{ color: "#555", fontSize: 14, margin: 0 }}>أهلاً بعودتك لأكاديمية Qais Trading</p>
         </div>
@@ -60,7 +60,7 @@ export default function LoginPage() {
         <div style={{
           width: "100%",
           background: "linear-gradient(145deg, #111108, #0d0d0d)",
-          border: "1px solid #C9A24B33",
+          border: "1px solid #D4AF3733",
           borderRadius: 16,
           padding: "2rem",
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
@@ -94,7 +94,7 @@ export default function LoginPage() {
             {error && <p style={{ color: "#ef4444", fontSize: 13, textAlign: "center", margin: 0 }}>{error}</p>}
 
             <button onClick={handleLogin} disabled={loading} style={{
-              background: "linear-gradient(135deg, #C9A24B, #a07a2e)",
+              background: "linear-gradient(135deg, #D4AF37, #9C7A22)",
               color: "#000", border: "none", borderRadius: 8,
               padding: "0.9rem", fontWeight: 700, fontSize: 15,
               cursor: "pointer", opacity: loading ? 0.7 : 1, marginTop: "0.5rem",
@@ -106,7 +106,7 @@ export default function LoginPage() {
 
         <p style={{ color: "#444", fontSize: 13 }}>
           ما عندك حساب؟{" "}
-          <Link href="/signup" style={{ color: "#C9A24B", textDecoration: "none" }}>اشترك الآن</Link>
+          <Link href="/signup" style={{ color: "#D4AF37", textDecoration: "none" }}>اشترك الآن</Link>
         </p>
       </div>
     </div>

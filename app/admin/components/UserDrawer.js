@@ -22,7 +22,7 @@ function Row({ label, value }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", fontSize: "0.85rem" }}>
       <span style={{ color: "#666" }}>{label}</span>
-      <span style={{ color: "#E8E0D0", fontFamily: monoStack, fontSize: "0.82rem" }}>{value ?? "—"}</span>
+      <span style={{ color: "#FFFFFF", fontFamily: monoStack, fontSize: "0.82rem" }}>{value ?? "—"}</span>
     </div>
   );
 }
@@ -156,7 +156,7 @@ export default function UserDrawer({ userId, onClose, onAction, fetchDetail }) {
                 <>
                   <button
                     onClick={async () => { await onAction("save_edit", p, form); setEditing(false); }}
-                    style={{ background: `linear-gradient(135deg, ${gold}, #a07a2e)`, color: "#000", border: "none", padding: "0.55rem 1.1rem", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: "0.82rem" }}
+                    style={{ background: `linear-gradient(135deg, ${gold}, #9C7A22)`, color: "#000", border: "none", padding: "0.55rem 1.1rem", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: "0.82rem" }}
                   >
                     حفظ
                   </button>

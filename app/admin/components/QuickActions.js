@@ -28,10 +28,10 @@ function Modal({ title, onClose, onSubmit, children, submitLabel = "تأكيد" 
     <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(2px)" }} />
       <div style={{ ...glass, position: "relative", width: "min(380px, 92vw)", padding: "1.6rem", direction: "rtl" }}>
-        <h3 style={{ margin: "0 0 1.1rem", fontSize: "1rem", color: "#E8E0D0" }}>{title}</h3>
+        <h3 style={{ margin: "0 0 1.1rem", fontSize: "1rem", color: "#FFFFFF" }}>{title}</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>{children}</div>
         <div style={{ display: "flex", gap: "0.6rem", marginTop: "1.3rem" }}>
-          <button onClick={onSubmit} style={{ background: `linear-gradient(135deg, ${gold}, #a07a2e)`, color: "#000", border: "none", padding: "0.6rem 1.2rem", borderRadius: 10, fontWeight: 700, cursor: "pointer", flex: 1 }}>
+          <button onClick={onSubmit} style={{ background: `linear-gradient(135deg, ${gold}, #9C7A22)`, color: "#000", border: "none", padding: "0.6rem 1.2rem", borderRadius: 10, fontWeight: 700, cursor: "pointer", flex: 1 }}>
             {submitLabel}
           </button>
           <button onClick={onClose} style={{ background: "none", border: "1px solid #222", color: "#999", padding: "0.6rem 1.2rem", borderRadius: 10, cursor: "pointer" }}>
@@ -89,7 +89,7 @@ export default function QuickActions({ users, onAddUser, onNotifyBroadcast, onCr
             width: 56,
             height: 56,
             borderRadius: "50%",
-            background: `linear-gradient(135deg, ${gold}, #a07a2e)`,
+            background: `linear-gradient(135deg, ${gold}, #9C7A22)`,
             border: "none",
             color: "#000",
             fontSize: "1.6rem",

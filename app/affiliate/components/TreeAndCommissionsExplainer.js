@@ -1,6 +1,6 @@
 "use client";
 
-const GOLD = "#C9A24B";
+const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
 const BORDER = "#1a1a1a";
 

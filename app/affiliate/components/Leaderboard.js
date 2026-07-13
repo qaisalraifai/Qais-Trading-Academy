@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-const GOLD = "#C9A24B";
+const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
 const BORDER = "#1a1a1a";
 
@@ -62,6 +62,6 @@ const s = {
   sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD, marginBottom: "0.7rem" },
   myRank: { color: "#B8B0A0", fontSize: "0.85rem", marginBottom: "1rem" },
   table: { width: "100%", borderCollapse: "collapse" },
-  th: { textAlign: "right", color: "#6B6560", fontSize: "0.75rem", padding: "0.6rem", borderBottom: `1px solid ${BORDER}` },
+  th: { textAlign: "right", color: "#7A7A7A", fontSize: "0.75rem", padding: "0.6rem", borderBottom: `1px solid ${BORDER}` },
   td: { padding: "0.6rem", fontSize: "0.85rem", color: "#C8C0B0", borderBottom: `1px solid ${BORDER}` },
 };

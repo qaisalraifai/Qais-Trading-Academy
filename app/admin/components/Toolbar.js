@@ -24,7 +24,7 @@ const sortOptions = [
 const fieldStyle = {
   background: "#0d0d0d",
   border: "1px solid #1a1a1a",
-  color: "#E8E0D0",
+  color: "#FFFFFF",
   padding: "0.6rem 0.9rem",
   borderRadius: 10,
   fontSize: "0.85rem",

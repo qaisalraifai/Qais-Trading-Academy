@@ -146,9 +146,9 @@ useEffect(() => {
       <style>{`@keyframes qta-spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Floating background orbs */}
-      <div style={{ ...s.orb, width: "500px", height: "500px", top: "-100px", left: "-150px", background: "radial-gradient(circle, #B8915A22 0%, transparent 70%)" }} />
-      <div style={{ ...s.orb, width: "350px", height: "350px", top: "40%", right: "-100px", background: "radial-gradient(circle, #C9A24B18 0%, transparent 70%)" }} />
-      <div style={{ ...s.orb, width: "250px", height: "250px", bottom: "10%", left: "30%", background: "radial-gradient(circle, #8B691412 0%, transparent 70%)" }} />
+      <div style={{ ...s.orb, width: "500px", height: "500px", top: "-100px", left: "-150px", background: "radial-gradient(circle, #C9A22722 0%, transparent 70%)" }} />
+      <div style={{ ...s.orb, width: "350px", height: "350px", top: "40%", right: "-100px", background: "radial-gradient(circle, #D4AF3718 0%, transparent 70%)" }} />
+      <div style={{ ...s.orb, width: "250px", height: "250px", bottom: "10%", left: "30%", background: "radial-gradient(circle, #7A5F1412 0%, transparent 70%)" }} />
 
       {/* Header */}
       <header style={s.header}>
@@ -283,23 +283,23 @@ onChange={(e) => f.set(e.target.value)}
   );
 }
 
-const gold = "#C9A24B";
+const gold = "#D4AF37";
 const s = {
-  page: { backgroundColor: "#050505", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#E8E0D0", overflowX: "hidden", position: "relative" },
+  page: { backgroundColor: "#000000", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#FFFFFF", overflowX: "hidden", position: "relative" },
   orb: { position: "fixed", borderRadius: "50%", pointerEvents: "none", filter: "blur(80px)", zIndex: 0 },
 
   header: { position: "relative", zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #141414" },
   logoBlock: { display: "flex", alignItems: "center", gap: "0.75rem" },
   logoImg: { height: "34px", borderRadius: "4px" },
-  logoText: { fontSize: "0.95rem", fontWeight: 500, color: "#E8E0D0" },
-  loginLink: { color: "#6B6560", textDecoration: "none", fontSize: "0.9rem" },
+  logoText: { fontSize: "0.95rem", fontWeight: 500, color: "#FFFFFF" },
+  loginLink: { color: "#7A7A7A", textDecoration: "none", fontSize: "0.9rem" },
 
   hero: { position: "relative", zIndex: 1, maxWidth: "680px", margin: "0 auto", padding: "5rem 3rem 3rem", textAlign: "center" },
   heroLogo: { width: "100px", height: "100px", objectFit: "cover", borderRadius: "50%", border: `2px solid ${gold}44`, boxShadow: `0 0 40px ${gold}33` },
   eyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1.25rem" },
   heroTitle: { fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 900, lineHeight: 1.2, marginBottom: "1.25rem", letterSpacing: "-0.5px" },
   heroGold: { color: gold, fontStyle: "italic" },
-  heroSub: { color: "#6B6560", fontSize: "1rem", lineHeight: 1.85, marginBottom: "2.5rem" },
+  heroSub: { color: "#7A7A7A", fontSize: "1rem", lineHeight: 1.85, marginBottom: "2.5rem" },
 
   features: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem", marginBottom: "2.5rem", textAlign: "right" },
   featureItem: { display: "flex", alignItems: "center", gap: "0.6rem", color: "#C8C0B0", fontSize: "0.88rem" },
@@ -317,19 +317,19 @@ const s = {
   formSection: { position: "relative", zIndex: 1, padding: "3rem", display: "flex", justifyContent: "center" },
   card: { backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: "8px", padding: "3rem 2.5rem", width: "100%", maxWidth: "500px" },
   formEyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1rem", textAlign: "center" },
-  formTitle: { fontSize: "1.6rem", fontWeight: 800, color: "#E8E0D0", textAlign: "center", marginBottom: "0.4rem" },
+  formTitle: { fontSize: "1.6rem", fontWeight: 800, color: "#FFFFFF", textAlign: "center", marginBottom: "0.4rem" },
   formSub: { color: "#555", fontSize: "0.88rem", textAlign: "center", marginBottom: "2rem" },
 
   form: { display: "flex", flexDirection: "column", gap: "1.25rem" },
   field: { display: "flex", flexDirection: "column", gap: "0.4rem" },
   label: { color: "#888", fontSize: "0.8rem" },
-  input: { backgroundColor: "#080808", border: "1px solid #1e1e1e", color: "#E8E0D0", padding: "0.8rem 1rem", borderRadius: "4px", fontSize: "0.95rem", outline: "none", direction: "ltr", textAlign: "right" },
+  input: { backgroundColor: "#080808", border: "1px solid #1e1e1e", color: "#FFFFFF", padding: "0.8rem 1rem", borderRadius: "4px", fontSize: "0.95rem", outline: "none", direction: "ltr", textAlign: "right" },
   btn: { backgroundColor: gold, color: "#080600", padding: "1rem", borderRadius: "4px", border: "none", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer", marginTop: "0.5rem" },
   error: { color: "#ef4444", fontSize: "0.85rem", textAlign: "center" },
   waitBox: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem", padding: "1.5rem 0" },
   spinner: { width: "38px", height: "38px", borderRadius: "50%", border: "3px solid #1e1e1e", borderTopColor: gold, animation: "qta-spin 0.8s linear infinite" },
-  waitTitle: { color: "#E8E0D0", fontSize: "1.05rem", fontWeight: 700 },
-  waitText: { color: "#6B6560", fontSize: "0.88rem", lineHeight: 1.8, textAlign: "center" },
+  waitTitle: { color: "#FFFFFF", fontSize: "1.05rem", fontWeight: 700 },
+  waitText: { color: "#7A7A7A", fontSize: "0.88rem", lineHeight: 1.8, textAlign: "center" },
   linkText: { color: "#444", fontSize: "0.85rem", textAlign: "center", marginTop: "1.5rem" },
   link: { color: gold, textDecoration: "none" },
 

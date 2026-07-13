@@ -125,7 +125,7 @@ export default function MlmSettingsPage() {
                       borderRadius: 8,
                       border: "1px solid #2a2a2a",
                       background: "#0d0d0c",
-                      color: "#E8E0D0",
+                      color: "#FFFFFF",
                       textAlign: "center",
                       fontFamily: "monospace",
                     }}

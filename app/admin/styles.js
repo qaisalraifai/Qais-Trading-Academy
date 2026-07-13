@@ -1,13 +1,13 @@
 // تصميم فخم مطابق لنظام Aureus: أسود+ذهبي، خطوط Sora/Inter/JetBrains Mono،
 // زجاج (glass) بتشبع لوني، وظلال فخمة (luxe/gold). كل الألوان مركزية هون.
 //
-// ملاحظة مهمة: `gold` تبقى hex عادي (#C9A24B) عن قصد — كذا كل مكان بالكود
+// ملاحظة مهمة: `gold` تبقى hex عادي (#D4AF37) عن قصد — كذا كل مكان بالكود
 // القديم بيعمل `${gold}55` أو `gold + "44"` (ألفا بصيغة hex) بضل شغال متل
 // ما هو. التدرجات/الظلال الجديدة (OKLCH) منفصلة بتوكنز جديدة تحت.
 
-export const gold = "#C9A24B";
+export const gold = "#D4AF37";
 export const goldLight = "#E4C97A";
-export const ink = "#050505";
+export const ink = "#000000";
 export const panel = "#0b0b0a";
 export const panelElevated = "#111110";
 
@@ -76,7 +76,7 @@ export const s = {
   page: {
     backgroundColor: ink,
     backgroundImage: noiseBg,
-    color: "#E8E0D0",
+    color: "#FFFFFF",
     direction: "rtl",
     fontFamily: fontStack,
     minHeight: "100vh",

@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-const GOLD = "#C9A24B";
-const GOLD_LIGHT = "#E8C468";
-const GOLD_DARK = "#a07a2e";
+const GOLD = "#D4AF37";
+const GOLD_LIGHT = "#F2D57E";
+const GOLD_DARK = "#9C7A22";
 
 /*
  * مودال إضافة/تحديث طريقة الدفع — من غير ما يودّي المستخدم لصفحة الاشتراك الكاملة ($300).
@@ -88,7 +88,7 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
           maxWidth: 480,
           maxHeight: "90vh",
           overflowY: "auto",
-          background: "linear-gradient(145deg, #14120a, #0d0d0a)",
+          background: "linear-gradient(145deg, #121212, #0A0A0A)",
           border: `1px solid ${GOLD}44`,
           borderRadius: 18,
           boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
@@ -149,7 +149,7 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
                 alignItems: "center",
                 gap: 6,
                 background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                color: "#1a1200",
+                color: "#1a1608",
                 fontWeight: 800,
                 fontSize: 13,
                 padding: "0.6rem 1.3rem",

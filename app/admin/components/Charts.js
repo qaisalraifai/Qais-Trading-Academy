@@ -100,7 +100,7 @@ export function RevenueBarChart({ data }) {
                 width: "100%",
                 height: Math.max((d.value / max) * 80, 3),
                 borderRadius: 5,
-                background: hoverIdx === i ? `linear-gradient(180deg, ${gold}, #a07a2e)` : "linear-gradient(180deg, #C9A24B55, #C9A24B22)",
+                background: hoverIdx === i ? `linear-gradient(180deg, ${gold}, #9C7A22)` : "linear-gradient(180deg, #D4AF3755, #D4AF3722)",
                 transition: "all 250ms",
               }}
             />

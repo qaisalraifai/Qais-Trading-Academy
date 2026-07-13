@@ -4,8 +4,8 @@ import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets
 import { createClient } from "@/lib/supabase-client";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
 
-const GOLD = "#C9A24B";
-const GOLD_LIGHT = "#E8C468";
+const GOLD = "#D4AF37";
+const GOLD_LIGHT = "#F2D57E";
 const GREEN = "#10b981";
 const RED = "#ef4444";
 const DEFAULT_COMPARE_HEIGHT = 200; // ارتفاع لوحة المقارنة الافتراضي بالبكسل (قابل للسحب من المستخدم)
@@ -84,7 +84,7 @@ function sanitizeCandles(list) {
 // "الافتراضي" يدوياً. هاي أضمن طريقة لأي تغيير مستقبلي بالقيم الافتراضية.
 const CHART_SETTINGS_KEY = "qta_chart_settings_v2";
 const DEFAULT_CHART_SETTINGS = {
-  bg: "#0d0d0a",
+  bg: "#0A0A0A",
   up: GREEN,
   down: RED,
   gridVisible: true,
@@ -3120,7 +3120,7 @@ export default function ReplayClient({ userId }) {
       width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center",
       borderRadius: 8, cursor: disabled ? "not-allowed" : "pointer", border: "1px solid transparent",
       background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-      color: active ? "#1a1200" : disabled ? "#4a4e58" : "#c7cad1",
+      color: active ? "#1a1608" : disabled ? "#4a4e58" : "#c7cad1",
       opacity: disabled ? 0.5 : 1, flexShrink: 0,
     });
     return (
@@ -3155,7 +3155,7 @@ export default function ReplayClient({ userId }) {
           {activeIndicators.length > 0 && (
             <span style={{
               position: "absolute", top: 1, right: 1, minWidth: 13, height: 13, borderRadius: 7,
-              background: GOLD, color: "#1a1200", fontSize: 9, fontWeight: 800,
+              background: GOLD, color: "#1a1608", fontSize: 9, fontWeight: 800,
               display: "flex", alignItems: "center", justifyContent: "center", padding: "0 2px",
             }}>{activeIndicators.length}</span>
           )}
@@ -3258,11 +3258,11 @@ export default function ReplayClient({ userId }) {
         justifyContent: "center", gap: 3, borderRadius: 8, cursor: "pointer",
         border: "1px solid transparent",
         background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-        color: active ? "#1a1200" : "#9aa0aa",
+        color: active ? "#1a1608" : "#9aa0aa",
         transition: "background .12s, color .12s", flexShrink: 0, padding: "6px 2px",
       };
     }
-    const labelStyle = (active) => ({ fontSize: 10, fontWeight: 600, color: active ? "#1a1200" : "#8a8f99", lineHeight: 1.1 });
+    const labelStyle = (active) => ({ fontSize: 10, fontWeight: 600, color: active ? "#1a1608" : "#8a8f99", lineHeight: 1.1 });
     return (
       <div style={{
         flex: "0 0 auto", alignSelf: "stretch", position: "relative", zIndex: 10,
@@ -4491,7 +4491,7 @@ export default function ReplayClient({ userId }) {
         style={{
           display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
           minWidth: 78, padding: "0.3rem 0.55rem", borderRadius: 6, cursor: disabled ? "default" : "pointer",
-          background: "#0d0d0acc", border: `1.5px solid ${color}`, color,
+          background: "#0A0A0Acc", border: `1.5px solid ${color}`, color,
           fontFamily: "monospace, sans-serif", opacity: disabled ? 0.5 : 1,
         }}
       >
@@ -4527,7 +4527,7 @@ export default function ReplayClient({ userId }) {
       <div
         ref={chartWrapperRef}
         style={{
-          background: isFullscreen ? "#0a0a08" : "linear-gradient(145deg, #14120a, #0d0d0a)",
+          background: isFullscreen ? "#0a0a08" : "linear-gradient(145deg, #121212, #0A0A0A)",
           border: `1px solid ${GOLD}26`,
           borderRadius: isFullscreen ? 0 : 14,
           padding: isFullscreen ? "0.6rem" : "1rem",
@@ -4546,7 +4546,7 @@ export default function ReplayClient({ userId }) {
         {loading && (
           <div style={{
             position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#777", fontSize: 14, zIndex: 2, background: "#0d0d0acc", borderRadius: 14,
+            color: "#777", fontSize: 14, zIndex: 2, background: "#0A0A0Acc", borderRadius: 14,
           }}>
             ...جاري تحميل البيانات
           </div>
@@ -4710,7 +4710,7 @@ function tabStyle(active) {
     padding: "0.5rem 1rem", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer",
     border: `1px solid ${GOLD}44`,
     background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-    color: active ? "#1a1200" : GOLD,
+    color: active ? "#1a1608" : GOLD,
   };
 }
 
@@ -4720,7 +4720,7 @@ function toolBtnStyle(active) {
     borderRadius: 8, cursor: "pointer",
     border: "1px solid transparent",
     background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-    color: active ? "#1a1200" : "#c8c8c8",
+    color: active ? "#1a1608" : "#c8c8c8",
     transition: "background .12s, color .12s",
     flexShrink: 0,
   };
@@ -4763,6 +4763,6 @@ const dividerGripStyle = {
 
 function btnStyle(kind) {
   const base = { padding: "0.55rem 1rem", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" };
-  if (kind === "primary") return { ...base, background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, color: "#1a1200" };
+  if (kind === "primary") return { ...base, background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, color: "#1a1608" };
   return { ...base, background: "transparent", border: `1px solid ${GOLD}44`, color: GOLD };
 }

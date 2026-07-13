@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-const GOLD = "#C9A24B";
+const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
 const BORDER = "#1a1a1a";
-const SLICE_COLORS = ["#C9A24B", "#8B6914", "#C9A24B", "#6B5010", "#C9A24B", "#8B6914", "#4a3a08"];
+const SLICE_COLORS = ["#D4AF37", "#7A5F14", "#D4AF37", "#6B5010", "#D4AF37", "#7A5F14", "#4a3a08"];
 
 export default function BonusWheel() {
   const [status, setStatus] = useState(null);
@@ -116,7 +116,7 @@ const s = {
   desc: { color: "#9a9488", fontSize: "0.82rem", lineHeight: 1.6, marginBottom: "1.2rem" },
   error: { color: "#ef4444", fontSize: "0.8rem", marginBottom: "1rem" },
   wheelWrap: { position: "relative", width: 240, height: 240, margin: "0 auto 1.4rem" },
-  pointer: { position: "absolute", top: -6, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderTop: "18px solid #E8E0D0", zIndex: 5 },
+  pointer: { position: "absolute", top: -6, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderTop: "18px solid #FFFFFF", zIndex: 5 },
   wheel: { width: 240, height: 240, borderRadius: "50%", position: "relative", overflow: "hidden", border: `3px solid ${GOLD}`, boxShadow: "0 0 30px rgba(201,162,75,0.25)" },
   slice: { position: "absolute", width: "50%", height: "50%", top: 0, left: "50%", transformOrigin: "0% 100%", clipPath: "polygon(0 0, 100% 0, 0 100%)" },
   sliceLabel: { position: "absolute", top: "20%", left: "-30%", fontSize: "0.6rem", color: "#080600", fontWeight: 700, whiteSpace: "nowrap" },

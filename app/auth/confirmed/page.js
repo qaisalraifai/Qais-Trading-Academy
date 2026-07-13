@@ -10,14 +10,14 @@ export default function EmailConfirmedPage() {
   );
 }
 
-const gold = "#C9A24B";
+const gold = "#D4AF37";
 const s = {
   page: {
-    backgroundColor: "#050505",
+    backgroundColor: "#000000",
     minHeight: "100vh",
     direction: "rtl",
     fontFamily: "'Inter', sans-serif",
-    color: "#E8E0D0",
+    color: "#FFFFFF",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",

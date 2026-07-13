@@ -140,7 +140,7 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
                   }}
                 >
                   <td style={{ padding: "0.85rem 1.1rem" }}><Avatar user={user} /></td>
-                  <td style={{ padding: "0.85rem 1.1rem", fontWeight: 500, color: "#E8E0D0" }}>{user.username || "—"}</td>
+                  <td style={{ padding: "0.85rem 1.1rem", fontWeight: 500, color: "#FFFFFF" }}>{user.username || "—"}</td>
                   <td style={{ padding: "0.85rem 1.1rem" }}>
                     {user.role === "admin" ? <PlanBadge plan="admin" /> : <span style={{ color: "#555", fontSize: "0.8rem" }}>Student</span>}
                   </td>

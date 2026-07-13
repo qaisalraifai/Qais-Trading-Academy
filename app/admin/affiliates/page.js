@@ -358,5 +358,5 @@ const styles = {
   table: { width: "100%", borderCollapse: "collapse" },
   th: { textAlign: "right", color: "#666", fontSize: "0.75rem", padding: "0.7rem", borderBottom: "1px solid #1c1c1c" },
   td: { padding: "0.7rem", fontSize: "0.85rem", color: "#C8C0B0", borderBottom: "1px solid #1c1c1c" },
-  input: { width: "100%", background: "#080808", border: "1px solid #1e1e1e", color: "#E8E0D0", padding: "0.7rem 1rem", borderRadius: 6, fontSize: "0.9rem" },
+  input: { width: "100%", background: "#080808", border: "1px solid #1e1e1e", color: "#FFFFFF", padding: "0.7rem 1rem", borderRadius: 6, fontSize: "0.9rem" },
 };

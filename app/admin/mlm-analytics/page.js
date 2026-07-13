@@ -18,7 +18,7 @@ function StatCard({ label, value, sub, highlight }) {
   return (
     <div style={{ ...glass, padding: "1.3rem 1.5rem" }}>
       <div style={{ fontSize: "0.75rem", color: "#888", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: "1.5rem", fontWeight: 800, color: highlight ? gold : "#E8E0D0" }}>{value}</div>
+      <div style={{ fontSize: "1.5rem", fontWeight: 800, color: highlight ? gold : "#FFFFFF" }}>{value}</div>
       {sub && <div style={{ fontSize: "0.7rem", color: "#666", marginTop: 4 }}>{sub}</div>}
     </div>
   );

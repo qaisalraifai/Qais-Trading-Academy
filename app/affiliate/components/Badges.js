@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-const GOLD = "#C9A24B";
+const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
 const BORDER = "#1a1a1a";
 
@@ -43,6 +43,6 @@ const s = {
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "0.8rem" },
   badge: { background: "#080808", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "1rem 0.7rem", textAlign: "center" },
   icon: { fontSize: "1.8rem", marginBottom: 6 },
-  badgeTitle: { fontSize: "0.78rem", fontWeight: 700, color: "#E8E0D0", marginBottom: 4 },
-  badgeDesc: { fontSize: "0.68rem", color: "#6B6560", lineHeight: 1.4 },
+  badgeTitle: { fontSize: "0.78rem", fontWeight: 700, color: "#FFFFFF", marginBottom: 4 },
+  badgeDesc: { fontSize: "0.68rem", color: "#7A7A7A", lineHeight: 1.4 },
 };

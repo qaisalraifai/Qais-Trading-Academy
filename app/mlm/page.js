@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 
-const GOLD = "#C9A24B";
-const BG = "#050505";
+const GOLD = "#D4AF37";
+const BG = "#000000";
 const CARD = "#0d0d0d";
 const BORDER = "#1a1a1a";
 
@@ -163,7 +163,7 @@ export default function MlmPage() {
 
   if (loading) {
     return (
-      <div style={{ background: BG, color: "#E8E0D0", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>
+      <div style={{ background: BG, color: "#FFFFFF", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>
         جاري التحميل...
       </div>
     );
@@ -181,7 +181,7 @@ export default function MlmPage() {
   const totalTeamCv = Number(profile.cvLeft || 0) + Number(profile.cvRight || 0);
 
   return (
-    <div style={{ background: BG, color: "#E8E0D0", minHeight: "100vh", padding: "2.5rem 3rem", direction: "rtl", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ background: BG, color: "#FFFFFF", minHeight: "100vh", padding: "2.5rem 3rem", direction: "rtl", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ marginBottom: "2rem" }}>
         <div style={{ color: GOLD, fontSize: "0.75rem", letterSpacing: 2, marginBottom: 4 }}>QAIS TRADING ACADEMY</div>
         <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0 }}>مركز الشبكة الخاص بي</h1>
@@ -247,9 +247,9 @@ export default function MlmPage() {
           <TreeSlot label="الرجل اليمنى" child={tree.rightChild} />
         </div>
         <div style={{ display: "flex", gap: "1rem", marginTop: "1rem", fontSize: "0.8rem", color: "#888" }}>
-          <div>CV يسار: <strong style={{ color: "#E8E0D0" }}>{fmt(profile.cvLeft)}</strong></div>
-          <div>CV يمين: <strong style={{ color: "#E8E0D0" }}>{fmt(profile.cvRight)}</strong></div>
-          <div>غير مُطابق (Carry): <strong style={{ color: "#E8E0D0" }}>{fmt(profile.carryLeft)} / {fmt(profile.carryRight)}</strong></div>
+          <div>CV يسار: <strong style={{ color: "#FFFFFF" }}>{fmt(profile.cvLeft)}</strong></div>
+          <div>CV يمين: <strong style={{ color: "#FFFFFF" }}>{fmt(profile.cvRight)}</strong></div>
+          <div>غير مُطابق (Carry): <strong style={{ color: "#FFFFFF" }}>{fmt(profile.carryLeft)} / {fmt(profile.carryRight)}</strong></div>
         </div>
       </Card>
 
@@ -285,15 +285,15 @@ export default function MlmPage() {
           <form onSubmit={submitWithdraw} style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap", alignItems: "center" }}>
             <input type="number" min="50" step="0.01" placeholder="المبلغ" value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
-              style={{ width: 120, padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#E8E0D0" }} />
+              style={{ width: 120, padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#FFFFFF" }} />
             <select value={withdrawMethod} onChange={(e) => setWithdrawMethod(e.target.value)}
-              style={{ padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#E8E0D0" }}>
+              style={{ padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#FFFFFF" }}>
               <option value="bank_transfer">تحويل بنكي</option>
               <option value="e_wallet">محفظة إلكترونية</option>
               <option value="usdt">USDT</option>
             </select>
             <input placeholder="رقم الحساب/المحفظة" value={withdrawDest} onChange={(e) => setWithdrawDest(e.target.value)}
-              style={{ flex: 1, minWidth: 180, padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#E8E0D0" }} />
+              style={{ flex: 1, minWidth: 180, padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#FFFFFF" }} />
             <button type="submit" disabled={withdrawBusy}
               style={{ background: GOLD, color: "#111", border: "none", borderRadius: 8, padding: "0.5rem 1.2rem", fontWeight: 700, cursor: "pointer" }}>
               {withdrawBusy ? "جاري الإرسال..." : "إرسال الطلب"}

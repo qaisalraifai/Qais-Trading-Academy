@@ -85,9 +85,9 @@ export default function PaymentSuccessPage() {
   );
 }
 
-const gold = "#C9A24B";
+const gold = "#D4AF37";
 const s = {
-  page: { backgroundColor: "#050505", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#E8E0D0", display: "flex", alignItems: "center", justifyContent: "center" },
+  page: { backgroundColor: "#000000", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" },
   center: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem", padding: "2rem", textAlign: "center", maxWidth: "420px" },
   spinner: {
     width: "40px", height: "40px",

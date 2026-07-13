@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { gold, goldOklch, goldDeep, gradientGold, shadowGold, displayStack, fontStack, ink } from "../styles";
 
-function SparklesIcon({ size = 13, color = "#C9A24B" }) {
+function SparklesIcon({ size = 13, color = "#D4AF37" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
@@ -34,7 +34,7 @@ export default function AdminWelcomePage() {
         minHeight: "100vh",
         overflow: "hidden",
         backgroundColor: ink,
-        color: "#E8E0D0",
+        color: "#FFFFFF",
         direction: "rtl",
         fontFamily: fontStack,
       }}

@@ -53,9 +53,9 @@ export default function HomePage() {
       {/* Hero */}
       <section style={styles.hero}>
         {/* Glow orbs */}
-        <GlowOrb size="600px" color="#B8915A" blur="120px" top="-100px" left="-200px" opacity={0.12} />
-        <GlowOrb size="400px" color="#C9A24B" blur="80px" top="200px" right="-100px" opacity={0.1} />
-        <GlowOrb size="300px" color="#8B6914" blur="60px" top="400px" left="40%" opacity={0.08} />
+        <GlowOrb size="600px" color="#C9A227" blur="120px" top="-100px" left="-200px" opacity={0.12} />
+        <GlowOrb size="400px" color="#D4AF37" blur="80px" top="200px" right="-100px" opacity={0.1} />
+        <GlowOrb size="300px" color="#7A5F14" blur="60px" top="400px" left="40%" opacity={0.08} />
 
         <div style={styles.heroInner}>
           <Reveal delay={0}>
@@ -216,7 +216,7 @@ export default function HomePage() {
 
       {/* CTA */}
       <section style={styles.ctaSection}>
-        <GlowOrb size="500px" color="#C9A24B" blur="100px" top="50%" left="50%" opacity={0.1} />
+        <GlowOrb size="500px" color="#D4AF37" blur="100px" top="50%" left="50%" opacity={0.1} />
         <Reveal><h2 style={styles.ctaTitle}>جاهز تبدأ؟</h2></Reveal>
         <Reveal delay={0.15}><p style={styles.ctaSub}>انضم الآن وابدأ رحلتك في عالم التداول الاحترافي</p></Reveal>
         <Reveal delay={0.3}>
@@ -242,12 +242,12 @@ export default function HomePage() {
   );
 }
 
-const gold = "#C9A24B";
-const goldDim = "#B8915A";
-const ink = "#050505";
+const gold = "#D4AF37";
+const goldDim = "#C9A227";
+const ink = "#000000";
 const cardBg = "#0d0d0d";
-const textMuted = "#6B6560";
-const textSoft = "#E8E0D0";
+const textMuted = "#7A7A7A";
+const textSoft = "#FFFFFF";
 
 const styles = {
   page: { backgroundColor: ink, color: textSoft, direction: "rtl", fontFamily: "'Inter', system-ui, sans-serif", minHeight: "100vh", overflowX: "hidden" },

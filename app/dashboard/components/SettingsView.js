@@ -2,15 +2,15 @@
 import { useEffect, useState } from "react";
 import AddPaymentMethodModal from "./AddPaymentMethodModal";
 
-const GOLD = "#C9A24B";
-const GOLD_LIGHT = "#E8C468";
-const GOLD_DARK = "#a07a2e";
+const GOLD = "#D4AF37";
+const GOLD_LIGHT = "#F2D57E";
+const GOLD_DARK = "#9C7A22";
 const GREEN = "#10b981";
 const RED = "#ef4444";
 const BLUE = "#4FA8E0";
 
 const cardStyle = {
-  background: "linear-gradient(145deg, #14120a, #0d0d0a)",
+  background: "linear-gradient(145deg, #121212, #0A0A0A)",
   border: `1px solid ${GOLD}26`,
   borderRadius: 18,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
@@ -276,7 +276,7 @@ export default function SettingsView({ username }) {
               onClick={() => setPaymentModalOpen(true)}
               style={{
                 background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                color: "#1a1200",
+                color: "#1a1608",
                 border: "none",
                 fontWeight: 800,
                 fontSize: 13,
@@ -301,7 +301,7 @@ export default function SettingsView({ username }) {
                 alignItems: "center",
                 gap: 6,
                 background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                color: "#1a1200",
+                color: "#1a1608",
                 border: "none",
                 fontWeight: 800,
                 fontSize: 13,
@@ -344,7 +344,7 @@ export default function SettingsView({ username }) {
               gap: 8,
               background: data.profile.auto_renew ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})` : "transparent",
               border: `1px solid ${GOLD}66`,
-              color: data.profile.auto_renew ? "#1a1200" : GOLD_LIGHT,
+              color: data.profile.auto_renew ? "#1a1608" : GOLD_LIGHT,
               fontWeight: 800,
               fontSize: 13,
               padding: "0.6rem 1.2rem",
@@ -370,7 +370,7 @@ export default function SettingsView({ username }) {
                 key={key}
                 style={{
                   border: `1px solid ${isCurrent ? GOLD : "#222"}`,
-                  background: isCurrent ? `linear-gradient(135deg, ${GOLD}1a, #0d0d0a)` : "#0d0d0a",
+                  background: isCurrent ? `linear-gradient(135deg, ${GOLD}1a, #0A0A0A)` : "#0A0A0A",
                   borderRadius: 12,
                   padding: "1rem",
                   textAlign: "center",
@@ -385,7 +385,7 @@ export default function SettingsView({ username }) {
                       marginTop: 8,
                       fontSize: 10,
                       fontWeight: 800,
-                      color: "#1a1200",
+                      color: "#1a1608",
                       background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
                       padding: "3px 10px",
                       borderRadius: 20,
@@ -459,7 +459,7 @@ export default function SettingsView({ username }) {
             style={{
               flex: 1,
               minWidth: 200,
-              background: "#0d0d0a",
+              background: "#0A0A0A",
               border: `1px solid ${GOLD}33`,
               borderRadius: 10,
               padding: "0.6rem 1rem",
@@ -473,7 +473,7 @@ export default function SettingsView({ username }) {
             disabled={couponBusy || !couponCode.trim()}
             style={{
               background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-              color: "#1a1200",
+              color: "#1a1608",
               border: "none",
               fontWeight: 800,
               fontSize: 13,
