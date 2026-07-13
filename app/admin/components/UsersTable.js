@@ -31,7 +31,7 @@ function Avatar({ user }) {
   return user.avatar_url ? (
     <img src={user.avatar_url} alt="" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: `1px solid ${gold}44` }} />
   ) : (
-    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#1c1c1c,#141414)", border: `1px solid ${gold}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", color: gold, fontWeight: 700 }}>
+    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#1c1c1c,#181A20)", border: `1px solid ${gold}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", color: gold, fontWeight: 700 }}>
       {initial}
     </div>
   );
@@ -119,7 +119,7 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
             <thead>
               <tr>
                 {["", "الاسم", "الرتبة", "الخطة", "البداية", "النهاية", "الأيام المتبقية", "المدفوع", "الحالة", "آخر دخول", ""].map((h, i) => (
-                  <th key={i} style={{ background: "#141414", padding: "0.9rem 1.1rem", textAlign: "right", fontSize: "0.74rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111", whiteSpace: "nowrap" }}>
+                  <th key={i} style={{ background: "#181A20", padding: "0.9rem 1.1rem", textAlign: "right", fontSize: "0.74rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111", whiteSpace: "nowrap" }}>
                     {h}
                   </th>
                 ))}
@@ -140,7 +140,7 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
                   }}
                 >
                   <td style={{ padding: "0.85rem 1.1rem" }}><Avatar user={user} /></td>
-                  <td style={{ padding: "0.85rem 1.1rem", fontWeight: 500, color: "#F5F5F5" }}>{user.username || "—"}</td>
+                  <td style={{ padding: "0.85rem 1.1rem", fontWeight: 500, color: "#EAECEF" }}>{user.username || "—"}</td>
                   <td style={{ padding: "0.85rem 1.1rem" }}>
                     {user.role === "admin" ? <PlanBadge plan="admin" /> : <span style={{ color: "#555", fontSize: "0.8rem" }}>Student</span>}
                   </td>

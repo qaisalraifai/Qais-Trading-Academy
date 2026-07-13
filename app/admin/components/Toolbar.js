@@ -23,8 +23,8 @@ const sortOptions = [
 
 const fieldStyle = {
   background: "#0d0d0d",
-  border: "1px solid #242424",
-  color: "#F5F5F5",
+  border: "1px solid #2B2F36",
+  color: "#EAECEF",
   padding: "0.6rem 0.9rem",
   borderRadius: 10,
   fontSize: "0.85rem",
@@ -56,7 +56,7 @@ export default function Toolbar({ search, setSearch, period, setPeriod, statuses
           ...fieldStyle,
           flex: "1 1 220px",
           minWidth: 200,
-          borderColor: focused ? gold + "77" : "#242424",
+          borderColor: focused ? gold + "77" : "#2B2F36",
         }}
       />
 

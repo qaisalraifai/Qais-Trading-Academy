@@ -10,7 +10,7 @@ export default function AdminNotFound() {
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: ink,
-        color: "#F5F5F5",
+        color: "#EAECEF",
         direction: "rtl",
         fontFamily: fontStack,
         padding: "1.5rem",

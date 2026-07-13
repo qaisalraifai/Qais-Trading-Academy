@@ -4,7 +4,7 @@ import { playBeep } from "@/lib/beep";
 
 const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
-const BORDER = "#242424";
+const BORDER = "#2B2F36";
 
 const ICONS = {
   commission: "💰",
@@ -72,7 +72,7 @@ export default function RecentActivity() {
       ) : (
         <div style={{ maxHeight: 320, overflowY: "auto" }}>
           {items.map((n, i) => (
-            <div key={n.id} style={{ ...s.row, borderBottom: i < items.length - 1 ? `1px solid #141414` : "none" }}>
+            <div key={n.id} style={{ ...s.row, borderBottom: i < items.length - 1 ? `1px solid #181A20` : "none" }}>
               <span style={s.icon}>{ICONS[n.type] || "⚪"}</span>
               <div style={{ flex: 1 }}>
                 <p style={s.title}>{n.title}</p>
@@ -96,7 +96,7 @@ const s = {
   empty: { color: "#555", fontSize: "0.85rem" },
   row: { display: "flex", gap: 10, padding: "0.7rem 0" },
   icon: { fontSize: "1rem" },
-  title: { fontSize: "0.85rem", color: "#F5F5F5", fontWeight: 600 },
+  title: { fontSize: "0.85rem", color: "#EAECEF", fontWeight: 600 },
   msg: { fontSize: "0.78rem", color: "#9a9488", marginTop: 2, lineHeight: 1.5 },
   time: { fontSize: "0.7rem", color: "#555", marginTop: 3 },
 };

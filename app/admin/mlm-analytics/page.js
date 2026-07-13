@@ -18,7 +18,7 @@ function StatCard({ label, value, sub, highlight }) {
   return (
     <div style={{ ...glass, padding: "1.3rem 1.5rem" }}>
       <div style={{ fontSize: "0.75rem", color: "#888", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: "1.5rem", fontWeight: 800, color: highlight ? gold : "#F5F5F5" }}>{value}</div>
+      <div style={{ fontSize: "1.5rem", fontWeight: 800, color: highlight ? gold : "#EAECEF" }}>{value}</div>
       {sub && <div style={{ fontSize: "0.7rem", color: "#666", marginTop: 4 }}>{sub}</div>}
     </div>
   );
@@ -70,7 +70,7 @@ export default function MlmAnalyticsPage() {
       </div>
 
       <div style={s.section}>
-        {error && <div style={{ color: "#FF4D4F", marginBottom: "1rem" }}>{error}</div>}
+        {error && <div style={{ color: "#F6465D", marginBottom: "1rem" }}>{error}</div>}
         {loading || !data ? (
           <div style={{ color: "#888" }}>جاري التحميل...</div>
         ) : (
@@ -91,7 +91,7 @@ export default function MlmAnalyticsPage() {
                   <div style={{ color: "#555", fontSize: "0.85rem" }}>لا يوجد بعد</div>
                 ) : (
                   Object.entries(data.commissionsByType).map(([type, amount]) => (
-                    <div key={type} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid #242424", fontSize: "0.85rem" }}>
+                    <div key={type} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid #2B2F36", fontSize: "0.85rem" }}>
                       <span>{BONUS_LABELS[type] || type}</span>
                       <span style={{ color: gold, fontWeight: 700 }}>{fmt(amount)} دينار</span>
                     </div>
@@ -105,7 +105,7 @@ export default function MlmAnalyticsPage() {
                   <div style={{ color: "#555", fontSize: "0.85rem" }}>لا يوجد بعد</div>
                 ) : (
                   data.topLeaders.map((l, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid #242424", fontSize: "0.85rem" }}>
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid #2B2F36", fontSize: "0.85rem" }}>
                       <span>{i + 1}. {l.username} <span style={{ color: "#666" }}>({l.rankName})</span></span>
                       <span style={{ color: gold, fontWeight: 700 }}>{fmt(l.totalCv)} CV</span>
                     </div>

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
-const BORDER = "#242424";
+const BORDER = "#2B2F36";
 const SLICE_COLORS = ["#D4AF37", "#7A5F14", "#D4AF37", "#6B5010", "#D4AF37", "#7A5F14", "#4a3a08"];
 
 export default function BonusWheel() {
@@ -114,9 +114,9 @@ const s = {
   card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "1.6rem", marginBottom: "1.2rem", textAlign: "center" },
   sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD, marginBottom: "0.6rem" },
   desc: { color: "#9a9488", fontSize: "0.82rem", lineHeight: 1.6, marginBottom: "1.2rem" },
-  error: { color: "#FF4D4F", fontSize: "0.8rem", marginBottom: "1rem" },
+  error: { color: "#F6465D", fontSize: "0.8rem", marginBottom: "1rem" },
   wheelWrap: { position: "relative", width: 240, height: 240, margin: "0 auto 1.4rem" },
-  pointer: { position: "absolute", top: -6, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderTop: "18px solid #F5F5F5", zIndex: 5 },
+  pointer: { position: "absolute", top: -6, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderTop: "18px solid #EAECEF", zIndex: 5 },
   wheel: { width: 240, height: 240, borderRadius: "50%", position: "relative", overflow: "hidden", border: `3px solid ${GOLD}`, boxShadow: "0 0 30px rgba(201,162,75,0.25)" },
   slice: { position: "absolute", width: "50%", height: "50%", top: 0, left: "50%", transformOrigin: "0% 100%", clipPath: "polygon(0 0, 100% 0, 0 100%)" },
   sliceLabel: { position: "absolute", top: "20%", left: "-30%", fontSize: "0.6rem", color: "#080600", fontWeight: 700, whiteSpace: "nowrap" },

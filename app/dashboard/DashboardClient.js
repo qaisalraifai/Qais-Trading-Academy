@@ -10,8 +10,8 @@ import SettingsView from "./components/SettingsView";
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
 const GOLD_DARK = "#9C7A22";
-const GREEN = "#00C853";
-const RED = "#FF4D4F";
+const GREEN = "#02C076";
+const RED = "#F6465D";
 
 const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: "👥", view: "accounts" },
@@ -59,7 +59,7 @@ function rowToTrade(row) {
 
 /* بطاقة عامة موحّدة بالتصميم الذهبي */
 const cardStyle = {
-  background: "linear-gradient(145deg, #1E1E1E, #141414)",
+  background: "linear-gradient(145deg, #22252B, #181A20)",
   border: `1px solid ${GOLD}26`,
   borderRadius: 18,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
@@ -269,7 +269,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
     <div
       style={{
         minHeight: "100vh",
-        background: "radial-gradient(ellipse at top, #1a1608 0%, #141414 60%)",
+        background: "radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%)",
         color: "#fff",
         fontFamily: "'Segoe UI', sans-serif",
         direction: "rtl",
@@ -288,7 +288,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
           gap: "1rem",
           padding: "0 1.6rem",
           borderBottom: `1px solid ${GOLD}22`,
-          background: "linear-gradient(180deg, #111108 0%, #141414 100%)",
+          background: "linear-gradient(180deg, #111108 0%, #181A20 100%)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -307,7 +307,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
             placeholder="🔍 ابحث عن محاضرة أو برنامج..."
             style={{
               width: "100%",
-              background: "#141414",
+              background: "#181A20",
               border: `1px solid ${GOLD}33`,
               borderRadius: 10,
               padding: "0.55rem 1rem",
@@ -365,7 +365,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
         style={{
           width: 240,
           flexShrink: 0,
-          background: "linear-gradient(180deg, #111108 0%, #141414 100%)",
+          background: "linear-gradient(180deg, #111108 0%, #181A20 100%)",
           borderLeft: `1px solid ${GOLD}22`,
           padding: "1.5rem 1rem",
           display: "flex",
@@ -376,7 +376,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
         {/* بطاقة حالة الاشتراك VIP */}
         <div
           style={{
-            background: `linear-gradient(135deg, ${GOLD}22, #141414)`,
+            background: `linear-gradient(135deg, ${GOLD}22, #181A20)`,
             border: `1px solid ${GOLD}44`,
             borderRadius: 14,
             padding: "1rem",
@@ -841,7 +841,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                         justifyContent: "space-between",
                         alignItems: "center",
                         padding: "0.7rem 0.9rem",
-                        background: "#141414",
+                        background: "#181A20",
                         borderRight: `3px solid ${m.up ? GREEN : RED}`,
                         borderRadius: 8,
                       }}
@@ -1117,7 +1117,7 @@ function MarketHeatmap({ snapshot, loading, error }) {
             const v = values.find((x) => x.sector === sector);
             if (!v || v.pct == null) {
               return (
-                <div key={sector} style={{ background: "#141414", border: `1px solid ${GOLD}18`, borderRadius: 10, padding: "0.7rem 0.4rem", textAlign: "center" }}>
+                <div key={sector} style={{ background: "#181A20", border: `1px solid ${GOLD}18`, borderRadius: 10, padding: "0.7rem 0.4rem", textAlign: "center" }}>
                   <p style={{ margin: 0, fontSize: 10.5, color: "#666", fontWeight: 600 }}>{sector}</p>
                   <p style={{ margin: "5px 0 0", fontSize: 12, color: "#444" }}>--</p>
                 </div>
@@ -1210,7 +1210,7 @@ function PriceChart() {
                 key={t}
                 onClick={() => setTf(t)}
                 style={{
-                  background: tf === t ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#141414",
+                  background: tf === t ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#181A20",
                   color: tf === t ? "#000" : "#999",
                   border: tf === t ? "none" : `1px solid ${GOLD}22`,
                   borderRadius: 6,
@@ -1261,7 +1261,7 @@ function PriceChart() {
 function FearGreedGauge({ snapshot, loading, error }) {
   const value = snapshot?.fearGreed;
   const label = value == null ? null : value >= 75 ? "طمع شديد" : value >= 55 ? "طمع" : value >= 45 ? "محايد" : value >= 25 ? "خوف" : "خوف شديد";
-  const color = value == null ? "#888" : value >= 75 ? "#22c55e" : value >= 55 ? "#84cc16" : value >= 45 ? "#eab308" : value >= 25 ? "#f59e0b" : "#FF4D4F";
+  const color = value == null ? "#888" : value >= 75 ? "#22c55e" : value >= 55 ? "#84cc16" : value >= 45 ? "#eab308" : value >= 25 ? "#f59e0b" : "#F6465D";
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
@@ -1274,7 +1274,7 @@ function FearGreedGauge({ snapshot, loading, error }) {
         <LiveCardStatus label="⚠️ تعذر تحميل مؤشر VIX حالياً" />
       ) : (
         <>
-          <SemiGauge value={value} colors={["#FF4D4F", "#f59e0b", "#eab308", "#84cc16", "#22c55e"]} gradId="fg" />
+          <SemiGauge value={value} colors={["#F6465D", "#f59e0b", "#eab308", "#84cc16", "#22c55e"]} gradId="fg" />
           <p style={{ margin: "2px 0 0", fontSize: 22, fontWeight: 800, color }}>{value}</p>
           <p style={{ margin: "2px 0 0", fontSize: 11.5, color, fontWeight: 700 }}>{label}</p>
           <p style={{ margin: "8px 0 0", fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
@@ -1507,7 +1507,7 @@ function BestOpportunitiesPanel({ events, snapshot }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              background: "#141414",
+              background: "#181A20",
               border: `1px solid ${GOLD}1a`,
               borderRadius: 10,
               padding: "0.6rem 0.8rem",
@@ -1596,7 +1596,7 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
           placeholder="🔍  ابحث عن خبر، أصل، أو مؤشر..."
           style={{
             width: "100%",
-            background: "#141414",
+            background: "#181A20",
             border: `1px solid ${GOLD}2a`,
             borderRadius: 9,
             padding: "0.5rem 0.8rem",
@@ -1632,7 +1632,7 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
         <select
           value={tzOffset}
           onChange={(e) => setTzOffset(Number(e.target.value))}
-          style={{ background: "#141414", border: `1px solid ${GOLD}2a`, borderRadius: 8, padding: "0.35rem 0.5rem", color: "#ccc", fontSize: 11 }}
+          style={{ background: "#181A20", border: `1px solid ${GOLD}2a`, borderRadius: 8, padding: "0.35rem 0.5rem", color: "#ccc", fontSize: 11 }}
         >
           {[-5, 0, 1, 2, 3, 4].map((o) => (
             <option key={o} value={o}>
@@ -2063,7 +2063,7 @@ function CalendarView({ events, loading, isAdmin }) {
                       { label: "الفعلي", value: selectedEvent.actual, gold: true },
                       { label: "العد التنازلي", value: countdown, live: true },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: "#141414", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.6rem", textAlign: "center" }}>
+                      <div key={i} style={{ background: "#181A20", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.6rem", textAlign: "center" }}>
                         <p style={{ margin: 0, fontSize: 10, color: "#888" }}>{s.label}</p>
                         <p style={{
                           margin: "5px 0 0", fontSize: 14, fontWeight: 800, direction: s.live ? "ltr" : undefined,
@@ -2100,7 +2100,7 @@ function CalendarView({ events, loading, isAdmin }) {
                 {/* بطاقة تحليل الذكاء الاصطناعي */}
                 <div style={{
                   ...cardStyle, padding: "1.2rem 1.4rem",
-                  background: "linear-gradient(135deg, #1a1030, #141414)", border: "1px solid #7c5cff33",
+                  background: "linear-gradient(135deg, #1a1030, #181A20)", border: "1px solid #7c5cff33",
                 }}>
                   <p style={{ color: PURPLE_LIGHT, fontSize: 13, fontWeight: 700, margin: "0 0 10px" }}>🤖 تحليل الذكاء الاصطناعي</p>
                   {!aiData ? (
@@ -2154,7 +2154,7 @@ function CalendarView({ events, loading, isAdmin }) {
                       key={t.key}
                       onClick={() => setAnalysisTab(t.key)}
                       style={{
-                        background: analysisTab === t.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#141414",
+                        background: analysisTab === t.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#181A20",
                         color: analysisTab === t.key ? "#000" : "#999",
                         border: analysisTab === t.key ? "none" : `1px solid ${GOLD}22`,
                         borderRadius: 8, padding: "0.5rem 0.9rem", fontSize: 12, fontWeight: 700, cursor: "pointer",
@@ -2172,7 +2172,7 @@ function CalendarView({ events, loading, isAdmin }) {
                         <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, margin: "0 0 0.9rem" }}>📊 السيناريوهات المتوقعة</p>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.8rem" }}>
                           {aiData.scenarios.map((sc, i) => (
-                            <div key={i} style={{ background: "#141414", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem" }}>
+                            <div key={i} style={{ background: "#181A20", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem" }}>
                               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#eee" }}>{sc.title}</p>
                               <p style={{ margin: "8px 0 4px", fontSize: 20, fontWeight: 800, color: GOLD_LIGHT }}>{sc.probability}%</p>
                               <p style={{ margin: "0 0 6px", fontSize: 11, color: "#f5c542" }}>{"⭐".repeat(Math.max(1, Math.min(5, sc.stars || 1)))}</p>
@@ -2236,7 +2236,7 @@ function CalendarView({ events, loading, isAdmin }) {
                               const dir = DIRECTION_STYLE[h.direction] || DIRECTION_STYLE.neutral;
                               return (
                                 <div key={i} style={{
-                                  display: "flex", alignItems: "center", gap: 12, background: "#141414",
+                                  display: "flex", alignItems: "center", gap: 12, background: "#181A20",
                                   border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.7rem 0.9rem",
                                 }}>
                                   <span style={{
@@ -2323,7 +2323,7 @@ function CalendarView({ events, loading, isAdmin }) {
               value={dayFilter}
               onChange={(e) => setDayFilter(e.target.value)}
               style={{
-                width: "100%", background: "#141414", border: `1px solid ${GOLD}33`, borderRadius: 8,
+                width: "100%", background: "#181A20", border: `1px solid ${GOLD}33`, borderRadius: 8,
                 padding: "0.5rem 0.6rem", color: "#ccc", fontSize: 11.5, marginBottom: 8,
               }}
             >
@@ -2345,7 +2345,7 @@ function CalendarView({ events, loading, isAdmin }) {
                   onClick={() => setImpactFilter(f.key)}
                   style={{
                     flex: 1,
-                    background: impactFilter === f.key ? `${f.color}22` : "#141414",
+                    background: impactFilter === f.key ? `${f.color}22` : "#181A20",
                     color: impactFilter === f.key ? f.color : "#999",
                     border: impactFilter === f.key ? `1px solid ${f.color}66` : `1px solid ${GOLD}22`,
                     borderRadius: 8, padding: "0.4rem 0.2rem", fontSize: 9.5, fontWeight: 700, cursor: "pointer",
@@ -2377,7 +2377,7 @@ function CalendarView({ events, loading, isAdmin }) {
                           key={ev.id}
                           onClick={() => setSelectedId(ev.id)}
                           style={{
-                            background: isSelected ? `${GOLD}14` : "#141414",
+                            background: isSelected ? `${GOLD}14` : "#181A20",
                             border: isSelected ? `1px solid ${GOLD}66` : `1px solid ${GOLD}1a`,
                             borderRadius: 10, padding: "0.65rem 0.8rem", cursor: "pointer",
                           }}
@@ -2582,7 +2582,7 @@ function LecturesView({
             onChange={(e) => setSearch(e.target.value)}
             style={{
               flex: "1 1 200px",
-              background: "#141414",
+              background: "#181A20",
               border: `1px solid ${GOLD}33`,
               borderRadius: 10,
               padding: "0.6rem 1rem",
@@ -2597,7 +2597,7 @@ function LecturesView({
                 key={f.key}
                 onClick={() => setFilter(f.key)}
                 style={{
-                  background: filter === f.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#141414",
+                  background: filter === f.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#181A20",
                   color: filter === f.key ? "#000" : "#999",
                   border: filter === f.key ? "none" : `1px solid ${GOLD}22`,
                   borderRadius: 8,
@@ -2646,7 +2646,7 @@ function LecturesView({
                         key={lecture.id}
                         onClick={() => onSelect(lecture)}
                         style={{
-                          background: "#141414",
+                          background: "#181A20",
                           border: isCompleted ? "1px solid #4CAF5044" : `1px solid ${GOLD}22`,
                           borderRadius: 12,
                           padding: "0.9rem 1.1rem",
@@ -2711,7 +2711,7 @@ function LecturesView({
         style={{
           position: "relative",
           overflow: "hidden",
-          background: `linear-gradient(135deg, #242424 0%, #141414 60%)`,
+          background: `linear-gradient(135deg, #2B2F36 0%, #181A20 60%)`,
           border: `1px solid ${GOLD}33`,
           borderRadius: 16,
           padding: "1.6rem 1.8rem",
@@ -2784,7 +2784,7 @@ function LecturesView({
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
-                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#141414" }} />
+                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#181A20" }} />
               </div>
             )}
           </div>
@@ -2807,7 +2807,7 @@ function LecturesView({
               onClick={() => setViewMode(v.key)}
               style={{
                 width: 34, height: 34, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-                background: viewMode === v.key ? `${GOLD}22` : "#141414",
+                background: viewMode === v.key ? `${GOLD}22` : "#181A20",
                 border: viewMode === v.key ? `1px solid ${GOLD}66` : `1px solid ${GOLD}22`,
                 color: viewMode === v.key ? GOLD_LIGHT : "#666",
                 cursor: "pointer", fontSize: 14,
@@ -2838,7 +2838,7 @@ function LecturesView({
               key={course.id}
               onClick={() => onSelectCourse(course.id)}
               style={{
-                background: "#141414",
+                background: "#181A20",
                 border: `1px solid ${course.color.border}`,
                 borderRadius: 14,
                 padding: "1.25rem",

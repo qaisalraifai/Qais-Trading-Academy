@@ -34,7 +34,7 @@ export default function AdminWelcomePage() {
         minHeight: "100vh",
         overflow: "hidden",
         backgroundColor: ink,
-        color: "#F5F5F5",
+        color: "#EAECEF",
         direction: "rtl",
         fontFamily: fontStack,
       }}

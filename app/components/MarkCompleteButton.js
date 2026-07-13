@@ -41,12 +41,12 @@ export default function MarkCompleteButton({ lectureId, isCompleted }) {
 const styles = {
   button: {
     padding: "0.75rem 1.5rem",
-    backgroundColor: "#00C853",
+    backgroundColor: "#02C076",
     color: "#fff",
     border: "none",
     borderRadius: "8px",
     cursor: "pointer",
     fontWeight: "bold",
   },
-  done: { color: "#00C853", fontWeight: "bold" },
+  done: { color: "#02C076", fontWeight: "bold" },
 };

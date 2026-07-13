@@ -1,3 +1,23 @@
+import { Cairo, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+
+const cairo = Cairo({
+  subsets: ["arabic", "latin"],
+  variable: "--font-arabic",
+  display: "swap",
+});
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-num",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
+
 export const metadata = {
   metadataBase: new URL("https://www.qta-academy.store"),
   title: "Qais Trading Academy | QTA",
@@ -27,7 +47,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" className={`${cairo.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}>
       <body style={{ margin: 0 }}>{children}</body>
     </html>
   );

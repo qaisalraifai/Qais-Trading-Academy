@@ -28,7 +28,7 @@ export default function ChoosePage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1a1608 0%, #141414 60%)",
+      background: "radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%)",
       direction: "rtl",
       fontFamily: "'Segoe UI', sans-serif",
       color: "#fff",
@@ -77,7 +77,7 @@ export default function ChoosePage() {
           
           {/* Backtest */}
           <div onClick={() => router.push("/backtest")} style={{
-            background: "linear-gradient(145deg, #111108, #141414)",
+            background: "linear-gradient(145deg, #111108, #181A20)",
             border: "1px solid #D4AF3733",
             borderRadius: 16, padding: "2.5rem 2rem",
             cursor: "pointer", textAlign: "right",
@@ -94,7 +94,7 @@ export default function ChoosePage() {
 
           {/* المحاضرات */}
           <div onClick={() => router.push("/dashboard")} style={{
-            background: "linear-gradient(145deg, #111108, #141414)",
+            background: "linear-gradient(145deg, #111108, #181A20)",
             border: "1px solid #D4AF3733",
             borderRadius: 16, padding: "2.5rem 2rem",
             cursor: "pointer", textAlign: "right",

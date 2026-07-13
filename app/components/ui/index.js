@@ -6,3 +6,4 @@ export { default as Avatar } from "./Avatar";
 export { default as ProgressBar } from "./ProgressBar";
 export { default as Skeleton, SkeletonCard, SkeletonText } from "./Skeleton";
 export { default as EmptyState } from "./EmptyState";
+export { Table, TableHead, TableTh, TableBody, TableRow, TableTd } from "./Table";

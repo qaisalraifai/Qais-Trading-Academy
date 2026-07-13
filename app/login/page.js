@@ -32,7 +32,7 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1a1608 0%, #141414 60%)",
+      background: "radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%)",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: "'Segoe UI', sans-serif", direction: "rtl", padding: "2rem",
     }}>
@@ -91,7 +91,7 @@ export default function LoginPage() {
               />
             </div>
 
-            {error && <p style={{ color: "#FF4D4F", fontSize: 13, textAlign: "center", margin: 0 }}>{error}</p>}
+            {error && <p style={{ color: "#F6465D", fontSize: 13, textAlign: "center", margin: 0 }}>{error}</p>}
 
             <button onClick={handleLogin} disabled={loading} style={{
               background: "linear-gradient(135deg, #D4AF37, #9C7A22)",

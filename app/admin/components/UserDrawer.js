@@ -22,7 +22,7 @@ function Row({ label, value }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", fontSize: "0.85rem" }}>
       <span style={{ color: "#666" }}>{label}</span>
-      <span style={{ color: "#F5F5F5", fontFamily: monoStack, fontSize: "0.82rem" }}>{value ?? "—"}</span>
+      <span style={{ color: "#EAECEF", fontFamily: monoStack, fontSize: "0.82rem" }}>{value ?? "—"}</span>
     </div>
   );
 }
@@ -31,7 +31,7 @@ function SectionDivider({ children }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "1.3rem 0 0.5rem" }}>
       <span style={{ fontSize: "0.72rem", color: "#555", fontWeight: 600, letterSpacing: "0.5px" }}>{children}</span>
-      <div style={{ flex: 1, height: 1, background: "#242424" }} />
+      <div style={{ flex: 1, height: 1, background: "#2B2F36" }} />
     </div>
   );
 }
@@ -68,7 +68,7 @@ export default function UserDrawer({ userId, onClose, onAction, fetchDetail }) {
           height: "100vh",
           width: "min(420px, 92vw)",
           background: "#0a0a09",
-          borderLeft: "1px solid #242424",
+          borderLeft: "1px solid #2B2F36",
           boxShadow: "20px 0 60px rgba(0,0,0,0.6)",
           zIndex: 100,
           overflowY: "auto",
@@ -89,7 +89,7 @@ export default function UserDrawer({ userId, onClose, onAction, fetchDetail }) {
         ) : (
           <>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0 1rem" }}>
-              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#1c1c1c,#141414)", border: `2px solid ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", color: gold, fontWeight: 700, overflow: "hidden" }}>
+              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#1c1c1c,#181A20)", border: `2px solid ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", color: gold, fontWeight: 700, overflow: "hidden" }}>
                 {p.avatar_url ? <img src={p.avatar_url} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (p.username || "?").charAt(0).toUpperCase()}
               </div>
               <div style={{ fontSize: "1.05rem", fontWeight: 700 }}>{p.username}</div>
@@ -128,7 +128,7 @@ export default function UserDrawer({ userId, onClose, onAction, fetchDetail }) {
             {data.payments?.length ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                 {data.payments.slice(0, 8).map((pay) => (
-                  <div key={pay.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", padding: "0.4rem 0", borderBottom: "1px solid #141414" }}>
+                  <div key={pay.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", padding: "0.4rem 0", borderBottom: "1px solid #181A20" }}>
                     <span style={{ color: "#999" }}>{new Date(pay.created_at).toLocaleDateString("ar")}</span>
                     <span style={{ color: pay.status === "paid" ? "#4CAF50" : "#ef5350" }}>{pay.status}</span>
                     <span style={{ fontFamily: monoStack, color: gold }}>${Number(pay.amount).toFixed(2)}</span>

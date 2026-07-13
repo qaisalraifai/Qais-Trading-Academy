@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 
 const GOLD = "#D4AF37";
-const BG = "#0B0B0B";
+const BG = "#0B0E11";
 const CARD = "#0d0d0d";
-const BORDER = "#242424";
+const BORDER = "#2B2F36";
 
 const BONUS_LABELS = {
   direct: "عمولة مباشرة",
@@ -46,8 +46,8 @@ function TreeSlot({ label, child }) {
     <div
       style={{
         flex: 1,
-        background: "#141414",
-        border: `1px dashed ${child ? GOLD + "55" : "#2a2a2a"}`,
+        background: "#181A20",
+        border: `1px dashed ${child ? GOLD + "55" : "#2A2E39"}`,
         borderRadius: 12,
         padding: "1rem",
         textAlign: "center",
@@ -163,7 +163,7 @@ export default function MlmPage() {
 
   if (loading) {
     return (
-      <div style={{ background: BG, color: "#F5F5F5", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>
+      <div style={{ background: BG, color: "#EAECEF", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>
         جاري التحميل...
       </div>
     );
@@ -171,7 +171,7 @@ export default function MlmPage() {
 
   if (error || !data) {
     return (
-      <div style={{ background: BG, color: "#FF4D4F", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>
+      <div style={{ background: BG, color: "#F6465D", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>
         {error || "خطأ غير متوقع"}
       </div>
     );
@@ -181,7 +181,7 @@ export default function MlmPage() {
   const totalTeamCv = Number(profile.cvLeft || 0) + Number(profile.cvRight || 0);
 
   return (
-    <div style={{ background: BG, color: "#F5F5F5", minHeight: "100vh", padding: "2.5rem 3rem", direction: "rtl", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ background: BG, color: "#EAECEF", minHeight: "100vh", padding: "2.5rem 3rem", direction: "rtl", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ marginBottom: "2rem" }}>
         <div style={{ color: GOLD, fontSize: "0.75rem", letterSpacing: 2, marginBottom: 4 }}>QAIS TRADING ACADEMY</div>
         <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0 }}>مركز الشبكة الخاص بي</h1>
@@ -195,7 +195,7 @@ export default function MlmPage() {
             <div style={{ fontSize: "1.4rem", fontWeight: 800, color: GOLD }}>{rank?.name_ar || "بدون رتبة"}</div>
           </div>
           <div style={{ textAlign: "left" }}>
-            <div style={{ fontSize: "0.75rem", color: profile.isActiveMember ? "#4CAF50" : "#FF4D4F" }}>
+            <div style={{ fontSize: "0.75rem", color: profile.isActiveMember ? "#4CAF50" : "#F6465D" }}>
               {profile.isActiveMember ? "● عضوية نشطة" : "● عضوية غير نشطة"}
             </div>
             <div style={{ fontSize: "0.7rem", color: "#666", marginTop: 2 }}>
@@ -210,10 +210,10 @@ export default function MlmPage() {
               للترقية لرتبة {nextRank.name_ar}: {profile.directCount}/{nextRank.min_direct_members} مباشرين — {fmt(totalTeamCv)}/{fmt(nextRank.min_total_cv)} CV
             </div>
             <div style={{ display: "flex", gap: 6 }}>
-              <div style={{ flex: 1, height: 6, borderRadius: 3, background: "#242424", overflow: "hidden" }}>
+              <div style={{ flex: 1, height: 6, borderRadius: 3, background: "#2B2F36", overflow: "hidden" }}>
                 <div style={{ width: `${Math.min(100, (profile.directCount / nextRank.min_direct_members) * 100)}%`, height: "100%", background: GOLD }} />
               </div>
-              <div style={{ flex: 1, height: 6, borderRadius: 3, background: "#242424", overflow: "hidden" }}>
+              <div style={{ flex: 1, height: 6, borderRadius: 3, background: "#2B2F36", overflow: "hidden" }}>
                 <div style={{ width: `${Math.min(100, (totalTeamCv / nextRank.min_total_cv) * 100)}%`, height: "100%", background: GOLD }} />
               </div>
             </div>
@@ -247,9 +247,9 @@ export default function MlmPage() {
           <TreeSlot label="الرجل اليمنى" child={tree.rightChild} />
         </div>
         <div style={{ display: "flex", gap: "1rem", marginTop: "1rem", fontSize: "0.8rem", color: "#888" }}>
-          <div>CV يسار: <strong style={{ color: "#F5F5F5" }}>{fmt(profile.cvLeft)}</strong></div>
-          <div>CV يمين: <strong style={{ color: "#F5F5F5" }}>{fmt(profile.cvRight)}</strong></div>
-          <div>غير مُطابق (Carry): <strong style={{ color: "#F5F5F5" }}>{fmt(profile.carryLeft)} / {fmt(profile.carryRight)}</strong></div>
+          <div>CV يسار: <strong style={{ color: "#EAECEF" }}>{fmt(profile.cvLeft)}</strong></div>
+          <div>CV يمين: <strong style={{ color: "#EAECEF" }}>{fmt(profile.cvRight)}</strong></div>
+          <div>غير مُطابق (Carry): <strong style={{ color: "#EAECEF" }}>{fmt(profile.carryLeft)} / {fmt(profile.carryRight)}</strong></div>
         </div>
       </Card>
 
@@ -268,7 +268,7 @@ export default function MlmPage() {
               style={{ background: GOLD, color: "#111", border: "none", borderRadius: 8, padding: "0.5rem 1.2rem", fontWeight: 700, cursor: "pointer" }}>
               {kycUploading ? "جاري الرفع..." : "إرسال للمراجعة"}
             </button>
-            {kycStatus === "rejected" && <span style={{ color: "#FF4D4F", fontSize: "0.8rem" }}>تم رفض المستند السابق — ارفعي مستند جديد</span>}
+            {kycStatus === "rejected" && <span style={{ color: "#F6465D", fontSize: "0.8rem" }}>تم رفض المستند السابق — ارفعي مستند جديد</span>}
           </form>
         )}
         {kycMsg && <div style={{ marginTop: 8, fontSize: "0.8rem", color: "#aaa" }}>{kycMsg}</div>}
@@ -285,15 +285,15 @@ export default function MlmPage() {
           <form onSubmit={submitWithdraw} style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap", alignItems: "center" }}>
             <input type="number" min="50" step="0.01" placeholder="المبلغ" value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
-              style={{ width: 120, padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#141414", color: "#F5F5F5" }} />
+              style={{ width: 120, padding: "0.5rem", borderRadius: 8, border: "1px solid #2A2E39", background: "#181A20", color: "#EAECEF" }} />
             <select value={withdrawMethod} onChange={(e) => setWithdrawMethod(e.target.value)}
-              style={{ padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#141414", color: "#F5F5F5" }}>
+              style={{ padding: "0.5rem", borderRadius: 8, border: "1px solid #2A2E39", background: "#181A20", color: "#EAECEF" }}>
               <option value="bank_transfer">تحويل بنكي</option>
               <option value="e_wallet">محفظة إلكترونية</option>
               <option value="usdt">USDT</option>
             </select>
             <input placeholder="رقم الحساب/المحفظة" value={withdrawDest} onChange={(e) => setWithdrawDest(e.target.value)}
-              style={{ flex: 1, minWidth: 180, padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#141414", color: "#F5F5F5" }} />
+              style={{ flex: 1, minWidth: 180, padding: "0.5rem", borderRadius: 8, border: "1px solid #2A2E39", background: "#181A20", color: "#EAECEF" }} />
             <button type="submit" disabled={withdrawBusy}
               style={{ background: GOLD, color: "#111", border: "none", borderRadius: 8, padding: "0.5rem 1.2rem", fontWeight: 700, cursor: "pointer" }}>
               {withdrawBusy ? "جاري الإرسال..." : "إرسال الطلب"}
@@ -317,7 +317,7 @@ export default function MlmPage() {
                   display: "flex",
                   justifyContent: "space-between",
                   padding: "0.6rem 0.8rem",
-                  background: "#141414",
+                  background: "#181A20",
                   borderRadius: 8,
                   fontSize: "0.85rem",
                 }}

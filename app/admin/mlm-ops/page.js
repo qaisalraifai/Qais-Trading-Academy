@@ -135,7 +135,7 @@ export default function MlmOpsPage() {
             style={{
               background: tab === t ? gold : "transparent",
               color: tab === t ? "#111" : "#aaa",
-              border: `1px solid ${tab === t ? gold : "#2a2a2a"}`,
+              border: `1px solid ${tab === t ? gold : "#2A2E39"}`,
               borderRadius: 8, padding: "0.5rem 1.2rem", cursor: "pointer", fontWeight: 700, transition,
             }}
           >
@@ -145,7 +145,7 @@ export default function MlmOpsPage() {
       </div>
 
       <div style={s.section}>
-        {error && <div style={{ color: "#FF4D4F", marginBottom: "1rem" }}>{error}</div>}
+        {error && <div style={{ color: "#F6465D", marginBottom: "1rem" }}>{error}</div>}
         {loading ? (
           <div style={{ color: "#888" }}>جاري التحميل...</div>
         ) : tab === "withdrawals" ? (
@@ -168,7 +168,7 @@ export default function MlmOpsPage() {
                       موافقة ودُفع
                     </button>
                     <button disabled={busyId === w.id} onClick={() => processWithdrawal(w.id, "reject")}
-                      style={{ background: "transparent", color: "#FF4D4F", border: "1px solid #FF4D4F", borderRadius: 8, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
+                      style={{ background: "transparent", color: "#F6465D", border: "1px solid #F6465D", borderRadius: 8, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
                       رفض
                     </button>
                   </div>
@@ -187,7 +187,7 @@ export default function MlmOpsPage() {
                     <div style={{ fontWeight: 700 }}>
                       {p.username}
                       {p.is_flagged_suspicious && (
-                        <span style={{ color: "#FF4D4F", fontSize: "0.75rem", marginRight: 8 }}>⚠️ مشبوه: {p.flagged_reason}</span>
+                        <span style={{ color: "#F6465D", fontSize: "0.75rem", marginRight: 8 }}>⚠️ مشبوه: {p.flagged_reason}</span>
                       )}
                     </div>
                     {p.documentSignedUrl ? (
@@ -204,7 +204,7 @@ export default function MlmOpsPage() {
                       توثيق
                     </button>
                     <button disabled={busyId === p.id} onClick={() => processKyc(p.id, "reject")}
-                      style={{ background: "transparent", color: "#FF4D4F", border: "1px solid #FF4D4F", borderRadius: 8, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
+                      style={{ background: "transparent", color: "#F6465D", border: "1px solid #F6465D", borderRadius: 8, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
                       رفض
                     </button>
                   </div>
@@ -224,7 +224,7 @@ export default function MlmOpsPage() {
                 </div>
                 {c.status !== "cancelled" && (
                   <button disabled={busyId === c.id} onClick={() => cancelCommission(c.id)}
-                    style={{ background: "transparent", color: "#FF4D4F", border: "1px solid #FF4D4F", borderRadius: 6, padding: "0.35rem 0.8rem", cursor: "pointer", fontSize: "0.75rem" }}>
+                    style={{ background: "transparent", color: "#F6465D", border: "1px solid #F6465D", borderRadius: 6, padding: "0.35rem 0.8rem", cursor: "pointer", fontSize: "0.75rem" }}>
                     إلغاء
                   </button>
                 )}

@@ -5,13 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 
 const GOLD = "#D4AF37";
-const BG = "#0B0B0B";
-const BORDER = "#242424";
+const BG = "#0B0E11";
+const BORDER = "#2B2F36";
 
 function Node({ node, onFocus }) {
   if (!node) {
     return (
-      <div style={{ padding: "0.6rem 0.9rem", borderRadius: 10, border: "1px dashed #2a2a2a", color: "#444", fontSize: "0.75rem", textAlign: "center", minWidth: 100 }}>
+      <div style={{ padding: "0.6rem 0.9rem", borderRadius: 10, border: "1px dashed #2A2E39", color: "#444", fontSize: "0.75rem", textAlign: "center", minWidth: 100 }}>
         فاضي
       </div>
     );
@@ -22,9 +22,9 @@ function Node({ node, onFocus }) {
       style={{
         padding: "0.6rem 0.9rem",
         borderRadius: 10,
-        border: `1px solid ${node.isActiveMember ? GOLD + "77" : "#2a2a2a"}`,
+        border: `1px solid ${node.isActiveMember ? GOLD + "77" : "#2A2E39"}`,
         background: "#0d0d0d",
-        color: "#F5F5F5",
+        color: "#EAECEF",
         cursor: "pointer",
         textAlign: "center",
         minWidth: 100,
@@ -47,9 +47,9 @@ function TreeLevel({ node, onFocus, maxDepth, depth = 0 }) {
       <Node node={node} onFocus={onFocus} />
       {hasChildren && depth < maxDepth - 1 && (
         <>
-          <div style={{ width: 1, height: 20, background: "#2a2a2a" }} />
+          <div style={{ width: 1, height: 20, background: "#2A2E39" }} />
           <div style={{ display: "flex", gap: "2.5rem", position: "relative" }}>
-            <div style={{ position: "absolute", top: -20, left: "25%", right: "25%", height: 1, background: "#2a2a2a" }} />
+            <div style={{ position: "absolute", top: -20, left: "25%", right: "25%", height: 1, background: "#2A2E39" }} />
             <TreeLevel node={node.left} onFocus={onFocus} maxDepth={maxDepth} depth={depth + 1} />
             <TreeLevel node={node.right} onFocus={onFocus} maxDepth={maxDepth} depth={depth + 1} />
           </div>
@@ -98,7 +98,7 @@ function MlmTreeInner() {
   }
 
   return (
-    <div style={{ background: BG, color: "#F5F5F5", minHeight: "100vh", padding: "2.5rem 3rem", direction: "rtl", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ background: BG, color: "#EAECEF", minHeight: "100vh", padding: "2.5rem 3rem", direction: "rtl", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <div style={{ color: GOLD, fontSize: "0.75rem", letterSpacing: 2, marginBottom: 4 }}>QAIS TRADING ACADEMY</div>
@@ -117,7 +117,7 @@ function MlmTreeInner() {
       {loading ? (
         <div style={{ color: "#888" }}>جاري التحميل...</div>
       ) : error ? (
-        <div style={{ color: "#FF4D4F" }}>{error}</div>
+        <div style={{ color: "#F6465D" }}>{error}</div>
       ) : (
         <div style={{ overflowX: "auto", paddingBottom: "2rem" }}>
           <div style={{ display: "flex", justifyContent: "center", minWidth: 600 }}>

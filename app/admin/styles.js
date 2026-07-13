@@ -7,7 +7,7 @@
 
 export const gold = "#D4AF37";
 export const goldLight = "#E4C97A";
-export const ink = "#0B0B0B";
+export const ink = "#0B0E11";
 export const panel = "#0b0b0a";
 export const panelElevated = "#111110";
 
@@ -31,7 +31,7 @@ export const planColors = {
   admin: { bg: "#2a1a3a44", fg: "#B26FE0", border: "#B26FE055" },
   vip: { bg: "#1a2a3a44", fg: "#4FA8E0", border: "#4FA8E055" },
   elite: { bg: "#3a2a0044", fg: gold, border: gold + "55" },
-  member: { bg: "#1c1c1c", fg: "#9a9a9a", border: "#2a2a2a" },
+  member: { bg: "#1c1c1c", fg: "#9a9a9a", border: "#2A2E39" },
   trial: { bg: "#12242f", fg: "#4FA8E0", border: "#1c3d4f" },
 };
 
@@ -76,7 +76,7 @@ export const s = {
   page: {
     backgroundColor: ink,
     backgroundImage: noiseBg,
-    color: "#F5F5F5",
+    color: "#EAECEF",
     direction: "rtl",
     fontFamily: fontStack,
     minHeight: "100vh",
@@ -87,7 +87,7 @@ export const s = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "2rem 3rem",
-    borderBottom: "1px solid #141414",
+    borderBottom: "1px solid #181A20",
     flexWrap: "wrap",
     gap: "1rem",
   },

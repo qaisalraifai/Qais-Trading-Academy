@@ -285,21 +285,21 @@ onChange={(e) => f.set(e.target.value)}
 
 const gold = "#D4AF37";
 const s = {
-  page: { backgroundColor: "#0B0B0B", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#F5F5F5", overflowX: "hidden", position: "relative" },
+  page: { backgroundColor: "#0B0E11", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EAECEF", overflowX: "hidden", position: "relative" },
   orb: { position: "fixed", borderRadius: "50%", pointerEvents: "none", filter: "blur(80px)", zIndex: 0 },
 
-  header: { position: "relative", zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #141414" },
+  header: { position: "relative", zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #181A20" },
   logoBlock: { display: "flex", alignItems: "center", gap: "0.75rem" },
   logoImg: { height: "34px", borderRadius: "4px" },
-  logoText: { fontSize: "0.95rem", fontWeight: 500, color: "#F5F5F5" },
-  loginLink: { color: "#6E6E6E", textDecoration: "none", fontSize: "0.9rem" },
+  logoText: { fontSize: "0.95rem", fontWeight: 500, color: "#EAECEF" },
+  loginLink: { color: "#6E7177", textDecoration: "none", fontSize: "0.9rem" },
 
   hero: { position: "relative", zIndex: 1, maxWidth: "680px", margin: "0 auto", padding: "5rem 3rem 3rem", textAlign: "center" },
   heroLogo: { width: "100px", height: "100px", objectFit: "cover", borderRadius: "50%", border: `2px solid ${gold}44`, boxShadow: `0 0 40px ${gold}33` },
   eyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1.25rem" },
   heroTitle: { fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 900, lineHeight: 1.2, marginBottom: "1.25rem", letterSpacing: "-0.5px" },
   heroGold: { color: gold, fontStyle: "italic" },
-  heroSub: { color: "#6E6E6E", fontSize: "1rem", lineHeight: 1.85, marginBottom: "2.5rem" },
+  heroSub: { color: "#6E7177", fontSize: "1rem", lineHeight: 1.85, marginBottom: "2.5rem" },
 
   features: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem", marginBottom: "2.5rem", textAlign: "right" },
   featureItem: { display: "flex", alignItems: "center", gap: "0.6rem", color: "#C8C0B0", fontSize: "0.88rem" },
@@ -315,21 +315,21 @@ const s = {
   priceTaxNote: { color: "#3a3a3a", fontSize: "0.7rem", marginTop: "0.5rem", lineHeight: 1.5 },
 
   formSection: { position: "relative", zIndex: 1, padding: "3rem", display: "flex", justifyContent: "center" },
-  card: { backgroundColor: "#0d0d0d", border: "1px solid #242424", borderRadius: "8px", padding: "3rem 2.5rem", width: "100%", maxWidth: "500px" },
+  card: { backgroundColor: "#0d0d0d", border: "1px solid #2B2F36", borderRadius: "8px", padding: "3rem 2.5rem", width: "100%", maxWidth: "500px" },
   formEyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1rem", textAlign: "center" },
-  formTitle: { fontSize: "1.6rem", fontWeight: 800, color: "#F5F5F5", textAlign: "center", marginBottom: "0.4rem" },
+  formTitle: { fontSize: "1.6rem", fontWeight: 800, color: "#EAECEF", textAlign: "center", marginBottom: "0.4rem" },
   formSub: { color: "#555", fontSize: "0.88rem", textAlign: "center", marginBottom: "2rem" },
 
   form: { display: "flex", flexDirection: "column", gap: "1.25rem" },
   field: { display: "flex", flexDirection: "column", gap: "0.4rem" },
   label: { color: "#888", fontSize: "0.8rem" },
-  input: { backgroundColor: "#080808", border: "1px solid #1e1e1e", color: "#F5F5F5", padding: "0.8rem 1rem", borderRadius: "4px", fontSize: "0.95rem", outline: "none", direction: "ltr", textAlign: "right" },
+  input: { backgroundColor: "#080808", border: "1px solid #22252B", color: "#EAECEF", padding: "0.8rem 1rem", borderRadius: "4px", fontSize: "0.95rem", outline: "none", direction: "ltr", textAlign: "right" },
   btn: { backgroundColor: gold, color: "#080600", padding: "1rem", borderRadius: "4px", border: "none", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer", marginTop: "0.5rem" },
-  error: { color: "#FF4D4F", fontSize: "0.85rem", textAlign: "center" },
+  error: { color: "#F6465D", fontSize: "0.85rem", textAlign: "center" },
   waitBox: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem", padding: "1.5rem 0" },
-  spinner: { width: "38px", height: "38px", borderRadius: "50%", border: "3px solid #1e1e1e", borderTopColor: gold, animation: "qta-spin 0.8s linear infinite" },
-  waitTitle: { color: "#F5F5F5", fontSize: "1.05rem", fontWeight: 700 },
-  waitText: { color: "#6E6E6E", fontSize: "0.88rem", lineHeight: 1.8, textAlign: "center" },
+  spinner: { width: "38px", height: "38px", borderRadius: "50%", border: "3px solid #22252B", borderTopColor: gold, animation: "qta-spin 0.8s linear infinite" },
+  waitTitle: { color: "#EAECEF", fontSize: "1.05rem", fontWeight: 700 },
+  waitText: { color: "#6E7177", fontSize: "0.88rem", lineHeight: 1.8, textAlign: "center" },
   linkText: { color: "#444", fontSize: "0.85rem", textAlign: "center", marginTop: "1.5rem" },
   link: { color: gold, textDecoration: "none" },
 

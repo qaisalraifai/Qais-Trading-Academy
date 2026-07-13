@@ -391,7 +391,7 @@ export default function AccountsAdminView({ username }) {
                   <div style={{ color: "#555", fontSize: "0.8rem" }}>لا يوجد بعد</div>
                 ) : (
                   Object.entries(mlmStats.commissionsByType).map(([type, amount]) => (
-                    <div key={type} style={{ display: "flex", justifyContent: "space-between", padding: "0.35rem 0", borderBottom: "1px solid #242424", fontSize: "0.8rem" }}>
+                    <div key={type} style={{ display: "flex", justifyContent: "space-between", padding: "0.35rem 0", borderBottom: "1px solid #2B2F36", fontSize: "0.8rem" }}>
                       <span>{type}</span>
                       <span style={{ color: gold, fontWeight: 700 }}>{Number(amount).toFixed(2)} دينار</span>
                     </div>
@@ -405,7 +405,7 @@ export default function AccountsAdminView({ username }) {
                   <div style={{ color: "#555", fontSize: "0.8rem" }}>لا يوجد بعد</div>
                 ) : (
                   mlmStats.topLeaders.slice(0, 5).map((l, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.35rem 0", borderBottom: "1px solid #242424", fontSize: "0.8rem" }}>
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.35rem 0", borderBottom: "1px solid #2B2F36", fontSize: "0.8rem" }}>
                       <span>{i + 1}. {l.username} <span style={{ color: "#666" }}>({l.rankName})</span></span>
                       <span style={{ color: gold, fontWeight: 700 }}>{Number(l.totalCv).toFixed(0)} CV</span>
                     </div>
