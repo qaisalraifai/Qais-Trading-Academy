@@ -61,6 +61,8 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
   const [hover, setHover] = useState(false);
   const animated = useCountUp(typeof value === "number" ? value : 0);
   const display = typeof value === "number" ? animated.toLocaleString("en-US") : value;
+  const hasDelta = delta !== undefined && delta !== null;
+  const deltaUp = hasDelta && delta >= 0;
 
   return (
     <div
@@ -70,10 +72,10 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
         ...glass,
         position: "relative",
         overflow: "hidden",
-        padding: "1.4rem 1.5rem",
+        padding: "1.5rem 1.6rem",
         display: "flex",
         flexDirection: "column",
-        gap: "0.6rem",
+        gap: "0.7rem",
         cursor: "default",
         transition,
         transform: hover ? "translateY(-3px)" : "none",
@@ -83,30 +85,59 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
       {/* خط علوي متدرج ذهبي خفيف — نفس تفصيلة Aureus */}
       <div style={{ position: "absolute", insetInline: 0, top: 0, height: 1, background: `linear-gradient(90deg, transparent, ${color}66, transparent)` }} />
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          <span style={{ fontSize: "1.15rem" }}>{icon}</span>
-          <span style={{ color: "#777", fontSize: "0.78rem", fontWeight: 500 }}>{label}</span>
-        </div>
-        {sparkline && <Sparkline data={sparkline} color={color} />}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.6rem" }}>
+        <span
+          style={{
+            color: "#777",
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            letterSpacing: "1.2px",
+            textTransform: "uppercase",
+            fontFamily: monoStack,
+            display: "flex",
+            alignItems: "center",
+            gap: "0.4rem",
+          }}
+        >
+          <span style={{ fontSize: "1rem" }}>{icon}</span>
+          {label}
+        </span>
+
+        {hasDelta && (
+          <span
+            style={{
+              flexShrink: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.2rem",
+              padding: "0.2rem 0.55rem",
+              borderRadius: "9999px",
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              fontFamily: monoStack,
+              color: deltaUp ? "#4CAF50" : "#ef5350",
+              background: deltaUp ? "#4CAF5022" : "#ef535022",
+            }}
+          >
+            {deltaUp ? "↗" : "↘"} {Math.abs(delta)}%
+          </span>
+        )}
       </div>
 
       <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
-        <span style={{ fontFamily: displayStack, fontSize: "1.8rem", fontWeight: 700, color: "#F0EAD8", letterSpacing: "-0.01em" }}>
+        <span style={{ fontFamily: displayStack, fontSize: "2rem", fontWeight: 800, color: "#F5F0E4", letterSpacing: "-0.01em" }}>
           {prefix}
-          <span style={{ fontFamily: monoStack, fontWeight: 600 }}>{display}</span>
+          <span style={{ fontFamily: monoStack, fontWeight: 700 }}>{display}</span>
           {suffix}
         </span>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.75rem" }}>
-        {delta !== undefined && delta !== null && (
-          <span style={{ color: delta >= 0 ? "#4CAF50" : "#ef5350" }}>
-            {delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}%
-          </span>
-        )}
-        <span style={{ color: "#4a4a4a" }}>{sub}</span>
-      </div>
+      {(sub || sparkline) && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+          <span style={{ color: "#5a5a5a", fontSize: "0.78rem" }}>{sub}</span>
+          {sparkline && <Sparkline data={sparkline} color={color} />}
+        </div>
+      )}
 
       {/* توهج خافت بالزاوية عند الـ hover — زي Aureus */}
       <div style={{

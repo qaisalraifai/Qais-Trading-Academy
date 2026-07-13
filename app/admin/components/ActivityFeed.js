@@ -1,36 +1,47 @@
 "use client";
-import { glass, gold, timeAgo } from "../styles";
+import { glass, gold, displayStack, timeAgo } from "../styles";
 
-const icons = {
-  login: "🟢",
-  renew: "🟢",
-  payment_failed: "🔴",
-  suspended: "🔴",
-  note: "⚪",
-  extended: "🟢",
-  discount: "🟡",
-  free_activation: "🎁",
+const dotColors = {
+  login: "#4CAF50",
+  renew: "#4CAF50",
+  payment_failed: "#ef5350",
+  suspended: "#ef5350",
+  note: "#888",
+  extended: "#4CAF50",
+  discount: "#F3C339",
+  free_activation: "#B26FE0",
 };
 
 export default function ActivityFeed({ items }) {
   return (
-    <div style={{ ...glass, padding: "1.3rem 1.4rem", flex: 1, minWidth: 260 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
-        <span style={{ fontSize: "0.85rem", color: "#999", fontWeight: 600 }}>آخر العمليات</span>
-        <span style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.68rem", color: "#4CAF50" }}>
+    <div style={{ ...glass, padding: "1.5rem 1.6rem", flex: 1, minWidth: 260 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.1rem" }}>
+        <span style={{ fontFamily: displayStack, fontSize: "1.05rem", fontWeight: 700, color: "#F0EAD8" }}>آخر العمليات</span>
+        <span style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.7rem", color: "#4CAF50", fontWeight: 600 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4CAF50", boxShadow: "0 0 6px #4CAF50" }} /> Live
         </span>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", maxHeight: 260, overflowY: "auto" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem", maxHeight: 300, overflowY: "auto" }}>
         {(items || []).length === 0 && <p style={{ color: "#444", fontSize: "0.8rem" }}>لا يوجد نشاط بعد</p>}
-        {(items || []).map((a, i) => (
-          <div key={a.id} style={{ padding: "0.6rem 0", borderBottom: i < items.length - 1 ? "1px solid #141414" : "none", display: "flex", gap: "0.5rem" }}>
-            <span style={{ fontSize: "0.9rem" }}>{icons[a.type] || "⚪"}</span>
+        {(items || []).map((a) => (
+          <div key={a.id} style={{ display: "flex", alignItems: "flex-start", gap: "0.7rem" }}>
+            <span
+              style={{
+                marginTop: "0.4rem",
+                width: 8,
+                height: 8,
+                flexShrink: 0,
+                borderRadius: "50%",
+                background: dotColors[a.type] || "#888",
+              }}
+            />
             <div>
-              <div style={{ fontSize: "0.82rem", color: "#ccc" }}>
-                <span style={{ color: gold, fontWeight: 600 }}>{a.username || "مستخدم"}</span> {a.message}
+              <div style={{ fontSize: "0.9rem", color: "#EDE7D8", fontWeight: 600 }}>
+                {a.message}
               </div>
-              <div style={{ fontSize: "0.7rem", color: "#444" }}>{timeAgo(a.created_at)}</div>
+              <div style={{ fontSize: "0.78rem", color: "#666", marginTop: "0.15rem" }}>
+                <span style={{ color: gold }}>{a.username || "مستخدم"}</span> · {timeAgo(a.created_at)}
+              </div>
             </div>
           </div>
         ))}

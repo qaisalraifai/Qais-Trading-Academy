@@ -275,6 +275,10 @@ export default function AccountsAdminView({ username }) {
 
   const cards = stats?.cards;
   const trend = stats?.charts?.signupsTrend?.map((d) => d.value) || [];
+  const trendHalf = Math.floor(trend.length / 2);
+  const trendFirstHalf = trend.slice(0, trendHalf).reduce((s, v) => s + v, 0);
+  const trendSecondHalf = trend.slice(trendHalf).reduce((s, v) => s + v, 0);
+  const usersDelta = trendFirstHalf > 0 ? Math.round(((trendSecondHalf - trendFirstHalf) / trendFirstHalf) * 1000) / 10 : null;
 
   return (
     <div>
@@ -334,9 +338,18 @@ export default function AccountsAdminView({ username }) {
 
       <div style={s.divider} />
 
+      {/* الرسم البياني الرئيسي — نفس مكان Portfolio Equity بالتصميم الأصلي */}
+      {stats?.charts?.signupsTrend && (
+        <div style={s.section}>
+          <SubscriptionsTrendChart data={stats.charts.signupsTrend} big />
+        </div>
+      )}
+
+      <div style={s.divider} />
+
       {/* الإحصائيات */}
       <div style={{ ...s.section, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
-        <StatCard icon="👥" label="إجمالي المستخدمين" value={cards?.totalUsers ?? 0} color={gold} sparkline={trend} sub="آخر 30 يوم" />
+        <StatCard icon="👥" label="إجمالي المستخدمين" value={cards?.totalUsers ?? 0} color={gold} sparkline={trend} sub="آخر 30 يوم" delta={usersDelta} />
         <StatCard icon="🟢" label="نشطون الآن" value={cards?.activeNow ?? 0} color="#4CAF50" sub="آخر 15 دقيقة" />
         <StatCard icon="💎" label="أعضاء VIP" value={cards?.vipCount ?? 0} color="#B26FE0" />
         <StatCard icon="📈" label="معدل التجديد" value={cards?.renewalRate ?? 0} suffix="%" color="#4FA8E0" />

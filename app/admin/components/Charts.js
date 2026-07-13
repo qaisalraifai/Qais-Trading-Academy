@@ -2,12 +2,18 @@
 import { useState } from "react";
 import { glass, gold, monoStack } from "../styles";
 
-export function SubscriptionsTrendChart({ data }) {
+export function SubscriptionsTrendChart({ data, big = false }) {
   const [hoverIdx, setHoverIdx] = useState(null);
   if (!data?.length) return null;
 
+  const total = data.reduce((sum, d) => sum + (d.value || 0), 0);
+  const half = Math.floor(data.length / 2);
+  const firstHalf = data.slice(0, half).reduce((s, d) => s + (d.value || 0), 0);
+  const secondHalf = data.slice(half).reduce((s, d) => s + (d.value || 0), 0);
+  const pctChange = firstHalf > 0 ? Math.round(((secondHalf - firstHalf) / firstHalf) * 1000) / 10 : null;
+
   const w = 640;
-  const h = 140;
+  const h = big ? 240 : 140;
   const pad = 10;
   const max = Math.max(...data.map((d) => d.value), 1);
   const points = data.map((d, i) => {
@@ -19,11 +25,31 @@ export function SubscriptionsTrendChart({ data }) {
   const areaPath = `${path} L${points[points.length - 1].x},${h} L${points[0].x},${h} Z`;
 
   return (
-    <div style={{ ...glass, padding: "1.4rem 1.6rem", flex: 1, minWidth: 320 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.8rem" }}>
-        <span style={{ fontSize: "0.85rem", color: "#999", fontWeight: 600 }}>📈 Subscriptions</span>
-        <span style={{ fontSize: "0.72rem", color: "#555" }}>آخر 30 يوم</span>
-      </div>
+    <div style={{ ...glass, padding: big ? "1.8rem 2rem" : "1.4rem 1.6rem", flex: 1, minWidth: 320 }}>
+      {big ? (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "0.6rem", marginBottom: "1.2rem" }}>
+          <div>
+            <div style={{ fontSize: "0.75rem", color: "#888", fontWeight: 700, letterSpacing: "1.2px", fontFamily: monoStack, textTransform: "uppercase" }}>
+              إجمالي التسجيلات · آخر 30 يوم
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "0.6rem", marginTop: "0.4rem" }}>
+              <span style={{ fontFamily: monoStack, fontSize: "2.4rem", fontWeight: 800, color: gold }}>
+                {total.toLocaleString("en-US")}
+              </span>
+              {pctChange !== null && (
+                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: pctChange >= 0 ? "#4CAF50" : "#ef5350" }}>
+                  {pctChange >= 0 ? "↗" : "↘"} {Math.abs(pctChange)}% مقارنة بالنصف الأول من الشهر
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.8rem" }}>
+          <span style={{ fontSize: "0.85rem", color: "#999", fontWeight: 600 }}>📈 Subscriptions</span>
+          <span style={{ fontSize: "0.72rem", color: "#555" }}>آخر 30 يوم</span>
+        </div>
+      )}
       <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} style={{ overflow: "visible" }}>
         <defs>
           <linearGradient id="subGrad" x1="0" y1="0" x2="0" y2="1">
