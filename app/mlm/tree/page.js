@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 
@@ -59,7 +59,7 @@ function TreeLevel({ node, onFocus, maxDepth, depth = 0 }) {
   );
 }
 
-export default function MlmTreePage() {
+function MlmTreeInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -130,5 +130,13 @@ export default function MlmTreePage() {
         اضغطي على أي عضو حتى تشوفي شجرته الفرعية (4 مستويات بكل مرة)
       </div>
     </div>
+  );
+}
+
+export default function MlmTreePage() {
+  return (
+    <Suspense fallback={<div style={{ background: BG, color: "#888", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>جاري التحميل...</div>}>
+      <MlmTreeInner />
+    </Suspense>
   );
 }
