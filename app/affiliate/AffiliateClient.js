@@ -4,7 +4,7 @@ import NotificationBell from "../components/NotificationBell";
 import Leaderboard from "./components/Leaderboard";
 import Badges from "./components/Badges";
 import BonusWheel from "./components/BonusWheel";
-import MarketingKit from "./components/MarketingKit";
+import TreeAndCommissionsExplainer from "./components/TreeAndCommissionsExplainer";
 import RecentActivity from "./components/RecentActivity";
 
 const GOLD = "#C9A24B";
@@ -274,7 +274,7 @@ export default function AffiliateClient() {
           <BonusWheel />
           <Badges />
           <Leaderboard />
-          <MarketingKit />
+          <TreeAndCommissionsExplainer />
 
           {/* سجل الدفعات */}
           <div style={s.card}>
