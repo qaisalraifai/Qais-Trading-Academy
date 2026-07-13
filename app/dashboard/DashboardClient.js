@@ -611,7 +611,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
         )}
 
         {activeKey === "accounts" && isAdmin ? (
-          <AccountsAdminView />
+          <AccountsAdminView username={username} />
         ) : activeKey === "calendar" ? (
           <CalendarView events={economicEvents} loading={calendarLoading} isAdmin={isAdmin} />
         ) : activeKey === "lectures" ? (

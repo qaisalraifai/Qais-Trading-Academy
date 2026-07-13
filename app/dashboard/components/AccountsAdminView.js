@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
-import { gold, s, glass, transition } from "../../admin/styles";
+import { gold, s, glass, transition, gradientGold, shadowGold, displayStack, monoStack } from "../../admin/styles";
 import StatCard from "../../admin/components/StatCard";
 import Toolbar from "../../admin/components/Toolbar";
 import FilterChips from "../../admin/components/FilterChips";
@@ -23,7 +23,14 @@ import AffiliatesPanel from "../../admin/components/AffiliatesPanel";
  * وسايدبار خاص فيها أصلاً). هيك تبويب "إدارة الحسابات" جوا الداشبورد
  * بيصير مطابق 100% للوحة /admin المستقلة، شكلاً ومحتوى.
  */
-export default function AccountsAdminView() {
+function greetingWord() {
+  const h = new Date().getHours();
+  if (h < 12) return "صباح الخير";
+  if (h < 17) return "مساء الخير";
+  return "مساء الخير";
+}
+
+export default function AccountsAdminView({ username }) {
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
   const [feed, setFeed] = useState([]);
@@ -271,6 +278,62 @@ export default function AccountsAdminView() {
 
   return (
     <div>
+      {/* هيدر ترحيبي بتصميم Aureus */}
+      <div style={{ ...s.section, marginBottom: "0.5rem" }}>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.4rem",
+            borderRadius: "9999px",
+            border: "1px solid rgba(201,162,75,0.3)",
+            background: "rgba(255,255,255,0.03)",
+            padding: "0.3rem 0.85rem",
+            fontSize: "11px",
+            letterSpacing: "1.5px",
+            color: "#a89b7f",
+            fontFamily: monoStack,
+          }}
+        >
+          ✨ لوحة حية
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            flexWrap: "wrap",
+            gap: "1rem",
+            marginTop: "0.9rem",
+          }}
+        >
+          <div>
+            <h2 style={{ fontFamily: displayStack, fontSize: "1.9rem", fontWeight: 800, margin: 0 }}>
+              {greetingWord()}
+              {username ? <span style={{ color: gold }}>، {username}</span> : null}
+            </h2>
+            <p style={{ marginTop: "0.35rem", color: "#8a8a8a", fontSize: "0.9rem" }}>
+              نظرة سريعة على الاشتراكات، الأعضاء، والعمولات — محدّثة لحظيًا.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: "0.6rem" }}>
+            <button onClick={() => { fetchUsers(); fetchStats(); fetchFeed(); fetchMlmStats(); }} style={s.btn}>
+              🔄 تحديث البيانات
+            </button>
+            <button
+              onClick={handleExport}
+              style={{ ...s.btn, backgroundImage: gradientGold, color: "#16130a", border: "none", fontWeight: 700, boxShadow: shadowGold }}
+            >
+              ⬇️ تصدير تقرير
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={s.divider} />
+
       {/* الإحصائيات */}
       <div style={{ ...s.section, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
         <StatCard icon="👥" label="إجمالي المستخدمين" value={cards?.totalUsers ?? 0} color={gold} sparkline={trend} sub="آخر 30 يوم" />
