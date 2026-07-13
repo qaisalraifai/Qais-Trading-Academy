@@ -72,6 +72,7 @@ export default function MlmSettingsPage() {
 
   return (
     <div style={s.page}>
+      <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       <div style={s.header}>
         <div>
           <div style={s.headerSub}>QAIS TRADING ACADEMY — إدارة</div>

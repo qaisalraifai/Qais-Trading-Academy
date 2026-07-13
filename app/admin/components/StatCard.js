@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { gold, glass, transition, monoStack } from "../styles";
+import { gold, glass, transition, monoStack, displayStack, shadowLuxe, shadowGold } from "../styles";
 
 // عدّاد أرقام متحرك بسيط (بدون مكتبة خارجية)
 function useCountUp(target, duration = 700) {
@@ -68,6 +68,8 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
       onMouseLeave={() => setHover(false)}
       style={{
         ...glass,
+        position: "relative",
+        overflow: "hidden",
         padding: "1.4rem 1.5rem",
         display: "flex",
         flexDirection: "column",
@@ -75,9 +77,12 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
         cursor: "default",
         transition,
         transform: hover ? "translateY(-3px)" : "none",
-        boxShadow: hover ? `0 12px 30px -8px ${color}33, 0 0 0 1px ${color}44 inset` : "0 8px 20px -12px rgba(0,0,0,0.6)",
+        boxShadow: hover ? `${shadowLuxe}, 0 0 0 1px ${color}44 inset, 0 10px 34px -10px ${color}55` : shadowLuxe,
       }}
     >
+      {/* خط علوي متدرج ذهبي خفيف — نفس تفصيلة Aureus */}
+      <div style={{ position: "absolute", insetInline: 0, top: 0, height: 1, background: `linear-gradient(90deg, transparent, ${color}66, transparent)` }} />
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
           <span style={{ fontSize: "1.15rem" }}>{icon}</span>
@@ -87,9 +92,9 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
       </div>
 
       <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
-        <span style={{ fontFamily: monoStack, fontSize: "1.7rem", fontWeight: 600, color: "#F0EAD8" }}>
+        <span style={{ fontFamily: displayStack, fontSize: "1.8rem", fontWeight: 700, color: "#F0EAD8", letterSpacing: "-0.01em" }}>
           {prefix}
-          {display}
+          <span style={{ fontFamily: monoStack, fontWeight: 600 }}>{display}</span>
           {suffix}
         </span>
       </div>
@@ -102,6 +107,12 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
         )}
         <span style={{ color: "#4a4a4a" }}>{sub}</span>
       </div>
+
+      {/* توهج خافت بالزاوية عند الـ hover — زي Aureus */}
+      <div style={{
+        position: "absolute", left: -24, bottom: -24, width: 96, height: 96, borderRadius: "50%",
+        background: `${color}22`, filter: "blur(28px)", opacity: hover ? 1 : 0, transition,
+      }} />
     </div>
   );
 }
