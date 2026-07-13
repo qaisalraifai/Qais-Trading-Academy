@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 
 import { gold, s, glass, transition } from "../../admin/styles";
 import StatCard from "../../admin/components/StatCard";
@@ -12,11 +13,15 @@ import UsersTable from "../../admin/components/UsersTable";
 import UserDrawer from "../../admin/components/UserDrawer";
 import ActivityFeed from "../../admin/components/ActivityFeed";
 import QuickActions from "../../admin/components/QuickActions";
+import AffiliatesPanel from "../../admin/components/AffiliatesPanel";
 
 /*
- * نفس محتوى لوحة تحكم الأدمن (app/admin/page.js) بالضبط، بس من غير الـ <header>
- * الخاص فيها (لأنه صفحة الداشبورد عندها هيدر وسايدبار خاص فيها أصلاً).
- * هيك تبويب "إدارة الحسابات" جوا الداشبورد بيصير مطابق 100% للوحة /admin المستقلة.
+ * نفس محتوى لوحة تحكم الأدمن (app/admin/page.js) بالضبط — نفس الإحصائيات،
+ * نفس ألوان الثيم الذهبي (من app/admin/styles.js)، نفس قسم خطة الـ MLM،
+ * نفس الرسوم البيانية والجدول والفلاتر، ونفس بانل التسويق بالعمولة —
+ * بس من غير الـ <header> الخاص فيها (لأنه صفحة الداشبورد عندها هيدر
+ * وسايدبار خاص فيها أصلاً). هيك تبويب "إدارة الحسابات" جوا الداشبورد
+ * بيصير مطابق 100% للوحة /admin المستقلة، شكلاً ومحتوى.
  */
 export default function AccountsAdminView() {
   const [users, setUsers] = useState([]);
@@ -32,6 +37,7 @@ export default function AccountsAdminView() {
 
   const [drawerUserId, setDrawerUserId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [mlmStats, setMlmStats] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -41,6 +47,7 @@ export default function AccountsAdminView() {
   useEffect(() => {
     fetchStats();
     fetchFeed();
+    fetchMlmStats();
     const interval = setInterval(fetchFeed, 20000);
     return () => clearInterval(interval);
   }, []);
@@ -64,6 +71,16 @@ export default function AccountsAdminView() {
     const res = await fetch("/api/admin/activity");
     const data = await res.json();
     setFeed(data.items || []);
+  }
+
+  async function fetchMlmStats() {
+    try {
+      const res = await fetch("/api/admin/mlm-analytics");
+      const data = await res.json();
+      if (res.ok) setMlmStats(data);
+    } catch (e) {
+      console.error("fetchMlmStats failed:", e);
+    }
   }
 
   const fetchDetail = useCallback(async (userId) => {
@@ -268,6 +285,64 @@ export default function AccountsAdminView() {
 
       <div style={s.divider} />
 
+      {/* خطة MLM — كل شي بمكان واحد */}
+      <div style={s.section}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.6rem" }}>
+          <p style={s.sectionTitle}>🌳 خطة الشجرة الثنائية والعمولات (MLM)</p>
+          <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+            <Link href="/admin/mlm-ops" style={{ ...s.btn, textDecoration: "none", fontSize: "0.8rem" }}>💸 السحوبات والعمولات</Link>
+            <Link href="/admin/mlm-settings" style={{ ...s.btn, textDecoration: "none", fontSize: "0.8rem" }}>⚙️ الإعدادات</Link>
+          </div>
+        </div>
+
+        {!mlmStats ? (
+          <div style={{ color: "#888", fontSize: "0.85rem" }}>جاري تحميل إحصائيات الخطة...</div>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1.2rem" }}>
+              <StatCard icon="👥" label="إجمالي أعضاء الخطة" value={mlmStats.totalMembers} color={gold} />
+              <StatCard icon="🟢" label="نشطون بالخطة" value={mlmStats.activeMembers} color="#4CAF50" />
+              <StatCard icon="💰" label="عمولات هالشهر" value={mlmStats.monthCommissionsTotal} color={gold} />
+              <StatCard icon="🏦" label="إيرادات هالشهر" value={mlmStats.monthRevenue} color="#4FA8E0" />
+              <StatCard icon="⏳" label="سحوبات معلّقة" value={mlmStats.pendingWithdrawalsCount} sub={`${mlmStats.pendingWithdrawalsAmount?.toFixed?.(2) || 0} دينار`} color="#FF9800" />
+              <StatCard icon="🪪" label="KYC بانتظار المراجعة" value={mlmStats.pendingKycCount} color="#B26FE0" />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div style={{ ...s.card, padding: "1.2rem 1.4rem" }}>
+                <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "0.8rem" }}>العمولات هالشهر حسب النوع</div>
+                {Object.keys(mlmStats.commissionsByType || {}).length === 0 ? (
+                  <div style={{ color: "#555", fontSize: "0.8rem" }}>لا يوجد بعد</div>
+                ) : (
+                  Object.entries(mlmStats.commissionsByType).map(([type, amount]) => (
+                    <div key={type} style={{ display: "flex", justifyContent: "space-between", padding: "0.35rem 0", borderBottom: "1px solid #1a1a1a", fontSize: "0.8rem" }}>
+                      <span>{type}</span>
+                      <span style={{ color: gold, fontWeight: 700 }}>{Number(amount).toFixed(2)} دينار</span>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div style={{ ...s.card, padding: "1.2rem 1.4rem" }}>
+                <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "0.8rem" }}>أفضل القادة (حسب CV)</div>
+                {(mlmStats.topLeaders || []).length === 0 ? (
+                  <div style={{ color: "#555", fontSize: "0.8rem" }}>لا يوجد بعد</div>
+                ) : (
+                  mlmStats.topLeaders.slice(0, 5).map((l, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.35rem 0", borderBottom: "1px solid #1a1a1a", fontSize: "0.8rem" }}>
+                      <span>{i + 1}. {l.username} <span style={{ color: "#666" }}>({l.rankName})</span></span>
+                      <span style={{ color: gold, fontWeight: 700 }}>{Number(l.totalCv).toFixed(0)} CV</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={s.divider} />
+
       {/* الرسوم البيانية */}
       <div style={{ ...s.section, display: "flex", gap: "1rem", flexWrap: "wrap" }}>
         <SubscriptionsTrendChart data={stats?.charts?.signupsTrend} />
@@ -305,6 +380,13 @@ export default function AccountsAdminView() {
         <div style={{ flex: "1 1 260px", minWidth: 260 }}>
           <ActivityFeed items={feed} />
         </div>
+      </div>
+
+      <div style={s.divider} />
+
+      {/* برنامج التسويق بالعمولة */}
+      <div style={s.section}>
+        <AffiliatesPanel />
       </div>
 
       {drawerUserId && (
