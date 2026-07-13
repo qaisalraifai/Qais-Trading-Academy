@@ -3,13 +3,14 @@ import { NextResponse } from "next/server";
 import { createNotification } from "@/lib/notifications";
 import { placeNewMember } from "@/lib/binary-tree";
 import { logActivity } from "@/lib/activity-log";
+import { checkFraudBeforeSignup, recordSignupFingerprint } from "@/lib/fraud-checks";
 
 // ينشئ صف profiles مباشرة بعد supabase.auth.signUp()، باستخدام Service Role
 // (يتجاوز RLS تماماً) — لأنه بلحظة التسجيل المستخدم لسا ممكن يكون بدون
 // session نشطة (لو تفعيل الإيميل مطلوب)، وبالتالي أي insert/upsert من
 // المتصفح (anon/authenticated الوهمي) ممكن يفشل بصمت بسبب RLS.
 export async function POST(request) {
-  const { userId, username, ref } = await request.json();
+  const { userId, username, ref, deviceFingerprint } = await request.json();
 
   if (!userId || !username) {
     return NextResponse.json(
@@ -27,6 +28,15 @@ export async function POST(request) {
   }
 
   const supabase = createAdminClient();
+
+  // منع الغش (الفصل 12): بصمة جهاز مطابقة = حجب فوري. نفس الـIP فقط = علامة اشتباه بدون حجب
+  const requestIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+  let fraudCheck;
+  try {
+    fraudCheck = await checkFraudBeforeSignup(supabase, { deviceFingerprint, ip: requestIp });
+  } catch (e) {
+    return NextResponse.json({ error: e.message }, { status: 403 });
+  }
 
   // نتأكد إنه المستخدم فعلاً موجود بجدول auth.users بهاد الـ id
   // (حماية بسيطة من إساءة استخدام هاد الـ endpoint)
@@ -90,6 +100,13 @@ export async function POST(request) {
       error: e.message,
     }).catch(() => {});
   }
+
+  await recordSignupFingerprint(supabase, userId, {
+    deviceFingerprint,
+    ip: requestIp,
+    suspicious: fraudCheck.suspicious,
+    reason: fraudCheck.reason,
+  }).catch((e) => console.error("recordSignupFingerprint failed:", e.message));
 
   // لو اجى عن طريق رابط تتبّع /r/[code]، منربط النقرة الأصلية بهاد الحساب الجديد
   // (Conversion Funnel: نقرة → تسجيل) عن طريق cookie الـ click id يلي حطيناها بـ /r/[code].

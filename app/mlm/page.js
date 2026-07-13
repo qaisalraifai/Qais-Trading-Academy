@@ -74,11 +74,72 @@ export default function MlmPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [kycStatus, setKycStatus] = useState("none");
+  const [kycFile, setKycFile] = useState(null);
+  const [kycUploading, setKycUploading] = useState(false);
+  const [kycMsg, setKycMsg] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawMethod, setWithdrawMethod] = useState("bank_transfer");
+  const [withdrawDest, setWithdrawDest] = useState("");
+  const [withdrawMsg, setWithdrawMsg] = useState("");
+  const [withdrawBusy, setWithdrawBusy] = useState(false);
 
   useEffect(() => {
     load();
+    loadKyc();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function loadKyc() {
+    try {
+      const res = await fetch("/api/mlm/kyc");
+      const json = await res.json();
+      if (res.ok) setKycStatus(json.kycStatus);
+    } catch {}
+  }
+
+  async function submitKyc(e) {
+    e.preventDefault();
+    if (!kycFile) return;
+    setKycUploading(true);
+    setKycMsg("");
+    try {
+      const formData = new FormData();
+      formData.append("file", kycFile);
+      const res = await fetch("/api/mlm/kyc", { method: "POST", body: formData });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setKycStatus("pending");
+      setKycMsg("تم إرسال المستند، بانتظار مراجعة الإدارة");
+    } catch (e) {
+      setKycMsg(e.message);
+    } finally {
+      setKycUploading(false);
+    }
+  }
+
+  async function submitWithdraw(e) {
+    e.preventDefault();
+    setWithdrawBusy(true);
+    setWithdrawMsg("");
+    try {
+      const res = await fetch("/api/mlm/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(withdrawAmount), method: withdrawMethod, destinationDetails: withdrawDest }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setWithdrawMsg("تم إرسال طلب السحب بنجاح، بانتظار الموافقة");
+      setWithdrawAmount("");
+      setWithdrawDest("");
+      await load();
+    } catch (e) {
+      setWithdrawMsg(e.message);
+    } finally {
+      setWithdrawBusy(false);
+    }
+  }
 
   async function load() {
     const {
@@ -187,6 +248,56 @@ export default function MlmPage() {
           <div>CV يمين: <strong style={{ color: "#E8E0D0" }}>{fmt(profile.cvRight)}</strong></div>
           <div>غير مُطابق (Carry): <strong style={{ color: "#E8E0D0" }}>{fmt(profile.carryLeft)} / {fmt(profile.carryRight)}</strong></div>
         </div>
+      </Card>
+
+      {/* KYC */}
+      <Card style={{ marginBottom: "1.5rem" }}>
+        <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "1rem" }}>التحقق من الهوية (KYC)</div>
+        {kycStatus === "verified" ? (
+          <div style={{ color: "#4CAF50" }}>✅ تم التحقق — فيكِ تسحبي أرباحك</div>
+        ) : kycStatus === "pending" ? (
+          <div style={{ color: GOLD }}>⏳ مستندك بمراجعة الإدارة</div>
+        ) : (
+          <form onSubmit={submitKyc} style={{ display: "flex", gap: "0.8rem", alignItems: "center", flexWrap: "wrap" }}>
+            <input type="file" accept="image/*,.pdf" onChange={(e) => setKycFile(e.target.files?.[0] || null)}
+              style={{ color: "#aaa", fontSize: "0.85rem" }} />
+            <button type="submit" disabled={!kycFile || kycUploading}
+              style={{ background: GOLD, color: "#111", border: "none", borderRadius: 8, padding: "0.5rem 1.2rem", fontWeight: 700, cursor: "pointer" }}>
+              {kycUploading ? "جاري الرفع..." : "إرسال للمراجعة"}
+            </button>
+            {kycStatus === "rejected" && <span style={{ color: "#ef4444", fontSize: "0.8rem" }}>تم رفض المستند السابق — ارفعي مستند جديد</span>}
+          </form>
+        )}
+        {kycMsg && <div style={{ marginTop: 8, fontSize: "0.8rem", color: "#aaa" }}>{kycMsg}</div>}
+      </Card>
+
+      {/* طلب سحب */}
+      <Card style={{ marginBottom: "1.5rem" }}>
+        <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "1rem" }}>
+          طلب سحب (الرصيد المتاح: {fmt(wallets.withdrawal)} دينار — الحد الأدنى 50 دينار)
+        </div>
+        {kycStatus !== "verified" ? (
+          <div style={{ color: "#666", fontSize: "0.85rem" }}>لازم تكملي التحقق من الهوية فوق قبل ما تقدري تسحبي</div>
+        ) : (
+          <form onSubmit={submitWithdraw} style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap", alignItems: "center" }}>
+            <input type="number" min="50" step="0.01" placeholder="المبلغ" value={withdrawAmount}
+              onChange={(e) => setWithdrawAmount(e.target.value)}
+              style={{ width: 120, padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#E8E0D0" }} />
+            <select value={withdrawMethod} onChange={(e) => setWithdrawMethod(e.target.value)}
+              style={{ padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#E8E0D0" }}>
+              <option value="bank_transfer">تحويل بنكي</option>
+              <option value="e_wallet">محفظة إلكترونية</option>
+              <option value="usdt">USDT</option>
+            </select>
+            <input placeholder="رقم الحساب/المحفظة" value={withdrawDest} onChange={(e) => setWithdrawDest(e.target.value)}
+              style={{ flex: 1, minWidth: 180, padding: "0.5rem", borderRadius: 8, border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#E8E0D0" }} />
+            <button type="submit" disabled={withdrawBusy}
+              style={{ background: GOLD, color: "#111", border: "none", borderRadius: 8, padding: "0.5rem 1.2rem", fontWeight: 700, cursor: "pointer" }}>
+              {withdrawBusy ? "جاري الإرسال..." : "إرسال الطلب"}
+            </button>
+          </form>
+        )}
+        {withdrawMsg && <div style={{ marginTop: 8, fontSize: "0.8rem", color: "#aaa" }}>{withdrawMsg}</div>}
       </Card>
 
       {/* آخر العمولات */}
