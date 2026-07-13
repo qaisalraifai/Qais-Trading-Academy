@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 
 const GOLD = "#D4AF37";
-const BG = "#000000";
-const BORDER = "#1a1a1a";
+const BG = "#0B0B0B";
+const BORDER = "#242424";
 
 function Node({ node, onFocus }) {
   if (!node) {
@@ -24,7 +24,7 @@ function Node({ node, onFocus }) {
         borderRadius: 10,
         border: `1px solid ${node.isActiveMember ? GOLD + "77" : "#2a2a2a"}`,
         background: "#0d0d0d",
-        color: "#FFFFFF",
+        color: "#F5F5F5",
         cursor: "pointer",
         textAlign: "center",
         minWidth: 100,
@@ -98,7 +98,7 @@ function MlmTreeInner() {
   }
 
   return (
-    <div style={{ background: BG, color: "#FFFFFF", minHeight: "100vh", padding: "2.5rem 3rem", direction: "rtl", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ background: BG, color: "#F5F5F5", minHeight: "100vh", padding: "2.5rem 3rem", direction: "rtl", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <div style={{ color: GOLD, fontSize: "0.75rem", letterSpacing: 2, marginBottom: 4 }}>QAIS TRADING ACADEMY</div>
@@ -117,7 +117,7 @@ function MlmTreeInner() {
       {loading ? (
         <div style={{ color: "#888" }}>جاري التحميل...</div>
       ) : error ? (
-        <div style={{ color: "#ef4444" }}>{error}</div>
+        <div style={{ color: "#FF4D4F" }}>{error}</div>
       ) : (
         <div style={{ overflowX: "auto", paddingBottom: "2rem" }}>
           <div style={{ display: "flex", justifyContent: "center", minWidth: 600 }}>

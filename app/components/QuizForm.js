@@ -89,7 +89,7 @@ export default function QuizForm({ quizId, questions, studentId }) {
 
 const styles = {
   questionBox: {
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#242424",
     padding: "1rem",
     borderRadius: "10px",
     marginBottom: "1rem",
@@ -104,10 +104,10 @@ const styles = {
     backgroundColor: "#0f0f0f",
     cursor: "pointer",
   },
-  optionSelected: { border: "1px solid #10b981" },
+  optionSelected: { border: "1px solid #00C853" },
   submitButton: {
     padding: "0.75rem 1.5rem",
-    backgroundColor: "#10b981",
+    backgroundColor: "#00C853",
     color: "#fff",
     border: "none",
     borderRadius: "8px",
@@ -115,9 +115,9 @@ const styles = {
     fontWeight: "bold",
     width: "100%",
   },
-  resultBox: { textAlign: "center", padding: "2rem", backgroundColor: "#1a1a1a", borderRadius: "12px" },
+  resultBox: { textAlign: "center", padding: "2rem", backgroundColor: "#242424", borderRadius: "12px" },
   resultTitle: { marginBottom: "0.5rem" },
-  resultPercent: { fontSize: "2rem", color: "#10b981", marginBottom: "1.5rem" },
+  resultPercent: { fontSize: "2rem", color: "#00C853", marginBottom: "1.5rem" },
   backButton: {
     display: "inline-block",
     padding: "0.75rem 1.5rem",

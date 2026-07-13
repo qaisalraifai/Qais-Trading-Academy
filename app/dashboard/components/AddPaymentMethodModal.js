@@ -88,7 +88,7 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
           maxWidth: 480,
           maxHeight: "90vh",
           overflowY: "auto",
-          background: "linear-gradient(145deg, #121212, #0A0A0A)",
+          background: "linear-gradient(145deg, #1E1E1E, #141414)",
           border: `1px solid ${GOLD}44`,
           borderRadius: 18,
           boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
@@ -120,7 +120,7 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
             <iframe
               src={managementUrls.updatePaymentMethod}
               title="تحديث طريقة الدفع"
-              style={{ width: "100%", height: 560, border: "none", borderRadius: 12, background: "#0a0a0a" }}
+              style={{ width: "100%", height: 560, border: "none", borderRadius: 12, background: "#141414" }}
             />
           </>
         )}

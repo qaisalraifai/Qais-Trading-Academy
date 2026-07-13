@@ -5,12 +5,12 @@ import AddPaymentMethodModal from "./AddPaymentMethodModal";
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
 const GOLD_DARK = "#9C7A22";
-const GREEN = "#10b981";
-const RED = "#ef4444";
+const GREEN = "#00C853";
+const RED = "#FF4D4F";
 const BLUE = "#4FA8E0";
 
 const cardStyle = {
-  background: "linear-gradient(145deg, #121212, #0A0A0A)",
+  background: "linear-gradient(145deg, #1E1E1E, #141414)",
   border: `1px solid ${GOLD}26`,
   borderRadius: 18,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
@@ -370,7 +370,7 @@ export default function SettingsView({ username }) {
                 key={key}
                 style={{
                   border: `1px solid ${isCurrent ? GOLD : "#222"}`,
-                  background: isCurrent ? `linear-gradient(135deg, ${GOLD}1a, #0A0A0A)` : "#0A0A0A",
+                  background: isCurrent ? `linear-gradient(135deg, ${GOLD}1a, #141414)` : "#141414",
                   borderRadius: 12,
                   padding: "1rem",
                   textAlign: "center",
@@ -459,7 +459,7 @@ export default function SettingsView({ username }) {
             style={{
               flex: 1,
               minWidth: 200,
-              background: "#0A0A0A",
+              background: "#141414",
               border: `1px solid ${GOLD}33`,
               borderRadius: 10,
               padding: "0.6rem 1rem",

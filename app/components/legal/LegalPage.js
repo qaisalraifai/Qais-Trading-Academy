@@ -62,7 +62,7 @@ export default function LegalPage({ titleAr, titleEn, sectionsAr, sectionsEn, la
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#141414",
     color: "#ddd",
     fontFamily: "'Georgia', serif",
     padding: "2rem 1.5rem 4rem",
@@ -107,7 +107,7 @@ const styles = {
     width: "100%",
     maxWidth: "720px",
     backgroundColor: "#0f0f0f",
-    border: "1px solid #1a1a1a",
+    border: "1px solid #242424",
     borderRadius: "6px",
     padding: "2.5rem",
     display: "flex",
@@ -123,7 +123,7 @@ const styles = {
     marginTop: "1.5rem",
     textAlign: "center",
     padding: "1.25rem",
-    border: "1px solid #1a1a1a",
+    border: "1px solid #242424",
     borderRadius: "6px",
     backgroundColor: "#0f0f0f",
   },

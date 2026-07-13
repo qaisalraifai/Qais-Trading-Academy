@@ -4,7 +4,7 @@ import { playBeep } from "@/lib/beep";
 
 const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
-const BORDER = "#1a1a1a";
+const BORDER = "#242424";
 
 const ICONS = {
   commission: "💰",
@@ -96,7 +96,7 @@ const s = {
   empty: { color: "#555", fontSize: "0.85rem" },
   row: { display: "flex", gap: 10, padding: "0.7rem 0" },
   icon: { fontSize: "1rem" },
-  title: { fontSize: "0.85rem", color: "#FFFFFF", fontWeight: 600 },
+  title: { fontSize: "0.85rem", color: "#F5F5F5", fontWeight: 600 },
   msg: { fontSize: "0.78rem", color: "#9a9488", marginTop: 2, lineHeight: 1.5 },
   time: { fontSize: "0.7rem", color: "#555", marginTop: 3 },
 };

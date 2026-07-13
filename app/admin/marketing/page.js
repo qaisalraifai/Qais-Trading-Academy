@@ -116,17 +116,17 @@ export default function AdminMarketingPage() {
 }
 
 const s = {
-  page: { minHeight: "100vh", background: "#000000", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#FFFFFF", padding: "2.5rem 1.5rem", maxWidth: 1000, margin: "0 auto" },
+  page: { minHeight: "100vh", background: "#0B0B0B", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#F5F5F5", padding: "2.5rem 1.5rem", maxWidth: 1000, margin: "0 auto" },
   title: { fontSize: "1.6rem", fontWeight: 800, marginBottom: 6, color: gold },
   sub: { color: "#8a8378", fontSize: "0.88rem", marginBottom: "1.8rem", lineHeight: 1.7 },
-  error: { background: "#2a0d0d", border: "1px solid #ef444444", color: "#ef4444", padding: "0.7rem 1rem", borderRadius: 8, marginBottom: "1rem", fontSize: "0.85rem" },
-  form: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.7rem", background: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: 12, padding: "1.2rem", marginBottom: "2rem" },
-  input: { background: "#080808", border: "1px solid #1a1a1a", color: "#FFFFFF", padding: "0.7rem 0.9rem", borderRadius: 6, fontSize: "0.85rem" },
+  error: { background: "#2a0d0d", border: "1px solid #FF4D4F44", color: "#FF4D4F", padding: "0.7rem 1rem", borderRadius: 8, marginBottom: "1rem", fontSize: "0.85rem" },
+  form: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.7rem", background: "#0d0d0d", border: "1px solid #242424", borderRadius: 12, padding: "1.2rem", marginBottom: "2rem" },
+  input: { background: "#080808", border: "1px solid #242424", color: "#F5F5F5", padding: "0.7rem 0.9rem", borderRadius: 6, fontSize: "0.85rem" },
   btn: { background: gold, color: "#080600", border: "none", padding: "0.7rem 1.2rem", borderRadius: 6, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", gridColumn: "1 / -1" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1rem" },
-  card: { background: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: 10, padding: "1.1rem" },
+  card: { background: "#0d0d0d", border: "1px solid #242424", borderRadius: 10, padding: "1.1rem" },
   cardTitle: { fontWeight: 700, fontSize: "0.9rem", marginBottom: 4 },
-  cardType: { color: "#7A7A7A", fontSize: "0.75rem", marginBottom: 10 },
+  cardType: { color: "#6E6E6E", fontSize: "0.75rem", marginBottom: 10 },
   link: { color: gold, fontSize: "0.8rem", textDecoration: "none", display: "block", marginBottom: 10 },
-  deleteBtn: { background: "transparent", border: "1px solid #ef444455", color: "#ef4444", padding: "0.4rem 0.8rem", borderRadius: 6, fontSize: "0.75rem", cursor: "pointer" },
+  deleteBtn: { background: "transparent", border: "1px solid #FF4D4F55", color: "#FF4D4F", padding: "0.4rem 0.8rem", borderRadius: 6, fontSize: "0.75rem", cursor: "pointer" },
 };

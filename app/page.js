@@ -244,10 +244,10 @@ export default function HomePage() {
 
 const gold = "#D4AF37";
 const goldDim = "#C9A227";
-const ink = "#000000";
+const ink = "#0B0B0B";
 const cardBg = "#0d0d0d";
-const textMuted = "#7A7A7A";
-const textSoft = "#FFFFFF";
+const textMuted = "#6E6E6E";
+const textSoft = "#F5F5F5";
 
 const styles = {
   page: { backgroundColor: ink, color: textSoft, direction: "rtl", fontFamily: "'Inter', system-ui, sans-serif", minHeight: "100vh", overflowX: "hidden" },

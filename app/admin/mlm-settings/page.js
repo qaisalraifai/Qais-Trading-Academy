@@ -89,7 +89,7 @@ export default function MlmSettingsPage() {
         </div>
 
         {error && (
-          <div style={{ color: "#ef4444", marginBottom: "1rem", fontSize: "0.85rem" }}>{error}</div>
+          <div style={{ color: "#FF4D4F", marginBottom: "1rem", fontSize: "0.85rem" }}>{error}</div>
         )}
 
         {loading ? (
@@ -125,7 +125,7 @@ export default function MlmSettingsPage() {
                       borderRadius: 8,
                       border: "1px solid #2a2a2a",
                       background: "#0d0d0c",
-                      color: "#FFFFFF",
+                      color: "#F5F5F5",
                       textAlign: "center",
                       fontFamily: "monospace",
                     }}

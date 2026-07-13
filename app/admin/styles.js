@@ -7,7 +7,7 @@
 
 export const gold = "#D4AF37";
 export const goldLight = "#E4C97A";
-export const ink = "#000000";
+export const ink = "#0B0B0B";
 export const panel = "#0b0b0a";
 export const panelElevated = "#111110";
 
@@ -76,7 +76,7 @@ export const s = {
   page: {
     backgroundColor: ink,
     backgroundImage: noiseBg,
-    color: "#FFFFFF",
+    color: "#F5F5F5",
     direction: "rtl",
     fontFamily: fontStack,
     minHeight: "100vh",

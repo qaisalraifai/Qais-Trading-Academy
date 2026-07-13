@@ -41,7 +41,7 @@ export default async function LecturesPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1a1608 0%, #0a0a0a 60%)",
+      background: "radial-gradient(ellipse at top, #1a1608 0%, #141414 60%)",
       color: "#fff",
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
@@ -79,7 +79,7 @@ export default async function LecturesPage() {
           {courseStats.map((course) => (
             <Link key={course.id} href={`/course/${course.id}`} style={{ textDecoration: "none" }}>
               <div style={{
-                background: "linear-gradient(145deg, #111108, #0A0A0A)",
+                background: "linear-gradient(145deg, #111108, #141414)",
                 border: "1px solid #D4AF3733",
                 borderRadius: 18,
                 padding: "1.75rem",

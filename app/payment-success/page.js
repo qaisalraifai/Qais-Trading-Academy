@@ -87,11 +87,11 @@ export default function PaymentSuccessPage() {
 
 const gold = "#D4AF37";
 const s = {
-  page: { backgroundColor: "#000000", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" },
+  page: { backgroundColor: "#0B0B0B", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#F5F5F5", display: "flex", alignItems: "center", justifyContent: "center" },
   center: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem", padding: "2rem", textAlign: "center", maxWidth: "420px" },
   spinner: {
     width: "40px", height: "40px",
-    border: `3px solid #1a1a1a`,
+    border: `3px solid #242424`,
     borderTopColor: gold,
     borderRadius: "50%",
     animation: "spin 0.8s linear infinite",

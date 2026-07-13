@@ -13,11 +13,11 @@ export default function EmailConfirmedPage() {
 const gold = "#D4AF37";
 const s = {
   page: {
-    backgroundColor: "#000000",
+    backgroundColor: "#0B0B0B",
     minHeight: "100vh",
     direction: "rtl",
     fontFamily: "'Inter', sans-serif",
-    color: "#FFFFFF",
+    color: "#F5F5F5",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -25,7 +25,7 @@ const s = {
   },
   card: {
     backgroundColor: "#0d0d0d",
-    border: "1px solid #1a1a1a",
+    border: "1px solid #242424",
     borderRadius: "8px",
     padding: "3rem 2.5rem",
     maxWidth: "380px",

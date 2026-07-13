@@ -17,7 +17,7 @@ export default function AdminError({ error, reset }) {
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: ink,
-        color: "#FFFFFF",
+        color: "#F5F5F5",
         direction: "rtl",
         fontFamily: fontStack,
         padding: "1.5rem",
@@ -66,7 +66,7 @@ export default function AdminError({ error, reset }) {
               padding: "0 1.3rem",
               borderRadius: 10,
               border: "1px solid #2a2a2a",
-              color: "#FFFFFF",
+              color: "#F5F5F5",
               fontSize: "0.9rem",
               textDecoration: "none",
             }}

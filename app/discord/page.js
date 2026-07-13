@@ -16,7 +16,7 @@ export default async function DiscordPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #0d0d2a 0%, #0a0a0a 60%)",
+      background: "radial-gradient(ellipse at top, #0d0d2a 0%, #141414 60%)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",

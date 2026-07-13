@@ -66,7 +66,7 @@ export default function CourseClient({ course, chapters }) {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1a1608 0%, #0a0a0a 60%)",
+      background: "radial-gradient(ellipse at top, #1a1608 0%, #141414 60%)",
       color: "#fff",
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
@@ -173,7 +173,7 @@ export default function CourseClient({ course, chapters }) {
                     return (
                       <Link key={lecture.id} href={`/lecture/${lecture.id}`} style={{ textDecoration: "none" }}>
                         <div style={{
-                          background: "linear-gradient(145deg, #111108, #0A0A0A)",
+                          background: "linear-gradient(145deg, #111108, #141414)",
                           border: isCompleted ? "1px solid #4CAF5044" : "1px solid #D4AF3722",
                           borderRadius: 14,
                           padding: "1rem 1.25rem",

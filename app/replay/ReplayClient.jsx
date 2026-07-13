@@ -6,8 +6,8 @@ import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } f
 
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
-const GREEN = "#10b981";
-const RED = "#ef4444";
+const GREEN = "#00C853";
+const RED = "#FF4D4F";
 const DEFAULT_COMPARE_HEIGHT = 200; // ارتفاع لوحة المقارنة الافتراضي بالبكسل (قابل للسحب من المستخدم)
 // عرض ثابت (بالبكسل) لعمود الأسعار باليمين - لازم يكون نفس القيمة بالشارت الرئيسي
 // وشارت المقارنة معاً، وإلا كل شارت (نسخة lightweight-charts منفصلة) بيحسب عرض
@@ -84,7 +84,7 @@ function sanitizeCandles(list) {
 // "الافتراضي" يدوياً. هاي أضمن طريقة لأي تغيير مستقبلي بالقيم الافتراضية.
 const CHART_SETTINGS_KEY = "qta_chart_settings_v2";
 const DEFAULT_CHART_SETTINGS = {
-  bg: "#0A0A0A",
+  bg: "#141414",
   up: GREEN,
   down: RED,
   gridVisible: true,
@@ -464,7 +464,7 @@ function defaultStyleFor(type) {
     case "path":
       return { color: GOLD_LIGHT, width: 2, closed: false, fill: false, fillColor: GOLD, fillAlpha: 0.15 };
     case "wave":
-      return { color: "#ffffff", width: 1.5 };
+      return { color: "#F5F5F5", width: 1.5 };
     case "rectangle":
       return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.15, midline: false, midlineColor: "#4caf50", midlineDash: true };
     case "circle":
@@ -1070,7 +1070,7 @@ export default function ReplayClient({ userId }) {
         const boxX = Math.max(4, w - boxW - 6);
         ctx.fillStyle = style.color || GOLD_LIGHT;
         ctx.fillRect(boxX, y - 10, boxW, 20);
-        ctx.fillStyle = "#0a0a0a";
+        ctx.fillStyle = "#141414";
         ctx.fillText(label, boxX + 6, y + 4);
 
       } else if (d.type === "hray") {
@@ -3479,7 +3479,7 @@ export default function ReplayClient({ userId }) {
     return (
       <div style={{
         position: "absolute", top: 10, left: 68, zIndex: 20, width: 300,
-        background: "#1a1a1a", border: "1px solid #333", borderRadius: 12,
+        background: "#242424", border: "1px solid #333", borderRadius: 12,
         boxShadow: "0 10px 30px rgba(0,0,0,0.5)", padding: 14, color: "#eee",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -3615,7 +3615,7 @@ export default function ReplayClient({ userId }) {
         style={{
           position: "absolute", zIndex: 21, transform: "translateX(-50%)",
           display: "flex", alignItems: "center", gap: 2,
-          background: "#1a1a1a", border: "1px solid #333", borderRadius: 10,
+          background: "#242424", border: "1px solid #333", borderRadius: 10,
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)", padding: "4px 5px",
         }}
       >
@@ -3756,7 +3756,7 @@ export default function ReplayClient({ userId }) {
       <div
         style={{
           position: "absolute", top: contextMenu.y, left: contextMenu.x, zIndex: 20,
-          background: "#1a1a1a", border: "1px solid #333", borderRadius: 10, padding: "6px 0",
+          background: "#242424", border: "1px solid #333", borderRadius: 10, padding: "6px 0",
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)", minWidth: 220,
         }}
       >
@@ -3820,7 +3820,7 @@ export default function ReplayClient({ userId }) {
                   <div
                     style={{
                       position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 10,
-                      display: "flex", alignItems: "center", gap: 2, background: "#1a1a1a",
+                      display: "flex", alignItems: "center", gap: 2, background: "#242424",
                       border: `1px solid ${GOLD}33`, borderRadius: 8, padding: 3,
                       boxShadow: "0 4px 14px rgba(0,0,0,0.4)",
                     }}
@@ -3874,7 +3874,7 @@ export default function ReplayClient({ userId }) {
     );
     return (
       <div
-        style={{ position: "absolute", inset: 0, zIndex: 30, background: "#000000aa", display: "flex", alignItems: "center", justifyContent: "center" }}
+        style={{ position: "absolute", inset: 0, zIndex: 30, background: "#0B0B0Baa", display: "flex", alignItems: "center", justifyContent: "center" }}
         onClick={() => setIndicatorPanelOpen(false)}
       >
         <div
@@ -3982,7 +3982,7 @@ export default function ReplayClient({ userId }) {
     ];
     const close = () => setIndicatorSettingsFor(null);
     return (
-      <div style={{ position: "absolute", inset: 0, zIndex: 32, background: "#000000aa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
+      <div style={{ position: "absolute", inset: 0, zIndex: 32, background: "#0B0B0Baa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
@@ -4114,7 +4114,7 @@ export default function ReplayClient({ userId }) {
       setTemplatesPanelOpen(true);
     }
     return (
-      <div style={{ position: "absolute", inset: 0, zIndex: 31, background: "#000000aa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
+      <div style={{ position: "absolute", inset: 0, zIndex: 31, background: "#0B0B0Baa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
@@ -4283,7 +4283,7 @@ export default function ReplayClient({ userId }) {
 
     return (
       <div style={{
-        position: "absolute", inset: 0, zIndex: 30, background: "#000000aa",
+        position: "absolute", inset: 0, zIndex: 30, background: "#0B0B0Baa",
         display: "flex", alignItems: "center", justifyContent: "center",
       }} onClick={() => setSettingsOpen(false)}>
         <div
@@ -4352,7 +4352,7 @@ export default function ReplayClient({ userId }) {
     ];
     return (
       <div style={{
-        position: "absolute", inset: 0, zIndex: 30, background: "#000000aa",
+        position: "absolute", inset: 0, zIndex: 30, background: "#0B0B0Baa",
         display: "flex", alignItems: "center", justifyContent: "center",
       }} onClick={() => setCompareSettingsOpen(false)}>
         <div
@@ -4446,7 +4446,7 @@ export default function ReplayClient({ userId }) {
     const info = getAssetByValue(assetValue);
     const intervalLabel = INTERVALS.find((i) => i.value === interval)?.label || interval;
     const fmt = (v) => (v != null ? v.toFixed(v < 10 ? 4 : 2) : "-");
-    const bgStyle = chartSettings.statusShowBg !== false ? "#00000066" : "transparent";
+    const bgStyle = chartSettings.statusShowBg !== false ? "#0B0B0B66" : "transparent";
     return (
       <div style={{
         position: "absolute", top: 10, left: 10, zIndex: 8, pointerEvents: "none",
@@ -4491,7 +4491,7 @@ export default function ReplayClient({ userId }) {
         style={{
           display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
           minWidth: 78, padding: "0.3rem 0.55rem", borderRadius: 6, cursor: disabled ? "default" : "pointer",
-          background: "#0A0A0Acc", border: `1.5px solid ${color}`, color,
+          background: "#141414cc", border: `1.5px solid ${color}`, color,
           fontFamily: "monospace, sans-serif", opacity: disabled ? 0.5 : 1,
         }}
       >
@@ -4527,7 +4527,7 @@ export default function ReplayClient({ userId }) {
       <div
         ref={chartWrapperRef}
         style={{
-          background: isFullscreen ? "#0a0a08" : "linear-gradient(145deg, #121212, #0A0A0A)",
+          background: isFullscreen ? "#0a0a08" : "linear-gradient(145deg, #1E1E1E, #141414)",
           border: `1px solid ${GOLD}26`,
           borderRadius: isFullscreen ? 0 : 14,
           padding: isFullscreen ? "0.6rem" : "1rem",
@@ -4546,7 +4546,7 @@ export default function ReplayClient({ userId }) {
         {loading && (
           <div style={{
             position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#777", fontSize: 14, zIndex: 2, background: "#0A0A0Acc", borderRadius: 14,
+            color: "#777", fontSize: 14, zIndex: 2, background: "#141414cc", borderRadius: 14,
           }}>
             ...جاري تحميل البيانات
           </div>
@@ -4604,9 +4604,9 @@ export default function ReplayClient({ userId }) {
                     pointerEvents: "none", minWidth: 70, fontFamily: "monospace, sans-serif",
                   }}
                 >
-                  <span data-role="symbol" style={{ fontSize: 10, fontWeight: 700, color: "#0a0a0a" }} />
-                  <span data-role="price" style={{ fontSize: 13, fontWeight: 800, color: "#0a0a0a", lineHeight: 1.2 }} />
-                  <span data-role="countdown" style={{ fontSize: 10, color: "#0a0a0aaa", display: "none" }} />
+                  <span data-role="symbol" style={{ fontSize: 10, fontWeight: 700, color: "#141414" }} />
+                  <span data-role="price" style={{ fontSize: 13, fontWeight: 800, color: "#141414", lineHeight: 1.2 }} />
+                  <span data-role="countdown" style={{ fontSize: 10, color: "#141414aa", display: "none" }} />
                 </div>
               </div>
             </div>

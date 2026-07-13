@@ -18,7 +18,7 @@ export default async function LecturePage({ params }) {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1a1608 0%, #0a0a0a 60%)",
+      background: "radial-gradient(ellipse at top, #1a1608 0%, #141414 60%)",
       color: "#fff",
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
@@ -27,7 +27,7 @@ export default async function LecturePage({ params }) {
       {/* Sidebar */}
       <div style={{
         width: 280,
-        background: "linear-gradient(180deg, #111108 0%, #0a0a0a 100%)",
+        background: "linear-gradient(180deg, #111108 0%, #141414 100%)",
         borderLeft: "1px solid #D4AF3722",
         padding: "1.5rem 1rem",
         display: "flex", flexDirection: "column", gap: "0.5rem",

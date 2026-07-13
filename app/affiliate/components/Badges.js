@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
-const BORDER = "#1a1a1a";
+const BORDER = "#242424";
 
 export default function Badges() {
   const [badges, setBadges] = useState([]);
@@ -43,6 +43,6 @@ const s = {
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "0.8rem" },
   badge: { background: "#080808", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "1rem 0.7rem", textAlign: "center" },
   icon: { fontSize: "1.8rem", marginBottom: 6 },
-  badgeTitle: { fontSize: "0.78rem", fontWeight: 700, color: "#FFFFFF", marginBottom: 4 },
-  badgeDesc: { fontSize: "0.68rem", color: "#7A7A7A", lineHeight: 1.4 },
+  badgeTitle: { fontSize: "0.78rem", fontWeight: 700, color: "#F5F5F5", marginBottom: 4 },
+  badgeDesc: { fontSize: "0.68rem", color: "#6E6E6E", lineHeight: 1.4 },
 };

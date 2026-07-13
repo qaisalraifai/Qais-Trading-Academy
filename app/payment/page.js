@@ -116,7 +116,7 @@ const gold = "#D4AF37";
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#141414",
     color: "#fff",
     direction: "rtl",
     fontFamily: "'Georgia', serif",
@@ -148,8 +148,8 @@ const styles = {
   cardTitle: { fontSize: "1.4rem", fontWeight: "bold", textAlign: "center", color: "#fff" },
   priceBox: {
     textAlign: "center",
-    borderTop: "1px solid #1a1a1a",
-    borderBottom: "1px solid #1a1a1a",
+    borderTop: "1px solid #242424",
+    borderBottom: "1px solid #242424",
     padding: "1.5rem 0",
     width: "100%",
     display: "flex",
@@ -186,7 +186,7 @@ const styles = {
     position: "fixed",
     bottom: "1rem",
     left: "1rem",
-    color: "#1a1a1a",
+    color: "#242424",
     fontSize: "1rem",
     textDecoration: "none",
     opacity: 0.3,
