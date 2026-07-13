@@ -238,7 +238,10 @@ export default function MlmPage() {
 
       {/* الشجرة الثنائية */}
       <Card style={{ marginBottom: "1.5rem" }}>
-        <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "1rem" }}>شجرتي الثنائية (المباشرة تحتي)</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <div style={{ fontSize: "0.85rem", color: "#888" }}>شجرتي الثنائية (المباشرة تحتي)</div>
+          <a href="/mlm/tree" style={{ color: GOLD, fontSize: "0.8rem", textDecoration: "none" }}>عرض الشجرة الكاملة →</a>
+        </div>
         <div style={{ display: "flex", gap: "1rem" }}>
           <TreeSlot label="الرجل اليسرى" child={tree.leftChild} />
           <TreeSlot label="الرجل اليمنى" child={tree.rightChild} />
