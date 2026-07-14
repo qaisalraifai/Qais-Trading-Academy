@@ -6,11 +6,11 @@ import Badges from "./components/Badges";
 import BonusWheel from "./components/BonusWheel";
 import TreeAndCommissionsExplainer from "./components/TreeAndCommissionsExplainer";
 import RecentActivity from "./components/RecentActivity";
+import { gold, ink, glass, noiseBg, shadowLuxe, shadowGold, gradientGold, displayStack, monoStack, transition } from "@/app/admin/styles";
 
-const GOLD = "#D4AF37";
-const BG = "#0B0E11";
-const CARD = "#0d0d0d";
-const BORDER = "#2B2F36";
+const GOLD = gold;
+const BG = ink;
+const BORDER = "rgba(201,162,75,0.14)";
 
 function fmt(n) {
   return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -319,35 +319,44 @@ export default function AffiliateClient() {
 }
 
 const s = {
-  page: { minHeight: "100vh", background: BG, direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EAECEF", padding: "3rem 1.5rem", maxWidth: 900, margin: "0 auto" },
-  header: { textAlign: "center", marginBottom: "2rem" },
-  eyebrow: { fontFamily: "monospace", color: GOLD, fontSize: 11, letterSpacing: 3, marginBottom: 10 },
-  title: { fontSize: "1.8rem", fontWeight: 800, marginBottom: 8 },
-  sub: { color: "#6E7177", fontSize: "0.9rem" },
-  errorBox: { background: "#2a0d0d", border: "1px solid #F6465D44", color: "#F6465D", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: "1.2rem", fontSize: "0.85rem" },
-  card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "1.6rem", marginBottom: "1.2rem" },
+  page: {
+    minHeight: "100vh",
+    backgroundColor: BG,
+    backgroundImage: noiseBg,
+    direction: "rtl",
+    color: "#EAECEF",
+    padding: "3rem 1.5rem 4rem",
+    maxWidth: 1150,
+    margin: "0 auto",
+  },
+  header: { textAlign: "center", marginBottom: "2.2rem" },
+  eyebrow: { fontFamily: monoStack, color: GOLD, fontSize: 11, letterSpacing: 3, marginBottom: 10 },
+  title: { fontSize: "1.9rem", fontWeight: 800, marginBottom: 8, fontFamily: displayStack, letterSpacing: "-0.02em" },
+  sub: { color: "#9A9A9A", fontSize: "0.9rem" },
+  errorBox: { background: "#2a0d0d", border: "1px solid #F6465D44", color: "#F6465D", padding: "0.8rem 1rem", borderRadius: 10, marginBottom: "1.2rem", fontSize: "0.85rem" },
+  card: { ...glass, boxShadow: shadowLuxe, borderRadius: 18, padding: "1.8rem", marginBottom: "1.3rem" },
   cardText: { color: "#B8B0A0", fontSize: "0.92rem", lineHeight: 1.9, marginBottom: "1.2rem" },
-  cardTextSmall: { color: "#6E7177", fontSize: "0.82rem", lineHeight: 1.7, marginBottom: "1rem" },
-  btn: { background: GOLD, color: "#080600", border: "none", padding: "0.8rem 1.6rem", borderRadius: 6, fontWeight: 700, fontSize: "0.9rem", cursor: "pointer" },
-  btnSmall: { background: GOLD, color: "#080600", border: "none", padding: "0.7rem 1.2rem", borderRadius: 6, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", whiteSpace: "nowrap" },
+  cardTextSmall: { color: "#9A9A9A", fontSize: "0.82rem", lineHeight: 1.7, marginBottom: "1rem" },
+  btn: { backgroundImage: gradientGold, boxShadow: shadowGold, color: "#16130a", border: "none", padding: "0.85rem 1.7rem", borderRadius: 10, fontWeight: 700, fontSize: "0.9rem", cursor: "pointer", transition },
+  btnSmall: { backgroundImage: gradientGold, boxShadow: shadowGold, color: "#16130a", border: "none", padding: "0.7rem 1.2rem", borderRadius: 8, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", whiteSpace: "nowrap", transition },
   statusBadgePending: { color: "#eab308", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 },
   statusBadgeRejected: { color: "#F6465D", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 },
-  sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD, marginBottom: "0.9rem" },
-  linkRow: { display: "flex", gap: 10, alignItems: "center", background: "#080808", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "0.7rem 1rem", flexWrap: "wrap" },
-  linkText: { fontFamily: "monospace", fontSize: "0.85rem", color: "#C8C0B0", direction: "ltr", flex: 1, wordBreak: "break-all" },
-  copyBtn: { background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, padding: "0.4rem 0.9rem", borderRadius: 6, cursor: "pointer", fontSize: "0.8rem", whiteSpace: "nowrap" },
-  grid3: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.9rem" },
-  statCard: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "1.2rem", textAlign: "center" },
-  networkCard: { background: "#080808", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "1.1rem", textAlign: "center" },
-  statLabel: { color: "#6E7177", fontSize: "0.75rem", marginBottom: 6 },
-  statValue: { color: GOLD, fontSize: "1.4rem", fontWeight: 800 },
-  networkSub: { color: "#555", fontSize: "0.72rem", marginTop: 4 },
+  sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD, marginBottom: "0.9rem", fontFamily: displayStack },
+  linkRow: { display: "flex", gap: 10, alignItems: "center", background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "0.8rem 1rem", flexWrap: "wrap" },
+  linkText: { fontFamily: monoStack, fontSize: "0.85rem", color: "#C8C0B0", direction: "ltr", flex: 1, wordBreak: "break-all" },
+  copyBtn: { background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, padding: "0.45rem 1rem", borderRadius: 8, cursor: "pointer", fontSize: "0.8rem", whiteSpace: "nowrap", transition },
+  grid3: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem" },
+  statCard: { ...glass, boxShadow: shadowLuxe, borderRadius: 14, padding: "1.3rem", textAlign: "center" },
+  networkCard: { background: "rgba(255,255,255,0.025)", border: `1px solid ${BORDER}`, borderRadius: 14, padding: "1.2rem", textAlign: "center" },
+  statLabel: { color: "#9A9A9A", fontSize: "0.75rem", marginBottom: 6 },
+  statValue: { color: GOLD, fontSize: "1.5rem", fontWeight: 800, fontFamily: monoStack },
+  networkSub: { color: "#6E7177", fontSize: "0.72rem", marginTop: 4 },
   payoutRow: { display: "flex", gap: 10, flexWrap: "wrap" },
-  select: { background: "#080808", border: `1px solid ${BORDER}`, color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 6, fontSize: "0.85rem" },
-  input: { flex: 1, minWidth: 200, background: "#080808", border: `1px solid ${BORDER}`, color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 6, fontSize: "0.85rem", direction: "ltr", textAlign: "right" },
-  savedNote: { color: "#6E7177", fontSize: "0.78rem", marginTop: "0.8rem" },
+  select: { background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}`, color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 8, fontSize: "0.85rem" },
+  input: { flex: 1, minWidth: 200, background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}`, color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 8, fontSize: "0.85rem", direction: "ltr", textAlign: "right" },
+  savedNote: { color: "#9A9A9A", fontSize: "0.78rem", marginTop: "0.8rem" },
   table: { width: "100%", borderCollapse: "collapse" },
-  th: { textAlign: "right", color: "#6E7177", fontSize: "0.75rem", padding: "0.6rem", borderBottom: `1px solid ${BORDER}` },
+  th: { textAlign: "right", color: "#9A9A9A", fontSize: "0.75rem", padding: "0.6rem", borderBottom: `1px solid ${BORDER}` },
   td: { padding: "0.6rem", fontSize: "0.85rem", color: "#C8C0B0", borderBottom: `1px solid ${BORDER}` },
-  backLink: { display: "block", textAlign: "center", color: "#555", fontSize: "0.85rem", textDecoration: "none", marginTop: "1.5rem" },
+  backLink: { display: "block", textAlign: "center", color: "#666", fontSize: "0.85rem", textDecoration: "none", marginTop: "1.5rem" },
 };
