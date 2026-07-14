@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase-client";
 import BacktestClient from "../backtest/BacktestClient";
 import ReplayClient from "../replay/ReplayClient";
 import AccountsAdminView from "./components/AccountsAdminView";
+import LiveView from "./components/LiveView";
 import SettingsView from "./components/SettingsView";
 import AffiliateClient from "../affiliate/AffiliateClient";
 import MlmClient from "../mlm/MlmClient";
@@ -18,6 +19,7 @@ const RED = "#F6465D";
 
 const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: "👥", view: "accounts" },
+  { key: "live", label: "البث المباشر", icon: "🔴", view: "live" },
   { key: "lectures", label: "المحاضرات", icon: "🎓", view: "lectures" },
   { key: "calendar", label: "التقويم الاقتصادي", icon: "📅", view: "calendar" },
   { key: "replay", label: "Replay التدريب", icon: "🎯", view: "replay" },
@@ -105,6 +107,23 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
   const [activeKey, setActiveKey] = useState(
     tabParam && (tabParam !== "accounts" || isAdmin) ? tabParam : "dashboard"
   );
+
+  // بث مباشر نشط هلأ؟ (بنفحصها بكل الصفحة عشان نظهر شارة 🔴 بالقائمة الجانبية بغض النظر عن التبويب المفتوح)
+  const [liveSession, setLiveSession] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    async function checkLive() {
+      try {
+        const res = await fetch("/api/live");
+        const data = await res.json();
+        if (!cancelled && res.ok) setLiveSession(data.session || null);
+      } catch (e) {}
+    }
+    checkLive();
+    const interval = setInterval(checkLive, 20000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
   const [courses, setCourses] = useState([]);
   const [allLectures, setAllLectures] = useState([]);
   const [progressMap, setProgressMap] = useState({});
@@ -286,6 +305,13 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
         flexDirection: "column",
       }}
     >
+      <style>{`
+        @keyframes pulseLive {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.45; }
+        }
+      `}</style>
+
       {/* Top Header - عام على كل الصفحات */}
       <div
         style={{
@@ -481,6 +507,21 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
               >
                 <span>{item.icon}</span>
                 <span>{item.label}</span>
+                {item.key === "live" && liveSession && (
+                  <span style={{
+                    marginRight: "auto",
+                    background: "#F6465D",
+                    color: "#fff",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: "2px 7px",
+                    borderRadius: 20,
+                    letterSpacing: 0.5,
+                    animation: "pulseLive 1.6s ease-in-out infinite",
+                  }}>
+                    مباشر
+                  </span>
+                )}
               </div>
             );
           })}
@@ -647,6 +688,8 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
 
         {activeKey === "accounts" && isAdmin ? (
           <AccountsAdminView username={username} />
+        ) : activeKey === "live" ? (
+          <LiveView isAdmin={isAdmin} username={username} />
         ) : activeKey === "calendar" ? (
           <CalendarView events={economicEvents} loading={calendarLoading} isAdmin={isAdmin} />
         ) : activeKey === "lectures" ? (
