@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Users,
   Radio,
+  Dna,
   GraduationCap,
   Calendar,
   Target,
@@ -20,6 +21,7 @@ import {
 export const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: Users, view: "accounts", adminOnly: true },
   { key: "live", label: "البث المباشر", icon: Radio, view: "live" },
+  { key: "trader-dna", label: "بصمتك كمتداول", icon: Dna, view: "trader-dna" },
   { key: "lectures", label: "المحاضرات", icon: GraduationCap, view: "lectures" },
   { key: "calendar", label: "التقويم الاقتصادي", icon: Calendar, view: "calendar" },
   { key: "replay", label: "Replay التدريب", icon: Target, view: "replay" },
