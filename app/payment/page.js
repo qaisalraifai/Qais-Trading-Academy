@@ -8,18 +8,52 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(false);
   const [paddle, setPaddle] = useState(null);
   const [checkoutStarted, setCheckoutStarted] = useState(false); // لما تصير true، منعرض حاوية الدفع المدمجة
+  const [configError, setConfigError] = useState(""); // خطأ إعدادات Paddle واضح، بدل شاشة "Something went wrong" الغامضة
   const supabase = createClient();
 
   // منحمّل Paddle.js مرة وحدة لما الصفحة تفتح
   useEffect(() => {
+    const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
+    if (!token) {
+      // بدون توكن، Paddle.js أصلاً ما رح يشتغل - أفضل نوقف هون بدل ما نخلي
+      // المستخدم يوصل لشاشة الدفع ويشوف خطأ Paddle الغامض "Something went wrong"
+      setConfigError("متغير NEXT_PUBLIC_PADDLE_CLIENT_TOKEN غير مضبوط بإعدادات المشروع.");
+      return;
+    }
     initializePaddle({
       environment: process.env.NEXT_PUBLIC_PADDLE_ENV || "sandbox",
-      token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN,
-    }).then((instance) => setPaddle(instance));
+      token,
+    })
+      .then((instance) => {
+        if (!instance) {
+          setConfigError(
+            "تعذّر تهيئة Paddle.js. تأكد إنه NEXT_PUBLIC_PADDLE_CLIENT_TOKEN صحيح، وإنه دومين الموقع مضاف بقائمة الدومينات المسموحة بلوحة تحكم Paddle."
+          );
+          return;
+        }
+        setPaddle(instance);
+      })
+      .catch((e) => {
+        console.error("initializePaddle failed:", e);
+        setConfigError("تعذّر تحميل Paddle.js: " + (e?.message || "خطأ غير معروف"));
+      });
   }, []);
 
   async function handlePayment() {
     if (!paddle) return; // Paddle.js لسا ما حمّل، منستنى
+
+    // لازم الـ price IDs تكون مضبوطة وإلا Paddle بيرفض فتح الدفع بخطأ عام
+    // "Something went wrong" بدون ما يوضح السبب الحقيقي (price id غير موجود/غير
+    // مفعّل، أو تابع لبيئة sandbox/production مختلفة عن اللي مضبوطة هون)
+    const signupPriceId = process.env.NEXT_PUBLIC_PADDLE_PRICE_SIGNUP;
+    const monthlyPriceId = process.env.NEXT_PUBLIC_PADDLE_PRICE_MONTHLY;
+    if (!signupPriceId || !monthlyPriceId) {
+      setConfigError(
+        "متغيرات أسعار Paddle (NEXT_PUBLIC_PADDLE_PRICE_SIGNUP / NEXT_PUBLIC_PADDLE_PRICE_MONTHLY) غير مضبوطة."
+      );
+      return;
+    }
+
     setLoading(true);
 
     // لازم نعرف مين المستخدم الحالي حتى نربط الدفعة فيه بالـ Webhook لاحقاً
@@ -40,8 +74,8 @@ export default function PaymentPage() {
     requestAnimationFrame(() => {
       paddle.Checkout.open({
         items: [
-          { priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_SIGNUP, quantity: 1 },
-          { priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_MONTHLY, quantity: 1 },
+          { priceId: signupPriceId, quantity: 1 },
+          { priceId: monthlyPriceId, quantity: 1 },
         ],
         customer: { email: user.email },
         customData: { user_id: user.id }, // Webhook بيستخدمها حتى يعرف مين المستخدم يفعّل اشتراكه
@@ -85,9 +119,15 @@ export default function PaymentPage() {
         </ul>
 
         {!checkoutStarted && (
-          <button style={styles.btn} onClick={handlePayment} disabled={loading || !paddle}>
-            {loading ? "جاري التحويل..." : !paddle ? "جاري التحميل..." : "ادفع $300 وابدأ الاشتراك"}
+          <button style={styles.btn} onClick={handlePayment} disabled={loading || !paddle || !!configError}>
+            {loading ? "جاري التحويل..." : !paddle && !configError ? "جاري التحميل..." : "ادفع $300 وابدأ الاشتراك"}
           </button>
+        )}
+
+        {configError && (
+          <p style={styles.configError}>
+            ⚠️ إعدادات الدفع ناقصة: {configError} راجع متغيرات البيئة (Environment Variables) بإعدادات النشر.
+          </p>
         )}
 
         {/* حاوية الدفع المدمجة — Paddle بيعبيها بنفسه لما checkoutStarted تصير true */}
@@ -180,6 +220,7 @@ const styles = {
     minHeight: "450px",
   },
   note: { color: "#555", fontSize: "0.8rem", textAlign: "center", lineHeight: 1.6 },
+  configError: { color: "#F6465D", fontSize: "0.78rem", textAlign: "center", lineHeight: 1.7, background: "#F6465D14", border: "1px solid #F6465D44", borderRadius: 6, padding: "0.75rem 1rem" },
   taxNote: { color: "#3a3a3a", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5, marginTop: "-0.75rem" },
   footer: { color: "#333", fontSize: "0.8rem", marginTop: "1.5rem" },
   adminLink: {
