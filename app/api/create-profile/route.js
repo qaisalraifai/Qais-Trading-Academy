@@ -19,14 +19,6 @@ export async function POST(request) {
     );
   }
 
-  // خطة الشجرة الثنائية: التسجيل بدون كود دعوة (راعي) غير مسموح
-  if (!ref) {
-    return NextResponse.json(
-      { error: "لازم كود دعوة صحيح للتسجيل" },
-      { status: 400 }
-    );
-  }
-
   const supabase = createAdminClient();
 
   // منع الغش (الفصل 12): بصمة جهاز مطابقة = حجب فوري. نفس الـIP فقط = علامة اشتباه بدون حجب
@@ -53,20 +45,43 @@ export async function POST(request) {
   // لازم نتحقق إنه كود الدعوة فعلاً يعود لمسوّق موجود ومفعّل — وما بنسمح
   // إنه الشخص يحيل نفسه. هاد الراعي (sponsor) هو نفسه اللي رح يُستخدم
   // بمحرك وضع الشجرة الثنائية تحت.
-  const { data: affiliate } = await supabase
-    .from("profiles")
-    .select("id, affiliate_status")
-    .eq("affiliate_code", ref.trim())
-    .maybeSingle();
+  //
+  // لو ما في كود دعوة إطلاقاً (سجّل مباشرة بدون رابط)، بنحطه تلقائياً تحت
+  // أول حساب أدمن (role="admin") كراعي افتراضي، بدل ما نرفض التسجيل.
+  let referredBy;
+  if (ref) {
+    const { data: affiliate } = await supabase
+      .from("profiles")
+      .select("id, affiliate_status")
+      .eq("affiliate_code", ref.trim())
+      .maybeSingle();
 
-  if (!affiliate || affiliate.affiliate_status !== "approved" || affiliate.id === userId) {
-    return NextResponse.json(
-      { error: "كود الدعوة غير صحيح أو غير مفعّل" },
-      { status: 400 }
-    );
+    if (!affiliate || affiliate.affiliate_status !== "approved" || affiliate.id === userId) {
+      return NextResponse.json(
+        { error: "كود الدعوة غير صحيح أو غير مفعّل" },
+        { status: 400 }
+      );
+    }
+
+    referredBy = affiliate.id;
+  } else {
+    const { data: defaultSponsor } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("role", "admin")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!defaultSponsor) {
+      return NextResponse.json(
+        { error: "لا يوجد حساب أدمن مسجّل ليكون الراعي الافتراضي — تواصل مع الدعم" },
+        { status: 500 }
+      );
+    }
+
+    referredBy = defaultSponsor.id;
   }
-
-  const referredBy = affiliate.id;
 
   const { error: profileError } = await supabase
     .from("profiles")
