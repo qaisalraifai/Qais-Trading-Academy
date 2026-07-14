@@ -27,7 +27,7 @@ export const NAV_ITEMS = [
   { key: "replay", label: "Replay التدريب", icon: Target, view: "replay" },
   { key: "strategies", label: "الاستراتيجيات", icon: Puzzle, view: "strategies", comingSoon: true },
   { key: "trades", label: "الصفقات", icon: BarChart3, view: "backtest" },
-  { key: "reports", label: "التقارير", icon: FileText, view: "reports", comingSoon: true },
+  { key: "reports", label: "التقارير", icon: FileText, view: "reports" },
   { key: "mlm", label: "شبكتي (الشجرة الثنائية)", icon: TreePine, view: "mlm" },
   { key: "affiliate", label: "برنامج التسويق بالعمولة", icon: Handshake, view: "affiliate" },
   { key: "settings", label: "الإعدادات", icon: Settings, view: "settings" },
