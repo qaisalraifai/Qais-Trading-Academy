@@ -85,7 +85,10 @@ export default function LiveView({ isAdmin = false, username = "" }) {
       configOverwrite: {
         prejoinPageEnabled: true,
         disableDeepLinking: true,
+<<<<<<< HEAD
         disableTileView: true,
+=======
+>>>>>>> 18b30f367f4d442ae8999e2b7450fd2ef735bbe1
       },
       interfaceConfigOverwrite: {
         SHOW_JITSI_WATERMARK: false,
