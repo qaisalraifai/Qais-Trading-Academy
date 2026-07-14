@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import DashboardClient from "./DashboardClient";
 
 export default async function DashboardPage() {
@@ -17,11 +18,13 @@ export default async function DashboardPage() {
   const isAdmin = profile?.role === "admin";
 
   return (
-    <DashboardClient
-      username={username}
-      isAdmin={isAdmin}
-      subscriptionEnd={profile?.subscription_end || null}
-      currentStreak={profile?.current_streak || 0}
-    />
+    <Suspense fallback={null}>
+      <DashboardClient
+        username={username}
+        isAdmin={isAdmin}
+        subscriptionEnd={profile?.subscription_end || null}
+        currentStreak={profile?.current_streak || 0}
+      />
+    </Suspense>
   );
 }

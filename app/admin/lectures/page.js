@@ -174,7 +174,7 @@ export default function AdminLecturesPage() {
           <h1 style={s.headerTitle}>إدارة المحاضرات</h1>
         </div>
         <div style={{ display: "flex", gap: "0.75rem" }}>
-          <Link href="/admin" style={s.backBtn}>← رجوع للمشتركين</Link>
+          <Link href="/dashboard?tab=accounts" style={s.backBtn}>← رجوع للمشتركين</Link>
           <button onClick={openAddForm} style={s.addBtn}>+ إضافة محاضرة</button>
         </div>
       </header>

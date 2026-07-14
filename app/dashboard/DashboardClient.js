@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import BacktestClient from "../backtest/BacktestClient";
 import ReplayClient from "../replay/ReplayClient";
@@ -90,6 +91,9 @@ function FlagBadge({ children }) {
 }
 
 export default function DashboardClient({ username, isAdmin = false, subscriptionEnd = null, currentStreak = 0 }) {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
   const [trades, setTrades] = useState([]); // بترتيب زمني تصاعدي (الأقدم أولاً) - للرسم البياني
   const [rawTrades, setRawTrades] = useState([]); // الشكل الخام من قاعدة البيانات - تحتاجه أداة الباك تيست
   const [balance, setBalance] = useState(3000);
@@ -97,7 +101,10 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
   const [loading, setLoading] = useState(true);
 
   // التنقل الداخلي داخل نفس الصفحة (بدون الخروج من الداشبورد)
-  const [activeKey, setActiveKey] = useState("dashboard");
+  // إذا الرابط جاي بـ ?tab=accounts (مثلاً من صفحة إدارة المحاضرات) نفتح على هاد التبويب مباشرة
+  const [activeKey, setActiveKey] = useState(
+    tabParam && (tabParam !== "accounts" || isAdmin) ? tabParam : "dashboard"
+  );
   const [courses, setCourses] = useState([]);
   const [allLectures, setAllLectures] = useState([]);
   const [progressMap, setProgressMap] = useState({});
