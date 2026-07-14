@@ -6,6 +6,7 @@ import BacktestClient from "../backtest/BacktestClient";
 import ReplayClient from "../replay/ReplayClient";
 import AccountsAdminView from "./components/AccountsAdminView";
 import SettingsView from "./components/SettingsView";
+import AffiliateClient from "../affiliate/AffiliateClient";
 
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
@@ -484,12 +485,25 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
       <span>شبكتي (الشجرة الثنائية)</span>
     </div>
   </Link>
-  <Link href="/affiliate" style={{ textDecoration: "none" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.7rem 0.9rem", color: GOLD, fontSize: 13 }}>
-      <span>🤝</span>
-      <span>برنامج التسويق بالعمولة</span>
-    </div>
-  </Link>
+  <div
+    onClick={() => setActiveKey("affiliate")}
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "0.7rem 0.9rem",
+      borderRadius: 10,
+      background: activeKey === "affiliate" ? `linear-gradient(135deg, ${GOLD}22, ${GOLD_DARK}11)` : "transparent",
+      border: activeKey === "affiliate" ? `1px solid ${GOLD}55` : "1px solid transparent",
+      color: GOLD,
+      fontSize: 13,
+      fontWeight: activeKey === "affiliate" ? 700 : 400,
+      cursor: "pointer",
+    }}
+  >
+    <span>🤝</span>
+    <span>برنامج التسويق بالعمولة</span>
+  </div>
   <Link href="/discord" style={{ textDecoration: "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.7rem 0.9rem", color: "#5865F2", fontSize: 13 }}>
               <span>🎮</span>
@@ -633,6 +647,8 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
           <ReplayClient userId={userId} />
         ) : activeKey === "settings" ? (
           <SettingsView username={username} />
+        ) : activeKey === "affiliate" ? (
+          <AffiliateClient embedded />
         ) : activeKey === "backtest" ? (
           userId ? (
             <BacktestClient

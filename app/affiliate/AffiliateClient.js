@@ -30,7 +30,7 @@ const PAYOUT_STATUS_LABELS = {
   failed: "فشل التحويل",
 };
 
-export default function AffiliateClient() {
+export default function AffiliateClient({ embedded = false }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -110,9 +110,11 @@ export default function AffiliateClient() {
     });
   }
 
+  const pageStyle = embedded ? s.pageEmbedded : s.page;
+
   if (loading) {
     return (
-      <div style={s.page}>
+      <div style={pageStyle}>
         <p style={{ color: "#666" }}>جاري التحميل...</p>
       </div>
     );
@@ -121,7 +123,7 @@ export default function AffiliateClient() {
   const status = data?.status || "none";
 
   return (
-    <div style={s.page}>
+    <div style={pageStyle}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "-1rem" }}>
         {status === "approved" && <NotificationBell />}
       </div>
@@ -319,6 +321,7 @@ export default function AffiliateClient() {
 }
 
 const s = {
+<<<<<<< Updated upstream
   page: {
     minHeight: "100vh",
     backgroundColor: BG,
@@ -335,6 +338,16 @@ const s = {
   sub: { color: "#9A9A9A", fontSize: "0.9rem" },
   errorBox: { background: "#2a0d0d", border: "1px solid #F6465D44", color: "#F6465D", padding: "0.8rem 1rem", borderRadius: 10, marginBottom: "1.2rem", fontSize: "0.85rem" },
   card: { ...glass, boxShadow: shadowLuxe, borderRadius: 18, padding: "1.8rem", marginBottom: "1.3rem" },
+=======
+  page: { minHeight: "100vh", background: BG, direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EAECEF", padding: "3rem 1.5rem", maxWidth: 900, margin: "0 auto" },
+  pageEmbedded: { direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EAECEF", maxWidth: 900, margin: "0 auto" },
+  header: { textAlign: "center", marginBottom: "2rem" },
+  eyebrow: { fontFamily: "monospace", color: GOLD, fontSize: 11, letterSpacing: 3, marginBottom: 10 },
+  title: { fontSize: "1.8rem", fontWeight: 800, marginBottom: 8 },
+  sub: { color: "#6E7177", fontSize: "0.9rem" },
+  errorBox: { background: "#2a0d0d", border: "1px solid #F6465D44", color: "#F6465D", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: "1.2rem", fontSize: "0.85rem" },
+  card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "1.6rem", marginBottom: "1.2rem" },
+>>>>>>> Stashed changes
   cardText: { color: "#B8B0A0", fontSize: "0.92rem", lineHeight: 1.9, marginBottom: "1.2rem" },
   cardTextSmall: { color: "#9A9A9A", fontSize: "0.82rem", lineHeight: 1.7, marginBottom: "1rem" },
   btn: { backgroundImage: gradientGold, boxShadow: shadowGold, color: "#16130a", border: "none", padding: "0.85rem 1.7rem", borderRadius: 10, fontWeight: 700, fontSize: "0.9rem", cursor: "pointer", transition },
