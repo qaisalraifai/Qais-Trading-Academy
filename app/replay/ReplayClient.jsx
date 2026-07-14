@@ -476,7 +476,10 @@ function defaultStyleFor(type) {
     case "wave":
       return { color: "#EAECEF", width: 1.5 };
     case "rectangle":
-      return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.15, midline: false, midlineColor: "#4caf50", midlineDash: true };
+      return {
+        color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.15, midline: false, midlineColor: "#4caf50", midlineDash: true,
+        textColor: "#e5e5e5", textSize: 13, textBold: false, textItalic: false, textHAlign: "center", textVAlign: "middle",
+      };
     case "circle":
       return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.18 };
     case "fib":
@@ -548,6 +551,63 @@ function defaultStyleFor(type) {
     default:
       return { color: GOLD_LIGHT, width: 1.5 };
   }
+}
+
+/* أسعار الدخول/الهدف/الوقف لأداة مركز الشراء أو البيع. لو المستخدم سحب مقبض
+   الهدف أو الوقف لحاله (d.targetPrice / d.stopPrice)، منستخدم القيمة المحفوظة
+   هاي مباشرة، وإلا منحسبها تلقائياً بشكل متماثل حسب المسافة الأصلية بين
+   نقطتي الرسم (سلوك افتراضي 1:1 لحد ما يعدّلها المستخدم يدوياً) */
+function getPositionLevels(d) {
+  const isLong = d.type === "position_long";
+  const entryPrice = d.p1.price;
+  const priceDist = Math.abs((d.p2 ? d.p2.price : d.p1.price) - d.p1.price);
+  const defaultTarget = isLong ? entryPrice + priceDist : entryPrice - priceDist;
+  const defaultStop = isLong ? entryPrice - priceDist : entryPrice + priceDist;
+  return {
+    entryPrice,
+    targetPrice: d.targetPrice != null ? d.targetPrice : defaultTarget,
+    stopPrice: d.stopPrice != null ? d.stopPrice : defaultStop,
+  };
+}
+
+/* رسم نص متعدد الأسطر (word-wrap) جوا مستطيل بإحداثيات x,y,w,h، مع محاذاة
+   أفقية (يسار/وسط/يمين) وعمودية (أعلى/وسط/أسفل) قابلة للتحكم - بالظبط متل
+   لوحة "النص" بأداة المستطيل بتريدنغ فيو */
+function drawShapeText(ctx, text, x, y, w, h, style = {}) {
+  if (!text) return;
+  const size = style.textSize || 13;
+  const weight = style.textBold ? "bold" : "normal";
+  const italic = style.textItalic ? "italic" : "normal";
+  ctx.save();
+  ctx.font = `${italic} ${weight} ${size}px sans-serif`;
+  ctx.fillStyle = style.textColor || "#e5e5e5";
+  const hAlign = style.textHAlign || "center";
+  const vAlign = style.textVAlign || "middle";
+  const pad = 6;
+  const maxWidth = Math.max(10, w - pad * 2);
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = "";
+  for (const word of words) {
+    const test = cur ? `${cur} ${word}` : word;
+    if (cur && ctx.measureText(test).width > maxWidth) {
+      lines.push(cur);
+      cur = word;
+    } else {
+      cur = test;
+    }
+  }
+  if (cur) lines.push(cur);
+  const lineHeight = size * 1.3;
+  const totalH = lines.length * lineHeight;
+  let startY;
+  if (vAlign === "top") startY = y + pad + size;
+  else if (vAlign === "bottom") startY = y + h - pad - totalH + size;
+  else startY = y + h / 2 - totalH / 2 + size;
+  ctx.textAlign = hAlign === "left" ? "left" : hAlign === "right" ? "right" : "center";
+  const tx = hAlign === "left" ? x + pad : hAlign === "right" ? x + w - pad : x + w / 2;
+  lines.forEach((line, i) => ctx.fillText(line, tx, startY + i * lineHeight));
+  ctx.restore();
 }
 
 function hexToRgba(hex, alpha) {
@@ -651,6 +711,25 @@ export default function ReplayClient({ userId }) {
   const [openToolGroup, setOpenToolGroup] = useState(null);
   const [toolGroupDefault, setToolGroupDefault] = useState({});
   const groupBtnRefs = useRef({});
+  /* ===== شريط الأدوات المفضلة: قائمة بمعرّفات الأدوات يلي المستخدم فضّلها
+     (زي نجمة "Add to Favorites" بتريدنغ فيو)، محفوظة بالـ localStorage
+     عشان تضل موجودة حتى بعد تحديث الصفحة ===== */
+  const [favoriteTools, setFavoriteTools] = useState([]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("qta_favorite_tools");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setFavoriteTools(parsed);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem("qta_favorite_tools", JSON.stringify(favoriteTools)); } catch {}
+  }, [favoriteTools]);
+  function toggleFavoriteTool(id) {
+    setFavoriteTools((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
+  }
   const drawingsVisibleRef = useRef(true);
   const drawingsRef = useRef([]); // [{id, type, p1:{logical,price}, p2?, points?, text?, style}]
   const drawStateRef = useRef(null); // الرسمة الجارية حالياً (سحب نقطتين)
@@ -1246,6 +1325,7 @@ export default function ReplayClient({ userId }) {
           ctx.fillStyle = style.midlineColor || "#4caf50";
           ctx.fillText(`50% - ${midPrice.toFixed(2)}`, x + rw + 4, midY - 3);
         }
+        if (d.text) drawShapeText(ctx, d.text, x, y, rw, rh, style);
 
       } else if (d.type === "circle") {
         const a = toXY(d.p1), b = toXY(d.p2);
@@ -1496,14 +1576,17 @@ export default function ReplayClient({ userId }) {
         ctx.fillText(`${bars} شمعة، ${days} يوم ${hrs} ساعة`, x + 5, y - 6);
 
       } else if (d.type === "position_long" || d.type === "position_short") {
-        const isLong = d.type === "position_long";
         const a = toXY(d.p1), b = toXY(d.p2);
         if (a.x == null || b.x == null) continue;
         const entryY = a.y;
-        const dist = Math.abs(b.y - a.y);
         const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
-        const targetY = isLong ? entryY - dist : entryY + dist;
-        const stopY = isLong ? entryY + dist : entryY - dist;
+        /* الهدف والوقف هلأ مستقلين تماماً عن بعض: كل وحدة عندها سعرها الخاص
+           (targetPrice/stopPrice) يلي ممكن تتسحب لحالها بمقبضها، بدل ما تكون
+           دايماً متماثلة (1:1) متل قبل */
+        const { targetPrice, stopPrice, entryPrice } = getPositionLevels(d);
+        const targetY = series.priceToCoordinate(targetPrice);
+        const stopY = series.priceToCoordinate(stopPrice);
+        if (targetY == null || stopY == null) continue;
         const alpha = style.alpha ?? 0.3;
         ctx.fillStyle = hexToRgba(style.targetColor || GREEN, alpha);
         ctx.fillRect(x0, Math.min(targetY, entryY), x1 - x0, Math.abs(entryY - targetY));
@@ -1511,16 +1594,15 @@ export default function ReplayClient({ userId }) {
         ctx.fillRect(x0, Math.min(entryY, stopY), x1 - x0, Math.abs(stopY - entryY));
         ctx.strokeStyle = "#ccc"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x0, entryY); ctx.lineTo(x1, entryY); ctx.stroke();
-        const targetPrice = series.coordinateToPrice(targetY);
-        const stopPrice = series.coordinateToPrice(stopY);
-        const entryPrice = d.p1.price;
-        const rewardPct = targetPrice != null ? (((targetPrice - entryPrice) / entryPrice) * 100) : 0;
-        const riskPct = stopPrice != null ? (((stopPrice - entryPrice) / entryPrice) * 100) : 0;
+        const rewardPct = (((targetPrice - entryPrice) / entryPrice) * 100);
+        const riskPct = (((stopPrice - entryPrice) / entryPrice) * 100);
         ctx.font = "11px sans-serif";
+        ctx.fillStyle = "#ccc";
+        ctx.fillText(`الدخول: ${entryPrice.toFixed(2)}`, x0 + 4, entryY - 4);
         ctx.fillStyle = GREEN;
-        ctx.fillText(`الهدف: ${targetPrice != null ? targetPrice.toFixed(2) : "-"} (${rewardPct >= 0 ? "+" : ""}${rewardPct.toFixed(2)}%)`, x0 + 4, Math.min(targetY, entryY) - 4);
+        ctx.fillText(`الهدف: ${targetPrice.toFixed(2)} (${rewardPct >= 0 ? "+" : ""}${rewardPct.toFixed(2)}%)`, x0 + 4, Math.min(targetY, entryY) - 4);
         ctx.fillStyle = RED;
-        ctx.fillText(`الإيقاف: ${stopPrice != null ? stopPrice.toFixed(2) : "-"} (${riskPct >= 0 ? "+" : ""}${riskPct.toFixed(2)}%)`, x0 + 4, Math.max(stopY, entryY) + 14);
+        ctx.fillText(`الإيقاف: ${stopPrice.toFixed(2)} (${riskPct >= 0 ? "+" : ""}${riskPct.toFixed(2)}%)`, x0 + 4, Math.max(stopY, entryY) + 14);
       }
     }
 
@@ -1640,9 +1722,12 @@ export default function ReplayClient({ userId }) {
         case "position_short": {
           const a = logicalPriceToXY(d.p1), b = logicalPriceToXY(d.p2);
           if (a.x == null || b.x == null) return Infinity;
-          const dist = Math.abs(a.y - b.y);
+          const { targetPrice, stopPrice } = getPositionLevels(d);
+          const targetY = series.priceToCoordinate(targetPrice);
+          const stopY = series.priceToCoordinate(stopPrice);
+          const ys = [a.y, targetY, stopY].filter((v) => v != null);
           const x0 = Math.min(a.x, b.x), x1e = Math.max(a.x, b.x);
-          const y0 = Math.min(a.y, b.y) - dist, y1e = Math.max(a.y, b.y) + dist;
+          const y0 = Math.min(...ys), y1e = Math.max(...ys);
           return (x >= x0 && x <= x1e && y >= y0 && y <= y1e) ? 0 : 9999;
         }
         case "fib": {
@@ -1700,6 +1785,15 @@ export default function ReplayClient({ userId }) {
     const out = [];
     if (d.p1) out.push({ key: "p1", p: d.p1 });
     if (d.p2) out.push({ key: "p2", p: d.p2 });
+    /* أداة مركز الشراء/البيع بتحصل على مقبضين إضافيين مستقلين: واحد لخط
+       الهدف وواحد لخط وقف الخسارة، عشان تقدري تسحبي كل خط لحاله بدون ما
+       يتحرك التاني (بدل النسبة الثابتة 1:1 يلي كانت موجودة قبل) */
+    if ((d.type === "position_long" || d.type === "position_short") && d.p1 && d.p2) {
+      const { targetPrice, stopPrice } = getPositionLevels(d);
+      const midLogical = (d.p1.logical + d.p2.logical) / 2;
+      out.push({ key: "target", p: { logical: midLogical, price: targetPrice } });
+      out.push({ key: "stop", p: { logical: midLogical, price: stopPrice } });
+    }
     /* المستطيل بيحصل على 4 مقابض إضافية بمنتصف كل ضلع، تماماً متل صندوق التحديد
        بتريدنغ فيو (8 مقابض: 4 زوايا + 4 منتصف أضلاع)، عشان تقدري تمددي عرض أو
        ارتفاع المستطيل لحاله من دون ما تحركي الزاوية المقابلة */
@@ -1730,10 +1824,14 @@ export default function ReplayClient({ userId }) {
     if (d.p1) { d.p1 = { logical: d.p1.logical + dLogical, price: d.p1.price + dPrice }; }
     if (d.p2) { d.p2 = { logical: d.p2.logical + dLogical, price: d.p2.price + dPrice }; }
     if (d.points) d.points = d.points.map((p) => ({ logical: p.logical + dLogical, price: p.price + dPrice }));
+    if (d.targetPrice != null) d.targetPrice += dPrice;
+    if (d.stopPrice != null) d.stopPrice += dPrice;
   }
   function setHandlePoint(d, key, logical, price) {
     if (key === "p1") d.p1 = { logical, price };
     else if (key === "p2") d.p2 = { logical, price };
+    else if (key === "target") d.targetPrice = price;
+    else if (key === "stop") d.stopPrice = price;
     else if (key === "top" || key === "bottom") {
       // نلاقي أي زاوية (p1 أو p2) هي صاحبة السعر الأعلى/الأدنى ونعدّل سعرها بس،
       // والموضع الأفقي بيضل ثابت متل ما هو
@@ -3317,6 +3415,38 @@ export default function ReplayClient({ userId }) {
      كل زر فيه أيقونة + تسمية نصية تحتها (زي الستايل المطلوب). كل مجموعة فيها
      أكتر من أداة بتظهر كأيقونة وحدة + سهم صغير: ضغطة عالسهم بتفتح قائمة جانبية
      بأسماء كل الأدوات واضحة زي تريدنغ فيو تماماً. */
+  /* شريط أفقي عائم فوق الشارت بيعرض بس الأدوات يلي المستخدم فضّلها (بالنجمة
+     ⭐ جوا القوائم المنسدلة)، ضغطة وحدة عالأيقونة بتفعّل الأداة مباشرة - بديل
+     سريع بدل ما تفوتي عالقائمة الكاملة كل مرة */
+  function renderFavoritesBar() {
+    if (!favoriteTools.length) return null;
+    return (
+      <div style={{
+        position: "absolute", top: 8, left: "50%", transform: "translateX(-50%)", zIndex: 9,
+        display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", maxWidth: "80%",
+        background: "#131722ee", border: "1px solid #242832", borderRadius: 10,
+        padding: 4, boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
+      }}>
+        {favoriteTools.map((id) => (
+          <button
+            key={id}
+            type="button"
+            title={TOOL_TITLES[id] || id}
+            onClick={(e) => { e.stopPropagation(); setActiveTool((cur) => (cur === id ? "cursor" : id)); }}
+            style={{
+              width: 34, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: 7, border: "1px solid transparent", cursor: "pointer",
+              background: activeTool === id ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
+              color: activeTool === id ? "#1a1608" : "#c9ccd3",
+            }}
+          >
+            <ToolIcon id={id} />
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   function renderDrawToolbar() {
     function openFlyout(gi, btnEl) {
       groupBtnRefs.current[gi] = btnEl;
@@ -3404,23 +3534,37 @@ export default function ReplayClient({ userId }) {
                           {section.title}
                         </div>
                       )}
-                      {section.tools.map((id) => (
-                        <div
-                          key={id}
-                          onClick={() => pickTool(gi, id)}
-                          style={{
-                            display: "flex", alignItems: "center", justifyContent: "space-between",
-                            gap: 12, padding: "8px 14px", cursor: "pointer", fontSize: 13,
-                            color: activeTool === id ? GOLD_LIGHT : "#e5e5e5",
-                            background: activeTool === id ? "#20242f" : "transparent",
-                          }}
-                          onMouseEnter={(e) => { if (activeTool !== id) e.currentTarget.style.background = "#1c202a"; }}
-                          onMouseLeave={(e) => { if (activeTool !== id) e.currentTarget.style.background = "transparent"; }}
-                        >
-                          <span>{TOOL_TITLES[id]}</span>
-                          <span style={{ display: "flex", color: "#aaa", flexShrink: 0 }}><ToolIcon id={id} /></span>
-                        </div>
-                      ))}
+                      {section.tools.map((id) => {
+                        const isFav = favoriteTools.includes(id);
+                        return (
+                          <div
+                            key={id}
+                            onClick={() => pickTool(gi, id)}
+                            style={{
+                              display: "flex", alignItems: "center", justifyContent: "space-between",
+                              gap: 10, padding: "8px 14px", cursor: "pointer", fontSize: 13,
+                              color: activeTool === id ? GOLD_LIGHT : "#e5e5e5",
+                              background: activeTool === id ? "#20242f" : "transparent",
+                            }}
+                            onMouseEnter={(e) => { if (activeTool !== id) e.currentTarget.style.background = "#1c202a"; }}
+                            onMouseLeave={(e) => { if (activeTool !== id) e.currentTarget.style.background = "transparent"; }}
+                          >
+                            <span style={{ flex: 1 }}>{TOOL_TITLES[id]}</span>
+                            <span
+                              title={isFav ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+                              onClick={(e) => { e.stopPropagation(); toggleFavoriteTool(id); }}
+                              style={{
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                width: 20, height: 20, flexShrink: 0, cursor: "pointer", fontSize: 14,
+                                color: isFav ? GOLD_LIGHT : "#4a4e58",
+                              }}
+                            >
+                              {isFav ? "★" : "☆"}
+                            </span>
+                            <span style={{ display: "flex", color: "#aaa", flexShrink: 0 }}><ToolIcon id={id} /></span>
+                          </div>
+                        );
+                      })}
                     </div>
                   ))}
                 </div>
@@ -3501,6 +3645,13 @@ export default function ReplayClient({ userId }) {
     );
     const checkbox = (val, onChange) => (
       <input type="checkbox" checked={!!val} onChange={(e) => onChange(e.target.checked)} style={{ width: 18, height: 18 }} />
+    );
+    const priceInput = (val, onChange) => (
+      <input
+        type="number" step="0.00001" value={val ?? 0}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{ ...selectStyle, width: 120 }}
+      />
     );
     const dashSelect = (val, onChange) => (
       <select value={val || "solid"} onChange={(e) => onChange(e.target.value)} style={selectStyle}>
@@ -3613,6 +3764,43 @@ export default function ReplayClient({ userId }) {
               {type === "rectangle" && row("خط المنتصف (50%)", checkbox(style.midline, (v) => updateStyle({ midline: v })))}
               {type === "rectangle" && style.midline && row("لون خط 50%", colorInput(style.midlineColor, (v) => updateStyle({ midlineColor: v })))}
               {type === "rectangle" && style.midline && row("خط متقطع", checkbox(style.midlineDash !== false, (v) => updateStyle({ midlineDash: v })))}
+              {type === "rectangle" && (
+                <>
+                  <div style={{ fontSize: 12, color: "#999", padding: "10px 0 4px" }}>النص داخل المستطيل</div>
+                  <textarea
+                    value={editDraft.text || ""}
+                    onChange={(e) => setEditDraft((d) => ({ ...d, text: e.target.value }))}
+                    placeholder="إضافة نص..."
+                    rows={3}
+                    style={{
+                      width: "100%", background: "#1c1f27", border: "1px solid #333", borderRadius: 8,
+                      color: "#eee", padding: 8, fontSize: 13, resize: "vertical", boxSizing: "border-box",
+                    }}
+                  />
+                  {row("حجم الخط", (
+                    <select value={style.textSize || 13} onChange={(e) => updateStyle({ textSize: Number(e.target.value) })} style={selectStyle}>
+                      {[10, 12, 13, 15, 18, 22].map((s) => (<option key={s} value={s}>{s}</option>))}
+                    </select>
+                  ))}
+                  {row("لون النص", colorInput(style.textColor, (v) => updateStyle({ textColor: v })))}
+                  {row("عريض", checkbox(style.textBold, (v) => updateStyle({ textBold: v })))}
+                  {row("مائل", checkbox(style.textItalic, (v) => updateStyle({ textItalic: v })))}
+                  {row("محاذاة أفقية", (
+                    <select value={style.textHAlign || "center"} onChange={(e) => updateStyle({ textHAlign: e.target.value })} style={selectStyle}>
+                      <option value="left">يسار</option>
+                      <option value="center">وسط</option>
+                      <option value="right">يمين</option>
+                    </select>
+                  ))}
+                  {row("محاذاة عمودية", (
+                    <select value={style.textVAlign || "middle"} onChange={(e) => updateStyle({ textVAlign: e.target.value })} style={selectStyle}>
+                      <option value="top">أعلى</option>
+                      <option value="middle">بالداخل (وسط)</option>
+                      <option value="bottom">أسفل</option>
+                    </select>
+                  ))}
+                </>
+              )}
             </>
           )}
           {(type === "pricerange" || type === "daterange") && (
@@ -3622,12 +3810,18 @@ export default function ReplayClient({ userId }) {
               {style.fill && row("لون الخلفية", colorInput(style.fillColor, (v) => updateStyle({ fillColor: v })))}
             </>
           )}
-          {(type === "position_long" || type === "position_short") && (
-            <>
-              {row("لون الهدف", colorInput(style.targetColor, (v) => updateStyle({ targetColor: v })))}
-              {row("لون وقف الخسارة", colorInput(style.stopColor, (v) => updateStyle({ stopColor: v })))}
-            </>
-          )}
+          {(type === "position_long" || type === "position_short") && (() => {
+            const levels = getPositionLevels(editDraft);
+            return (
+              <>
+                {row("سعر الدخول", priceInput(editDraft.p1?.price, (v) => setEditDraft((d) => ({ ...d, p1: { ...d.p1, price: v } }))))}
+                {row("سعر الهدف", priceInput(levels.targetPrice, (v) => setEditDraft((d) => ({ ...d, targetPrice: v }))))}
+                {row("سعر وقف الخسارة", priceInput(levels.stopPrice, (v) => setEditDraft((d) => ({ ...d, stopPrice: v }))))}
+                {row("لون الهدف", colorInput(style.targetColor, (v) => updateStyle({ targetColor: v })))}
+                {row("لون وقف الخسارة", colorInput(style.stopColor, (v) => updateStyle({ stopColor: v })))}
+              </>
+            );
+          })()}
           {(type === "fib" || type === "fibchannel") && (
             <>
               {row("لون افتراضي", colorInput(style.color, (v) => updateStyle({ color: v })))}
@@ -4642,6 +4836,7 @@ export default function ReplayClient({ userId }) {
             >
               <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
                 {!loading && allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
+                {!loading && allCandles.length > 0 && !editDraft && renderFavoritesBar()}
                 {!loading && allCandles.length > 0 && !editDraft && renderQuickTradeWidget()}
                 {!loading && allCandles.length > 0 && renderPropertiesDialog()}
                 {!loading && allCandles.length > 0 && renderSelectionToolbar()}
