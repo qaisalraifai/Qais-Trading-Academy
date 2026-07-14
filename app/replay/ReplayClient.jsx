@@ -811,6 +811,8 @@ export default function ReplayClient({ userId }) {
   const [selectionRenderTick, setSelectionRenderTick] = useState(0);
   const selectionToolbarRef = useRef(null);
   const [drawingTemplatesMenuOpen, setDrawingTemplatesMenuOpen] = useState(false);
+  const [textPopoverOpen, setTextPopoverOpen] = useState(false);
+  const [textPopoverValue, setTextPopoverValue] = useState("");
 
   /* ===== مقارنة الرموز (شارت مقسوم) + تكبير أي جزء بضغطتين ماوس ===== */
   const [compareOpen, setCompareOpen] = useState(false);
@@ -852,8 +854,20 @@ export default function ReplayClient({ userId }) {
   const [tradeToast, setTradeToast] = useState("");
   const [dragTick, setDragTick] = useState(0);
   const openPositionsRef = useRef([]); // [{dbId, direction, entry, sl, tp, lot, riskAmount, rewardAmount, asset}]
+  const [openPositionsList, setOpenPositionsList] = useState([]); // نسخة "تفاعلية" من openPositionsRef عشان نقدر نعرضها ونعدلها بلوحة
   const checkOpenPositionsRef = useRef(null);
   const pendingTradeRef = useRef(null);
+  /* نصوص الحقول الرقمية (دخول/هدف/إيقاف) بلوحة تأكيد الصفقة الفورية - عشان تنكتب بحرية
+     وتتزامن لحظياً مع الخطوط المسحوبة عالشارت وبالعكس */
+  const [entryText, setEntryText] = useState("");
+  const [tpText, setTpText] = useState("");
+  const [slText, setSlText] = useState("");
+  const entryFocusedRef = useRef(false);
+  const tpFocusedRef = useRef(false);
+  const slFocusedRef = useRef(false);
+  /* نفس الفكرة بس لتعديل هدف/إيقاف صفقة مفتوحة (بعد التأكيد) */
+  const [openPosEdits, setOpenPosEdits] = useState({}); // { [dbId]: { tp: "..", sl: ".." } }
+  const openPosFocusRef = useRef({}); // { [dbId+"_tp"]: true }
 
   useEffect(() => {
     pendingTradeRef.current = pendingTrade;
@@ -1115,7 +1129,7 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { intervalRef.current = interval; }, [interval]);
   useEffect(() => { drawingsVisibleRef.current = drawingsVisible; drawOverlay(); }, [drawingsVisible]);
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
-  useEffect(() => { setDrawingTemplatesMenuOpen(false); }, [selectedDrawingId]);
+  useEffect(() => { setDrawingTemplatesMenuOpen(false); setTextPopoverOpen(false); }, [selectedDrawingId]);
   useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
   useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
   useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
@@ -1978,6 +1992,22 @@ export default function ReplayClient({ userId }) {
     selectDrawing(clone.id);
     drawOverlay();
   }
+  /* إضافة/تعديل نص على الرسمة المختارة مباشرة من الشريط العائم، من غير ما نفوّت
+     على لوحة "كل الإعدادات" الكاملة */
+  function openQuickTextPopover() {
+    const d = getSelectedDrawing();
+    setTextPopoverValue(d?.text || "");
+    setDrawingTemplatesMenuOpen(false);
+    setTextPopoverOpen((v) => !v);
+  }
+  function applyQuickText() {
+    const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
+    if (idx !== -1) {
+      drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: textPopoverValue };
+      drawOverlay();
+    }
+    setTextPopoverOpen(false);
+  }
   /* بتحسب مكان الشريط العائم فوق الرسمة المختارة مباشرة (تتحدث مع كل تحريك/زوم للشارت) */
   function positionSelectionToolbar() {
     const el = selectionToolbarRef.current;
@@ -2098,6 +2128,68 @@ export default function ReplayClient({ userId }) {
     setPendingTrade({ tag, direction, entry: price, asset: assetValue });
   }
 
+  /* بتزامن حقول الكتابة (دخول/هدف/إيقاف) مع الخطوط المرسومة عالشارت، أول ما تنفتح صفقة جديدة
+     أو أول ما ينسحب أحد الخطوط باليد - إلا إذا كان المستخدم عم يكتب هلأ بنفس الحقل (منمنع
+     قفزة المؤشر وقت الكتابة) */
+  useEffect(() => {
+    if (!pendingTrade) return;
+    if (!entryFocusedRef.current) setEntryText(pendingTrade.entry != null ? pendingTrade.entry.toFixed(2) : "");
+    const tpLine = drawingsRef.current.find((d) => d.tradeTag === pendingTrade.tag && d.tradeRole === "tp");
+    const slLine = drawingsRef.current.find((d) => d.tradeTag === pendingTrade.tag && d.tradeRole === "sl");
+    if (!tpFocusedRef.current) setTpText(tpLine ? tpLine.p1.price.toFixed(2) : "");
+    if (!slFocusedRef.current) setSlText(slLine ? slLine.p1.price.toFixed(2) : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingTrade, dragTick]);
+
+  /* تعديل سعر الدخول/الهدف/الإيقاف كتابياً من نفس لوحة تأكيد الصفقة - بيحرّك الخط المطابق
+     عالشارت لحظياً بدل ما يضطر المستخدم يسحبه باليد */
+  function updatePendingTradeLevel(role, num) {
+    const pt = pendingTradeRef.current;
+    if (!pt || isNaN(num)) return;
+    if (role === "entry") {
+      const idx = drawingsRef.current.findIndex((d) => d.tradeTag === pt.tag && d.tradeRole === "entry");
+      if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], p1: { ...drawingsRef.current[idx].p1, price: num } };
+      setPendingTrade((p) => (p ? { ...p, entry: num } : p));
+    } else {
+      const idx = drawingsRef.current.findIndex((d) => d.tradeTag === pt.tag && d.tradeRole === role);
+      if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], p1: { ...drawingsRef.current[idx].p1, price: num } };
+    }
+    drawOverlay();
+    setDragTick((t) => t + 1);
+  }
+  function handleEntryTextChange(v) {
+    setEntryText(v);
+    const num = parseFloat(v);
+    if (!isNaN(num)) updatePendingTradeLevel("entry", num);
+  }
+  function handleTpTextChange(v) {
+    setTpText(v);
+    const num = parseFloat(v);
+    if (!isNaN(num)) updatePendingTradeLevel("tp", num);
+  }
+  function handleSlTextChange(v) {
+    setSlText(v);
+    const num = parseFloat(v);
+    if (!isNaN(num)) updatePendingTradeLevel("sl", num);
+  }
+
+  /* بتزامن حقول تعديل هدف/إيقاف الصفقات المفتوحة مع القيم الفعلية - إلا إذا كان
+     المستخدم عم يكتب هلأ بنفس الحقل */
+  useEffect(() => {
+    setOpenPosEdits((prev) => {
+      const next = { ...prev };
+      for (const pos of openPositionsList) {
+        const tpFocused = openPosFocusRef.current[pos.dbId + "_tp"];
+        const slFocused = openPosFocusRef.current[pos.dbId + "_sl"];
+        next[pos.dbId] = {
+          tp: tpFocused ? (prev[pos.dbId]?.tp ?? pos.tp.toFixed(2)) : pos.tp.toFixed(2),
+          sl: slFocused ? (prev[pos.dbId]?.sl ?? pos.sl.toFixed(2)) : pos.sl.toFixed(2),
+        };
+      }
+      return next;
+    });
+  }, [openPositionsList]);
+
   function cancelQuickTrade() {
     if (pendingTradeRef.current) {
       drawingsRef.current = drawingsRef.current.filter((d) => d.tradeTag !== pendingTradeRef.current.tag);
@@ -2156,12 +2248,14 @@ export default function ReplayClient({ userId }) {
       dbId: data.id, tag: pt.tag, direction: pt.direction, entry: pt.entry, sl, tp, lot,
       riskAmount, rewardAmount, asset: pt.asset,
     });
+    setOpenPositionsList([...openPositionsRef.current]);
     setPendingTrade(null);
     setTradeToast(`✅ اتسجلت صفقة ${pt.direction === "buy" ? "شراء" : "بيع"} — بتلاقيها بالباك تيست ولوحة التحكم`);
   }
 
   async function closeOpenPosition(pos, result, closePrice) {
     openPositionsRef.current = openPositionsRef.current.filter((p) => p.dbId !== pos.dbId);
+    setOpenPositionsList([...openPositionsRef.current]);
     drawingsRef.current = drawingsRef.current.filter((d) => d.tradeTag !== pos.tag);
     drawOverlay();
     setTradeToast(
@@ -2175,6 +2269,49 @@ export default function ReplayClient({ userId }) {
       .update({ result, reason: `إغلاق تلقائي من الاستعراض التاريخي عند ${closePrice.toFixed(2)}` })
       .eq("id", pos.dbId)
       .eq("user_id", userId);
+  }
+
+  /* تعديل الهدف/وقف الخسارة لصفقة مفتوحة (بعد ما اتأكدت وانسجلت) - بيحرّك الخط المطابق
+     عالشارت وبيحدّث المراقبة الحية، وبيحفظ القيمة الجديدة بقاعدة البيانات كمان */
+  function updateOpenPositionLevel(pos, role, num) {
+    if (isNaN(num)) return;
+    const idx = openPositionsRef.current.findIndex((p) => p.dbId === pos.dbId);
+    if (idx === -1) return;
+    const info = getAssetByValue(openPositionsRef.current[idx].asset);
+    const mult = info?.mult || 1;
+    const updated = { ...openPositionsRef.current[idx], [role]: num };
+    updated.riskAmount = Math.abs(updated.entry - updated.sl) * updated.lot * mult;
+    updated.rewardAmount = Math.abs(updated.tp - updated.entry) * updated.lot * mult;
+    openPositionsRef.current[idx] = updated;
+    setOpenPositionsList([...openPositionsRef.current]);
+
+    const dIdx = drawingsRef.current.findIndex((d) => d.tradeTag === pos.tag && d.tradeRole === role);
+    if (dIdx !== -1) drawingsRef.current[dIdx] = { ...drawingsRef.current[dIdx], p1: { ...drawingsRef.current[dIdx].p1, price: num } };
+    drawOverlay();
+
+    if (supabase && userId) {
+      const rr = updated.riskAmount > 0 ? updated.rewardAmount / updated.riskAmount : 0;
+      const riskPercent = accountBalance > 0 ? (updated.riskAmount / accountBalance) * 100 : 0;
+      supabase
+        .from("trades")
+        .update({
+          [role]: num,
+          risk_amount: updated.riskAmount,
+          reward_amount: updated.rewardAmount,
+          rr,
+          risk_percent: riskPercent,
+        })
+        .eq("id", pos.dbId)
+        .eq("user_id", userId)
+        .then(({ error }) => {
+          if (error) setTradeToast("تعذّر حفظ التعديل: " + error.message);
+        });
+    }
+  }
+  function handleOpenPosFieldChange(pos, role, v) {
+    setOpenPosEdits((prev) => ({ ...prev, [pos.dbId]: { ...prev[pos.dbId], [role]: v } }));
+    const num = parseFloat(v);
+    if (!isNaN(num)) updateOpenPositionLevel(pos, role, num);
   }
 
   checkOpenPositionsRef.current = function checkOpenPositions(price) {
@@ -2462,8 +2599,16 @@ export default function ReplayClient({ userId }) {
         // ما عاد في تثبيت بالسحب/الإفلات — الرسم صار بنظام نقرة ثم نقرة (كليك ثم كليك)،
         // فهون بس منسكّر سحب الرسومات الموجودة بوضع المؤشر (تحريك/تعديل نقاط رسمة قائمة).
         if (dragStateRef.current) {
+          const draggedId = dragStateRef.current.id;
+          const d = drawingsRef.current.find((dr) => dr.id === draggedId);
           dragStateRef.current = null;
           chart.applyOptions({ handleScroll: true, handleScale: true });
+          // إذا الخط يلي انسحب كان هدف/إيقاف لصفقة مفتوحة (مش صفقة لسا معلّقة)، منحدّث
+          // قيمتها الفعلية بالمراقبة الحية ومنحفظها بقاعدة البيانات كمان
+          if (d && d.tradeTag && (d.tradeRole === "tp" || d.tradeRole === "sl")) {
+            const pos = openPositionsRef.current.find((p) => p.tag === d.tradeTag);
+            if (pos) updateOpenPositionLevel(pos, d.tradeRole, d.p1.price);
+          }
           drawOverlay();
         }
       }
@@ -3992,10 +4137,19 @@ export default function ReplayClient({ userId }) {
             />
           </label>
         )}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); openQuickTextPopover(); }}
+          title="إضافة/تعديل نص على الرسمة مباشرة"
+          style={{ ...selToolBtnStyle, color: textPopoverOpen ? GOLD_LIGHT : "#ccc", fontWeight: 800, fontFamily: "serif" }}
+        >
+          T
+        </button>
+        {textPopoverOpen && renderQuickTextPopover()}
         <span style={selToolDivider} />
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); setDrawingTemplatesMenuOpen((v) => !v); }}
+          onClick={(e) => { e.stopPropagation(); setTextPopoverOpen(false); setDrawingTemplatesMenuOpen((v) => !v); }}
           title="قوالب: احفظي أو طبّقي شكل الرسمة"
           style={{ ...selToolBtnStyle, color: drawingTemplatesMenuOpen ? GOLD_LIGHT : "#ccc" }}
         >
@@ -4005,6 +4159,40 @@ export default function ReplayClient({ userId }) {
         <span style={{ ...selToolBtnStyle, cursor: "default", color: "#555" }} title="اسحبي لتحريك الشريط">
           <ToolIcon id="dragDots" />
         </span>
+      </div>
+    );
+  }
+
+  /* نافذة صغيرة عائمة لكتابة/تعديل النص على الرسمة المختارة فوراً، من غير الحاجة
+     نفوّت على لوحة "كل الإعدادات" الكاملة */
+  function renderQuickTextPopover() {
+    return (
+      <div
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{
+          position: "absolute", top: "calc(100% + 6px)", right: 0,
+          zIndex: 26, minWidth: 220,
+          background: "#171b26", border: "1px solid #242832", borderRadius: 10,
+          boxShadow: "0 8px 28px rgba(0,0,0,0.55)", padding: 10,
+        }}
+      >
+        <input
+          autoFocus
+          type="text"
+          value={textPopoverValue}
+          onChange={(e) => setTextPopoverValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") applyQuickText();
+            if (e.key === "Escape") setTextPopoverOpen(false);
+          }}
+          placeholder="اكتبي النص هون..."
+          style={{ ...selectStyle, width: "100%", minWidth: 0 }}
+        />
+        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+          <button type="button" onClick={applyQuickText} style={{ ...btnStyle("primary"), flex: 1, padding: "5px 0", fontSize: 12 }}>حفظ</button>
+          <button type="button" onClick={() => setTextPopoverOpen(false)} style={{ ...btnStyle("secondary"), flex: 1, padding: "5px 0", fontSize: 12 }}>إلغاء</button>
+        </div>
       </div>
     );
   }
@@ -4104,25 +4292,79 @@ export default function ReplayClient({ userId }) {
     const mult = info?.mult || 1;
     const riskAmount = sl != null ? Math.abs(pendingTrade.entry - sl) * lot * mult : 0;
     const rewardAmount = tp != null ? Math.abs(tp - pendingTrade.entry) * lot * mult : 0;
-    const rr = riskAmount > 0 ? (rewardAmount / riskAmount).toFixed(2) : "-";
+    const rrNum = riskAmount > 0 ? rewardAmount / riskAmount : 0;
+    const rr = riskAmount > 0 ? rrNum.toFixed(2) : "-";
     const isBuy = pendingTrade.direction === "buy";
     return (
       <div style={{
-        position: "absolute", top: 10, right: 10, zIndex: 12, width: 240,
+        position: "absolute", top: 10, right: 10, zIndex: 12, width: 260,
         background: "#161616", border: `1px solid ${isBuy ? GREEN : RED}66`, borderRadius: 12,
         padding: 14, boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
       }}>
         <div style={{ fontWeight: 700, color: isBuy ? GREEN : RED, marginBottom: 8, fontSize: 14 }}>
           {isBuy ? "🟢 صفقة شراء" : "🔴 صفقة بيع"} — {pendingTrade.asset}
         </div>
-        <div style={{ fontSize: 12.5, color: "#ccc", lineHeight: 1.9 }}>
-          سعر الدخول: <b style={{ color: GOLD_LIGHT }}>{pendingTrade.entry.toFixed(2)}</b><br />
-          🎯 الهدف: <b style={{ color: GREEN }}>{tp != null ? tp.toFixed(2) : "-"}</b><br />
-          ⛔ الإيقاف: <b style={{ color: RED }}>{sl != null ? sl.toFixed(2) : "-"}</b><br />
-          نسبة R:R: <b style={{ color: GOLD_LIGHT }}>{rr}</b>
+
+        {/* أسعار الدخول/الهدف/الإيقاف قابلة للتعديل كتابياً هون مباشرة، وبتتزامن
+            مع الخطوط عالشارت لحظياً بالاتجاهين (سحب الخط ↔ كتابة رقم) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <label style={numFieldLabelStyle}>
+            سعر الدخول
+            <input
+              type="number" step="any" value={entryText}
+              onFocus={() => { entryFocusedRef.current = true; }}
+              onBlur={() => { entryFocusedRef.current = false; setEntryText(pendingTradeRef.current ? pendingTradeRef.current.entry.toFixed(2) : ""); }}
+              onChange={(e) => handleEntryTextChange(e.target.value)}
+              style={{ ...selectStyle, minWidth: 0, width: "100%", color: GOLD_LIGHT, fontWeight: 700 }}
+            />
+          </label>
+          <label style={numFieldLabelStyle}>
+            🎯 الهدف (TP)
+            <input
+              type="number" step="any" value={tpText}
+              onFocus={() => { tpFocusedRef.current = true; }}
+              onBlur={() => { tpFocusedRef.current = false; const l = drawingsRef.current.find((d) => d.tradeTag === pendingTradeRef.current?.tag && d.tradeRole === "tp"); setTpText(l ? l.p1.price.toFixed(2) : ""); }}
+              onChange={(e) => handleTpTextChange(e.target.value)}
+              style={{ ...selectStyle, minWidth: 0, width: "100%", color: GREEN, fontWeight: 700 }}
+            />
+          </label>
+          <label style={numFieldLabelStyle}>
+            ⛔ الإيقاف (SL)
+            <input
+              type="number" step="any" value={slText}
+              onFocus={() => { slFocusedRef.current = true; }}
+              onBlur={() => { slFocusedRef.current = false; const l = drawingsRef.current.find((d) => d.tradeTag === pendingTradeRef.current?.tag && d.tradeRole === "sl"); setSlText(l ? l.p1.price.toFixed(2) : ""); }}
+              onChange={(e) => handleSlTextChange(e.target.value)}
+              style={{ ...selectStyle, minWidth: 0, width: "100%", color: RED, fontWeight: 700 }}
+            />
+          </label>
         </div>
-        <div style={{ fontSize: 11, color: "#888", margin: "8px 0 4px" }}>
-          اسحبي خط الهدف الأخضر أو خط الإيقاف الأحمر عالشارت لتظبطي مكانهم بالظبط
+
+        {/* شريط بصري لنسبة المخاطرة/العائد - بيبيّن مباشرة نسبة R:R بشكل رسمة، مش بس رقم */}
+        <div style={{ margin: "10px 0 2px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: "#999", marginBottom: 3 }}>
+            <span style={{ color: RED }}>مخاطرة ${riskAmount.toFixed(2)}</span>
+            <span style={{ color: GOLD_LIGHT, fontWeight: 700 }}>R:R — 1:{rr}</span>
+            <span style={{ color: GREEN }}>عائد ${rewardAmount.toFixed(2)}</span>
+          </div>
+          <div style={{ display: "flex", height: 10, borderRadius: 6, overflow: "hidden", border: "1px solid #333", background: "#0e0e0e" }}>
+            {(() => {
+              const safeRr = isNaN(rrNum) || rrNum <= 0 ? 0 : Math.min(rrNum, 6);
+              const total = 1 + safeRr;
+              const riskPct = (1 / total) * 100;
+              const rewardPct = (safeRr / total) * 100;
+              return (
+                <>
+                  <div style={{ width: `${riskPct}%`, background: RED }} />
+                  <div style={{ width: `${rewardPct}%`, background: GREEN }} />
+                </>
+              );
+            })()}
+          </div>
+        </div>
+
+        <div style={{ fontSize: 11, color: "#888", margin: "6px 0 4px" }}>
+          فيكي تكتبي الأرقام هون مباشرة أو تسحبي خط الهدف الأخضر/خط الإيقاف الأحمر عالشارت
         </div>
         <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#999", marginTop: 6 }}>
           اللوت
@@ -4153,6 +4395,58 @@ export default function ReplayClient({ userId }) {
             ✕ إلغاء
           </button>
         </div>
+      </div>
+    );
+  }
+
+  /* لوحة صغيرة تعرض الصفقات المفتوحة حالياً وتسمح بتعديل الهدف/الإيقاف تبعها كتابياً
+     حتى بعد ما اتأكدت وانسجلت (التعديل بينحفظ فوراً بقاعدة البيانات) */
+  function renderOpenPositionsPanel() {
+    if (!openPositionsList.length) return null;
+    return (
+      <div style={{
+        position: "absolute", top: 10, left: 10, zIndex: 11, width: 230,
+        display: "flex", flexDirection: "column", gap: 8,
+      }}>
+        {openPositionsList.map((pos) => {
+          const isBuy = pos.direction === "buy";
+          const edits = openPosEdits[pos.dbId] || { tp: pos.tp.toFixed(2), sl: pos.sl.toFixed(2) };
+          return (
+            <div key={pos.dbId} style={{
+              background: "#161616", border: `1px solid ${isBuy ? GREEN : RED}55`, borderRadius: 10,
+              padding: 10, boxShadow: "0 6px 16px rgba(0,0,0,0.35)",
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: isBuy ? GREEN : RED, marginBottom: 6 }}>
+                {isBuy ? "🟢 صفقة مفتوحة" : "🔴 صفقة مفتوحة"} — {pos.asset}
+              </div>
+              <div style={{ fontSize: 11, color: "#999", marginBottom: 6 }}>
+                الدخول: <b style={{ color: GOLD_LIGHT }}>{pos.entry.toFixed(2)}</b>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <label style={{ ...numFieldLabelStyle, flex: 1 }}>
+                  🎯 TP
+                  <input
+                    type="number" step="any" value={edits.tp}
+                    onFocus={() => { openPosFocusRef.current[pos.dbId + "_tp"] = true; }}
+                    onBlur={() => { openPosFocusRef.current[pos.dbId + "_tp"] = false; setOpenPosEdits((p) => ({ ...p, [pos.dbId]: { ...p[pos.dbId], tp: pos.tp.toFixed(2) } })); }}
+                    onChange={(e) => handleOpenPosFieldChange(pos, "tp", e.target.value)}
+                    style={{ ...selectStyle, minWidth: 0, width: "100%", color: GREEN, fontSize: 12, padding: "4px 6px" }}
+                  />
+                </label>
+                <label style={{ ...numFieldLabelStyle, flex: 1 }}>
+                  ⛔ SL
+                  <input
+                    type="number" step="any" value={edits.sl}
+                    onFocus={() => { openPosFocusRef.current[pos.dbId + "_sl"] = true; }}
+                    onBlur={() => { openPosFocusRef.current[pos.dbId + "_sl"] = false; setOpenPosEdits((p) => ({ ...p, [pos.dbId]: { ...p[pos.dbId], sl: pos.sl.toFixed(2) } })); }}
+                    onChange={(e) => handleOpenPosFieldChange(pos, "sl", e.target.value)}
+                    style={{ ...selectStyle, minWidth: 0, width: "100%", color: RED, fontSize: 12, padding: "4px 6px" }}
+                  />
+                </label>
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -5012,6 +5306,7 @@ export default function ReplayClient({ userId }) {
                 {!loading && allCandles.length > 0 && renderPropertiesDialog()}
                 {!loading && allCandles.length > 0 && renderSelectionToolbar()}
                 {!loading && renderTradePanel()}
+                {!loading && renderOpenPositionsPanel()}
                 {!loading && renderTradeToast()}
                 {!loading && renderContextMenu()}
                 {compareOpen && (
@@ -5144,6 +5439,10 @@ function Select({ label, value, onChange, options }) {
 const selectStyle = {
   background: "#181A20", border: "1px solid #2A2E39", color: "#eee",
   borderRadius: 8, padding: "0.45rem 0.6rem", fontSize: 13, minWidth: 110,
+};
+
+const numFieldLabelStyle = {
+  display: "flex", flexDirection: "column", gap: 3, fontSize: 11.5, color: "#999",
 };
 
 function tabStyle(active) {
