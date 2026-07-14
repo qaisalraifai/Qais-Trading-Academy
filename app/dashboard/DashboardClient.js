@@ -139,10 +139,10 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
   const [calendarLoading, setCalendarLoading] = useState(false);
 
   useEffect(() => {
-    if (activeKey !== "calendar" || economicEvents.length > 0) return;
+    if (activeKey !== "calendar") return;
     let active = true;
-    async function loadCalendar() {
-      setCalendarLoading(true);
+    async function loadCalendar(isFirstLoad) {
+      if (isFirstLoad) setCalendarLoading(true);
       const supabase = createClient();
       // نجيب بس من أمس فصاعدًا (مش كل الأرشيف المتراكم بقاعدة البيانات) —
       // هيك ما تضل أخبار الأسابيع الفاتت عالقة بأول القائمة وبفلتر الأيام.
@@ -158,13 +158,17 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
         .order("event_time", { ascending: true });
       if (!active) return;
       setEconomicEvents(data || []);
-      setCalendarLoading(false);
+      if (isFirstLoad) setCalendarLoading(false);
     }
-    loadCalendar();
+    loadCalendar(true);
+    // تحديث تلقائي كل دقيقة طول ما التبويب مفتوح، عشان القيمة الفعلية وتحليل
+    // الذكاء الاصطناعي يظهروا فوراً بدون ما المشترك يحتاج يعمل Refresh يدوي.
+    const interval = setInterval(() => loadCalendar(false), 60000);
     return () => {
       active = false;
+      clearInterval(interval);
     };
-  }, [activeKey, economicEvents.length]);
+  }, [activeKey]);
 
   useEffect(() => {
     if (activeKey !== "lectures" || courses.length > 0) return;
