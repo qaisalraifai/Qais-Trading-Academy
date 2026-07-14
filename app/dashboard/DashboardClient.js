@@ -1,15 +1,12 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import BacktestClient from "../backtest/BacktestClient";
 import ReplayClient from "../replay/ReplayClient";
 import AccountsAdminView from "./components/AccountsAdminView";
-import LiveView from "./components/LiveView";
 import SettingsView from "./components/SettingsView";
-import AffiliateClient from "../affiliate/AffiliateClient";
-import MlmClient from "../mlm/MlmClient";
+import AppShell from "../components/layout/AppShell";
 
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
@@ -19,7 +16,6 @@ const RED = "#F6465D";
 
 const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: "👥", view: "accounts" },
-  { key: "live", label: "البث المباشر", icon: "🔴", view: "live" },
   { key: "lectures", label: "المحاضرات", icon: "🎓", view: "lectures" },
   { key: "calendar", label: "التقويم الاقتصادي", icon: "📅", view: "calendar" },
   { key: "replay", label: "Replay التدريب", icon: "🎯", view: "replay" },
@@ -93,9 +89,6 @@ function FlagBadge({ children }) {
 }
 
 export default function DashboardClient({ username, isAdmin = false, subscriptionEnd = null, currentStreak = 0 }) {
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
-
   const [trades, setTrades] = useState([]); // بترتيب زمني تصاعدي (الأقدم أولاً) - للرسم البياني
   const [rawTrades, setRawTrades] = useState([]); // الشكل الخام من قاعدة البيانات - تحتاجه أداة الباك تيست
   const [balance, setBalance] = useState(3000);
@@ -103,27 +96,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
   const [loading, setLoading] = useState(true);
 
   // التنقل الداخلي داخل نفس الصفحة (بدون الخروج من الداشبورد)
-  // إذا الرابط جاي بـ ?tab=accounts (مثلاً من صفحة إدارة المحاضرات) نفتح على هاد التبويب مباشرة
-  const [activeKey, setActiveKey] = useState(
-    tabParam && (tabParam !== "accounts" || isAdmin) ? tabParam : "dashboard"
-  );
-
-  // بث مباشر نشط هلأ؟ (بنفحصها بكل الصفحة عشان نظهر شارة 🔴 بالقائمة الجانبية بغض النظر عن التبويب المفتوح)
-  const [liveSession, setLiveSession] = useState(null);
-  useEffect(() => {
-    let cancelled = false;
-    async function checkLive() {
-      try {
-        const res = await fetch("/api/live");
-        const data = await res.json();
-        if (!cancelled && res.ok) setLiveSession(data.session || null);
-      } catch (e) {}
-    }
-    checkLive();
-    const interval = setInterval(checkLive, 20000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, []);
-
+  const [activeKey, setActiveKey] = useState("dashboard");
   const [courses, setCourses] = useState([]);
   const [allLectures, setAllLectures] = useState([]);
   const [progressMap, setProgressMap] = useState({});
@@ -294,301 +267,16 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%)",
-        color: "#fff",
-        fontFamily: "'Segoe UI', sans-serif",
-        direction: "rtl",
-        display: "flex",
-        flexDirection: "column",
-      }}
+    <AppShell
+      username={username}
+      initials={initials}
+      isAdmin={isAdmin}
+      daysLeft={daysLeft}
+      activeKey={activeKey}
+      setActiveKey={setActiveKey}
+      onNavToLectures={() => { setSelectedLecture(null); setSelectedCourseId(null); }}
+      showProfileHeader={false}
     >
-      <style>{`
-        @keyframes pulseLive {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.45; }
-        }
-      `}</style>
-
-      {/* Top Header - عام على كل الصفحات */}
-      <div
-        style={{
-          height: 68,
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "1rem",
-          padding: "0 1.6rem",
-          borderBottom: `1px solid ${GOLD}22`,
-          background: "linear-gradient(180deg, #111108 0%, #181A20 100%)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          <div style={{ width: 38, height: 38, borderRadius: "50%", border: `2px solid ${GOLD}`, overflow: "hidden", flexShrink: 0 }}>
-            <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="QTA" />
-          </div>
-          <div>
-            <p style={{ color: GOLD, fontSize: 9, letterSpacing: 2, margin: 0 }}>QAIS TRADING</p>
-            <p style={{ color: "#fff", fontSize: 12, fontWeight: 700, margin: 0 }}>ACADEMY</p>
-          </div>
-        </div>
-
-        <div style={{ flex: 1, maxWidth: 440, margin: "0 1.5rem" }}>
-          <input
-            type="text"
-            placeholder="🔍 ابحث عن محاضرة أو برنامج..."
-            style={{
-              width: "100%",
-              background: "#181A20",
-              border: `1px solid ${GOLD}33`,
-              borderRadius: 10,
-              padding: "0.55rem 1rem",
-              color: "#fff",
-              fontSize: 13,
-              outline: "none",
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: "50%", background: "#111",
-            border: `1px solid ${GOLD}33`, display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: 14, cursor: "pointer",
-          }}>
-            🔔
-          </div>
-          <div style={{
-            width: 36, height: 36, borderRadius: "50%", background: "#111",
-            border: `1px solid ${GOLD}33`, display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: 14, cursor: "pointer",
-          }}>
-            💬
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-            <span style={{ fontWeight: 700 }}>{username}</span>
-            <span style={{
-              background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-              color: "#1a1608", fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 6,
-            }}>
-              VIP
-            </span>
-          </div>
-          <div
-            style={{
-              width: 38, height: 38, borderRadius: "50%",
-              background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 15, fontWeight: 800, color: "#1a1608", flexShrink: 0,
-              border: `2px solid ${GOLD}`,
-            }}
-          >
-            {initials}
-          </div>
-        </div>
-      </div>
-
-      {/* الصف الرئيسي: المحتوى + السايدبار */}
-      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-
-      {/* Sidebar */}
-      <div
-        style={{
-          width: 240,
-          flexShrink: 0,
-          background: "linear-gradient(180deg, #111108 0%, #181A20 100%)",
-          borderLeft: `1px solid ${GOLD}22`,
-          padding: "1.5rem 1rem",
-          display: "flex",
-          flexDirection: "column",
-          overflowY: "auto",
-        }}
-      >
-        {/* بطاقة حالة الاشتراك VIP */}
-        <div
-          style={{
-            background: `linear-gradient(135deg, ${GOLD}22, #181A20)`,
-            border: `1px solid ${GOLD}44`,
-            borderRadius: 14,
-            padding: "1rem",
-            marginBottom: "1.2rem",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: GOLD_LIGHT, fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
-            <span>👑</span><span>VIP حساب</span>
-          </div>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#fff" }}>Elite Access</p>
-          <p style={{ margin: "3px 0 8px", fontSize: 11, color: "#888" }}>وصول كامل لجميع الميزات</p>
-          {daysLeft !== null && (
-            <>
-              <div style={{ width: "100%", height: 5, background: "#1a1a0a", borderRadius: 3, overflow: "hidden", marginBottom: 5 }}>
-                <div style={{ width: `${Math.min(100, Math.max(4, (daysLeft / 30) * 100))}%`, height: "100%", background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})` }} />
-              </div>
-              <p style={{ margin: "0 0 10px", fontSize: 11, color: "#999" }}>ينتهي في {daysLeft} يوم</p>
-            </>
-          )}
-          <div
-            onClick={() => setActiveKey("settings")}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              border: `1px solid ${GOLD}44`, color: GOLD_LIGHT, fontSize: 12, fontWeight: 700,
-              padding: "0.5rem", borderRadius: 8, cursor: "pointer",
-            }}
-          >
-            <span>⚙️</span><span>إدارة الاشتراك</span>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "1.1rem" }}>
-          <div style={{ width: 42, height: 42, borderRadius: "50%", border: `2px solid ${GOLD}`, overflow: "hidden", flexShrink: 0 }}>
-            <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="QTA" />
-          </div>
-          <div>
-            <p style={{ color: GOLD, fontSize: 10, letterSpacing: 2, margin: 0 }}>QAIS TRADING</p>
-            <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, margin: 0 }}>ACADEMY</p>
-          </div>
-        </div>
-
-        {/* زر لوحة التحكم - دائماً بارز بالذهبي كنقطة انطلاق رئيسية */}
-        <div
-          onClick={() => setActiveKey("dashboard")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            padding: "0.75rem 0.9rem",
-            borderRadius: 12,
-            background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-            color: "#1a1608",
-            fontSize: 13,
-            fontWeight: 800,
-            cursor: "pointer",
-            marginBottom: "1.1rem",
-            boxShadow: `0 4px 16px ${GOLD}44`,
-          }}
-        >
-          <span>🏠</span>
-          <span>لوحة التحكم</span>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {NAV_ITEMS.filter((item) => item.key !== "accounts" || isAdmin).map((item) => {
-            const isActive = item.view === activeKey;
-            const itemStyle = {
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "0.7rem 0.9rem",
-              borderRadius: 10,
-              background: isActive ? `linear-gradient(135deg, ${GOLD}22, ${GOLD_DARK}11)` : "transparent",
-              border: isActive ? `1px solid ${GOLD}55` : "1px solid transparent",
-              color: isActive ? GOLD : "#888",
-              fontSize: 13,
-              fontWeight: isActive ? 700 : 400,
-              cursor: "pointer",
-            };
-
-            return (
-              <div
-                key={item.key}
-                onClick={() => {
-                  setActiveKey(item.view);
-                  if (item.view === "lectures") {
-                    setSelectedLecture(null);
-                    setSelectedCourseId(null);
-                  }
-                }}
-                style={itemStyle}
-              >
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
-                {item.key === "live" && liveSession && (
-                  <span style={{
-                    marginRight: "auto",
-                    background: "#F6465D",
-                    color: "#fff",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    padding: "2px 7px",
-                    borderRadius: 20,
-                    letterSpacing: 0.5,
-                    animation: "pulseLive 1.6s ease-in-out infinite",
-                  }}>
-                    مباشر
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ marginTop: "1.4rem", display: "flex", flexDirection: "column", gap: 4, paddingTop: "1.2rem", borderTop: "1px solid #1a1a0a" }}>
-  <div
-    onClick={() => setActiveKey("mlm")}
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      padding: "0.7rem 0.9rem",
-      borderRadius: 10,
-      background: activeKey === "mlm" ? `linear-gradient(135deg, ${GOLD}22, ${GOLD_DARK}11)` : "transparent",
-      border: activeKey === "mlm" ? `1px solid ${GOLD}55` : "1px solid transparent",
-      color: GOLD,
-      fontSize: 13,
-      fontWeight: activeKey === "mlm" ? 700 : 400,
-      cursor: "pointer",
-    }}
-  >
-    <span>🌳</span>
-    <span>شبكتي (الشجرة الثنائية)</span>
-  </div>
-  <div
-    onClick={() => setActiveKey("affiliate")}
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      padding: "0.7rem 0.9rem",
-      borderRadius: 10,
-      background: activeKey === "affiliate" ? `linear-gradient(135deg, ${GOLD}22, ${GOLD_DARK}11)` : "transparent",
-      border: activeKey === "affiliate" ? `1px solid ${GOLD}55` : "1px solid transparent",
-      color: GOLD,
-      fontSize: 13,
-      fontWeight: activeKey === "affiliate" ? 700 : 400,
-      cursor: "pointer",
-    }}
-  >
-    <span>🤝</span>
-    <span>برنامج التسويق بالعمولة</span>
-  </div>
-  <Link href="/discord" style={{ textDecoration: "none" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.7rem 0.9rem", color: "#5865F2", fontSize: 13 }}>
-              <span>🎮</span>
-              <span>مجتمع Discord</span>
-            </div>
-          </Link>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.7rem 0.9rem", color: "#888", fontSize: 13, cursor: "pointer" }}>
-            <span>❓</span>
-            <span>مركز المساعدة</span>
-          </div>
-          <div
-            onClick={async () => {
-              const supabase = createClient();
-              await supabase.auth.signOut();
-              window.location.href = "/login";
-            }}
-            style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.7rem 0.9rem", color: "#888", fontSize: 13, cursor: "pointer" }}
-          >
-            <span>🚪</span>
-            <span>تسجيل الخروج</span>
-          </div>
-        </div>
-      </div>
 
       {/* Main content */}
       <div style={{ flex: 1, padding: "1.6rem 2rem", overflowY: "auto" }}>
@@ -688,8 +376,6 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
 
         {activeKey === "accounts" && isAdmin ? (
           <AccountsAdminView username={username} />
-        ) : activeKey === "live" ? (
-          <LiveView isAdmin={isAdmin} username={username} />
         ) : activeKey === "calendar" ? (
           <CalendarView events={economicEvents} loading={calendarLoading} isAdmin={isAdmin} />
         ) : activeKey === "lectures" ? (
@@ -711,10 +397,6 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
           <ReplayClient userId={userId} />
         ) : activeKey === "settings" ? (
           <SettingsView username={username} />
-        ) : activeKey === "affiliate" ? (
-          <AffiliateClient embedded />
-        ) : activeKey === "mlm" ? (
-          <MlmClient embedded />
         ) : activeKey === "backtest" ? (
           userId ? (
             <BacktestClient
@@ -954,8 +636,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
           </>
         )}
       </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 
@@ -2632,13 +2313,8 @@ function LecturesView({
           }}
         >
           <iframe
-            src={
-              selectedLecture.video_provider === "drive"
-                ? `https://drive.google.com/file/d/${selectedLecture.youtube_video_id}/preview`
-                : `https://www.youtube.com/embed/${selectedLecture.youtube_video_id}?rel=0&modestbranding=1`
-            }
+            src={`https://www.youtube.com/embed/${selectedLecture.youtube_video_id}?rel=0&modestbranding=1`}
             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
-            allow="autoplay; encrypted-media"
             allowFullScreen
           />
         </div>

@@ -1,11 +1,15 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import PageShell from "@/app/components/layout/PageShell";
+import { getShellProfile } from "@/lib/shell-profile";
 
 export default async function LecturePage({ params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const shellProfile = await getShellProfile(supabase, user);
 
   const { data: lecture } = await supabase
     .from("lectures").select("*").eq("id", params.id).single();
@@ -16,6 +20,7 @@ export default async function LecturePage({ params }) {
     .order("order_index", { ascending: true });
 
   return (
+    <PageShell {...shellProfile}>
     <div style={{
       minHeight: "100vh",
       background: "radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%)",
@@ -94,13 +99,8 @@ export default async function LecturePage({ params }) {
           border: "1px solid #D4AF3722",
         }}>
           <iframe
-            src={
-              lecture.video_provider === "drive"
-                ? `https://drive.google.com/file/d/${lecture.youtube_video_id}/preview`
-                : `https://www.youtube.com/embed/${lecture.youtube_video_id}?rel=0&modestbranding=1`
-            }
+            src={`https://www.youtube.com/embed/${lecture.youtube_video_id}?rel=0&modestbranding=1`}
             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
-            allow="autoplay; encrypted-media"
             allowFullScreen
           />
         </div>
@@ -110,5 +110,6 @@ export default async function LecturePage({ params }) {
         </p>
       </div>
     </div>
+    </PageShell>
   );
 }

@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import DiscordSection from "@/app/components/DiscordSection";
+import PageShell from "@/app/components/layout/PageShell";
+import { getShellProfile } from "@/lib/shell-profile";
 
 export default async function DiscordPage() {
   const supabase = createClient();
@@ -13,7 +15,10 @@ export default async function DiscordPage() {
     .eq("id", user.id)
     .single();
 
+  const shellProfile = await getShellProfile(supabase, user);
+
   return (
+    <PageShell {...shellProfile}>
     <div style={{
       minHeight: "100vh",
       background: "radial-gradient(ellipse at top, #0d0d2a 0%, #181A20 60%)",
@@ -67,5 +72,6 @@ export default async function DiscordPage() {
         ← رجوع للرئيسية
       </a>
     </div>
+    </PageShell>
   );
 }

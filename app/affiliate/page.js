@@ -7,5 +7,17 @@ export default async function AffiliatePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  return <AffiliateClient />;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username, role, subscription_end")
+    .eq("id", user.id)
+    .single();
+
+  return (
+    <AffiliateClient
+      username={profile?.username || user.email}
+      isAdmin={profile?.role === "admin"}
+      subscriptionEnd={profile?.subscription_end || null}
+    />
+  );
 }

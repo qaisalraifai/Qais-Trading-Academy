@@ -2,6 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import BacktestClient from "./BacktestClient";
+import PageShell from "@/app/components/layout/PageShell";
+import { getShellProfile } from "@/lib/shell-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,7 @@ export default async function BacktestPage() {
 
   const username = profile?.username || "ضيف";
   const initialBalance = profile?.backtest_balance ?? 3000;
+  const shellProfile = await getShellProfile(supabase, user);
 
   const { data: tradesRows } = await supabase
     .from("trades")
@@ -45,11 +48,13 @@ export default async function BacktestPage() {
     .order("created_at", { ascending: true });
 
   return (
-    <BacktestClient
-      userId={user.id}
-      username={username}
-      initialBalance={Number(initialBalance)}
-      initialTrades={tradesRows || []}
-    />
+    <PageShell {...shellProfile}>
+      <BacktestClient
+        userId={user.id}
+        username={username}
+        initialBalance={Number(initialBalance)}
+        initialTrades={tradesRows || []}
+      />
+    </PageShell>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
+import PageShell from "@/app/components/layout/PageShell";
 
 const GOLD = "#D4AF37";
 const BG = "#0B0E11";
@@ -67,12 +68,25 @@ function MlmTreeInner() {
   const [parentId, setParentId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [shellProfile, setShellProfile] = useState({ username: "", isAdmin: false, daysLeft: null });
 
   const rootId = searchParams.get("rootId");
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
+
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("username, role, subscription_end")
+      .eq("id", user.id)
+      .maybeSingle();
+    let daysLeft = null;
+    if (prof?.subscription_end) {
+      const diffMs = new Date(prof.subscription_end).getTime() - Date.now();
+      daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    }
+    setShellProfile({ username: prof?.username || user.email, isAdmin: prof?.role === "admin", daysLeft });
 
     setLoading(true);
     setError("");
@@ -98,6 +112,7 @@ function MlmTreeInner() {
   }
 
   return (
+    <PageShell {...shellProfile}>
     <div style={{ background: BG, color: "#EAECEF", minHeight: "100vh", padding: "2.5rem 3rem", direction: "rtl", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
@@ -130,6 +145,7 @@ function MlmTreeInner() {
         اضغطي على أي عضو حتى تشوفي شجرته الفرعية (4 مستويات بكل مرة)
       </div>
     </div>
+    </PageShell>
   );
 }
 
