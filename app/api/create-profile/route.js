@@ -74,6 +74,42 @@ export async function POST(request) {
       .maybeSingle();
 
     if (!defaultSponsor) {
+      // ما في ولا حساب أدمن لسا — إما هاد أول حساب عالإطلاق بقاعدة البيانات
+      // (تنصيب جديد كامل)، أو ببساطة محدا عمل حساب أدمن يدوياً لسا.
+      // بدل ما نرفض كل تسجيل جديد (قفلة كاملة بدون أي طريقة تفتحها من الواجهة)،
+      // منتحقق: لو فعلاً ما في ولا صف بجدول profiles إطلاقاً، هاد المستخدم
+      // بيصير تلقائياً هو "الأدمن الجذر" (root) للشجرة الثنائية.
+      const { count: totalProfiles } = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true });
+
+      if (!totalProfiles || totalProfiles === 0) {
+        const { error: rootProfileError } = await supabase.from("profiles").upsert(
+          {
+            id: userId,
+            username: username.trim(),
+            role: "admin",
+            subscription_status: "inactive",
+            referred_by: null,
+          },
+          { onConflict: "id", ignoreDuplicates: false }
+        );
+
+        if (rootProfileError) {
+          console.error("create-profile root admin upsert failed:", rootProfileError);
+          return NextResponse.json({ error: rootProfileError.message }, { status: 400 });
+        }
+
+        await recordSignupFingerprint(supabase, userId, {
+          deviceFingerprint,
+          ip: requestIp,
+          suspicious: false,
+          reason: null,
+        }).catch((e) => console.error("recordSignupFingerprint failed:", e.message));
+
+        return NextResponse.json({ success: true, isRootAdmin: true });
+      }
+
       return NextResponse.json(
         { error: "لا يوجد حساب أدمن مسجّل ليكون الراعي الافتراضي — تواصل مع الدعم" },
         { status: 500 }
