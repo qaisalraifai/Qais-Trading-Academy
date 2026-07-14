@@ -133,6 +133,27 @@ export default function AdminLecturesPage() {
     fetchLectures();
   }
 
+  async function handleAddCourse() {
+    const title = prompt("اسم الكورس الجديد:");
+    if (!title || !title.trim()) return;
+    const icon = prompt("إيموجي للكورس (اختياري، مثلاً 📈):", "📚") || "📚";
+
+    const res = await fetch("/api/admin/courses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: title.trim(), icon }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "صار خطأ بإضافة الكورس");
+      return;
+    }
+
+    await fetchCourses();
+    setForm((f) => ({ ...f, course_id: data.course.id }));
+  }
+
   async function handleDelete(id, title) {
     if (!confirm(`متأكدة إنك بدك تحذفي محاضرة "${title}"؟ هالإجراء ما ممكن يترجع.`)) return;
     const res = await fetch(`/api/admin/lectures/${id}`, { method: "DELETE" });
@@ -210,16 +231,22 @@ export default function AdminLecturesPage() {
             />
 
             <label style={s.label}>الكورس</label>
-            <select
-              style={s.input}
-              value={form.course_id}
-              onChange={(e) => setForm({ ...form, course_id: e.target.value })}
-            >
-              <option value="">بدون تحديد</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>{c.icon} {c.title}</option>
-              ))}
-            </select>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <select
+                style={{ ...s.input, flex: 1 }}
+                value={form.course_id}
+                onChange={(e) => setForm({ ...form, course_id: e.target.value })}
+              >
+                <option value="">بدون تحديد</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.icon} {c.title}</option>
+                ))}
+              </select>
+              <button type="button" onClick={handleAddCourse} style={s.addCourseBtn}>
+                + كورس جديد
+              </button>
+            </div>
+            <p style={s.hint}>ما في كورسات؟ دوسي "+ كورس جديد" وحطي اسمه، وبعدين اختاريه هون.</p>
 
             <label style={s.label}>الفصل (Chapter)</label>
             <input
@@ -347,6 +374,7 @@ const s = {
   headerTitle: { fontSize: "1.4rem", fontWeight: 800 },
   backBtn: { background: "none", border: "1px solid #222", color: "#999", padding: "0.6rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center" },
   addBtn: { backgroundColor: gold, color: "#000", border: "none", padding: "0.6rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 700 },
+  addCourseBtn: { backgroundColor: "#181A20", color: gold, border: `1px solid ${gold}55`, padding: "0 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, whiteSpace: "nowrap" },
   tableWrap: { margin: "2rem 3rem", border: "1px solid #111", borderRadius: "4px", overflow: "hidden" },
   table: { width: "100%", borderCollapse: "collapse" },
   th: { backgroundColor: "#181A20", padding: "1rem 1.25rem", textAlign: "right", fontSize: "0.78rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111" },
