@@ -4,7 +4,27 @@ import { useEffect, useRef, useState } from "react";
 
 const GOLD = "#D4AF37";
 
-export default function LiveView({ isAdmin = false, username = "" }) {
+// 🚧 اللايف موقوف مؤقتًا لحين ما نجهز بنية تحتية جديدة (بدون قيود مدة).
+// لإعادة تفعيله لاحقًا: خليها false.
+const LIVE_COMING_SOON = true;
+
+function ComingSoonCard() {
+  return (
+    <div style={s.wrap}>
+      <div style={{ ...s.emptyCard, padding: "4rem 1.5rem" }}>
+        <div style={{ fontSize: 42, marginBottom: "1rem" }}>🚧</div>
+        <h2 style={{ margin: "0 0 0.5rem", fontSize: 20, fontWeight: 800, color: "#fff" }}>
+          البث المباشر — قريبًا
+        </h2>
+        <p style={{ color: "#888", fontSize: 14, margin: 0 }}>
+          عم نشتغل على تطوير خاصية البث المباشر حاليًا، وح تكون متاحة قريبًا بإذن الله. تابعونا!
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function LiveViewActual({ isAdmin = false, username = "" }) {
   const [session, setSession] = useState(undefined); // undefined = جاري التحميل، null = ما في بث
   const [starting, setStarting] = useState(false);
   const [ending, setEnding] = useState(false);
@@ -189,6 +209,11 @@ export default function LiveView({ isAdmin = false, username = "" }) {
       )}
     </div>
   );
+}
+
+export default function LiveView(props) {
+  if (LIVE_COMING_SOON) return <ComingSoonCard />;
+  return <LiveViewActual {...props} />;
 }
 
 const s = {
