@@ -1,3 +1,4 @@
+import "./globals.css";
 import { Cairo, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 
 const cairo = Cairo({
