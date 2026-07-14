@@ -65,29 +65,35 @@ export default function LiveView({ isAdmin = false, username = "" }) {
     setError("");
     try {
       await loadJitsiScript();
-      if (jitsiApiRef.current) jitsiApiRef.current.dispose();
-
-      jitsiApiRef.current = new window.JitsiMeetExternalAPI("meet.jit.si", {
-        roomName: session.room_name,
-        parentNode: jitsiContainerRef.current,
-        width: "100%",
-        height: "100%",
-        userInfo: { displayName: username || "طالب" },
-        configOverwrite: {
-          prejoinPageEnabled: true,
-          disableDeepLinking: true,
-        },
-        interfaceConfigOverwrite: {
-          SHOW_JITSI_WATERMARK: false,
-          SHOW_WATERMARK_FOR_GUESTS: false,
-          MOBILE_APP_PROMO: false,
-        },
-      });
-      setJoined(true);
+      setJoined(true); // بيخلي الـ div الحاوي يترندر، وبعدين الـ useEffect تحت رح تبني غرفة Jitsi فيه
     } catch (e) {
       setError(e.message || "صار خطأ بالانضمام للبث");
     }
   }
+
+  // نبني غرفة Jitsi بس بعد ما الـ div الحاوي (jitsiContainerRef) صار موجود فعليًا بالـ DOM
+  useEffect(() => {
+    if (!joined || !session || jitsiApiRef.current) return;
+    if (!jitsiContainerRef.current) return;
+
+    jitsiApiRef.current = new window.JitsiMeetExternalAPI("meet.jit.si", {
+      roomName: session.room_name,
+      parentNode: jitsiContainerRef.current,
+      width: "100%",
+      height: "100%",
+      userInfo: { displayName: username || "طالب" },
+      configOverwrite: {
+        prejoinPageEnabled: true,
+        disableDeepLinking: true,
+        disableTileView: true,
+      },
+      interfaceConfigOverwrite: {
+        SHOW_JITSI_WATERMARK: false,
+        SHOW_WATERMARK_FOR_GUESTS: false,
+        MOBILE_APP_PROMO: false,
+      },
+    });
+  }, [joined, session, username]);
 
   async function handleStart() {
     setStarting(true);
