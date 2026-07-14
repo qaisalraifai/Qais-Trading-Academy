@@ -307,6 +307,10 @@ function ToolIcon({ id }) {
       return (<svg {...common}><line x1="12" y1="3" x2="12" y2="21" /></svg>);
     case "path":
       return (<svg {...common}><polyline points="4,18 9,7 14,15 20,5" /></svg>);
+    case "triangle":
+      return (<svg {...common}><path d="M12 4l8 16H4z" /></svg>);
+    case "arrow":
+      return (<svg {...common}><line x1="4" y1="20" x2="19" y2="5" /><polyline points="9,5 19,5 19,15" /></svg>);
     case "rectangle":
       return (<svg {...common}><rect x="4" y="6" width="16" height="12" rx="1" /></svg>);
     case "circle":
@@ -398,6 +402,8 @@ const TOOL_TITLES = {
   crossline: "خط متقاطع",
   parallelchannel: "قناة متوازية",
   path: "مسار (نقاط متعددة)",
+  triangle: "مثلث",
+  arrow: "سهم",
   rectangle: "مستطيل",
   circle: "دائرة",
   fib: "فيبوناتشي (تصحيح)",
@@ -417,7 +423,7 @@ const TOOL_TITLES = {
 const TOOL_GROUPS = [
   ["cursor"],
   ["trendline", "ray", "extendedline", "infoline", "angle", "hline", "hray", "vline", "crossline", "parallelchannel"],
-  ["path", "rectangle", "circle"],
+  ["path", "triangle", "arrow", "rectangle", "circle"],
   ["text"],
   ["fib", "fibext", "fibchannel", "fibtimezone"],
   ["gannfan", "pitchfork", "wave", "pricerange", "daterange", "position_long", "position_short"],
@@ -430,7 +436,7 @@ const GROUP_LABELS = ["مؤشر", "خطوط", "رسم", "نص", "أدوات في
    يلي مش موجودة هون بتنعرض كقائمة واحدة بدون عنوان قسم. */
 const TOOL_GROUP_SECTIONS = {
   1: [{ title: "خطوط", tools: ["trendline", "ray", "extendedline", "infoline", "angle", "hline", "hray", "vline", "crossline", "parallelchannel"] }],
-  2: [{ title: "أشكال", tools: ["path", "rectangle", "circle"] }],
+  2: [{ title: "أشكال", tools: ["path", "triangle", "arrow", "rectangle", "circle"] }],
   4: [{ title: "فيبوناتشي", tools: ["fib", "fibext", "fibchannel", "fibtimezone"] }],
   5: [
     { title: "غان", tools: ["gannfan"] },
@@ -463,6 +469,10 @@ function defaultStyleFor(type) {
       return { color: GOLD_LIGHT, width: 1.5, dash: "solid" };
     case "path":
       return { color: GOLD_LIGHT, width: 2, closed: false, fill: false, fillColor: GOLD, fillAlpha: 0.15 };
+    case "triangle":
+      return { color: GOLD_LIGHT, width: 1.5, closed: true, fill: true, fillColor: GOLD, fillAlpha: 0.15 };
+    case "arrow":
+      return { color: GOLD_LIGHT, width: 2 };
     case "wave":
       return { color: "#EAECEF", width: 1.5 };
     case "rectangle":
@@ -1043,7 +1053,7 @@ export default function ReplayClient({ userId }) {
 
     const all = [...drawingsRef.current];
     if (drawStateRef.current) all.push(drawStateRef.current);
-    if ((activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext" || activeToolRef.current === "parallelchannel" || activeToolRef.current === "fibchannel" || activeToolRef.current === "pitchfork") && pathPointsRef.current.length) {
+    if ((activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext" || activeToolRef.current === "parallelchannel" || activeToolRef.current === "fibchannel" || activeToolRef.current === "pitchfork" || activeToolRef.current === "triangle") && pathPointsRef.current.length) {
       const pts = [...pathPointsRef.current];
       if (liveCursorRef.current) pts.push(liveCursorRef.current);
       all.push({ type: activeToolRef.current, points: pts, style: defaultStyleFor(activeToolRef.current) });
@@ -1106,6 +1116,22 @@ export default function ReplayClient({ userId }) {
         }
         ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
         ctx.setLineDash([]);
+
+      } else if (d.type === "arrow") {
+        const a = toXY(d.p1), b = toXY(d.p2);
+        if (a.x == null || b.x == null || a.y == null || b.y == null) continue;
+        setLineStyle(style);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        ctx.setLineDash([]);
+        const angle = Math.atan2(b.y - a.y, b.x - a.x);
+        const headLen = 11;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x - headLen * Math.cos(angle - Math.PI / 7), b.y - headLen * Math.sin(angle - Math.PI / 7));
+        ctx.lineTo(b.x - headLen * Math.cos(angle + Math.PI / 7), b.y - headLen * Math.sin(angle + Math.PI / 7));
+        ctx.closePath();
+        ctx.fillStyle = style.color || GOLD_LIGHT;
+        ctx.fill();
 
       } else if (d.type === "ray") {
         const a = toXY(d.p1), b = toXY(d.p2);
@@ -1395,7 +1421,7 @@ export default function ReplayClient({ userId }) {
           ctx.beginPath(); ctx.arc(xy3.x, xy3.y, 2.5, 0, Math.PI * 2); ctx.fill();
         }
 
-      } else if (d.type === "path" || d.type === "wave") {
+      } else if (d.type === "path" || d.type === "wave" || d.type === "triangle") {
         if (!d.points || d.points.length < 1) continue;
         const pts = d.points.map(toXY).filter((p) => p.x != null && p.y != null);
         if (pts.length < 1) continue;
@@ -1495,6 +1521,32 @@ export default function ReplayClient({ userId }) {
         ctx.fillText(`الهدف: ${targetPrice != null ? targetPrice.toFixed(2) : "-"} (${rewardPct >= 0 ? "+" : ""}${rewardPct.toFixed(2)}%)`, x0 + 4, Math.min(targetY, entryY) - 4);
         ctx.fillStyle = RED;
         ctx.fillText(`الإيقاف: ${stopPrice != null ? stopPrice.toFixed(2) : "-"} (${riskPct >= 0 ? "+" : ""}${riskPct.toFixed(2)}%)`, x0 + 4, Math.max(stopY, entryY) + 14);
+      }
+    }
+
+    /* ===== مقابض تحديد مرئية (Handles) على الرسمة المحددة، بستايل تريدنغ فيو:
+       دوائر زرقاء صغيرة عالنقاط/الزوايا، ومربعات صغيرة بمنتصف أضلاع المستطيل،
+       عشان يبين وضوح إنه في إمكانية سحب/تمديد كل نقطة لحالها ===== */
+    const selectedForHandles = selectedIdRef.current != null
+      ? drawingsRef.current.find((d) => d.id === selectedIdRef.current)
+      : null;
+    if (selectedForHandles && !selectedForHandles.locked) {
+      const handles = getHandlePoints(selectedForHandles);
+      for (const h of handles) {
+        const xy = toXY(h.p);
+        if (xy.x == null || xy.y == null) continue;
+        const isEdgeMid = h.key === "top" || h.key === "bottom" || h.key === "left" || h.key === "right";
+        ctx.beginPath();
+        if (isEdgeMid) {
+          ctx.rect(xy.x - 4.5, xy.y - 4.5, 9, 9);
+        } else {
+          ctx.arc(xy.x, xy.y, 5, 0, Math.PI * 2);
+        }
+        ctx.fillStyle = "#131722";
+        ctx.fill();
+        ctx.lineWidth = 1.6;
+        ctx.strokeStyle = "#2962FF";
+        ctx.stroke();
       }
     }
     ctx.restore();
@@ -1648,6 +1700,17 @@ export default function ReplayClient({ userId }) {
     const out = [];
     if (d.p1) out.push({ key: "p1", p: d.p1 });
     if (d.p2) out.push({ key: "p2", p: d.p2 });
+    /* المستطيل بيحصل على 4 مقابض إضافية بمنتصف كل ضلع، تماماً متل صندوق التحديد
+       بتريدنغ فيو (8 مقابض: 4 زوايا + 4 منتصف أضلاع)، عشان تقدري تمددي عرض أو
+       ارتفاع المستطيل لحاله من دون ما تحركي الزاوية المقابلة */
+    if (d.type === "rectangle" && d.p1 && d.p2) {
+      const midLogical = (d.p1.logical + d.p2.logical) / 2;
+      const midPrice = (d.p1.price + d.p2.price) / 2;
+      out.push({ key: "top", p: { logical: midLogical, price: Math.max(d.p1.price, d.p2.price) } });
+      out.push({ key: "bottom", p: { logical: midLogical, price: Math.min(d.p1.price, d.p2.price) } });
+      out.push({ key: "left", p: { logical: Math.min(d.p1.logical, d.p2.logical), price: midPrice } });
+      out.push({ key: "right", p: { logical: Math.max(d.p1.logical, d.p2.logical), price: midPrice } });
+    }
     return out;
   }
   function findHandleAt(x, y) {
@@ -1671,7 +1734,19 @@ export default function ReplayClient({ userId }) {
   function setHandlePoint(d, key, logical, price) {
     if (key === "p1") d.p1 = { logical, price };
     else if (key === "p2") d.p2 = { logical, price };
-    else if (key.startsWith("points.")) {
+    else if (key === "top" || key === "bottom") {
+      // نلاقي أي زاوية (p1 أو p2) هي صاحبة السعر الأعلى/الأدنى ونعدّل سعرها بس،
+      // والموضع الأفقي بيضل ثابت متل ما هو
+      const corner = key === "top"
+        ? (d.p1.price >= d.p2.price ? "p1" : "p2")
+        : (d.p1.price <= d.p2.price ? "p1" : "p2");
+      d[corner] = { ...d[corner], price };
+    } else if (key === "left" || key === "right") {
+      const corner = key === "left"
+        ? (d.p1.logical <= d.p2.logical ? "p1" : "p2")
+        : (d.p1.logical >= d.p2.logical ? "p1" : "p2");
+      d[corner] = { ...d[corner], logical };
+    } else if (key.startsWith("points.")) {
       const idx = Number(key.split(".")[1]);
       if (d.points && d.points[idx] != null) {
         d.points = d.points.map((p, i) => (i === idx ? { logical, price } : p));
@@ -2116,7 +2191,7 @@ export default function ReplayClient({ userId }) {
         const price = series.coordinateToPrice(y);
         return { logical, price, x, y };
       }
-      const MULTI_POINT_COUNT = { wave: 4, fibext: 3, parallelchannel: 3, fibchannel: 3, pitchfork: 3 };
+      const MULTI_POINT_COUNT = { wave: 4, fibext: 3, parallelchannel: 3, fibchannel: 3, pitchfork: 3, triangle: 3 };
       function onMouseDown(e) {
         const tool = activeToolRef.current;
         if (tool === "cursor") return; // بوضع المؤشر السحب بيصير من onContainerMouseDownCapture تحت
@@ -2139,7 +2214,7 @@ export default function ReplayClient({ userId }) {
           drawOverlay();
           return;
         }
-        if (tool === "path" || tool === "wave" || tool === "fibext" || tool === "parallelchannel" || tool === "fibchannel" || tool === "pitchfork") {
+        if (tool === "path" || tool === "wave" || tool === "fibext" || tool === "parallelchannel" || tool === "fibchannel" || tool === "pitchfork" || tool === "triangle") {
           pathPointsRef.current.push({ logical, price: snapped });
           const need = MULTI_POINT_COUNT[tool];
           if (need && pathPointsRef.current.length >= need) {
@@ -2197,7 +2272,7 @@ export default function ReplayClient({ userId }) {
           }
           return;
         }
-        const activePath = (activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext") && pathPointsRef.current.length;
+        const activePath = (activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext" || activeToolRef.current === "triangle") && pathPointsRef.current.length;
         const { logical, price, y } = getLogicalPrice(e.clientX, e.clientY);
         if (logical == null || price == null) return;
         // مغناطيس أثناء الرسم: نحسب السعر الملتصق *قبل* ما نحرك مؤشر التقاطع، ونستخدمه
@@ -3528,7 +3603,7 @@ export default function ReplayClient({ userId }) {
               {type === "fibtimezone" && row("النمط", dashSelect(style.dash, (v) => updateStyle({ dash: v })))}
             </>
           )}
-          {(type === "rectangle" || type === "circle" || type === "path") && (
+          {(type === "rectangle" || type === "circle" || type === "path" || type === "triangle") && (
             <>
               {row("لون الإطار", colorInput(style.color, (v) => updateStyle({ color: v })))}
               {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
