@@ -58,14 +58,29 @@ export async function POST(request, { params }) {
       // تفعيل وصول مجاني بدون دفع — الحساب يضل role=student، فقط subscription_status=active
       // subscription_end = null يعني ما فيه انتهاء (الكرون جوب ما بيلمسه لأنه بيفحص فقط لما يكون subscription_end أقل من اليوم)
       const now = new Date();
-      await supabase
+      const { data: updated, error: updateError } = await supabase
         .from("profiles")
         .update({
           subscription_status: "active",
           subscription_start: now.toISOString(),
           subscription_end: null,
         })
-        .eq("id", id);
+        .eq("id", id)
+        .select("id, subscription_status")
+        .maybeSingle();
+
+      // قبل هيك كان الكود ما بيتحقق من نتيجة update() إطلاقاً، فكان يرجّع "success"
+      // حتى لو التحديث فشل فعلياً بقاعدة البيانات (مثلاً بسبب مفتاح SUPABASE_SERVICE_ROLE_KEY
+      // غلط/منتهي على Vercel) — فيطلع تنبيه "تم التفعيل" بالأدمن بس الحساب يضل فعلياً
+      // غير مفعّل ويوجّه صاحبه لصفحة الدفع. هلأ منتحقق من النتيجة الحقيقية.
+      if (updateError) {
+        console.error("activate_free update failed:", updateError);
+        return NextResponse.json({ error: `فشل التفعيل فعلياً: ${updateError.message}` }, { status: 500 });
+      }
+      if (!updated || updated.subscription_status !== "active") {
+        return NextResponse.json({ error: "التحديث ما نفّذ على أي صف — تأكد إنه الحساب موجود" }, { status: 404 });
+      }
+
       await logActivity(id, "free_activation", "تم تفعيل وصول مجاني (بدون دفع) من لوحة التحكم");
       return NextResponse.json({ success: true });
     }
