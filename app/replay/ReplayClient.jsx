@@ -697,6 +697,15 @@ export default function ReplayClient({ userId }) {
   const [indicatorSettingsFor, setIndicatorSettingsFor] = useState(null);
   const [indicatorSettingsTab, setIndicatorSettingsTab] = useState("visibility"); // visibility | style | inputs
   const [templatesPanelOpen, setTemplatesPanelOpen] = useState(false);
+
+  /* ===== وضع تسجيل تمارين SMC+ICT (Admin Practice Mode) ===== */
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [practicePanelOpen, setPracticePanelOpen] = useState(false);
+  const [drawingsListTick, setDrawingsListTick] = useState(0); // نجبر تحديث القائمة بعد كل رسمة
+  const [drawingRoles, setDrawingRoles] = useState({}); // { [drawingId]: { role, price_tolerance, candle_tolerance, weight, notes } }
+  const [scenarioForm, setScenarioForm] = useState({ title: "", description: "", difficulty: "medium" });
+  const [savingScenario, setSavingScenario] = useState(false);
+  const [scenarioSaveToast, setScenarioSaveToast] = useState("");
   // instanceId -> { def, series: { [lineKey]: ISeriesApi } }
   const indicatorSeriesRef = useRef(new Map());
   // مرآة دايماً محدّثة لـ activeIndicators، عشان أي كود جوا closure قديم
@@ -878,6 +887,15 @@ export default function ReplayClient({ userId }) {
     let active = true;
     supabase.from("profiles").select("backtest_balance").eq("id", userId).single().then(({ data }) => {
       if (active && data?.backtest_balance != null) setAccountBalance(Number(data.backtest_balance));
+    });
+    return () => { active = false; };
+  }, [supabase, userId]);
+
+  useEffect(() => {
+    if (!supabase || !userId) return;
+    let active = true;
+    supabase.from("profiles").select("role").eq("id", userId).single().then(({ data }) => {
+      if (active) setIsAdmin(data?.role === "admin");
     });
     return () => { active = false; };
   }, [supabase, userId]);
@@ -2253,6 +2271,90 @@ export default function ReplayClient({ userId }) {
     setTradeToast(`✅ اتسجلت صفقة ${pt.direction === "buy" ? "شراء" : "بيع"} — بتلاقيها بالباك تيست ولوحة التحكم`);
   }
 
+  /* ===== حفظ سيناريو تمرين + مفتاح الإجابة (وضع الأدمن فقط) ===== */
+  const ROLE_LABELS = {
+    structure: "الهيكلية",
+    poi: "منطقة/مستوى اهتمام (POI)",
+    smt: "SMT",
+    cisd: "CISD",
+    entry: "الدخول",
+    stop: "الستوب",
+  };
+
+  function taggedDrawings() {
+    return drawingsRef.current.filter((d) => drawingRoles[d.id]?.role);
+  }
+
+  function logicalRangeOf(d) {
+    const points = [d.p1, d.p2, ...(d.points || [])].filter(Boolean);
+    const logicals = points.map((p) => p.logical).filter((v) => v != null);
+    if (!logicals.length) return { start: null, end: null };
+    return { start: Math.min(...logicals), end: Math.max(...logicals) };
+  }
+
+  async function saveScenarioAndAnswerKey() {
+    if (!isAdmin || !userId || !supabase) return;
+    const tagged = taggedDrawings();
+    if (!scenarioForm.title.trim()) {
+      setScenarioSaveToast("لازم تكتب عنوان للسيناريو أول");
+      return;
+    }
+    if (tagged.length === 0) {
+      setScenarioSaveToast("لازم تحدد دور (role) لرسمة واحدة عالأقل قبل الحفظ");
+      return;
+    }
+    setSavingScenario(true);
+    try {
+      const firstCandle = allCandles[0];
+      const lastCandle = allCandles[allCandles.length - 1];
+      const { data: scenario, error: scenarioError } = await supabase
+        .from("practice_scenarios")
+        .insert({
+          title: scenarioForm.title.trim(),
+          description: scenarioForm.description.trim() || null,
+          asset: assetValue,
+          interval,
+          date_from: firstCandle ? new Date(firstCandle.time * 1000).toISOString() : new Date().toISOString(),
+          date_to: lastCandle ? new Date(lastCandle.time * 1000).toISOString() : new Date().toISOString(),
+          difficulty: scenarioForm.difficulty,
+          is_published: false,
+          created_by: userId,
+        })
+        .select()
+        .single();
+
+      if (scenarioError) throw scenarioError;
+
+      const rows = tagged.map((d, idx) => {
+        const meta = drawingRoles[d.id];
+        const { start, end } = logicalRangeOf(d);
+        return {
+          scenario_id: scenario.id,
+          role: meta.role,
+          drawing: d,
+          candle_index_start: start,
+          candle_index_end: end,
+          price_tolerance: meta.price_tolerance ?? 0.5,
+          candle_tolerance: meta.candle_tolerance ?? 2,
+          weight: meta.weight ?? 20,
+          notes: meta.notes || null,
+          order_index: idx,
+        };
+      });
+
+      const { error: keysError } = await supabase.from("practice_answer_keys").insert(rows);
+      if (keysError) throw keysError;
+
+      setScenarioSaveToast(`✅ اتحفظ السيناريو "${scenarioForm.title}" مع ${rows.length} عنصر بمفتاح الإجابة (غير منشور لسا)`);
+      setScenarioForm({ title: "", description: "", difficulty: "medium" });
+      setDrawingRoles({});
+    } catch (err) {
+      setScenarioSaveToast("صار خطأ: " + (err.message || String(err)));
+    } finally {
+      setSavingScenario(false);
+    }
+  }
+
   async function closeOpenPosition(pos, result, closePrice) {
     openPositionsRef.current = openPositionsRef.current.filter((p) => p.dbId !== pos.dbId);
     setOpenPositionsList([...openPositionsRef.current]);
@@ -3567,6 +3669,16 @@ export default function ReplayClient({ userId }) {
         )}
 
         <div style={{ flex: 1 }} />
+
+        {isAdmin && (
+          <button
+            onClick={() => { setDrawingsListTick((t) => t + 1); setPracticePanelOpen(true); }}
+            style={{ ...iconBtn(false), width: "auto", padding: "0 10px", fontSize: 12, fontWeight: 700 }}
+            title="تسجيل تمرين تفاعلي جديد (SMC + ICT)"
+          >
+            🎯 تسجيل تمرين
+          </button>
+        )}
 
         {/* مجموعة اليمين: حالة السوق + الفريم/السرعة + الأصل */}
         <span style={{
@@ -4886,6 +4998,141 @@ export default function ReplayClient({ userId }) {
     );
   }
 
+  function renderPracticePanel() {
+    const close = () => setPracticePanelOpen(false);
+    const drawings = drawingsRef.current; // drawingsListTick يجبر إعادة الرندر بعد كل تعديل
+    void drawingsListTick;
+
+    function setRoleMeta(id, patch) {
+      setDrawingRoles((prev) => ({
+        ...prev,
+        [id]: { role: prev[id]?.role || "", price_tolerance: 0.5, candle_tolerance: 2, weight: 20, notes: "", ...prev[id], ...patch },
+      }));
+    }
+
+    return (
+      <div style={{ position: "absolute", inset: 0, zIndex: 31, background: "#0B0E11aa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: 460, maxWidth: "94%", maxHeight: "86%", background: "#161616",
+            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem",
+            display: "flex", flexDirection: "column", minHeight: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexShrink: 0 }}>
+            <div style={{ fontWeight: 700, color: GOLD_LIGHT, fontSize: 15 }}>🎯 تسجيل تمرين تفاعلي (SMC + ICT)</div>
+            <button
+              onClick={() => setDrawingsListTick((t) => t + 1)}
+              style={{ ...paneCornerBtnStyle, fontSize: 11 }}
+              title="حدّث القائمة (بعد ما ترسم رسمة جديدة)"
+            >
+              🔄 تحديث
+            </button>
+          </div>
+          <div style={{ fontSize: 11.5, color: "#999", marginBottom: 10, flexShrink: 0 }}>
+            ارسم عادي بأدوات الرسم (مستطيل للـ POI، خط/نقطة للـ SMT والـ CISD...)، وبعدين حدد لكل رسمة شو بتمثل من القائمة تحت. الرسومات بدون دور ما بتنحفظ بمفتاح الإجابة.
+          </div>
+
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", marginBottom: 10 }}>
+            {drawings.length === 0 && (
+              <div style={{ fontSize: 12.5, color: "#777", padding: "1rem 0", textAlign: "center" }}>ما في رسومات بالشارت لسا — ابدأ ارسم</div>
+            )}
+            {drawings.map((d) => {
+              const meta = drawingRoles[d.id] || {};
+              return (
+                <div key={d.id} style={{ padding: "8px 4px", borderBottom: "1px solid #232323" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                    <div style={{ fontSize: 12.5, color: "#e5e5e5" }}>{d.type} <span style={{ color: "#666" }}>#{String(d.id).slice(-4)}</span></div>
+                    <select
+                      value={meta.role || ""}
+                      onChange={(e) => setRoleMeta(d.id, { role: e.target.value })}
+                      style={{ ...selectStyle, minWidth: 140, padding: "0.25rem 0.4rem", fontSize: 12 }}
+                    >
+                      <option value="">— بدون دور —</option>
+                      {Object.entries(ROLE_LABELS).map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {meta.role && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <input
+                        type="number" step="0.1" placeholder="هامش السعر"
+                        value={meta.price_tolerance ?? 0.5}
+                        onChange={(e) => setRoleMeta(d.id, { price_tolerance: parseFloat(e.target.value) || 0 })}
+                        style={{ ...selectStyle, width: 90, padding: "0.25rem 0.4rem", fontSize: 11.5 }}
+                        title="هامش سماحية بالسعر"
+                      />
+                      <input
+                        type="number" placeholder="هامش الشموع"
+                        value={meta.candle_tolerance ?? 2}
+                        onChange={(e) => setRoleMeta(d.id, { candle_tolerance: parseInt(e.target.value) || 0 })}
+                        style={{ ...selectStyle, width: 90, padding: "0.25rem 0.4rem", fontSize: 11.5 }}
+                        title="هامش سماحية بعدد الشموع"
+                      />
+                      <input
+                        type="number" placeholder="الوزن %"
+                        value={meta.weight ?? 20}
+                        onChange={(e) => setRoleMeta(d.id, { weight: parseFloat(e.target.value) || 0 })}
+                        style={{ ...selectStyle, width: 80, padding: "0.25rem 0.4rem", fontSize: 11.5 }}
+                        title="وزن هالعنصر بالتقييم"
+                      />
+                      <input
+                        type="text" placeholder="ملاحظة تظهر للطالب لو غلط"
+                        value={meta.notes ?? ""}
+                        onChange={(e) => setRoleMeta(d.id, { notes: e.target.value })}
+                        style={{ ...selectStyle, flex: 1, minWidth: 140, padding: "0.25rem 0.4rem", fontSize: 11.5 }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ borderTop: "1px solid #232323", paddingTop: 10, flexShrink: 0 }}>
+            <input
+              type="text" placeholder="عنوان السيناريو (مثال: XAUUSD - انعكاس هيكلي 15د)"
+              value={scenarioForm.title}
+              onChange={(e) => setScenarioForm((f) => ({ ...f, title: e.target.value }))}
+              style={{ ...selectStyle, width: "100%", marginBottom: 8, padding: "0.4rem 0.6rem", fontSize: 12.5 }}
+            />
+            <textarea
+              placeholder="وصف مختصر يظهر للطالب قبل ما يبلش (اختياري)"
+              value={scenarioForm.description}
+              onChange={(e) => setScenarioForm((f) => ({ ...f, description: e.target.value }))}
+              rows={2}
+              style={{ ...selectStyle, width: "100%", marginBottom: 8, padding: "0.4rem 0.6rem", fontSize: 12.5, resize: "vertical" }}
+            />
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontSize: 12, color: "#999" }}>الصعوبة:</span>
+              <select
+                value={scenarioForm.difficulty}
+                onChange={(e) => setScenarioForm((f) => ({ ...f, difficulty: e.target.value }))}
+                style={{ ...selectStyle, padding: "0.3rem 0.5rem", fontSize: 12 }}
+              >
+                <option value="easy">سهل</option>
+                <option value="medium">متوسط</option>
+                <option value="hard">صعب</option>
+              </select>
+              <span style={{ fontSize: 11.5, color: "#666", marginRight: "auto" }}>{taggedDrawings().length} عنصر محدد له دور</span>
+            </div>
+            {scenarioSaveToast && (
+              <div style={{ fontSize: 12, color: GOLD_LIGHT, marginBottom: 8 }}>{scenarioSaveToast}</div>
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={close} style={{ ...btnStyle("secondary"), flex: 1 }}>إغلاق</button>
+              <button onClick={saveScenarioAndAnswerKey} disabled={savingScenario} style={{ ...btnStyle("primary"), flex: 2 }}>
+                {savingScenario ? "جاري الحفظ..." : "💾 حفظ كسيناريو + مفتاح إجابة"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function renderSettingsDialog() {
     if (!settingsOpen) return null;
     const set = (patch) => setChartSettings((s) => ({ ...s, ...(typeof patch === "function" ? patch(s) : patch) }));
@@ -5320,6 +5567,7 @@ export default function ReplayClient({ userId }) {
                 {indicatorPanelOpen && renderIndicatorPanel()}
                 {indicatorSettingsFor && renderIndicatorSettingsDialog()}
                 {templatesPanelOpen && renderTemplatesPanel()}
+                {practicePanelOpen && renderPracticePanel()}
                 <div
                   ref={chartContainerRef}
                   style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
