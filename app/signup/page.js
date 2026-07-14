@@ -113,7 +113,16 @@ useEffect(() => {
     });
 
     if (!createProfileRes.ok) {
-      setError("تم إنشاء الحساب بس صار خطأ بإعداد الملف الشخصي، تواصلي معنا من فضلك");
+      let serverMessage = "";
+      try {
+        const body = await createProfileRes.json();
+        serverMessage = body?.error || "";
+      } catch (e) {}
+      setError(
+        serverMessage
+          ? `تم إنشاء الحساب بس صار خطأ بإعداد الملف الشخصي: ${serverMessage}`
+          : "تم إنشاء الحساب بس صار خطأ بإعداد الملف الشخصي، تواصلي معنا من فضلك"
+      );
       setLoading(false);
       return;
     }
