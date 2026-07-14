@@ -172,6 +172,43 @@ function saveIndicatorTemplates(list) {
   } catch {}
 }
 
+/* قوالب أنماط الرسومات (بنفس فكرة تريدنغ فيو: احفظي شكل/لون/سماكة رسمة معيّنة
+   باسم زي "FVG.1D" أو "OB"، وبعدين طبّقيه بضغطة وحدة على أي رسمة تانية من
+   نفس النوع). محفوظة محلياً بالمتصفح، مقسّمة حسب نوع الرسمة (type) */
+const DRAWING_TEMPLATES_KEY = "qta_drawing_style_templates_v1";
+function loadDrawingTemplates() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(DRAWING_TEMPLATES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function saveDrawingTemplates(list) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(DRAWING_TEMPLATES_KEY, JSON.stringify(list));
+  } catch {}
+}
+/* الأنماط الافتراضية لأي رسمة جديدة: بترجع النمط العادي defaultStyleFor، إلا
+   إذا كان في قالب معلّم "افتراضي" لهاد النوع (بالضغط على ⭐ بقائمة القوالب)،
+   وهيك أي رسمة جديدة من نفس النوع بتطلع مباشرة بشكل القالب المفضّل */
+function styleForNewDrawing(type) {
+  const base = defaultStyleFor(type);
+  if (typeof window === "undefined") return base;
+  try {
+    const defName = window.localStorage.getItem(`qta_default_drawing_template_${type}`);
+    if (defName) {
+      const t = loadDrawingTemplates().find((tt) => tt.type === type && tt.name === defName);
+      if (t) return { ...base, ...t.style };
+    }
+  } catch {}
+  return base;
+}
+
 /* ===================== إعدادات لوحة المقارنة (نوع الشارت + ألوان)، تنحفظ محلياً بالمتصفح ===================== */
 const COMPARE_SETTINGS_KEY = "qta_compare_chart_settings_v1";
 const DEFAULT_COMPARE_SETTINGS = {
@@ -383,6 +420,20 @@ function ToolIcon({ id }) {
       return (<svg {...common}><rect x="5" y="11" width="14" height="9" rx="1.5" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>);
     case "unlock":
       return (<svg {...common}><rect x="5" y="11" width="14" height="9" rx="1.5" /><path d="M8 11V7a4 4 0 0 1 7.4-2" /></svg>);
+    case "kebab":
+      return (<svg {...common}><circle cx="5" cy="12" r="1.3" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.3" fill="currentColor" stroke="none" /></svg>);
+    case "copy2":
+      return (<svg {...common}><rect x="8" y="8" width="12" height="12" rx="1.5" /><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" /></svg>);
+    case "hexagonEye":
+      return (<svg {...common}><path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z" /><circle cx="12" cy="12" r="2.6" /></svg>);
+    case "paintbucket":
+      return (<svg {...common}><path d="M3 13l8-8 8.5 8.5a2 2 0 0 1 0 2.8l-4.4 4.4a2 2 0 0 1-2.8 0L3 12.3z" /><path d="M3 13h10" /><path d="M18.5 15.5c.6.9 1.5 2 1.5 3a1.7 1.7 0 0 1-3.4 0c0-1 .9-2.1 1.5-3z" /></svg>);
+    case "pencilLine":
+      return (<svg {...common}><path d="M4 20l1-4L15.5 5.5a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L8 19l-4 1z" /><path d="M13.5 7.5l3 3" /></svg>);
+    case "templatePlus":
+      return (<svg {...common}><rect x="3" y="3" width="8" height="8" rx="1" /><rect x="3" y="13" width="8" height="8" rx="1" /><rect x="13" y="3" width="8" height="8" rx="1" /><path d="M17 14v6M14 17h6" /></svg>);
+    case "dragDots":
+      return (<svg {...common}><circle cx="9" cy="6" r="1.2" fill="currentColor" stroke="none" /><circle cx="9" cy="12" r="1.2" fill="currentColor" stroke="none" /><circle cx="9" cy="18" r="1.2" fill="currentColor" stroke="none" /><circle cx="15" cy="6" r="1.2" fill="currentColor" stroke="none" /><circle cx="15" cy="12" r="1.2" fill="currentColor" stroke="none" /><circle cx="15" cy="18" r="1.2" fill="currentColor" stroke="none" /></svg>);
     default:
       return null;
   }
@@ -759,6 +810,7 @@ export default function ReplayClient({ userId }) {
   const selectedIdRef = useRef(null);
   const [selectionRenderTick, setSelectionRenderTick] = useState(0);
   const selectionToolbarRef = useRef(null);
+  const [drawingTemplatesMenuOpen, setDrawingTemplatesMenuOpen] = useState(false);
 
   /* ===== مقارنة الرموز (شارت مقسوم) + تكبير أي جزء بضغطتين ماوس ===== */
   const [compareOpen, setCompareOpen] = useState(false);
@@ -1063,6 +1115,7 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { intervalRef.current = interval; }, [interval]);
   useEffect(() => { drawingsVisibleRef.current = drawingsVisible; drawOverlay(); }, [drawingsVisible]);
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
+  useEffect(() => { setDrawingTemplatesMenuOpen(false); }, [selectedDrawingId]);
   useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
   useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
   useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
@@ -1139,6 +1192,7 @@ export default function ReplayClient({ userId }) {
     }
 
     for (const d of all) {
+      if (d.hidden) continue;
       const style = d.style || defaultStyleFor(d.type);
       ctx.font = "11px sans-serif";
       ctx.lineWidth = style.width || 1.5;
@@ -1887,6 +1941,14 @@ export default function ReplayClient({ userId }) {
     drawOverlay();
     setSelectionRenderTick((t) => t + 1);
   }
+  // إخفاء/إظهار هاي الرسمة لحالها بس (بدون التأثير على باقي الرسومات)
+  function toggleSelectedHidden() {
+    const idx = drawingsRef.current.findIndex((d) => d.id === selectedIdRef.current);
+    if (idx === -1) return;
+    drawingsRef.current[idx] = { ...drawingsRef.current[idx], hidden: !drawingsRef.current[idx].hidden };
+    drawOverlay();
+    setSelectionRenderTick((t) => t + 1);
+  }
   // قفل/فك قفل كل الرسومات دفعة وحدة (زر "قفل" بالشريط الجانبي)
   function toggleLockAllDrawings() {
     const list = drawingsRef.current.filter((d) => !d.tradeTag);
@@ -1956,7 +2018,7 @@ export default function ReplayClient({ userId }) {
     const pts = pathPointsRef.current;
     const tool = activeToolRef.current;
     if (pts && pts.length >= 2) {
-      drawingsRef.current.push({ id: Date.now(), type: tool, points: pts, style: defaultStyleFor(tool) });
+      drawingsRef.current.push({ id: Date.now(), type: tool, points: pts, style: styleForNewDrawing(tool) });
     }
     pathPointsRef.current = [];
     liveCursorRef.current = null;
@@ -2300,14 +2362,14 @@ export default function ReplayClient({ userId }) {
         if (tool === "text") {
           const content = window.prompt("اكتبي النص:");
           if (content) {
-            drawingsRef.current.push({ id: Date.now(), type: "text", p1: { logical, price: snapped }, text: content, style: defaultStyleFor("text") });
+            drawingsRef.current.push({ id: Date.now(), type: "text", p1: { logical, price: snapped }, text: content, style: styleForNewDrawing("text") });
           }
           setActiveTool("cursor");
           drawOverlay();
           return;
         }
         if (tool === "hline" || tool === "hray" || tool === "vline" || tool === "crossline") {
-          drawingsRef.current.push({ id: Date.now(), type: tool, p1: { logical, price: snapped }, style: defaultStyleFor(tool) });
+          drawingsRef.current.push({ id: Date.now(), type: tool, p1: { logical, price: snapped }, style: styleForNewDrawing(tool) });
           setActiveTool("cursor");
           drawOverlay();
           return;
@@ -2335,7 +2397,7 @@ export default function ReplayClient({ userId }) {
           drawOverlay();
           return;
         }
-        drawStateRef.current = { type: tool, p1: { logical, price: snapped }, p2: { logical, price: snapped }, style: defaultStyleFor(tool) };
+        drawStateRef.current = { type: tool, p1: { logical, price: snapped }, p2: { logical, price: snapped }, style: styleForNewDrawing(tool) };
         isDrawingRef.current = true;
         drawOverlay();
       }
@@ -3876,46 +3938,155 @@ export default function ReplayClient({ userId }) {
     const style = d.style || {};
     const hasWidth = style.width !== undefined;
     const hasColor = style.color !== undefined || style.targetColor !== undefined;
+    const hasFill = style.fill !== undefined;
     const locked = !!d.locked;
+    const hidden = !!d.hidden;
     return (
       <div
         ref={selectionToolbarRef}
         onMouseDown={(e) => e.stopPropagation()}
         style={{
           position: "absolute", zIndex: 21, transform: "translateX(-50%)",
-          display: "flex", alignItems: "center", gap: 2,
+          display: "flex", alignItems: "center", gap: 1,
           background: "#2B2F36", border: "1px solid #333", borderRadius: 10,
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)", padding: "4px 5px",
         }}
       >
+        <button type="button" onClick={() => openProperties(d)} title="كل الإعدادات" style={selToolBtnStyle}><ToolIcon id="kebab" /></button>
+        <button type="button" onClick={deleteSelectedDrawing} title="حذف" style={{ ...selToolBtnStyle, color: RED }}><ToolIcon id="trash" /></button>
+        <button type="button" onClick={toggleSelectedLock} title={locked ? "فك القفل" : "قفل (منع التحريك)"} style={{ ...selToolBtnStyle, color: locked ? GOLD_LIGHT : "#ccc" }}>
+          <ToolIcon id={locked ? "lock" : "unlock"} />
+        </button>
+        <button type="button" onClick={duplicateSelectedDrawing} title="نسخ" style={selToolBtnStyle}><ToolIcon id="copy2" /></button>
+        <button type="button" onClick={toggleSelectedHidden} title={hidden ? "إظهار هاي الرسمة" : "إخفاء هاي الرسمة"} style={{ ...selToolBtnStyle, color: hidden ? GOLD_LIGHT : "#ccc" }}><ToolIcon id="hexagonEye" /></button>
+        <span style={selToolDivider} />
         {hasColor && (
-          <input
-            type="color"
-            value={style.color || style.targetColor || GOLD_LIGHT}
-            onChange={(e) => updateSelectedStyle({ color: e.target.value })}
-            title="اللون"
-            style={{ width: 24, height: 24, border: "1px solid #333", borderRadius: 5, background: "none", cursor: "pointer", padding: 0 }}
-          />
+          <label title="لون الخط/الإطار" style={{ ...selToolBtnStyle, position: "relative" }}>
+            <ToolIcon id="pencilLine" />
+            <input
+              type="color"
+              value={style.color || style.targetColor || GOLD_LIGHT}
+              onChange={(e) => updateSelectedStyle({ color: e.target.value })}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", padding: 0, border: "none" }}
+            />
+          </label>
         )}
         {hasWidth && (
           <select
             value={style.width || 1.5}
             onChange={(e) => updateSelectedStyle({ width: Number(e.target.value) })}
             title="السماكة"
-            style={{ ...selectStyle, minWidth: 0, width: 52, padding: "0.3rem 0.35rem", fontSize: 12 }}
+            style={{ ...selectStyle, minWidth: 0, width: 56, padding: "0.3rem 0.35rem", fontSize: 12 }}
           >
             {[1, 1.5, 2, 3, 4].map((w) => (<option key={w} value={w}>{w}px</option>))}
           </select>
         )}
+        {hasFill && (
+          <label title="لون التعبئة" style={{ ...selToolBtnStyle, position: "relative" }}>
+            <ToolIcon id="paintbucket" />
+            <input
+              type="color"
+              value={style.fillColor || style.color || GOLD_LIGHT}
+              onChange={(e) => updateSelectedStyle({ fillColor: e.target.value, fill: true })}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", padding: 0, border: "none" }}
+            />
+          </label>
+        )}
         <span style={selToolDivider} />
-        <button type="button" onClick={duplicateSelectedDrawing} title="نسخ" style={selToolBtnStyle}>⧉</button>
-        <button type="button" onClick={toggleSelectedLock} title={locked ? "فك القفل" : "قفل (منع التحريك)"} style={{ ...selToolBtnStyle, color: locked ? GOLD_LIGHT : "#ccc" }}>
-          {locked ? "🔒" : "🔓"}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setDrawingTemplatesMenuOpen((v) => !v); }}
+          title="قوالب: احفظي أو طبّقي شكل الرسمة"
+          style={{ ...selToolBtnStyle, color: drawingTemplatesMenuOpen ? GOLD_LIGHT : "#ccc" }}
+        >
+          <ToolIcon id="templatePlus" />
         </button>
-        <button type="button" onClick={() => openProperties(d)} title="كل الإعدادات" style={selToolBtnStyle}>⋯</button>
-        <span style={selToolDivider} />
-        <button type="button" onClick={deleteSelectedDrawing} title="حذف" style={{ ...selToolBtnStyle, color: RED }}>🗑</button>
-        <button type="button" onClick={clearSelection} title="إغلاق" style={selToolBtnStyle}>✕</button>
+        {drawingTemplatesMenuOpen && renderDrawingTemplatesMenu(d)}
+        <span style={{ ...selToolBtnStyle, cursor: "default", color: "#555" }} title="اسحبي لتحريك الشريط">
+          <ToolIcon id="dragDots" />
+        </span>
+      </div>
+    );
+  }
+
+  /* قائمة قوالب شكل الرسمة (زي تريدنغ فيو): حفظ الشكل الحالي باسم، تطبيق
+     القالب الافتراضي المعلّم لهاد النوع، وقائمة كل القوالب المحفوظة لنفس
+     نوع الرسمة (كل وحدة فيها زر تطبيق + تعليم كافتراضي + حذف) */
+  function renderDrawingTemplatesMenu(d) {
+    const type = d.type;
+    const allTemplates = loadDrawingTemplates();
+    const templates = allTemplates.filter((t) => t.type === type);
+    let defaultName = null;
+    try { defaultName = window.localStorage.getItem(`qta_default_drawing_template_${type}`); } catch {}
+    function refresh() {
+      setDrawingTemplatesMenuOpen(false);
+      setDrawingTemplatesMenuOpen(true);
+    }
+    function saveAsTemplate() {
+      const name = window.prompt("احفظي نموذج الرسم بإسم:", `قالب ${templates.length + 1}`);
+      if (!name) return;
+      const next = [...allTemplates.filter((t) => !(t.type === type && t.name === name)), { type, name, style: d.style, text: d.text || null }];
+      saveDrawingTemplates(next);
+      refresh();
+    }
+    function applyDefaultTemplate() {
+      const t = defaultName ? templates.find((tt) => tt.name === defaultName) : null;
+      const patch = t ? { ...t.style } : defaultStyleFor(type);
+      updateSelectedStyle(patch);
+      if (t && t.text != null) {
+        const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
+        if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: t.text };
+      }
+      setDrawingTemplatesMenuOpen(false);
+    }
+    function applyTemplate(t) {
+      updateSelectedStyle({ ...t.style });
+      const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
+      if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: t.text ?? drawingsRef.current[idx].text };
+      setDrawingTemplatesMenuOpen(false);
+    }
+    function setAsDefault(t) {
+      try { window.localStorage.setItem(`qta_default_drawing_template_${type}`, t.name); } catch {}
+      refresh();
+    }
+    function removeTemplate(t) {
+      saveDrawingTemplates(allTemplates.filter((tt) => !(tt.type === type && tt.name === t.name)));
+      if (defaultName === t.name) {
+        try { window.localStorage.removeItem(`qta_default_drawing_template_${type}`); } catch {}
+      }
+      refresh();
+    }
+    return (
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "absolute", top: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+          zIndex: 25, minWidth: 250, maxHeight: 340, overflowY: "auto",
+          background: "#171b26", border: "1px solid #242832", borderRadius: 10,
+          boxShadow: "0 8px 28px rgba(0,0,0,0.55)", padding: "6px 0",
+        }}
+      >
+        <div onClick={saveAsTemplate} style={templateMenuItemStyle}>حفظ نموذج الرسم بإسم...</div>
+        <div onClick={applyDefaultTemplate} style={templateMenuItemStyle}>تطبيق نموذج القالب الافتراضي للرسوم</div>
+        {templates.length > 0 && <div style={{ height: 1, background: "#242832", margin: "4px 0" }} />}
+        {templates.map((t) => (
+          <div key={t.name} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px" }}>
+            <div onClick={() => applyTemplate(t)} style={{ flex: 1, cursor: "pointer", fontSize: 13, color: "#e5e5e5", padding: "5px 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {t.name}
+            </div>
+            <span
+              onClick={() => setAsDefault(t)}
+              title={defaultName === t.name ? "القالب الافتراضي الحالي" : "تعيين كافتراضي"}
+              style={{ cursor: "pointer", fontSize: 14, color: defaultName === t.name ? GOLD_LIGHT : "#4a4e58" }}
+            >
+              {defaultName === t.name ? "★" : "☆"}
+            </span>
+            <span onClick={() => removeTemplate(t)} title="حذف القالب" style={{ cursor: "pointer", color: "#888", fontSize: 12 }}>✕</span>
+          </div>
+        ))}
+        {templates.length === 0 && (
+          <div style={{ padding: "8px 14px", fontSize: 12, color: "#777" }}>ما في قوالب محفوظة لهاد النوع لسا</div>
+        )}
       </div>
     );
   }
@@ -5001,6 +5172,9 @@ const selToolBtnStyle = {
   background: "none", border: "none", borderRadius: 6, color: "#ccc", cursor: "pointer", fontSize: 14,
 };
 const selToolDivider = { width: 1, height: 18, background: "#333", margin: "0 2px", flexShrink: 0 };
+const templateMenuItemStyle = {
+  padding: "9px 14px", cursor: "pointer", fontSize: 13, color: "#e5e5e5",
+};
 
 function paneCornerBadgeStyle(side) {
   return {
