@@ -91,6 +91,7 @@ function rowToTrade(row) {
     tp: Number(row.tp),
     result: row.result,
     setup: row.setup || "",
+    session: row.session || "",
     reason: row.reason || "",
     riskAmount: Number(row.risk_amount),
     rewardAmount: Number(row.reward_amount),
@@ -114,6 +115,7 @@ function tradeToRow(trade, userId) {
     tp: trade.tp,
     result: trade.result,
     setup: trade.setup || null,
+    session: trade.session || null,
     reason: trade.reason || null,
     risk_amount: trade.riskAmount,
     reward_amount: trade.rewardAmount,
@@ -178,6 +180,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
   const [lot, setLot] = useState("0.01");
   const [result, setResult] = useState("pending");
   const [setup, setSetup] = useState("");
+  const [session, setSession] = useState("");
   const [entry, setEntry] = useState("5000");
   const [sl, setSl] = useState("4997");
   const [tp, setTp] = useState("5020");
@@ -327,6 +330,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
         tp: t,
         result: "pending",
         setup: setup.trim(),
+        session,
         reason: "",
         riskAmount,
         rewardAmount,
@@ -347,6 +351,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
         tp: t,
         result,
         setup: setup.trim(),
+        session,
         reason: reason.trim(),
         riskAmount,
         rewardAmount,
@@ -376,9 +381,11 @@ export default function BacktestClient({ userId, username, initialBalance, initi
       if (result === "loss") nb = balance - riskAmount;
       if (nb !== balance) await persistBalance(nb);
       setSetup("");
+      setSession("");
       setReason("");
     } else {
       setSetup("");
+      setSession("");
     }
   }
 
@@ -790,6 +797,15 @@ export default function BacktestClient({ userId, username, initialBalance, initi
               <div className="qta-field">
                 <label>الإعداد</label>
                 <input type="text" value={setup} onChange={(e) => setSetup(e.target.value)} placeholder="مثال: اختراق + ريتست" />
+              </div>
+              <div className="qta-field">
+                <label>الجلسة</label>
+                <select value={session} onChange={(e) => setSession(e.target.value)}>
+                  <option value="">— غير محددة —</option>
+                  <option value="london">جلسة لندن</option>
+                  <option value="newyork">جلسة نيويورك</option>
+                  <option value="asia">الجلسة الآسيوية</option>
+                </select>
               </div>
             </div>
             <div className="qta-form-row">

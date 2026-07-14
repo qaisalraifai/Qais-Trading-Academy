@@ -8,6 +8,7 @@ import ReplayClient from "../replay/ReplayClient";
 import AccountsAdminView from "./components/AccountsAdminView";
 import LiveView from "./components/LiveView";
 import SettingsView from "./components/SettingsView";
+import TraderDnaView from "./components/TraderDnaView";
 import AffiliateClient from "../affiliate/AffiliateClient";
 import MlmClient from "../mlm/MlmClient";
 import AppShell from "../components/layout/AppShell";
@@ -21,6 +22,7 @@ const RED = "#F6465D";
 const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: "👥", view: "accounts" },
   { key: "live", label: "البث المباشر", icon: "🔴", view: "live" },
+  { key: "trader-dna", label: "بصمتك كمتداول", icon: "🧬", view: "trader-dna" },
   { key: "lectures", label: "المحاضرات", icon: "🎓", view: "lectures" },
   { key: "calendar", label: "التقويم الاقتصادي", icon: "📅", view: "calendar" },
   { key: "replay", label: "Replay التدريب", icon: "🎯", view: "replay" },
@@ -419,6 +421,8 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
           <AccountsAdminView username={username} />
         ) : activeKey === "live" ? (
           <LiveView isAdmin={isAdmin} username={username} />
+        ) : activeKey === "trader-dna" ? (
+          <TraderDnaView userId={userId} />
         ) : activeKey === "calendar" ? (
           <CalendarView events={economicEvents} loading={calendarLoading} isAdmin={isAdmin} />
         ) : activeKey === "lectures" ? (
