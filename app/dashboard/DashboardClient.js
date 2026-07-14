@@ -7,6 +7,7 @@ import ReplayClient from "../replay/ReplayClient";
 import AccountsAdminView from "./components/AccountsAdminView";
 import SettingsView from "./components/SettingsView";
 import AffiliateClient from "../affiliate/AffiliateClient";
+import MlmClient from "../mlm/MlmClient";
 
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
@@ -479,12 +480,25 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
         </div>
 
         <div style={{ marginTop: "1.4rem", display: "flex", flexDirection: "column", gap: 4, paddingTop: "1.2rem", borderTop: "1px solid #1a1a0a" }}>
-  <Link href="/mlm" style={{ textDecoration: "none" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.7rem 0.9rem", color: GOLD, fontSize: 13 }}>
-      <span>🌳</span>
-      <span>شبكتي (الشجرة الثنائية)</span>
-    </div>
-  </Link>
+  <div
+    onClick={() => setActiveKey("mlm")}
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "0.7rem 0.9rem",
+      borderRadius: 10,
+      background: activeKey === "mlm" ? `linear-gradient(135deg, ${GOLD}22, ${GOLD_DARK}11)` : "transparent",
+      border: activeKey === "mlm" ? `1px solid ${GOLD}55` : "1px solid transparent",
+      color: GOLD,
+      fontSize: 13,
+      fontWeight: activeKey === "mlm" ? 700 : 400,
+      cursor: "pointer",
+    }}
+  >
+    <span>🌳</span>
+    <span>شبكتي (الشجرة الثنائية)</span>
+  </div>
   <div
     onClick={() => setActiveKey("affiliate")}
     style={{
@@ -649,6 +663,8 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
           <SettingsView username={username} />
         ) : activeKey === "affiliate" ? (
           <AffiliateClient embedded />
+        ) : activeKey === "mlm" ? (
+          <MlmClient embedded />
         ) : activeKey === "backtest" ? (
           userId ? (
             <BacktestClient
