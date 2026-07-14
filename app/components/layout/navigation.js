@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Users,
+  Radio,
   GraduationCap,
   Calendar,
   Target,
@@ -18,18 +19,19 @@ import {
 
 export const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: Users, view: "accounts", adminOnly: true },
+  { key: "live", label: "البث المباشر", icon: Radio, view: "live" },
   { key: "lectures", label: "المحاضرات", icon: GraduationCap, view: "lectures" },
   { key: "calendar", label: "التقويم الاقتصادي", icon: Calendar, view: "calendar" },
   { key: "replay", label: "Replay التدريب", icon: Target, view: "replay" },
   { key: "strategies", label: "الاستراتيجيات", icon: Puzzle, view: "strategies", comingSoon: true },
   { key: "trades", label: "الصفقات", icon: BarChart3, view: "backtest" },
   { key: "reports", label: "التقارير", icon: FileText, view: "reports", comingSoon: true },
+  { key: "mlm", label: "شبكتي (الشجرة الثنائية)", icon: TreePine, view: "mlm" },
+  { key: "affiliate", label: "برنامج التسويق بالعمولة", icon: Handshake, view: "affiliate" },
   { key: "settings", label: "الإعدادات", icon: Settings, view: "settings" },
 ];
 
 export const FOOTER_LINKS = [
-  { key: "mlm", label: "شبكتي (الشجرة الثنائية)", icon: TreePine, href: "/mlm", color: "gold" },
-  { key: "affiliate", label: "برنامج التسويق بالعمولة", icon: Handshake, href: "/affiliate", color: "gold" },
   { key: "discord", label: "مجتمع Discord", icon: MessageCircle, href: "/discord", color: "discord" },
   { key: "help", label: "مركز المساعدة", icon: HelpCircle, href: null, color: "muted" },
 ];

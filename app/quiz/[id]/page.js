@@ -1,11 +1,15 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import QuizForm from "@/app/components/QuizForm";
+import PageShell from "@/app/components/layout/PageShell";
+import { getShellProfile } from "@/lib/shell-profile";
 
 export default async function QuizPage({ params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const shellProfile = await getShellProfile(supabase, user);
 
   const { data: quiz } = await supabase
     .from("quizzes")
@@ -22,10 +26,12 @@ export default async function QuizPage({ params }) {
     .order("order_index", { ascending: true });
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>{quiz.title}</h1>
-      <QuizForm quizId={quiz.id} questions={questions || []} studentId={user.id} />
-    </div>
+    <PageShell {...shellProfile}>
+      <div style={styles.container}>
+        <h1 style={styles.title}>{quiz.title}</h1>
+        <QuizForm quizId={quiz.id} questions={questions || []} studentId={user.id} />
+      </div>
+    </PageShell>
   );
 }
 

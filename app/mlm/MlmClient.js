@@ -162,8 +162,8 @@ export default function MlmClient({ embedded = false }) {
   }
 
   const outerStyle = embedded
-    ? { color: "#EAECEF", direction: "rtl", fontFamily: "'Inter', sans-serif" }
-    : { background: BG, color: "#EAECEF", minHeight: "100vh", padding: "2.5rem 3rem", direction: "rtl", fontFamily: "'Inter', sans-serif" };
+    ? { color: "#EAECEF", direction: "rtl" }
+    : { color: "#EAECEF", padding: "2rem 1.5rem 3rem", direction: "rtl", maxWidth: 1150, margin: "0 auto" };
 
   if (loading) {
     return (

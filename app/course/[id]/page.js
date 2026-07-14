@@ -1,11 +1,15 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import CourseClient from "./CourseClient";
+import PageShell from "@/app/components/layout/PageShell";
+import { getShellProfile } from "@/lib/shell-profile";
 
 export default async function CoursePage({ params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const shellProfile = await getShellProfile(supabase, user);
 
   const { data: course } = await supabase
     .from("courses")
@@ -56,5 +60,9 @@ export default async function CoursePage({ params }) {
     .map((name) => chaptersMap.get(name))
     .sort((a, b) => a.order - b.order);
 
-  return <CourseClient course={course} chapters={chapters} />;
+  return (
+    <PageShell {...shellProfile}>
+      <CourseClient course={course} chapters={chapters} />
+    </PageShell>
+  );
 }

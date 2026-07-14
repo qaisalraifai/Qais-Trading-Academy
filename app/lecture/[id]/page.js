@@ -1,11 +1,15 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import PageShell from "@/app/components/layout/PageShell";
+import { getShellProfile } from "@/lib/shell-profile";
 
 export default async function LecturePage({ params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const shellProfile = await getShellProfile(supabase, user);
 
   const { data: lecture } = await supabase
     .from("lectures").select("*").eq("id", params.id).single();
@@ -16,6 +20,7 @@ export default async function LecturePage({ params }) {
     .order("order_index", { ascending: true });
 
   return (
+    <PageShell {...shellProfile}>
     <div style={{
       minHeight: "100vh",
       background: "radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%)",
@@ -110,5 +115,6 @@ export default async function LecturePage({ params }) {
         </p>
       </div>
     </div>
+    </PageShell>
   );
 }
