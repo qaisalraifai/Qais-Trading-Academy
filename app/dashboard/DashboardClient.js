@@ -9,6 +9,7 @@ import AccountsAdminView from "./components/AccountsAdminView";
 import LiveView from "./components/LiveView";
 import SettingsView from "./components/SettingsView";
 import TraderDnaView from "./components/TraderDnaView";
+import ReportsView from "./components/ReportsView";
 import AffiliateClient from "../affiliate/AffiliateClient";
 import MlmClient from "../mlm/MlmClient";
 import AppShell from "../components/layout/AppShell";
@@ -423,6 +424,8 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
           <LiveView isAdmin={isAdmin} username={username} />
         ) : activeKey === "trader-dna" ? (
           <TraderDnaView userId={userId} />
+        ) : activeKey === "reports" ? (
+          <ReportsView userId={userId} />
         ) : activeKey === "calendar" ? (
           <CalendarView events={economicEvents} loading={calendarLoading} isAdmin={isAdmin} />
         ) : activeKey === "lectures" ? (
