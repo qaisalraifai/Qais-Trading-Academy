@@ -2582,8 +2582,13 @@ function LecturesView({
           }}
         >
           <iframe
-            src={`https://www.youtube.com/embed/${selectedLecture.youtube_video_id}?rel=0&modestbranding=1`}
+            src={
+              selectedLecture.video_provider === "drive"
+                ? `https://drive.google.com/file/d/${selectedLecture.youtube_video_id}/preview`
+                : `https://www.youtube.com/embed/${selectedLecture.youtube_video_id}?rel=0&modestbranding=1`
+            }
             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
+            allow="autoplay; encrypted-media"
             allowFullScreen
           />
         </div>

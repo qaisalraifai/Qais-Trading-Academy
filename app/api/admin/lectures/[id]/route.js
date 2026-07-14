@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, extractDriveFileId } from "@/lib/admin-auth";
+import { requireAdmin, extractVideoId } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
 
 export async function PUT(request, { params }) {
@@ -10,14 +10,17 @@ export async function PUT(request, { params }) {
 
   const body = await request.json();
   const {
-    title, description, driveLink, order_index,
+    title, description, videoLink, video_provider, order_index,
     course_id, chapter, chapter_order, duration_minutes, difficulty, practice_type,
   } = body;
+
+  const provider = video_provider === "drive" ? "drive" : "youtube";
 
   const updateData = {};
   if (title !== undefined) updateData.title = title;
   if (description !== undefined) updateData.description = description || null;
-  if (driveLink !== undefined) updateData.youtube_video_id = extractDriveFileId(driveLink);
+  if (video_provider !== undefined) updateData.video_provider = provider;
+  if (videoLink !== undefined) updateData.youtube_video_id = extractVideoId(videoLink, provider);
   if (order_index !== undefined && order_index !== "") updateData.order_index = order_index;
   if (course_id !== undefined) updateData.course_id = course_id || null;
   if (chapter !== undefined) updateData.chapter = chapter || null;

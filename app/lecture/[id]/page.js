@@ -94,8 +94,13 @@ export default async function LecturePage({ params }) {
           border: "1px solid #D4AF3722",
         }}>
           <iframe
-            src={`https://www.youtube.com/embed/${lecture.youtube_video_id}?rel=0&modestbranding=1`}
+            src={
+              lecture.video_provider === "drive"
+                ? `https://drive.google.com/file/d/${lecture.youtube_video_id}/preview`
+                : `https://www.youtube.com/embed/${lecture.youtube_video_id}?rel=0&modestbranding=1`
+            }
             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
+            allow="autoplay; encrypted-media"
             allowFullScreen
           />
         </div>

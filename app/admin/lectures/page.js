@@ -6,10 +6,15 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const emptyForm = {
-  title: "", description: "", driveLink: "", order_index: "",
+  title: "", description: "", videoLink: "", video_provider: "youtube", order_index: "",
   course_id: "", chapter: "", chapter_order: "", duration_minutes: "",
   difficulty: "", practice_type: "",
 };
+
+const VIDEO_PROVIDER_OPTIONS = [
+  { value: "youtube", label: "▶️ يوتيوب (رابط عادي أو غير مدرج)" },
+  { value: "drive", label: "🗂️ Google Drive" },
+];
 
 const DIFFICULTY_OPTIONS = [
   { value: "", label: "بدون تحديد" },
@@ -81,7 +86,8 @@ export default function AdminLecturesPage() {
     setForm({
       title: lecture.title || "",
       description: lecture.description || "",
-      driveLink: lecture.youtube_video_id || "",
+      videoLink: lecture.youtube_video_id || "",
+      video_provider: lecture.video_provider || "youtube",
       order_index: lecture.order_index ?? "",
       course_id: lecture.course_id || "",
       chapter: lecture.chapter || "",
@@ -166,15 +172,34 @@ export default function AdminLecturesPage() {
               required
             />
 
-            <label style={s.label}>رابط Google Drive</label>
+            <label style={s.label}>وين رفعتي الفيديو؟</label>
+            <select
+              style={s.input}
+              value={form.video_provider}
+              onChange={(e) => setForm({ ...form, video_provider: e.target.value })}
+            >
+              {VIDEO_PROVIDER_OPTIONS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+
+            <label style={s.label}>رابط الفيديو</label>
             <input
               style={s.input}
-              value={form.driveLink}
-              onChange={(e) => setForm({ ...form, driveLink: e.target.value })}
-              placeholder="https://drive.google.com/file/d/XXXXXXXX/view"
+              value={form.videoLink}
+              onChange={(e) => setForm({ ...form, videoLink: e.target.value })}
+              placeholder={
+                form.video_provider === "drive"
+                  ? "https://drive.google.com/file/d/XXXXXXXX/view"
+                  : "https://www.youtube.com/watch?v=XXXXXXXXXXX"
+              }
               required
             />
-            <p style={s.hint}>حطي رابط المشاركة تبع الملف من Drive، أو الـ File ID مباشرة.</p>
+            <p style={s.hint}>
+              {form.video_provider === "drive"
+                ? "حطي رابط المشاركة تبع الملف من Drive، أو الـ File ID مباشرة."
+                : "حطي رابط الفيديو من يوتيوب (عادي أو غير مدرج/Unlisted)، أو الـ Video ID مباشرة."}
+            </p>
 
             <label style={s.label}>الوصف (اختياري)</label>
             <textarea
@@ -275,7 +300,7 @@ export default function AdminLecturesPage() {
           <table style={s.table}>
             <thead>
               <tr>
-                {["الترتيب", "العنوان", "الكورس", "الفصل", "الصعوبة", "إجراءات"].map((h, i) => (
+                {["الترتيب", "العنوان", "الكورس", "الفصل", "المنصة", "الصعوبة", "إجراءات"].map((h, i) => (
                   <th key={i} style={s.th}>{h}</th>
                 ))}
               </tr>
@@ -290,6 +315,11 @@ export default function AdminLecturesPage() {
                     <td style={s.td}><span style={s.username}>{lecture.title}</span></td>
                     <td style={s.td}><span style={s.mono}>{course ? `${course.icon} ${course.title}` : "—"}</span></td>
                     <td style={s.td}><span style={s.mono}>{lecture.chapter || "—"}</span></td>
+                    <td style={s.td}>
+                      <span style={s.mono}>
+                        {lecture.video_provider === "drive" ? "🗂️ Drive" : "▶️ يوتيوب"}
+                      </span>
+                    </td>
                     <td style={s.td}><span style={s.mono}>{diff?.value ? diff.label : "—"}</span></td>
                     <td style={s.td}>
                       <div style={{ display: "flex", gap: "0.5rem" }}>

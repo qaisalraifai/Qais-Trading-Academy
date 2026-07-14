@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, extractDriveFileId } from "@/lib/admin-auth";
+import { requireAdmin, extractVideoId } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
 
 export async function GET() {
@@ -26,18 +26,20 @@ export async function POST(request) {
 
   const body = await request.json();
   const {
-    title, description, driveLink, order_index,
+    title, description, videoLink, video_provider, order_index,
     course_id, chapter, chapter_order, duration_minutes, difficulty, practice_type,
   } = body;
 
-  if (!title || !driveLink) {
+  const provider = video_provider === "drive" ? "drive" : "youtube";
+
+  if (!title || !videoLink) {
     return NextResponse.json(
-      { error: "العنوان ورابط Drive مطلوبين" },
+      { error: "العنوان ورابط الفيديو مطلوبين" },
       { status: 400 }
     );
   }
 
-  const fileId = extractDriveFileId(driveLink);
+  const fileId = extractVideoId(videoLink, provider);
   const supabase = createAdminClient();
 
   // لو ما تحدد ترتيب، حطها آخر وحدة
@@ -58,6 +60,7 @@ export async function POST(request) {
       title,
       description: description || null,
       youtube_video_id: fileId,
+      video_provider: provider,
       order_index: finalOrder,
       course_id: course_id || null,
       chapter: chapter || null,
