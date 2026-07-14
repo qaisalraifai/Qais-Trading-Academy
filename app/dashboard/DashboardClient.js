@@ -141,9 +141,16 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
     async function loadCalendar() {
       setCalendarLoading(true);
       const supabase = createClient();
+      // نجيب بس من أمس فصاعدًا (مش كل الأرشيف المتراكم بقاعدة البيانات) —
+      // هيك ما تضل أخبار الأسابيع الفاتت عالقة بأول القائمة وبفلتر الأيام.
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - 1);
+      const fromDateStr = fromDate.toISOString().split("T")[0];
+
       const { data } = await supabase
         .from("economic_events")
         .select("*")
+        .gte("event_date", fromDateStr)
         .order("event_date", { ascending: true })
         .order("event_time", { ascending: true });
       if (!active) return;
