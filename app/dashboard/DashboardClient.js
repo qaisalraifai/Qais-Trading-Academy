@@ -807,6 +807,15 @@ function formatCountdown(diffMs) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+// وقت الخبر بالساعة/دقيقة معدّل حسب المنطقة الزمنية اللي اختارها المشترك (مو نص
+// ثابت مخزّن بقاعدة البيانات كان بيبقى نفسه بغض النظر عن اختيار المستخدم).
+function formatEventTimeInTz(event_datetime, tzOffset) {
+  if (!event_datetime) return "--:--";
+  const shifted = new Date(new Date(event_datetime).getTime() + tzOffset * 3600 * 1000);
+  if (Number.isNaN(shifted.getTime())) return "--:--";
+  return `${String(shifted.getUTCHours()).padStart(2, "0")}:${String(shifted.getUTCMinutes()).padStart(2, "0")}`;
+}
+
 const PURPLE = "#7c5cff";
 const PURPLE_LIGHT = "#B084F5";
 
@@ -1870,7 +1879,7 @@ function CalendarView({ events, loading, isAdmin }) {
                           {flag} {selectedEvent.event_title}
                         </p>
                         <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
-                          {selectedEvent.currency} · {formatArabicDate(selectedEvent.event_date)} · {selectedEvent.event_time}
+                          {selectedEvent.currency} · {formatArabicDate(selectedEvent.event_date)} · {formatEventTimeInTz(selectedEvent.event_datetime, tzOffset)}
                         </p>
                       </div>
                     </div>
@@ -2205,7 +2214,7 @@ function CalendarView({ events, loading, isAdmin }) {
                         >
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                              <span style={{ fontSize: 11, color: "#888" }}>{ev.event_time}</span>
+                              <span style={{ fontSize: 11, color: "#888" }}>{formatEventTimeInTz(ev.event_datetime, tzOffset)}</span>
                               <span style={{ fontSize: 15 }}>{CURRENCY_FLAGS[ev.currency] || "🌐"}</span>
                             </div>
                             <span style={{ fontSize: 12 }}>{impactStyle.dot}</span>
