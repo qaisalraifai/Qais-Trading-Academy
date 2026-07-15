@@ -17,6 +17,9 @@ export async function GET(request) {
 
   try {
     const result = await refreshEconomicCalendar({ analyze: false });
+    if (result.upsertErrorMessage) {
+      return Response.json({ success: false, mode: "sync-only", ...result }, { status: 500 });
+    }
     return Response.json({ success: true, mode: "sync-only", ...result });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 502 });

@@ -15,6 +15,9 @@ export async function GET(request) {
 
   try {
     const result = await refreshEconomicCalendar();
+    if (result.upsertErrorMessage) {
+      return Response.json({ success: false, ...result }, { status: 500 });
+    }
     return Response.json({ success: true, ...result });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 502 });
