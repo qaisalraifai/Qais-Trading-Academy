@@ -10,6 +10,7 @@ import LiveView from "./components/LiveView";
 import SettingsView from "./components/SettingsView";
 import TraderDnaView from "./components/TraderDnaView";
 import ReportsView from "./components/ReportsView";
+import RadarView from "./components/RadarView";
 import AffiliateClient from "../affiliate/AffiliateClient";
 import MlmClient from "../mlm/MlmClient";
 import AppShell from "../components/layout/AppShell";
@@ -23,6 +24,7 @@ const RED = "#F6465D";
 const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: "👥", view: "accounts" },
   { key: "live", label: "البث المباشر", icon: "🔴", view: "live" },
+  { key: "radar", label: "Trading Radar", icon: "📡", view: "radar" },
   { key: "trader-dna", label: "بصمتك كمتداول", icon: "🧬", view: "trader-dna" },
   { key: "lectures", label: "المحاضرات", icon: "🎓", view: "lectures" },
   { key: "calendar", label: "التقويم الاقتصادي", icon: "📅", view: "calendar" },
@@ -426,6 +428,8 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
           <AccountsAdminView username={username} />
         ) : activeKey === "live" ? (
           <LiveView isAdmin={isAdmin} username={username} />
+        ) : activeKey === "radar" ? (
+          <RadarView />
         ) : activeKey === "trader-dna" ? (
           <TraderDnaView userId={userId} />
         ) : activeKey === "reports" ? (
@@ -805,15 +809,6 @@ function formatCountdown(diffMs) {
   const seconds = totalSeconds % 60;
   if (days > 0) return `${days} يوم ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-// وقت الخبر بالساعة/دقيقة معدّل حسب المنطقة الزمنية اللي اختارها المشترك (مو نص
-// ثابت مخزّن بقاعدة البيانات كان بيبقى نفسه بغض النظر عن اختيار المستخدم).
-function formatEventTimeInTz(event_datetime, tzOffset) {
-  if (!event_datetime) return "--:--";
-  const shifted = new Date(new Date(event_datetime).getTime() + tzOffset * 3600 * 1000);
-  if (Number.isNaN(shifted.getTime())) return "--:--";
-  return `${String(shifted.getUTCHours()).padStart(2, "0")}:${String(shifted.getUTCMinutes()).padStart(2, "0")}`;
 }
 
 const PURPLE = "#7c5cff";
@@ -1879,7 +1874,7 @@ function CalendarView({ events, loading, isAdmin }) {
                           {flag} {selectedEvent.event_title}
                         </p>
                         <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
-                          {selectedEvent.currency} · {formatArabicDate(selectedEvent.event_date)} · {formatEventTimeInTz(selectedEvent.event_datetime, tzOffset)}
+                          {selectedEvent.currency} · {formatArabicDate(selectedEvent.event_date)} · {selectedEvent.event_time}
                         </p>
                       </div>
                     </div>
@@ -2214,7 +2209,7 @@ function CalendarView({ events, loading, isAdmin }) {
                         >
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                              <span style={{ fontSize: 11, color: "#888" }}>{formatEventTimeInTz(ev.event_datetime, tzOffset)}</span>
+                              <span style={{ fontSize: 11, color: "#888" }}>{ev.event_time}</span>
                               <span style={{ fontSize: 15 }}>{CURRENCY_FLAGS[ev.currency] || "🌐"}</span>
                             </div>
                             <span style={{ fontSize: 12 }}>{impactStyle.dot}</span>

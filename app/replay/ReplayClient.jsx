@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets";
 import { createClient } from "@/lib/supabase-client";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
@@ -720,6 +721,18 @@ export default function ReplayClient({ userId }) {
   const [interval, setIntervalValue] = useState("15m");
   const [speed, setSpeed] = useState(700);
   const [maxBars, setMaxBars] = useState(5000);
+
+  // فتح الشارت مباشرة على رمز معيّن جاي من صفحة تانية (زر "افتح الشارت" برادار QAIS مثلاً)
+  const radarSearchParams = useSearchParams();
+  useEffect(() => {
+    const wanted = radarSearchParams.get("asset");
+    if (wanted && getAssetByValue(wanted)?.yahoo) {
+      setAssetValue(wanted);
+      setMode("live");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const [allCandles, setAllCandles] = useState([]);
   const [revealCount, setRevealCount] = useState(0);

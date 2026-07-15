@@ -10,9 +10,6 @@ export async function POST() {
 
   try {
     const result = await refreshEconomicCalendar();
-    if (result.upsertErrorMessage) {
-      return NextResponse.json({ success: false, ...result }, { status: 500 });
-    }
     return NextResponse.json({ success: true, ...result });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 502 });

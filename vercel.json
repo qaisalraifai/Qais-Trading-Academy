@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/affiliate-payouts",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/qais-radar",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
