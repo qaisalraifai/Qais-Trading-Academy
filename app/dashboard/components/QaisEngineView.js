@@ -408,30 +408,42 @@ export default function QaisEngineView() {
   /* الطبقات الخام (fvgs/voids/brkr/mtg/ob/structureEvents/sweeps/rjb) بترجع من محرك lib/qais
      مباشرة عبر إعادة استدعاء الدوال الفرعية على نفس شموع العرض — منخزنها بـ ref لتفادي إعادة حساب مكلفة بكل رندر */
   const rawLayersRef = useRef(null);
+  const [debugInfo, setDebugInfo] = useState("");
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (candles.length < 30) return;
-      const { analyzeStructure } = await import("@/lib/qais/structure");
-      const { analyzeLiquidity } = await import("@/lib/qais/liquidity");
-      const { analyzeOrderBlock } = await import("@/lib/qais/orderblock");
-      if (cancelled) return;
-      const struct = analyzeStructure(candles);
-      const liquidity = analyzeLiquidity(candles, struct);
-      const ob = analyzeOrderBlock(candles, struct, liquidity);
-      rawLayersRef.current = {
-        fvgs: liquidity.fvgs.slice(-4),
-        voids: liquidity.voids.slice(-2),
-        brkr: liquidity.brkr.slice(-2),
-        mtg: liquidity.mtg.slice(-2),
-        sweeps: liquidity.sweeps.slice(-4),
-        rjb: liquidity.rjb.slice(-3),
-        structureEvents: struct.events.slice(-6),
-        ob,
-        poi: liquidity.touchedZone, // منطقة الاهتمام الفعلية يلي اعتمدها محرك القرار
-      };
-      applyPriceLinesAndMarkers();
-      drawOverlay();
+      try {
+        const { analyzeStructure } = await import("@/lib/qais/structure");
+        const { analyzeLiquidity } = await import("@/lib/qais/liquidity");
+        const { analyzeOrderBlock } = await import("@/lib/qais/orderblock");
+        if (cancelled) return;
+        const struct = analyzeStructure(candles);
+        const liquidity = analyzeLiquidity(candles, struct);
+        const ob = analyzeOrderBlock(candles, struct, liquidity);
+        rawLayersRef.current = {
+          fvgs: liquidity.fvgs.slice(-4),
+          voids: liquidity.voids.slice(-2),
+          brkr: liquidity.brkr.slice(-2),
+          mtg: liquidity.mtg.slice(-2),
+          sweeps: liquidity.sweeps.slice(-4),
+          rjb: liquidity.rjb.slice(-3),
+          structureEvents: struct.events.slice(-6),
+          ob,
+          poi: liquidity.touchedZone, // منطقة الاهتمام الفعلية يلي اعتمدها محرك القرار
+        };
+        if (cancelled) return;
+        setDebugInfo(
+          `FVG:${rawLayersRef.current.fvgs.length} OB:${ob?.eligible ? 1 : 0} MTG:${rawLayersRef.current.mtg.length} BRKR:${rawLayersRef.current.brkr.length} POI:${liquidity.touchedZone ? liquidity.touchedZone.type : "—"} candles:${candles.length}`
+        );
+        applyPriceLinesAndMarkers();
+        drawOverlay();
+      } catch (e) {
+        // ما كنا نمسك هالخطأ قبل هيك — لو صار استثناء هون كانت الطبقات تختفي
+        // بصمت بدون أي أثر بالكونسول، وهاد بالضبط اللي كان يخلي الشارت يطلع فاضي
+        console.error("QAIS layers computation failed:", e);
+        setDebugInfo(`⚠️ خطأ بحساب الطبقات: ${e?.message || e}`);
+      }
     })();
     return () => {
       cancelled = true;
@@ -550,6 +562,24 @@ export default function QaisEngineView() {
         <div style={{ ...cardStyle, padding: "0.6rem", flex: 1, minWidth: 320, position: "relative" }}>
           <div ref={containerRef} style={{ width: "100%", height: 520 }} />
           <canvas ref={canvasRef} width={800} height={520} style={{ position: "absolute", top: "0.6rem", left: "0.6rem", pointerEvents: "none" }} />
+          {debugInfo && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 6,
+                left: 6,
+                fontSize: 10,
+                color: debugInfo.startsWith("⚠️") ? RED : "#888",
+                background: "rgba(0,0,0,0.55)",
+                padding: "2px 6px",
+                borderRadius: 4,
+                pointerEvents: "none",
+                fontFamily: "monospace",
+              }}
+            >
+              {debugInfo}
+            </div>
+          )}
         </div>
 
         {/* لوحة القرار */}
