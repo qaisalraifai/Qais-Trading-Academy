@@ -15,7 +15,7 @@ const sectionsAr = [
   {
     heading: "2. البيانات التي نجمعها",
     body: [
-      "عند التسجيل واستخدام المنصة، قد نجمع: الاسم، البريد الإلكتروني، معرّف حساب Discord (عند الربط)، وبيانات الاشتراك والدفع (عبر مزود الدفع Paddle، دون تخزين تفاصيل بطاقتك لدينا مباشرة).",
+      "عند التسجيل واستخدام المنصة، قد نجمع: الاسم، البريد الإلكتروني، معرّف حساب Discord (عند الربط)، وبيانات الاشتراك والدفع (عبر مزود الدفع Whop، دون تخزين تفاصيل بطاقتك لدينا مباشرة).",
       "قد نجمع أيضاً بيانات استخدام عامة مثل تقدمك في المحاضرات والاختبارات لأغراض تحسين تجربتك التعليمية.",
     ],
   },
@@ -29,7 +29,7 @@ const sectionsAr = [
   {
     heading: "4. مشاركة البيانات مع أطراف ثالثة",
     body: [
-      "نشارك بعض بياناتك مع مزودي خدمات موثوقين ضروريين لتشغيل المنصة، مثل: Paddle (معالجة المدفوعات)، Supabase (تخزين قاعدة البيانات)، وDiscord (إدارة العضوية المجتمعية). هؤلاء المزودون ملزمون بحماية بياناتك وفق سياساتهم الخاصة.",
+      "نشارك بعض بياناتك مع مزودي خدمات موثوقين ضروريين لتشغيل المنصة، مثل: Whop (معالجة المدفوعات)، Supabase (تخزين قاعدة البيانات)، وDiscord (إدارة العضوية المجتمعية). هؤلاء المزودون ملزمون بحماية بياناتك وفق سياساتهم الخاصة.",
     ],
   },
   {
@@ -62,7 +62,7 @@ const sectionsEn = [
   {
     heading: "2. Data We Collect",
     body: [
-      "When you register and use the Platform, we may collect: your name, email address, Discord account ID (when linked), and subscription/payment data (processed via our payment provider, Paddle, without us storing your card details directly).",
+      "When you register and use the Platform, we may collect: your name, email address, Discord account ID (when linked), and subscription/payment data (processed via our payment provider, Whop, without us storing your card details directly).",
       "We may also collect general usage data, such as your progress through lectures and quizzes, to improve your learning experience.",
     ],
   },
@@ -76,7 +76,7 @@ const sectionsEn = [
   {
     heading: "4. Sharing Data with Third Parties",
     body: [
-      "We share some of your data with trusted service providers necessary to operate the Platform, such as: Paddle (payment processing), Supabase (database storage), and Discord (community membership management). These providers are bound to protect your data under their own policies.",
+      "We share some of your data with trusted service providers necessary to operate the Platform, such as: Whop (payment processing), Supabase (database storage), and Discord (community membership management). These providers are bound to protect your data under their own policies.",
     ],
   },
   {

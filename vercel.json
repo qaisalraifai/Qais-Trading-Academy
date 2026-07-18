@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/cron/qais-radar",
-      "schedule": "0 3 * * *"
+      "schedule": "*/15 * * * *"
     }
   ]
 }

@@ -23,7 +23,7 @@ const sectionsAr = [
     heading: "3. الاشتراك والدفع",
     body: [
       "الاشتراك بالعضوية يتم عبر رسوم تسجيل أولية، يتبعها اشتراك شهري متجدد يُخصم تلقائياً من وسيلة الدفع المسجلة، ويستمر إلى أن يقوم المستخدم بإلغاء الاشتراك.",
-      "تتم معالجة جميع المدفوعات عبر مزود دفع خارجي معتمد (Paddle)، ونحن لا نقوم بتخزين بيانات بطاقتك الائتمانية على خوادمنا.",
+      "تتم معالجة جميع المدفوعات عبر مزود دفع خارجي معتمد (Whop)، ونحن لا نقوم بتخزين بيانات بطاقتك الائتمانية على خوادمنا.",
     ],
   },
   {
@@ -70,7 +70,7 @@ const sectionsEn = [
     heading: "3. Subscription and Payment",
     body: [
       "Membership requires an initial sign-up fee followed by a recurring monthly subscription, automatically charged to the registered payment method, which continues until the user cancels the subscription.",
-      "All payments are processed through an authorized third-party payment provider (Paddle). We do not store your credit card details on our servers.",
+      "All payments are processed through an authorized third-party payment provider (Whop). We do not store your credit card details on our servers.",
     ],
   },
   {

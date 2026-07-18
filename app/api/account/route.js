@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase-server";
-import { Paddle, Environment } from "@paddle/paddle-node-sdk";
+import { getWhop } from "@/lib/whop";
 
 // GET /api/account
 // بيرجع بيانات اشتراك المستخدم الحالي نفسه (مش أي مستخدم تاني) + سجل مدفوعاته.
@@ -21,7 +21,7 @@ export async function GET() {
     admin
       .from("profiles")
       .select(
-        "username, email, plan, role, subscription_status, subscription_start, subscription_end, auto_renew, paddle_customer_id, paddle_subscription_id"
+        "username, email, plan, role, subscription_status, subscription_start, subscription_end, auto_renew, whop_user_id, whop_membership_id"
       )
       .eq("id", user.id)
       .maybeSingle(),
@@ -37,47 +37,31 @@ export async function GET() {
     return NextResponse.json({ error: "تعذر جلب بيانات الحساب" }, { status: 404 });
   }
 
-  // منجرب نجيب روابط إدارة الاشتراك (تحديث بطاقة / إلغاء) مباشرة من Paddle.
-  // هاي روابط جاهزة من Paddle نفسه، ما منبنيها يدوياً. لو فشل الطلب (اشتراك تجريبي
-  // ما إله paddle_subscription_id مثلاً)، منكمل عادي بدونها.
-  let managementUrls = null;
-  let card = null; // { brand, last4 } — تفاصيل آخر بطاقة استُخدمت، لو متوفرة
-  if (profile.paddle_subscription_id) {
+  // على عكس Paddle، Whop ما بيعطي رابط iframe مخصص لتحديث البطاقة. بدالها في
+  // صفحة حسابه المستضافة على whop.com (Profile → Orders) يقدر يدير منها
+  // فاتورته وطريقة دفعه وإلغاء اشتراكه. منجيب حالة العضوية الحقيقية من Whop
+  // (بدل ما نعتمد بس على قاعدة بياناتنا) لعرضها بدقة بالإعدادات.
+  let membership = null;
+  if (profile.whop_membership_id) {
     try {
-      const isSandbox = process.env.PADDLE_API_KEY?.startsWith("pdl_sdbx_");
-      const paddle = new Paddle(process.env.PADDLE_API_KEY, {
-        environment: isSandbox ? Environment.sandbox : Environment.production,
-      });
-      const subscription = await paddle.subscriptions.get(profile.paddle_subscription_id);
-      managementUrls = subscription?.managementUrls || null;
-
-      // منحاول نجيب تفاصيل البطاقة (نوعها وآخر 4 أرقام) من آخر عملية دفع ناجحة.
-      // هاي بيانات "أفضل جهد" — لو ما رجعت (فرق بنسخة الـ SDK مثلاً) منكمل بدونها
-      // وبنعرض بس زر "تحديث طريقة الدفع" من managementUrls.
-      try {
-        const txns = await paddle.transactions.list({
-          subscriptionId: [profile.paddle_subscription_id],
-          perPage: 5,
-        });
-        for await (const txn of txns) {
-          const methodCard = txn?.payments?.[0]?.methodDetails?.card;
-          if (methodCard) {
-            card = { brand: methodCard.type, last4: methodCard.last4 };
-            break;
-          }
-        }
-      } catch (e) {
-        console.error("تعذر جلب تفاصيل البطاقة من Paddle:", e.message);
-      }
+      const whop = getWhop();
+      membership = await whop.memberships.retrieve(profile.whop_membership_id);
     } catch (e) {
-      console.error("تعذر جلب روابط إدارة الاشتراك من Paddle:", e.message);
+      console.error("تعذر جلب تفاصيل العضوية من Whop:", e.message);
     }
   }
 
   return NextResponse.json({
     profile,
     payments: payments || [],
-    managementUrls,
-    card,
+    // رابط عام لصفحة إدارة الطلبات على Whop (تسجيل دخول ثم إدارة الفاتورة/البطاقة/الإلغاء)
+    managementUrl: "https://whop.com/orders",
+    membership: membership
+      ? {
+          status: membership.status,
+          cancelAtPeriodEnd: membership.cancel_at_period_end ?? membership.cancelAtPeriodEnd ?? null,
+          renewalDate: membership.renewal_period_end || membership.next_renewal_date || null,
+        }
+      : null,
   });
 }
