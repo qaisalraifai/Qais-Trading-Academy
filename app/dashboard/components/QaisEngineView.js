@@ -516,7 +516,10 @@ const CHECKLIST_LABELS = {
 function ChecklistBar({ checklist }) {
   const items = checklist.filter((c) => CHECKLIST_LABELS[c.key]);
   return (
-    <div style={{ ...cardStyle, padding: "0.9rem 1.4rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+    <div
+      dir="ltr"
+      style={{ ...cardStyle, direction: "ltr", padding: "0.9rem 1.4rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}
+    >
       {items.map((c, i) => (
         <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -535,7 +538,7 @@ function ChecklistBar({ checklist }) {
             >
               {i + 1}
             </span>
-            <div>
+            <div dir="rtl">
               <div style={{ fontSize: 12, color: "#ddd" }}>{CHECKLIST_LABELS[c.key].ar}</div>
               <div style={{ fontSize: 10, color: "#777" }}>{CHECKLIST_LABELS[c.key].en}</div>
             </div>
@@ -614,7 +617,7 @@ function DecisionPanel({ decision, symbol }) {
         title="مناطق الاهتمام"
         sub="POI"
         value={decision.ob?.touchedZoneType ? `${decision.reasonTags?.[0] || decision.ob.touchedZoneType}` : "—"}
-        note={ob?.eligible ? `قوة المنطقة: ${ob.quality >= 70 ? "عالية" : ob.quality >= 40 ? "متوسطة" : "منخفضة"}` : ""}
+        note={ob?.eligible ? `قوة المنطقة: ${ob.quality >= 70 ? "عالية" : ob.quality >= 40 ? "متوسطة" : "منخفضة"}` : "السعر لسا ما وصل لمنطقة اهتمام مؤكدة"}
       />
 
       <DecisionRow
@@ -623,7 +626,7 @@ function DecisionPanel({ decision, symbol }) {
         sub="Smart Money Technique"
         value={decision.smt?.valid ? "Confirmed" : "غير متوفر"}
         valueColor={decision.smt?.valid ? GREEN : "#999"}
-        note={decision.smt?.symbolB ? `• ${symbol} / ${decision.smt.symbolB}` : ""}
+        note={decision.smt?.symbolB ? `• ${symbol} / ${decision.smt.symbolB}` : "لسا ما ظهر انحراف SMT واضح بين الأصول المرتبطة"}
       />
 
       <DecisionRow
@@ -652,34 +655,53 @@ function DecisionPanel({ decision, symbol }) {
         </div>
       )}
 
-      {entry && stopLoss && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #2a2a2a", display: "flex", gap: 10 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, color: "#888" }}>Entry</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: GREEN }}>{entry.toFixed(2)}</div>
+      {entry && stopLoss ? (
+        <>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #2a2a2a", display: "flex", gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, color: "#888" }}>Entry</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: GREEN }}>{entry.toFixed(2)}</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, color: "#888" }}>Stop Loss</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: RED }}>{stopLoss.toFixed(2)}</div>
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, color: "#888" }}>Stop Loss</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: RED }}>{stopLoss.toFixed(2)}</div>
-          </div>
-        </div>
-      )}
 
-      {rr != null && (
-        <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-          <span style={{ color: "#888" }}>Risk / Reward</span>
-          <span style={{ color: "#f0f0f0" }}>1 : {rr.toFixed(1)}</span>
+          {rr != null && (
+            <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+              <span style={{ color: "#888" }}>Risk / Reward</span>
+              <span style={{ color: "#f0f0f0" }}>1 : {rr.toFixed(1)}</span>
+            </div>
+          )}
+          {riskPercent != null && (
+            <div style={{ marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
+              <span style={{ color: "#888" }}>Risk %</span>
+              <span style={{ color: "#f0f0f0" }}>{riskPercent.toFixed(2)}%</span>
+            </div>
+          )}
+          <div style={{ marginTop: 4, fontSize: 10, color: "#555" }}>
+            * Risk % بناءً على مسافة الدخول-الوقف من السعر فقط (مش حجم اللوت الفعلي)
+          </div>
+        </>
+      ) : (
+        <div
+          style={{
+            marginTop: 12,
+            paddingTop: 12,
+            borderTop: "1px solid #2a2a2a",
+            fontSize: 11.5,
+            color: "#a1a1a1",
+            background: "#181A20",
+            borderRadius: 8,
+            padding: "10px 12px",
+            lineHeight: 1.7,
+          }}
+        >
+          <div style={{ color: "#eab308", fontWeight: 700, marginBottom: 4 }}>⏳ الإعداد لسا ما اكتمل</div>
+          لسا ما ظهر Order Block صالح لتحديد نقطة دخول ووقف خسارة واضحة على هالفريم. لما تتحقق باقي الشروط (SMT / OB) رح تظهر Entry و Stop Loss تلقائياً هون.
         </div>
       )}
-      {riskPercent != null && (
-        <div style={{ marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-          <span style={{ color: "#888" }}>Risk %</span>
-          <span style={{ color: "#f0f0f0" }}>{riskPercent.toFixed(2)}%</span>
-        </div>
-      )}
-      <div style={{ marginTop: 4, fontSize: 10, color: "#555" }}>
-        * Risk % بناءً على مسافة الدخول-الوقف من السعر فقط (مش حجم اللوت الفعلي)
-      </div>
 
       <button
         onClick={exportAnalysis}
