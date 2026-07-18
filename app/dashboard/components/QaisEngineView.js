@@ -277,10 +277,18 @@ export default function QaisEngineView() {
       ctx.lineWidth = 1;
       ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+      // تسمية بخلفية صلبة فوق حافة الصندوق (مش نص عائم فوق الشموع) — أوضح بكثير
+      // ولا بتتأثر بلون الشمعة تحتها، بنفس روح تسميات TP1-4.
+      ctx.font = "bold 11px sans-serif";
+      const chipW = ctx.measureText(label).width + 10;
+      const chipY = Math.min(y1, y2) - 16;
       ctx.fillStyle = color;
-      ctx.font = "11px sans-serif";
-      ctx.fillText(label, x1 + 4, y1 + 12);
+      ctx.fillRect(x1, chipY, chipW, 15);
+      ctx.fillStyle = "#0b0d10";
+      ctx.fillText(label, x1 + 5, chipY + 11);
     };
+
 
     const drawPOIHighlight = (zone) => {
       if (!zone) return;
@@ -349,11 +357,11 @@ export default function QaisEngineView() {
     const placedLevelLabels = [];
     const LABEL_H = 14;
     function placeLevelLabel(x, y, text, color) {
-      ctx.font = "11px sans-serif";
-      const w = ctx.measureText(text).width + 6;
-      let ly = y - 4;
+      ctx.font = "bold 11px sans-serif";
+      const w = ctx.measureText(text).width + 10;
+      let ly = y - 6;
       for (let attempt = 0; attempt < 14; attempt++) {
-        const top = ly - 11;
+        const top = ly - 15;
         const bottom = ly + 3;
         const collides = placedLevelLabels.some(
           (b) => x < b.x2 && x + w > b.x1 && top < b.bottom && bottom > b.top
@@ -361,9 +369,11 @@ export default function QaisEngineView() {
         if (!collides) break;
         ly -= LABEL_H; // كل محاولة بتزح التسمية درجة لفوق
       }
-      placedLevelLabels.push({ x1: x, x2: x + w, top: ly - 11, bottom: ly + 3 });
+      placedLevelLabels.push({ x1: x, x2: x + w, top: ly - 15, bottom: ly + 3 });
       ctx.fillStyle = color;
-      ctx.fillText(text, x, ly);
+      ctx.fillRect(x, ly - 12, w, 15);
+      ctx.fillStyle = "#0b0d10";
+      ctx.fillText(text, x + 5, ly - 1);
     }
 
     const drawLevelLine = (ev, color, label, on) => {
@@ -393,6 +403,56 @@ export default function QaisEngineView() {
     // منطقة الاهتمام (POI) الفعلية يلي اعتمدها محرك القرار — دايماً تترسم لو موجودة
     // بغض النظر عن حالة أزرار QAIS TOOLS، لأنها أساس القرار مش أداة استكشاف اختيارية
     drawPOIHighlight(layers.poi);
+
+    // -------- نقاط A/B/C + خطوط فيبوناتشي الارتداد (زي أسلوب التحليل اليدوي) --------
+    // دي أهم إشارة بصرية ناقصة قبل هيك: بتوضح للمستخدم *ليش* اتحدد الهدف من نقطة C،
+    // وشو نسبة التصحيح اللي حصلت من الساق A-B، بالضبط متل الخطوط السودة بالمرجع.
+    const seqPoints = resultRef.current?.sequence?.points;
+    if (seqPoints && active.Structure) {
+      const { A, B, C } = seqPoints;
+      const FIB_LEVELS = [0.333, 0.5, 0.666];
+      const legLength = Math.abs(B.price - A.price);
+      const lastCandle = candles[candles.length - 1];
+      const xEnd = ts.timeToCoordinate(lastCandle.time) + 26;
+
+      const markSwing = (point, tag) => {
+        const x = ts.timeToCoordinate(point.time);
+        const y = series.priceToCoordinate(point.price);
+        if (x == null || y == null) return;
+        ctx.fillStyle = "#e5e5e5";
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillStyle = "#e5e5e5";
+        ctx.fillText(`(${tag})`, x - 6, point.type === "high" || tag === "B" ? y - 8 : y + 16);
+      };
+      markSwing(A, "A");
+      markSwing(B, "B");
+      markSwing(C, "C");
+
+      const xA = ts.timeToCoordinate(A.time);
+      if (xA != null) {
+        for (const ratio of FIB_LEVELS) {
+          const price = B.price - Math.sign(B.price - A.price) * legLength * ratio;
+          const y = series.priceToCoordinate(price);
+          if (y == null) continue;
+          ctx.save();
+          ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = "#5a5a5a";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(xA, y);
+          ctx.lineTo(xEnd, y);
+          ctx.stroke();
+          ctx.restore();
+          const label = `${ratio} (${price.toFixed(2)})`;
+          ctx.font = "10px sans-serif";
+          ctx.fillStyle = "#9a9a9a";
+          ctx.fillText(label, xEnd - ctx.measureText(label).width - 4, y - 3);
+        }
+      }
+    }
 
     // -------- TP1-4: بس إذا الصفقة محققة 1:3 RR على الأقل، وبمكان فاضي يمين آخر شمعة --------
     const metrics = computeTradeMetrics(resultRef.current);
@@ -456,13 +516,15 @@ export default function QaisEngineView() {
         const liquidity = analyzeLiquidity(candles, struct);
         const ob = analyzeOrderBlock(candles, struct, liquidity);
         rawLayersRef.current = {
-          fvgs: liquidity.fvgs.slice(-4),
-          voids: liquidity.voids.slice(-2),
-          brkr: liquidity.brkr.slice(-2),
-          mtg: liquidity.mtg.slice(-2),
-          sweeps: liquidity.sweeps.slice(-4),
-          rjb: liquidity.rjb.slice(-3),
-          structureEvents: struct.events.slice(-6),
+          // بس آخر نسخة فعّالة من كل أداة — مش كل التاريخ القريب. هاد يطابق أسلوب
+          // التحليل اليدوي (صورة المرجع): منطقة وحدة واضحة لكل أداة، مش تراكم نسخ قديمة.
+          fvgs: liquidity.fvgs.slice(-1),
+          voids: liquidity.voids.slice(-1),
+          brkr: liquidity.brkr.slice(-1),
+          mtg: liquidity.mtg.slice(-1),
+          sweeps: liquidity.sweeps.slice(-1),
+          rjb: liquidity.rjb.slice(-1),
+          structureEvents: struct.events.slice(-2),
           ob,
           poi: liquidity.touchedZone, // منطقة الاهتمام الفعلية يلي اعتمدها محرك القرار
         };
