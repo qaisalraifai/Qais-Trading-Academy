@@ -6,18 +6,28 @@ import { logActivity } from "@/lib/activity-log";
 import { recordCommissionsForPayment } from "@/lib/affiliate";
 import { processMlmCommissionsForPayment } from "@/lib/compensation-engine";
 
-// عميل Supabase بصلاحية Service Role (يتجاوز RLS) لأنه هاد كود سيرفر-لسيرفر موثوق من Whop
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// عميل Supabase بصلاحية Service Role — بيتكوّن بس أول ما يُستخدم فعلياً (lazy)،
+// مش وقت تحميل الملف. لو سويناه على مستوى الملف مباشرة، Next.js بمرحلة
+// "collect page data" وقت الـ build بيستورد الملف وينفّذ هاد السطر، ولو
+// NEXT_PUBLIC_SUPABASE_URL مش متوفر وقتها (env مش مفعّل لمرحلة الـ Build)
+// بيطلع خطأ ERR_INVALID_URL ويفشل الـ build كامل.
+let _supabaseAdmin = null;
+function getSupabaseAdmin() {
+  if (!_supabaseAdmin) {
+    _supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  }
+  return _supabaseAdmin;
+}
 
 // يسجل صف بجدول payments بشكل موحّد، وبعدين يحسب عمولات المسوّقين (لو في) على هاي الدفعة
 async function recordPayment(userId, payment, isFirstPayment) {
   if (!userId) return;
   const amount = typeof payment?.amount_after_fees === "number" ? payment.amount_after_fees : 0;
   const currency = (payment?.currency || "usd").toUpperCase();
-  const { data: row, error } = await supabaseAdmin
+  const { data: row, error } = await getSupabaseAdmin()
     .from("payments")
     .insert({
       user_id: userId,
@@ -36,14 +46,14 @@ async function recordPayment(userId, payment, isFirstPayment) {
   }
 
   // النظام القديم (3 مستويات، نسبة من قيمة الدفعة) — يضل شغال متل ما هو
-  await recordCommissionsForPayment(supabaseAdmin, {
+  await recordCommissionsForPayment(getSupabaseAdmin(), {
     paidUserId: userId,
     paymentId: row?.id,
     amount,
   }).catch((e) => console.error("recordCommissionsForPayment error:", e));
 
   // نظام الخطة الجديد (CV + شجرة ثنائية + Direct/Renewal Bonus) — مستقل تمامًا
-  await processMlmCommissionsForPayment(supabaseAdmin, {
+  await processMlmCommissionsForPayment(getSupabaseAdmin(), {
     userId,
     paymentId: row?.id,
     isFirstPayment,
@@ -86,7 +96,7 @@ export async function POST(request) {
           };
           if (membershipId) updateData.whop_membership_id = membershipId;
 
-          const { data: updated, error } = await supabaseAdmin
+          const { data: updated, error } = await getSupabaseAdmin()
             .from("profiles")
             .update(updateData)
             .eq("id", userId)
@@ -98,7 +108,7 @@ export async function POST(request) {
             console.error(
               "profiles row missing for user " + userId + " during payment — creating fallback row"
             );
-            const { error: insertError } = await supabaseAdmin.from("profiles").insert({
+            const { error: insertError } = await getSupabaseAdmin().from("profiles").insert({
               id: userId,
               username: `user_${userId.slice(0, 8)}`,
               role: "student",
@@ -110,7 +120,7 @@ export async function POST(request) {
           await logActivity(userId, "renew", "دفعة ناجحة — تفعيل الاشتراك", { membershipId });
         } else if (membershipId) {
           // تجديد شهري بدون metadata: نطابق بمعرف العضوية المخزّن مسبقاً
-          const { data: renewed, error } = await supabaseAdmin
+          const { data: renewed, error } = await getSupabaseAdmin()
             .from("profiles")
             .update({ subscription_status: "active" })
             .eq("whop_membership_id", membershipId)
@@ -139,7 +149,7 @@ export async function POST(request) {
         const matchColumn = userId ? "id" : "whop_membership_id";
         const matchValue = userId ? userId : membership.id;
 
-        const { data: updated, error } = await supabaseAdmin
+        const { data: updated, error } = await getSupabaseAdmin()
           .from("profiles")
           .update({
             subscription_status: "active",
@@ -161,7 +171,7 @@ export async function POST(request) {
       case "membership.went_invalid":
       case "membership.deactivated": {
         const membership = event.data;
-        const { data: updated, error } = await supabaseAdmin
+        const { data: updated, error } = await getSupabaseAdmin()
           .from("profiles")
           .update({ subscription_status: "inactive" })
           .eq("whop_membership_id", membership.id)
