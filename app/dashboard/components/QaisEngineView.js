@@ -238,16 +238,21 @@ export default function QaisEngineView() {
     const canvas = canvasRef.current;
     const chart = chartRef.current;
     const series = seriesRef.current;
-    if (!canvas || !chart || !series || !rawLayersRef.current) return;
+    const container = containerRef.current;
+    if (!canvas || !chart || !series || !container || !rawLayersRef.current) return;
+
+    // تأكيد إنه حجم الـ canvas مطابق فعلياً لحجم الحاوية الحالي — هاد بيصلح حالة
+    // كان فيها العرض 0 لحظة أول resize لأنه اللايوت لسا ما استقر يومتها
+    // (بعدها ما كان في شي يصحح الحجم إلا تغيير حجم نافذة المتصفح يدوياً)
+    const targetW = container.clientWidth;
+    const targetH = 520;
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // TEST مؤقت — مربع أحمر ثابت لعزل مشكلة رسم الـ canvas عن حساب الإحداثيات
-    ctx.fillStyle = "red";
-    ctx.fillRect(50, 50, 200, 200);
-    ctx.fillStyle = "yellow";
-    ctx.font = "16px sans-serif";
-    ctx.fillText(`canvas: ${canvas.width}x${canvas.height}`, 55, 270);
 
     const ts = chart.timeScale();
     const active = activeToolsRef.current;
@@ -462,9 +467,6 @@ export default function QaisEngineView() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      <div style={{ background: "#ff0033", color: "#fff", padding: "10px", borderRadius: 8, fontWeight: 900, textAlign: "center", fontFamily: "monospace" }}>
-        🔧 candles: {candles.length} | rawLayers: {rawLayersRef.current ? "SET" : "NULL"} | debugInfo: {debugInfo || "(EMPTY)"}
-      </div>
       {/* -------- الهيدر -------- */}
       <div style={{ ...cardStyle, padding: "1rem 1.2rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "1.2rem" }}>
         <div>
