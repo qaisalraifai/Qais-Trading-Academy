@@ -105,7 +105,11 @@ async function fetchCandles(yahoo, interval, count = 300) {
 export default function QaisEngineView() {
   const [symbol, setSymbol] = useState("XAUUSD");
   const [displayTF, setDisplayTF] = useState("1h");
-  const [activeTools, setActiveTools] = useState({});
+  /* Structure (فيبوناتشي + نقاط A/B/C) وOB (المنطقة + خط MT) مفعّلين افتراضياً —
+     هدول أساس أي تحليل يدوي على TradingView، فما لازم يضل المستخدم يفعّلهم يدوياً
+     كل مرة. باقي الأدوات (FVG/BRKR/MTG/RJB/Sweep/SMT) اختيارية عشان نتجنب
+     ازدحام الشارت بمربعات كتير فوق بعض ("عجقة"). */
+  const [activeTools, setActiveTools] = useState({ Structure: true, OB: true });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null); // نتيجة analyzeSymbol كاملة
@@ -282,6 +286,21 @@ export default function QaisEngineView() {
     const active = activeToolsRef.current;
     const layers = rawLayersRef.current;
 
+    /* تسمية "مسطّحة" — نص ملون بس مع ظل غامق خفيف للوضوح فوق الشموع، بدون
+       شريحة/چيب بخلفية مصمتة. هاد أقرب لأسلوب الرسم اليدوي على TradingView
+       (نص + خط، مش صندوق UI فوق صندوق) وبيقلل "العجقة" لما أكتر من أداة تكون
+       مفعّلة بنفس الوقت وتتقاطع مربعاتها. */
+    const flatLabel = (x, y, text, color, align = "left") => {
+      ctx.font = "600 11px sans-serif";
+      ctx.textAlign = align;
+      ctx.shadowColor = "rgba(0,0,0,0.9)";
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+      ctx.shadowBlur = 0;
+      ctx.textAlign = "left";
+    };
+
     const drawZone = (zone, color, label, on) => {
       if (!on) return;
       const lo = zone.from ?? zone.level;
@@ -296,25 +315,17 @@ export default function QaisEngineView() {
       const y2 = series.priceToCoordinate(lo);
       if (x1 == null || x2 == null || y1 == null || y2 == null) return;
 
-      ctx.fillStyle = color + "26";
+      ctx.fillStyle = color + "16";
       ctx.strokeStyle = color;
       ctx.lineWidth = 1;
       ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-      // تسمية بخلفية صلبة فوق حافة الصندوق (مش نص عائم فوق الشموع) — أوضح بكثير
-      // ولا بتتأثر بلون الشمعة تحتها، بنفس روح تسميات TP1-4.
-      ctx.font = "bold 11px sans-serif";
-      const chipW = ctx.measureText(label).width + 10;
-      const chipY = Math.min(y1, y2) - 16;
-      ctx.fillStyle = color;
-      ctx.fillRect(x1, chipY, chipW, 15);
-      ctx.fillStyle = "#0b0d10";
-      ctx.fillText(label, x1 + 5, chipY + 11);
+      flatLabel(x1 + 2, Math.min(y1, y2) - 5, label, color);
     };
 
 
-    const drawPOIHighlight = (zone) => {
+    const drawPOIHighlight = (zone, obZone) => {
       if (!zone) return;
       const lo = zone.from ?? zone.level;
       const hi = zone.to ?? zone.level;
@@ -328,33 +339,41 @@ export default function QaisEngineView() {
       const y2 = series.priceToCoordinate(lo === hi ? lo - 1 : lo); // خط سعر واحد (Sweep/RJB) بياخد سماكة بسيطة عشان يبين
       if (x1 == null || x2 == null || y1 == null || y2 == null) return;
 
+      // لو منطقة الـ OB (المرسومة أصلاً فوق) بتغطي نفس مدى السعر تقريباً، ما
+      // منرسم صندوق تاني فوقها — هاد كان السبب الرئيسي للعجقة (صندوقين + تسميتين
+      // فوق نفس المنطقة). منكتفي بنجمة صغيرة بجانب تسمية OB تأكيد إنها منطقة القرار.
+      if (obZone) {
+        const [oLo, oHi] = [Math.min(obZone.from, obZone.to), Math.max(obZone.from, obZone.to)];
+        const [zLo, zHi] = [Math.min(lo, hi), Math.max(lo, hi)];
+        const overlaps = zLo <= oHi && zHi >= oLo;
+        if (overlaps) return;
+      }
+
       ctx.save();
-      ctx.setLineDash([6, 3]);
+      ctx.setLineDash([5, 3]);
       ctx.strokeStyle = GOLD;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(x1 - 2, Math.min(y1, y2) - 2, x2 - x1 + 4, Math.abs(y2 - y1) + 4);
       ctx.setLineDash([]);
       ctx.restore();
 
-      const tag = `★ POI (${zone.type})`;
-      ctx.font = "bold 11px sans-serif";
-      const tagW = ctx.measureText(tag).width + 10;
-      const tagY = Math.min(y1, y2) - 16;
-      ctx.fillStyle = GOLD;
-      ctx.fillRect(x1 - 2, tagY, tagW, 15);
-      ctx.fillStyle = "#0b0d10";
-      ctx.fillText(tag, x1 + 3, tagY + 11);
+      flatLabel(x1, Math.min(y1, y2) - 6, `★ POI (${zone.type})`, GOLD);
     };
 
     for (const z of layers.fvgs) drawZone(z, TOOL_COLORS.FVG, "FVG", active.FVG);
     for (const z of layers.voids) drawZone(z, "#7c3aed", "Void", active.FVG);
     for (const z of layers.brkr) drawZone(z, TOOL_COLORS.BRKR, "BRKR", active.BRKR);
     for (const z of layers.mtg) drawZone(z, TOOL_COLORS.MTG, "MTG", active.MTG);
+
+    let obZoneBounds = null; // بنستخدمها تحت لمنع تكرار صندوق POI فوق نفس منطقة الـ OB
     if (layers.ob?.eligible) {
-      const { level1, level2, level4 } = layers.ob.levels;
+      const { level1, level2 } = layers.ob.levels;
       const hi = level1 ?? level2;
-      drawZone({ from: layers.ob.merged.low, to: hi, index: layers.ob.index }, TOOL_COLORS.OB, "OB", active.OB);
-      // خط الـ MT (منتصف OB) — أقوى مستوى بالمنطقة
+      const lo = layers.ob.merged.low;
+      obZoneBounds = { from: lo, to: hi };
+      const obLabel = `OB${layers.ob.direction === "down" ? "-" : "+"}`;
+      drawZone({ from: lo, to: hi, index: layers.ob.index }, TOOL_COLORS.OB, obLabel, active.OB);
+      // خط الـ MT (منتصف OB) — أقوى مستوى بالمنطقة، بنفس تسمية التحليل اليدوي "MT"
       const c1 = candles[layers.ob.index];
       if (c1 && active.OB) {
         const x1 = ts.timeToCoordinate(c1.time);
@@ -363,12 +382,14 @@ export default function QaisEngineView() {
         const ym = series.priceToCoordinate(layers.ob.levels.mt);
         if (x1 != null && x2 != null && ym != null) {
           ctx.setLineDash([4, 3]);
-          ctx.strokeStyle = TOOL_COLORS.OB;
+          ctx.strokeStyle = "#e5e5e5";
+          ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.moveTo(x1, ym);
           ctx.lineTo(x2, ym);
           ctx.stroke();
           ctx.setLineDash([]);
+          flatLabel(x2 + 4, ym + 4, "MT", "#e5e5e5");
         }
       }
     }
@@ -381,8 +402,8 @@ export default function QaisEngineView() {
     const placedLevelLabels = [];
     const LABEL_H = 14;
     function placeLevelLabel(x, y, text, color) {
-      ctx.font = "bold 11px sans-serif";
-      const w = ctx.measureText(text).width + 10;
+      ctx.font = "600 11px sans-serif";
+      const w = ctx.measureText(text).width + 6;
       let ly = y - 6;
       for (let attempt = 0; attempt < 14; attempt++) {
         const top = ly - 15;
@@ -394,10 +415,7 @@ export default function QaisEngineView() {
         ly -= LABEL_H; // كل محاولة بتزح التسمية درجة لفوق
       }
       placedLevelLabels.push({ x1: x, x2: x + w, top: ly - 15, bottom: ly + 3 });
-      ctx.fillStyle = color;
-      ctx.fillRect(x, ly - 12, w, 15);
-      ctx.fillStyle = "#0b0d10";
-      ctx.fillText(text, x + 5, ly - 1);
+      flatLabel(x, ly - 1, text, color);
     }
 
     const drawLevelLine = (ev, color, label, on) => {
@@ -425,8 +443,9 @@ export default function QaisEngineView() {
     for (const r of layers.rjb) drawLevelLine(r, TOOL_COLORS.RJB, "RJB", active.RJB);
 
     // منطقة الاهتمام (POI) الفعلية يلي اعتمدها محرك القرار — دايماً تترسم لو موجودة
-    // بغض النظر عن حالة أزرار QAIS TOOLS، لأنها أساس القرار مش أداة استكشاف اختيارية
-    drawPOIHighlight(layers.poi);
+    // بغض النظر عن حالة أزرار QAIS TOOLS، لأنها أساس القرار مش أداة استكشاف اختيارية.
+    // بنمرر حدود صندوق الـ OB عشان drawPOIHighlight يتجنب رسم صندوق مكرر فوقه.
+    drawPOIHighlight(layers.poi, obZoneBounds);
 
     // -------- نقاط A/B/C + خطوط فيبوناتشي الارتداد (زي أسلوب التحليل اليدوي) --------
     // دي أهم إشارة بصرية ناقصة قبل هيك: بتوضح للمستخدم *ليش* اتحدد الهدف من نقطة C،
