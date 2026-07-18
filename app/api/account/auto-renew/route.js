@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase-server";
 import { logActivity } from "@/lib/activity-log";
-import { getWhop } from "@/lib/whop";
+import { Paddle, Environment } from "@paddle/paddle-node-sdk";
 
 // POST /api/account/auto-renew  { enabled: boolean }
 // المستخدم بيتحكم بتجديده التلقائي بنفسه من صفحة الإعدادات.
-// لو عنده عضوية Whop فعلية، منجدول/منلغي الإلغاء عند Whop كمان مش بس بقاعدة البيانات،
+// لو عنده اشتراك Paddle فعلي، منجدول/منلغي الإلغاء عند Paddle كمان مش بس بقاعدة البيانات،
 // حتى ما تنخصم فاتورة تانية بعد ما يوقف التجديد.
-//
-// ملاحظة: اسم الحقل بطلب التحديث (cancel_at_period_end) مبني على وثائق Whop
-// لإلغاء/استئناف العضوية — تأكد منه بصفحة docs.whop.com/api-reference/memberships
-// قبل النشر لو تغيّر بنسخة الـ SDK عندك.
 export async function POST(request) {
   const supabase = createClient();
   const {
@@ -29,30 +25,33 @@ export async function POST(request) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("whop_membership_id")
+    .select("paddle_subscription_id")
     .eq("id", user.id)
     .maybeSingle();
 
-  // منحاول نطابق الحالة عند Whop. هاي خطوة "أفضل جهد" — لو فشلت (مثلاً حساب تجريبي
-  // بدون عضوية Whop حقيقية) منكمل ومنحدث قاعدة البيانات بس، ومنسجل الخطأ للمتابعة اليدوية.
-  let whopSynced = true;
-  if (profile?.whop_membership_id) {
+  // منحاول نطابق الحالة عند Paddle. هاي خطوة "أفضل جهد" — لو فشلت (مثلاً حساب تجريبي
+  // بدون اشتراك Paddle حقيقي) منكمل ومنحدث قاعدة البيانات بس، ومنسجل الخطأ للمتابعة اليدوية.
+  let paddleSynced = true;
+  if (profile?.paddle_subscription_id) {
     try {
-      const whop = getWhop();
+      const isSandbox = process.env.PADDLE_API_KEY?.startsWith("pdl_sdbx_");
+      const paddle = new Paddle(process.env.PADDLE_API_KEY, {
+        environment: isSandbox ? Environment.sandbox : Environment.production,
+      });
       if (enabled) {
-        // إلغاء جدولة الإيقاف السابقة (استئناف التجديد)
-        await whop.memberships.update(profile.whop_membership_id, {
-          cancel_at_period_end: false,
+        // إلغاء أي جدولة إيقاف سابقة (استئناف التجديد)
+        await paddle.subscriptions.update(profile.paddle_subscription_id, {
+          scheduledChange: null,
         });
       } else {
-        // جدولة إيقاف العضوية بنهاية الفترة المدفوعة الحالية (بيضل الوصول شغال لهيك تاريخ)
-        await whop.memberships.cancel(profile.whop_membership_id, {
-          cancel_at_period_end: true,
+        // جدولة إيقاف الاشتراك بنهاية الفترة المدفوعة الحالية (بيضل الوصول شغال لهيك تاريخ)
+        await paddle.subscriptions.cancel(profile.paddle_subscription_id, {
+          effectiveFrom: "next_billing_period",
         });
       }
     } catch (e) {
-      whopSynced = false;
-      console.error("تعذر مزامنة حالة التجديد مع Whop:", e.message);
+      paddleSynced = false;
+      console.error("تعذر مزامنة حالة التجديد مع Paddle:", e.message);
     }
   }
 
@@ -63,8 +62,8 @@ export async function POST(request) {
     user.id,
     "note",
     enabled ? "المستخدم فعّل التجديد التلقائي" : "المستخدم أوقف التجديد التلقائي",
-    { whopSynced }
+    { paddleSynced }
   );
 
-  return NextResponse.json({ success: true, whopSynced });
+  return NextResponse.json({ success: true, paddleSynced });
 }

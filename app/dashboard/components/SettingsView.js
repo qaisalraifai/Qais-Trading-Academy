@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import AddPaymentMethodModal from "./AddPaymentMethodModal";
 
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
@@ -50,6 +51,7 @@ export default function SettingsView({ username }) {
   const [couponCode, setCouponCode] = useState("");
   const [couponBusy, setCouponBusy] = useState(false);
   const [couponResult, setCouponResult] = useState(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   useEffect(() => {
     load();
@@ -121,8 +123,8 @@ export default function SettingsView({ username }) {
     );
   }
 
-  const { profile, payments, managementUrl, membership } = data;
-  const hasWhopMembership = Boolean(profile.whop_membership_id);
+  const { profile, payments, managementUrls, card } = data;
+  const hasPaddleSubscription = Boolean(profile.paddle_subscription_id);
   const planInfo = PLAN_INFO[profile.plan] || PLAN_INFO.member;
   const isActive = profile.subscription_status === "active";
 
@@ -197,7 +199,7 @@ export default function SettingsView({ username }) {
       <SectionCard title="معلومات الفاتورة" icon="💳">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: lastPayment?.invoice_url ? "1rem" : 0 }}>
           <InfoField label="آخر دفعة" value={lastPayment ? `$${Number(lastPayment.amount).toFixed(2)}` : "—"} />
-          <InfoField label="طريقة الدفع" value={lastPayment?.method === "whop" ? "بطاقة عبر Whop" : lastPayment?.method || "—"} />
+          <InfoField label="طريقة الدفع" value={lastPayment?.method === "paddle" ? "بطاقة عبر Paddle" : lastPayment?.method || "—"} />
           <InfoField label="تاريخ آخر دفعة" value={lastPayment ? fmtDate(lastPayment.created_at) : "—"} />
           <InfoField label="رقم الفاتورة" value={lastPayment ? `#${String(lastPayment.id).slice(0, 8).toUpperCase()}` : "—"} />
         </div>
@@ -226,20 +228,33 @@ export default function SettingsView({ username }) {
 
       {/* 2.5 طريقة الدفع */}
       <SectionCard title="طريقة الدفع" icon="💳">
-        {hasWhopMembership ? (
+        {card ? (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-            <div>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>
-                {membership?.cancelAtPeriodEnd ? "الاشتراك مجدول للإيقاف" : "بطاقتك مسجلة عبر Whop"}
-              </p>
-              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
-                تقدر تحدّث بطاقتك أو تلغي اشتراكك من صفحة طلباتك على Whop.
-              </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 32,
+                  borderRadius: 6,
+                  background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 16,
+                  flexShrink: 0,
+                }}
+              >
+                💳
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff", textTransform: "capitalize" }}>
+                  {card.brand || "بطاقة"} •••• {card.last4}
+                </p>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "#888" }}>مرتبطة باشتراكك الحالي عبر Paddle</p>
+              </div>
             </div>
-            <a
-              href={managementUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => setPaymentModalOpen(true)}
               style={{
                 border: `1px solid ${GOLD}66`,
                 background: "transparent",
@@ -248,11 +263,30 @@ export default function SettingsView({ username }) {
                 fontWeight: 700,
                 padding: "0.55rem 1.1rem",
                 borderRadius: 10,
-                textDecoration: "none",
+                cursor: "pointer",
               }}
             >
-              إدارة الاشتراك على Whop ↗
-            </a>
+              تغيير البطاقة
+            </button>
+          </div>
+        ) : hasPaddleSubscription ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <p style={{ margin: 0, fontSize: 13, color: "#888" }}>ما قدرنا نجيب تفاصيل بطاقتك المسجلة حالياً.</p>
+            <button
+              onClick={() => setPaymentModalOpen(true)}
+              style={{
+                background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
+                color: "#1a1608",
+                border: "none",
+                fontWeight: 800,
+                fontSize: 13,
+                padding: "0.6rem 1.2rem",
+                borderRadius: 10,
+                cursor: "pointer",
+              }}
+            >
+              إدارة طريقة الدفع
+            </button>
           </div>
         ) : (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
@@ -260,8 +294,8 @@ export default function SettingsView({ username }) {
               <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>ما في طريقة دفع مضافة</p>
               <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>ضيف بطاقة حتى تفعّل اشتراكك وتوصل لكل الميزات.</p>
             </div>
-            <a
-              href="/payment"
+            <button
+              onClick={() => setPaymentModalOpen(true)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -273,14 +307,20 @@ export default function SettingsView({ username }) {
                 fontSize: 13,
                 padding: "0.6rem 1.3rem",
                 borderRadius: 10,
-                textDecoration: "none",
+                cursor: "pointer",
               }}
             >
-              <span>➕</span><span>الاشتراك الآن</span>
-            </a>
+              <span>➕</span><span>إضافة طريقة دفع</span>
+            </button>
           </div>
         )}
       </SectionCard>
+
+      <AddPaymentMethodModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        managementUrls={managementUrls}
+      />
 
       {/* 3. التجديد */}
       <SectionCard title="التجديد" icon="🔄">

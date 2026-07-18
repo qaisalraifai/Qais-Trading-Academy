@@ -3,8 +3,8 @@ import { createClient, createAdminClient } from "@/lib/supabase-server";
 import { logActivity } from "@/lib/activity-log";
 
 // POST /api/account/coupon  { code: string }
-// بيتحقق من كود الخصم. مافي تطبيق آلي فوري على فاتورة Whop (هاد بيحتاج ربط
-// الكوبون بخصم حقيقي بـ Whop عبر Promo Codes API)، فمنسجل الطلب بسجل النشاطات (type: "discount")
+// بيتحقق من كود الخصم. مافي تطبيق آلي فوري على فاتورة Paddle (هاد بيحتاج ربط
+// الكوبون بخصم حقيقي بـ Paddle)، فمنسجل الطلب بسجل النشاطات (type: "discount")
 // حتى فريق الدعم يطبقه يدوياً على الفاتورة الجاية.
 export async function POST(request) {
   const supabase = createClient();

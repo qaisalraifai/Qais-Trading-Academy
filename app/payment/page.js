@@ -1,20 +1,62 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { WhopCheckoutEmbed } from "@whop/checkout/react";
+import { initializePaddle } from "@paddle/paddle-js";
 import { createClient } from "@/lib/supabase-client";
 
 export default function PaymentPage() {
   const [loading, setLoading] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
-  const [checkoutStarted, setCheckoutStarted] = useState(false);
-  const [configError, setConfigError] = useState("");
+  const [paddle, setPaddle] = useState(null);
+  const [checkoutStarted, setCheckoutStarted] = useState(false); // لما تصير true، منعرض حاوية الدفع المدمجة
+  const [configError, setConfigError] = useState(""); // خطأ إعدادات Paddle واضح، بدل شاشة "Something went wrong" الغامضة
   const supabase = createClient();
 
-  async function handlePayment() {
-    setLoading(true);
-    setConfigError("");
+  // منحمّل Paddle.js مرة وحدة لما الصفحة تفتح
+  useEffect(() => {
+    const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
+    if (!token) {
+      // بدون توكن، Paddle.js أصلاً ما رح يشتغل - أفضل نوقف هون بدل ما نخلي
+      // المستخدم يوصل لشاشة الدفع ويشوف خطأ Paddle الغامض "Something went wrong"
+      setConfigError("متغير NEXT_PUBLIC_PADDLE_CLIENT_TOKEN غير مضبوط بإعدادات المشروع.");
+      return;
+    }
+    initializePaddle({
+      environment: process.env.NEXT_PUBLIC_PADDLE_ENV || "sandbox",
+      token,
+    })
+      .then((instance) => {
+        if (!instance) {
+          setConfigError(
+            "تعذّر تهيئة Paddle.js. تأكد إنه NEXT_PUBLIC_PADDLE_CLIENT_TOKEN صحيح، وإنه دومين الموقع مضاف بقائمة الدومينات المسموحة بلوحة تحكم Paddle."
+          );
+          return;
+        }
+        setPaddle(instance);
+      })
+      .catch((e) => {
+        console.error("initializePaddle failed:", e);
+        setConfigError("تعذّر تحميل Paddle.js: " + (e?.message || "خطأ غير معروف"));
+      });
+  }, []);
 
+  async function handlePayment() {
+    if (!paddle) return; // Paddle.js لسا ما حمّل، منستنى
+
+    // لازم الـ price IDs تكون مضبوطة وإلا Paddle بيرفض فتح الدفع بخطأ عام
+    // "Something went wrong" بدون ما يوضح السبب الحقيقي (price id غير موجود/غير
+    // مفعّل، أو تابع لبيئة sandbox/production مختلفة عن اللي مضبوطة هون)
+    const signupPriceId = process.env.NEXT_PUBLIC_PADDLE_PRICE_SIGNUP;
+    const monthlyPriceId = process.env.NEXT_PUBLIC_PADDLE_PRICE_MONTHLY;
+    if (!signupPriceId || !monthlyPriceId) {
+      setConfigError(
+        "متغيرات أسعار Paddle (NEXT_PUBLIC_PADDLE_PRICE_SIGNUP / NEXT_PUBLIC_PADDLE_PRICE_MONTHLY) غير مضبوطة."
+      );
+      return;
+    }
+
+    setLoading(true);
+
+    // لازم نعرف مين المستخدم الحالي حتى نربط الدفعة فيه بالـ Webhook لاحقاً
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -25,21 +67,30 @@ export default function PaymentPage() {
       return;
     }
 
-    try {
-      const res = await fetch("/api/checkout", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok || !data.sessionId) {
-        setConfigError(data.error || "تعذر بدء عملية الدفع.");
-        setLoading(false);
-        return;
-      }
-      setSessionId(data.sessionId);
-      setCheckoutStarted(true);
-    } catch (e) {
-      setConfigError("تعذر الاتصال بخادم الدفع: " + (e?.message || "خطأ غير معروف"));
-    } finally {
+    // منعرض حاوية الدفع أول شي حتى يصير عنصرها موجود فعلياً بالصفحة قبل ما نطلب من Paddle يعبيها
+    setCheckoutStarted(true);
+
+    // منستنى تيك واحد (frame) حتى React يخلص يرسم الـ div الجديدة، وبعدين منفتح الدفع المدمج جواها
+    requestAnimationFrame(() => {
+      paddle.Checkout.open({
+        items: [
+          { priceId: signupPriceId, quantity: 1 },
+          { priceId: monthlyPriceId, quantity: 1 },
+        ],
+        customer: { email: user.email },
+        customData: { user_id: user.id }, // Webhook بيستخدمها حتى يعرف مين المستخدم يفعّل اشتراكه
+        settings: {
+          displayMode: "inline", // مدمجة بالصفحة بدل نافذة منبثقة
+          frameTarget: "paddle-checkout-container", // اسم الـ class تبع الحاوية تحت
+          frameInitialHeight: "450",
+          frameStyle:
+            "width: 100%; min-width: 312px; background-color: transparent; border: none;",
+          theme: "dark",
+          successUrl: `${window.location.origin}/payment-success?type=subscription`,
+        },
+      });
       setLoading(false);
-    }
+    });
   }
 
   return (
@@ -68,8 +119,8 @@ export default function PaymentPage() {
         </ul>
 
         {!checkoutStarted && (
-          <button style={styles.btn} onClick={handlePayment} disabled={loading}>
-            {loading ? "جاري التحويل..." : "ادفع $300 وابدأ الاشتراك"}
+          <button style={styles.btn} onClick={handlePayment} disabled={loading || !paddle || !!configError}>
+            {loading ? "جاري التحويل..." : !paddle && !configError ? "جاري التحميل..." : "ادفع $300 وابدأ الاشتراك"}
           </button>
         )}
 
@@ -79,15 +130,9 @@ export default function PaymentPage() {
           </p>
         )}
 
-        {checkoutStarted && sessionId && (
-          <div style={styles.checkoutContainer}>
-            <WhopCheckoutEmbed
-              sessionId={sessionId}
-              returnUrl={typeof window !== "undefined" ? `${window.location.origin}/payment-success?type=subscription` : undefined}
-              environment={process.env.NEXT_PUBLIC_WHOP_SANDBOX === "true" ? "sandbox" : "production"}
-              theme="dark"
-            />
-          </div>
+        {/* حاوية الدفع المدمجة — Paddle بيعبيها بنفسه لما checkoutStarted تصير true */}
+        {checkoutStarted && (
+          <div className="paddle-checkout-container" style={styles.checkoutContainer} />
         )}
 
         <p style={styles.note}>
@@ -98,8 +143,9 @@ export default function PaymentPage() {
         </p>
       </div>
 
-      <p style={styles.footer}>🔒 جميع المدفوعات مؤمنة عبر Whop · يمكنك الإلغاء بأي وقت</p>
+      <p style={styles.footer}>🔒 جميع المدفوعات مؤمنة عبر Paddle · يمكنك الإلغاء بأي وقت</p>
 
+      {/* رابط الأدمن المخفي */}
       <Link href="/admin" style={styles.adminLink}>⚙</Link>
     </div>
   );

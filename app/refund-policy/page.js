@@ -36,7 +36,7 @@ const sectionsAr = [
     heading: "5. آلية تقديم طلب الاسترجاع",
     body: [
       "لتقديم طلب استرجاع، يُرجى التواصل معنا عبر البريد الإلكتروني qaisalraifai@gmail.com مرفقاً بريد الحساب المسجل وتاريخ الاشتراك وسبب الطلب.",
-      "تتم مراجعة الطلبات المستوفية للشروط ومعالجتها خلال مدة أقصاها 14 يوم عمل، ويُعاد المبلغ إلى وسيلة الدفع الأصلية المستخدمة عبر مزود الدفع Whop.",
+      "تتم مراجعة الطلبات المستوفية للشروط ومعالجتها خلال مدة أقصاها 14 يوم عمل، ويُعاد المبلغ إلى وسيلة الدفع الأصلية المستخدمة عبر مزود الدفع Paddle.",
     ],
   },
   {
@@ -84,7 +84,7 @@ const sectionsEn = [
     heading: "5. How to Request a Refund",
     body: [
       "To request a refund, please contact us at qaisalraifai@gmail.com with your registered account email, subscription date, and reason for the request.",
-      "Eligible requests are reviewed and processed within a maximum of 14 business days, and the amount is refunded to the original payment method via our payment provider, Whop.",
+      "Eligible requests are reviewed and processed within a maximum of 14 business days, and the amount is refunded to the original payment method via our payment provider, Paddle.",
     ],
   },
   {
