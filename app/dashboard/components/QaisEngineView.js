@@ -584,7 +584,7 @@ export default function QaisEngineView() {
         {/* الشارت */}
         <div style={{ ...cardStyle, padding: "0.6rem", flex: 1, minWidth: 320, position: "relative" }}>
           <div ref={containerRef} style={{ width: "100%", height: 520 }} />
-          <canvas ref={canvasRef} width={800} height={520} style={{ position: "absolute", top: "0.6rem", left: "0.6rem", pointerEvents: "none" }} />
+          <canvas ref={canvasRef} width={800} height={520} style={{ position: "absolute", top: "0.6rem", left: "0.6rem", pointerEvents: "none", zIndex: 50 }} />
           {debugInfo && (
             <div
               style={{
