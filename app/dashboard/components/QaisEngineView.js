@@ -242,6 +242,13 @@ export default function QaisEngineView() {
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // TEST مؤقت — مربع أحمر ثابت لعزل مشكلة رسم الـ canvas عن حساب الإحداثيات
+    ctx.fillStyle = "red";
+    ctx.fillRect(50, 50, 200, 200);
+    ctx.fillStyle = "yellow";
+    ctx.font = "16px sans-serif";
+    ctx.fillText(`canvas: ${canvas.width}x${canvas.height}`, 55, 270);
+
     const ts = chart.timeScale();
     const active = activeToolsRef.current;
     const layers = rawLayersRef.current;
