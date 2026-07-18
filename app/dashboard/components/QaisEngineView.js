@@ -60,8 +60,8 @@ const TOOL_ICONS = {
 function computeTradeMetrics(decision) {
   const ob = decision?.ob;
   const seq = decision?.sequence;
-  const entry = ob?.eligible ? ob.levels.mt : null;
-  const stopLoss = ob?.eligible ? ob.levels.level4 : null;
+  const entry = ob?.eligible ? ob.levels.level3 : null; // MT
+  const stopLoss = ob?.eligible ? ob.levels.level5 : null; // حد الإبطال الكامل
   const tp1 = seq?.active ? seq.targets[0]?.price : null;
   const rr = entry != null && stopLoss != null && tp1 != null ? Math.abs(tp1 - entry) / Math.abs(entry - stopLoss) : null;
   const meetsRR = rr != null && rr >= MIN_RR;
@@ -265,50 +265,27 @@ export default function QaisEngineView() {
     const active = activeToolsRef.current;
     const layers = rawLayersRef.current;
 
-    /* تسمية "مسطّحة" — نص ملون بس مع ظل غامق خفيف للوضوح فوق الشموع، بدون
-       شريحة/چيب بخلفية مصمتة. هاد أقرب لأسلوب الرسم اليدوي على TradingView
-       (نص + خط، مش صندوق UI فوق صندوق) وبيقلل "العجقة" لما أكتر من أداة تكون
-       مفعّلة بنفس الوقت وتتقاطع مربعاتها. */
+    /* تسمية بخلفية غامقة خفيفة (چيب صغير) خلف النص — بدون هالخلفية النص الملون
+       بيضيع فوق الشموع الملونة (زي "OB" الأزرق فوق حدود الصندوق الأزرق نفسه
+       بالمثال يلي بعتّه). هاد چيب واحد بسيط، مش صندوق UI ثقيل. */
     const flatLabel = (x, y, text, color, align = "left") => {
       ctx.font = "600 11px sans-serif";
       ctx.textAlign = align;
-      ctx.shadowColor = "rgba(0,0,0,0.9)";
-      ctx.shadowBlur = 4;
+      const w = ctx.measureText(text).width;
+      const boxX = align === "left" ? x - 3 : x - w - 3;
+      ctx.fillStyle = "rgba(10,11,14,0.82)";
+      ctx.fillRect(boxX, y - 11, w + 6, 15);
       ctx.fillStyle = color;
       ctx.fillText(text, x, y);
-      ctx.shadowBlur = 0;
       ctx.textAlign = "left";
     };
 
-    const drawZone = (zone, color, label, on) => {
-      if (!on) return;
-      const lo = zone.from ?? zone.level;
-      const hi = zone.to ?? zone.level;
-      if (lo == null) return;
-      const c1 = candles[zone.index];
-      if (!c1) return;
-      const x1 = ts.timeToCoordinate(c1.time);
-      const lastCandle = candles[candles.length - 1];
-      const x2 = ts.timeToCoordinate(lastCandle.time) + 26;
-      const y1 = series.priceToCoordinate(hi);
-      const y2 = series.priceToCoordinate(lo);
-      if (x1 == null || x2 == null || y1 == null || y2 == null) return;
-
-      ctx.fillStyle = color + "16";
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
-      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-
-      flatLabel(x1 + 2, Math.min(y1, y2) - 5, label, color);
-    };
-
-
     // مانع تصادم للتسميات: كل تسمية جديدة بتفحص هل بتتقاطع مع تسمية سبق
     // رسمها بهاد الفريم، ولو في تقاطع بتزحها لفوق بمقدار ثابت لحد ما تلاقي
-    // مكان فاضي — هاد يمنع تكدّس ENTER/SL/MT/الأهداف فوق بعض.
+    // مكان فاضي — هاد يمنع تكدّس OB/MT/ENTER/SL/الأهداف فوق بعض (كانت هاي
+    // بالضبط مشكلة "OB" و"MT" اللي طلعوا فوق بعض بالصورة).
     const placedLevelLabels = [];
-    const LABEL_H = 14;
+    const LABEL_H = 16;
     function placeLevelLabel(x, y, text, color) {
       ctx.font = "600 11px sans-serif";
       const w = ctx.measureText(text).width + 6;
@@ -325,6 +302,39 @@ export default function QaisEngineView() {
       placedLevelLabels.push({ x1: x, x2: x + w, top: ly - 15, bottom: ly + 3 });
       flatLabel(x, ly - 1, text, color);
     }
+
+    const drawZone = (zone, color, label, on) => {
+      if (!on) return;
+      const lo = zone.from ?? zone.level;
+      const hi = zone.to ?? zone.level;
+      if (lo == null) return;
+      const c1 = candles[zone.index];
+      if (!c1) return;
+      const x1 = ts.timeToCoordinate(c1.time);
+      const lastCandle = candles[candles.length - 1];
+      const x2 = ts.timeToCoordinate(lastCandle.time) + 26;
+      let y1 = series.priceToCoordinate(hi);
+      let y2 = series.priceToCoordinate(lo);
+      if (x1 == null || x2 == null || y1 == null || y2 == null) return;
+
+      // منطقة الـ OB أحياناً بتكون رفيعة كتير سعرياً (جسم شمعة صغير) وبتترسم
+      // كخط شبه غير مرئي — بنعطيها حد أدنى من السماكة البصرية (8px) حتى تبقى
+      // واضحة كصندوق، بدون ما تغيّر على المستويات الفعلية المستخدمة بالحساب.
+      const MIN_BOX_PX = 8;
+      if (Math.abs(y2 - y1) < MIN_BOX_PX) {
+        const mid = (y1 + y2) / 2;
+        y1 = mid - MIN_BOX_PX / 2;
+        y2 = mid + MIN_BOX_PX / 2;
+      }
+
+      ctx.fillStyle = color + "16";
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+      placeLevelLabel(x1 + 2, Math.min(y1, y2) - 5, label, color);
+    };
 
     const drawLevelLine = (index, price, color, label, dashed = true) => {
       const c1 = candles[index];
@@ -358,8 +368,8 @@ export default function QaisEngineView() {
     const obFormed = !!ob?.eligible && ob.status !== "Invalid" && active.OB;
 
     if (obFormed) {
-      const { level1, level2, level4, mt } = ob.levels;
-      const hi = level1 ?? level2;
+      const { level3, level5 } = ob.levels;
+      const hi = ob.merged.high;
       const lo = ob.merged.low;
       const obLabel = `OB${ob.direction === "down" ? "-" : "+"}`;
       drawZone({ from: lo, to: hi, index: ob.index }, TOOL_COLORS.OB, obLabel, true);
@@ -367,12 +377,12 @@ export default function QaisEngineView() {
       const seq = resultRef.current?.sequence;
       const entryReady = seq?.active; // شروط الدخول اكتملت = الأهداف انحسبت على أساس BOS مؤكَّد
       if (!entryReady) {
-        drawLevelLine(ob.index, mt, "#e5e5e5", "MT");
+        drawLevelLine(ob.index, level3, "#e5e5e5", "MT");
       } else {
-        // MT وENTER نفس المستوى بالضبط — أول ما تكتمل شروط الدخول منستبدل
-        // تسمية MT بـ ENTER بدل ما نرسم خطين فوق بعض بنفس السعر.
-        drawLevelLine(ob.index, mt, TOOL_COLORS.ENTER, "ENTER");
-        drawLevelLine(ob.index, level4, TOOL_COLORS.SL, "SL");
+        // MT وENTER نفس المستوى بالضبط (Level 3) — أول ما تكتمل شروط الدخول
+        // منستبدل تسمية MT بـ ENTER بدل ما نرسم خطين فوق بعض بنفس السعر.
+        drawLevelLine(ob.index, level3, TOOL_COLORS.ENTER, "ENTER");
+        drawLevelLine(ob.index, level5, TOOL_COLORS.SL, "SL");
 
         for (const t of seq.targets) {
           const color = t.color === "أخضر" ? GREEN : BLUE;
