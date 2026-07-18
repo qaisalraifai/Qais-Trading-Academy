@@ -1,6 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  Activity,
+  Box,
+  Layers3,
+  ShieldAlert,
+  Target,
+  Zap,
+  Waves,
+  Radar,
+  ChevronDown,
+  ChevronRight,
+  Sparkles,
+} from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol } from "@/lib/qais/engine";
 
@@ -50,6 +63,19 @@ const TOOL_COLORS = {
    بس بنخلي شريط الفحص وتفاصيل POI/SMT/OB زي ما هي للتوعية. */
 const MIN_RR = 3;
 
+/* أيقونة صغيرة لكل أداة — بدل النص فقط، عشان الـ toolbar يصير أنيق ومضغوط */
+const TOOL_ICONS = {
+  Structure: Activity,
+  FVG: Box,
+  OB: Layers3,
+  BRKR: ShieldAlert,
+  MTG: Target,
+  RJB: Zap,
+  Sweep: Waves,
+  SMT: Radar,
+};
+
+
 function computeTradeMetrics(decision) {
   const ob = decision?.ob;
   const seq = decision?.sequence;
@@ -79,9 +105,7 @@ async function fetchCandles(yahoo, interval, count = 300) {
 export default function QaisEngineView() {
   const [symbol, setSymbol] = useState("XAUUSD");
   const [displayTF, setDisplayTF] = useState("1h");
-  const [activeTools, setActiveTools] = useState(
-    Object.fromEntries(Object.keys(TOOL_COLORS).map((k) => [k, true]))
-  );
+  const [activeTools, setActiveTools] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null); // نتيجة analyzeSymbol كاملة
@@ -550,28 +574,44 @@ export default function QaisEngineView() {
   const decision = result;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      {/* -------- الهيدر -------- */}
-      <div style={{ ...cardStyle, padding: "1rem 1.2rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "1.2rem" }}>
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 700, color: "#f0f0f0", display: "flex", alignItems: "center", gap: 8 }}>
-            {asset?.label || symbol}
-            <span style={{ fontSize: 11, background: `${GOLD}22`, color: GOLD_LIGHT, padding: "2px 8px", borderRadius: 6 }}>
-              AI Mode
-            </span>
-          </div>
-          <select
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            style={{ background: "#181A20", color: "#ccc", border: "1px solid #333", borderRadius: 6, fontSize: 12, marginTop: 4, padding: "2px 6px" }}
-          >
-            {ASSETS.flatMap((g) => g.items.filter((i) => i.yahoo)).map((i) => (
-              <option key={i.v} value={i.v}>
-                {i.label}
-              </option>
-            ))}
-          </select>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+      {/* ================= 1) TOP HEADER — شريط رفيع، معلومات أساسية فقط ================= */}
+      <div
+        style={{
+          ...cardStyle,
+          padding: "0.7rem 1.1rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "1.4rem",
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Sparkles size={15} color={GOLD} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f0f0", letterSpacing: 0.3 }}>QAIS SK ENGINE</span>
         </div>
+
+        <div style={{ width: 1, height: 20, background: "#2a2a2a" }} />
+
+        <select
+          value={symbol}
+          onChange={(e) => setSymbol(e.target.value)}
+          style={{
+            background: "#181A20",
+            color: "#e5e5e5",
+            border: "1px solid #333",
+            borderRadius: 6,
+            fontSize: 12.5,
+            padding: "5px 8px",
+            fontWeight: 600,
+          }}
+        >
+          {ASSETS.flatMap((g) => g.items.filter((i) => i.yahoo)).map((i) => (
+            <option key={i.v} value={i.v}>
+              {i.label}
+            </option>
+          ))}
+        </select>
 
         <div style={{ display: "flex", gap: 4 }}>
           {TF_OPTIONS.map((tf) => (
@@ -579,12 +619,13 @@ export default function QaisEngineView() {
               key={tf.value}
               onClick={() => setDisplayTF(tf.value)}
               style={{
-                background: displayTF === tf.value ? `${GOLD}22` : "transparent",
-                border: `1px solid ${displayTF === tf.value ? GOLD : "#333"}`,
-                color: displayTF === tf.value ? GOLD_LIGHT : "#999",
+                background: displayTF === tf.value ? `${GOLD}1f` : "transparent",
+                border: `1px solid ${displayTF === tf.value ? GOLD : "#2e2e2e"}`,
+                color: displayTF === tf.value ? GOLD_LIGHT : "#888",
                 borderRadius: 6,
-                padding: "4px 10px",
+                padding: "5px 11px",
                 fontSize: 12,
+                fontWeight: 600,
                 cursor: "pointer",
               }}
             >
@@ -593,81 +634,45 @@ export default function QaisEngineView() {
           ))}
         </div>
 
-        <HeaderStat label="Daily Trend" value={decision?.direction === "up" ? "Bullish ↗" : decision?.direction === "down" ? "Bearish ↘" : "—"} color={decision?.direction === "up" ? GREEN : decision?.direction === "down" ? RED : "#999"} />
-
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <ScoreGauge score={decision?.score || 0} />
-          <div>
-            <div style={{ fontSize: 11, color: "#888" }}>QAIS Score</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#f0f0f0" }}>{decision?.score ?? 0}/100</div>
-          </div>
-        </div>
-
-        <HeaderStat label="Session" value={sessionNow()} />
-        <HeaderStat label="Time" value={new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) + " (UTC+3)"} />
-
         <button
           onClick={runAnalysis}
           disabled={loading}
           style={{
-            marginRight: "auto",
             background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
             border: "none",
             color: "#181A20",
             fontWeight: 700,
-            borderRadius: 8,
-            padding: "8px 16px",
-            fontSize: 13,
+            borderRadius: 7,
+            padding: "7px 15px",
+            fontSize: 12.5,
             cursor: "pointer",
           }}
         >
-          {loading ? "جاري التحليل..." : "⚡ AI Analyze"}
+          {loading ? "..." : "⚡ AI Analyze"}
         </button>
+
+        <div style={{ marginRight: "auto" }}>
+          <ScoreBadge score={decision?.score || 0} />
+        </div>
       </div>
 
-      {/* -------- شريط تسلسل الفحص -------- */}
-      {decision?.reasonsChecklist && <ChecklistBar checklist={decision.reasonsChecklist} />}
+      {error && <div style={{ ...cardStyle, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
 
-      {error && <div style={{ ...cardStyle, padding: "0.8rem 1rem", color: RED, fontSize: 13 }}>{error}</div>}
-
-      {/* -------- الشارت + الأدوات + لوحة القرار -------- */}
-      <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start", flexWrap: "wrap" }}>
-        {/* أدوات QAIS */}
-        <div style={{ ...cardStyle, padding: "0.8rem", display: "flex", flexDirection: "column", gap: 6, width: 92 }}>
-          <div style={{ fontSize: 10, color: "#888", textAlign: "center", marginBottom: 4 }}>QAIS TOOLS</div>
-          {Object.keys(TOOL_COLORS).map((key) => (
-            <button
-              key={key}
-              onClick={() => setActiveTools((p) => ({ ...p, [key]: !p[key] }))}
-              style={{
-                background: activeTools[key] ? `${TOOL_COLORS[key]}22` : "#181A20",
-                border: `1px solid ${activeTools[key] ? TOOL_COLORS[key] : "#333"}`,
-                color: activeTools[key] ? TOOL_COLORS[key] : "#777",
-                borderRadius: 6,
-                padding: "6px 4px",
-                fontSize: 11,
-                cursor: "pointer",
-              }}
-            >
-              {key}
-            </button>
-          ))}
-        </div>
-
-        {/* الشارت */}
-        <div style={{ ...cardStyle, padding: "0.6rem", flex: 1, minWidth: 320, position: "relative" }}>
-          <div ref={containerRef} style={{ width: "100%", height: 520 }} />
-          <canvas ref={canvasRef} width={800} height={520} style={{ position: "absolute", top: "0.6rem", left: "0.6rem", pointerEvents: "none", zIndex: 50 }} />
+      {/* ================= 2) MAIN AREA — الشارت 75% + Toolbar عمودي رفيع ================= */}
+      <div style={{ display: "flex", gap: "0.7rem", alignItems: "stretch" }}>
+        <div style={{ ...cardStyle, padding: "0.6rem", flex: 1, minWidth: 0, position: "relative" }}>
+          <div ref={containerRef} style={{ width: "100%", height: 560 }} />
+          <canvas ref={canvasRef} width={800} height={560} style={{ position: "absolute", top: "0.6rem", left: "0.6rem", pointerEvents: "none", zIndex: 50 }} />
           {debugInfo && (
             <div
               style={{
                 position: "absolute",
                 bottom: 6,
                 left: 6,
-                fontSize: 10,
-                color: debugInfo.startsWith("⚠️") ? RED : "#888",
-                background: "rgba(0,0,0,0.55)",
-                padding: "2px 6px",
+                fontSize: 9,
+                color: debugInfo.startsWith("⚠️") ? RED : "#5a5a5a",
+                background: "rgba(0,0,0,0.4)",
+                padding: "2px 5px",
                 borderRadius: 4,
                 pointerEvents: "none",
                 fontFamily: "monospace",
@@ -678,109 +683,206 @@ export default function QaisEngineView() {
           )}
         </div>
 
-        {/* لوحة القرار */}
-        <DecisionPanel decision={decision} symbol={symbol} />
+        {/* -------- 3) RIGHT TOOLBAR — أيقونات فقط، تفعيل/إخفاء عند الحاجة -------- */}
+        <div style={{ ...cardStyle, padding: "0.6rem", display: "flex", flexDirection: "column", gap: 6, width: 58, flexShrink: 0 }}>
+          {Object.keys(TOOL_ICONS).map((key) => {
+            const Icon = TOOL_ICONS[key];
+            const on = !!activeTools[key];
+            return (
+              <button
+                key={key}
+                title={key}
+                onClick={() => setActiveTools((p) => ({ ...p, [key]: !p[key] }))}
+                style={{
+                  background: on ? `${TOOL_COLORS[key]}1f` : "transparent",
+                  border: `1px solid ${on ? TOOL_COLORS[key] : "#2a2a2a"}`,
+                  color: on ? TOOL_COLORS[key] : "#666",
+                  borderRadius: 7,
+                  padding: "9px 0",
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 3,
+                }}
+              >
+                <Icon size={15} strokeWidth={2} />
+                <span style={{ fontSize: 8.5, fontWeight: 600 }}>{key}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ================= 4) ANALYSIS PANEL + 5) TRADE PLAN — قابلين للطي، جنب بعض ================= */}
+      <div style={{ display: "flex", gap: "0.7rem", flexWrap: "wrap" }}>
+        <AnalysisPanel decision={decision} />
+        <TradePlanCard decision={decision} symbol={symbol} />
       </div>
     </div>
   );
 }
 
-function HeaderStat({ label, value, color }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11, color: "#888" }}>{label}</div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: color || "#f0f0f0" }}>{value}</div>
-    </div>
-  );
-}
-
-function ScoreGauge({ score }) {
-  const size = 40;
-  const stroke = 4;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const offset = c - (score / 100) * c;
+/* -------- Score Badge: شريحة صغيرة أنيقة، مش دائرة ضخمة -------- */
+function ScoreBadge({ score }) {
   const color = score >= 85 ? GREEN : score >= 50 ? "#eab308" : RED;
   return (
-    <svg width={size} height={size}>
-      <circle cx={size / 2} cy={size / 2} r={r} stroke="#333" strokeWidth={stroke} fill="none" />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        stroke={color}
-        strokeWidth={stroke}
-        fill="none"
-        strokeDasharray={c}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
-      />
-    </svg>
-  );
-}
-
-const CHECKLIST_LABELS = {
-  trend: { ar: "الاتجاه", en: "Trend" },
-  externalStructure: { ar: "مكان السعر", en: "Location" },
-  liquidityHit: { ar: "مناطق الاهتمام", en: "POI" },
-  smtPresent: { ar: "SMT", en: "Smart Money" },
-  obCreated: { ar: "OB", en: "Order Block" },
-  targetsCalculated: { ar: "الأهداف", en: "Targets" },
-};
-
-function ChecklistBar({ checklist }) {
-  const items = checklist.filter((c) => CHECKLIST_LABELS[c.key]);
-  return (
     <div
-      dir="ltr"
-      style={{ ...cardStyle, direction: "ltr", padding: "0.9rem 1.4rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 7,
+        background: "#14161a",
+        border: `1px solid ${color}40`,
+        borderRadius: 8,
+        padding: "5px 10px",
+      }}
     >
-      {items.map((c, i) => (
-        <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: "50%",
-                background: c.ok ? GREEN : "#333",
-                color: "#fff",
-                fontSize: 11,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {i + 1}
-            </span>
-            <div dir="rtl">
-              <div style={{ fontSize: 12, color: "#ddd" }}>{CHECKLIST_LABELS[c.key].ar}</div>
-              <div style={{ fontSize: 10, color: "#777" }}>{CHECKLIST_LABELS[c.key].en}</div>
-            </div>
-            <span style={{ color: c.ok ? GREEN : "#555" }}>{c.ok ? "✓" : "○"}</span>
-          </div>
-          {i < items.length - 1 && <div style={{ width: 30, height: 1, background: "#333" }} />}
-        </div>
-      ))}
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: color }} />
+      <span style={{ fontSize: 10.5, color: "#888" }}>QAIS Score</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f0f0" }}>{score}/100</span>
     </div>
   );
 }
 
-function DecisionPanel({ decision, symbol }) {
-  const [balance, setBalance] = useState(1000);
+/* ================= لوحة التحليل: مطوية افتراضياً، صفوف مختصرة، كل صف يفتح تفاصيله لحاله ================= */
+function AnalysisPanel({ decision }) {
+  const [open, setOpen] = useState(false);
+  const [openRow, setOpenRow] = useState(null);
 
-  if (!decision) {
-    return (
-      <div style={{ ...cardStyle, padding: "1.4rem", width: 300, color: "#888", fontSize: 13, textAlign: "center" }}>
-        جاري تحميل التحليل...
-      </div>
-    );
-  }
+  const ob = decision?.ob;
+  const seq = decision?.sequence;
 
-  const ob = decision.ob;
+  const rows = decision
+    ? [
+        {
+          key: "trend",
+          ok: decision.direction != null,
+          name: "Trend",
+          result: decision.direction === "up" ? "Bullish" : decision.direction === "down" ? "Bearish" : "—",
+          color: decision.direction === "up" ? GREEN : decision.direction === "down" ? RED : "#888",
+          detail: "الإطار المعتمد: Daily / 4H / 1H — التغيير بالاتجاه ما بيصير إلا بعد تأكيد MSS كامل.",
+        },
+        {
+          key: "location",
+          ok: !!decision.priceLocation,
+          name: "Location",
+          result: decision.priceLocation
+            ? decision.priceLocation.zone === "discount"
+              ? "Discount"
+              : decision.priceLocation.zone === "premium"
+              ? "Premium"
+              : "Equilibrium"
+            : "—",
+          color: "#ddd",
+          detail: decision.priceLocation ? `نسبة الموقع الحالية: ${decision.priceLocation.ratio} — المنطقة المفضّلة بين 0.5 و0.666.` : "لسا ما تحدد موقع السعر بدقة.",
+        },
+        {
+          key: "poi",
+          ok: !!decision.ob?.touchedZoneType,
+          name: "POI",
+          result: decision.ob?.touchedZoneType ? decision.reasonTags?.[0] || decision.ob.touchedZoneType : "—",
+          color: "#ddd",
+          detail: ob?.eligible
+            ? `قوة المنطقة: ${ob.quality >= 70 ? "عالية" : ob.quality >= 40 ? "متوسطة" : "منخفضة"}`
+            : "السعر لسا ما وصل لمنطقة اهتمام مؤكدة.",
+        },
+        {
+          key: "smt",
+          ok: !!decision.smt?.valid,
+          name: "SMT",
+          result: decision.smt?.valid ? "Confirmed" : "Not Confirmed",
+          color: decision.smt?.valid ? GREEN : "#888",
+          detail: decision.smt?.symbolB ? `مقارنة مع: ${decision.smt.symbolB}` : "لسا ما ظهر انحراف SMT واضح بين الأصول المرتبطة.",
+        },
+        {
+          key: "ob",
+          ok: !!ob?.eligible && ob.status !== "Invalid",
+          name: "OB",
+          result: ob?.eligible ? `${ob.status}` : "Not Formed",
+          color: ob?.status === "Fresh" || ob?.status === "Active" ? GREEN : ob?.status === "Weak" ? "#eab308" : "#888",
+          detail: decision.timeframe ? `${decision.timeframe} • ${ob?.direction === "up" ? "صاعد" : "هابط"}` : "",
+        },
+        {
+          key: "targets",
+          ok: !!seq?.active,
+          name: "Targets",
+          result: seq?.active ? `${seq.targets.length} TPs` : "—",
+          color: seq?.active ? GREEN : "#888",
+          detail: seq?.active ? seq.targets.map((t) => `${t.key}: ${t.price.toFixed(2)}`).join("  •  ") : seq?.reason || "لا يوجد سيكونز فعّالة بعد.",
+        },
+      ]
+    : [];
+
+  return (
+    <div style={{ ...cardStyle, flex: 1, minWidth: 280, overflow: "hidden" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: "100%",
+          background: "transparent",
+          border: "none",
+          padding: "0.85rem 1.1rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          cursor: "pointer",
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f0f0" }}>التحليل — QAIS Decision Engine</span>
+        {open ? <ChevronDown size={16} color={GOLD} /> : <ChevronRight size={16} color="#666" />}
+      </button>
+
+      {open && (
+        <div style={{ padding: "0 1.1rem 0.9rem" }}>
+          {!decision ? (
+            <div style={{ color: "#777", fontSize: 12.5, padding: "0.5rem 0" }}>جاري تحميل التحليل...</div>
+          ) : (
+            rows.map((r) => (
+              <div key={r.key} style={{ borderTop: "1px solid #23262d" }}>
+                <button
+                  onClick={() => setOpenRow((k) => (k === r.key ? null : r.key))}
+                  style={{
+                    width: "100%",
+                    background: "transparent",
+                    border: "none",
+                    padding: "9px 0",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    cursor: "pointer",
+                    textAlign: "right",
+                  }}
+                >
+                  <span style={{ color: r.ok ? GREEN : "#555", fontSize: 13 }}>{r.ok ? "✓" : "○"}</span>
+                  <span style={{ fontSize: 12.5, color: "#ddd", flex: 1 }}>{r.name}</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: r.color }}>{r.result}</span>
+                  <ChevronRight
+                    size={13}
+                    color="#555"
+                    style={{ transform: openRow === r.key ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}
+                  />
+                </button>
+                {openRow === r.key && r.detail && (
+                  <div style={{ fontSize: 11.5, color: "#888", lineHeight: 1.6, padding: "0 22px 10px" }}>{r.detail}</div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ================= بطاقة خطة الصفقة: مطوية افتراضياً، أرقام فقط عند الفتح ================= */
+function TradePlanCard({ decision, symbol }) {
+  const [open, setOpen] = useState(false);
+  if (!decision) return null;
+
   const seq = decision.sequence;
   const { entry, stopLoss, rr, meetsRR, riskPercent } = computeTradeMetrics(decision);
+  const ready = entry && stopLoss && meetsRR;
 
   function exportAnalysis() {
     const lines = [
@@ -801,172 +903,74 @@ function DecisionPanel({ decision, symbol }) {
   }
 
   return (
-    <div style={{ ...cardStyle, padding: "1.2rem", width: 300, flexShrink: 0 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#f0f0f0" }}>⬡ QAIS DECISION ENGINE</div>
-        <div style={{ fontSize: 12, color: decision.score >= 85 ? GREEN : "#eab308" }}>⏱ {decision.score}/100</div>
-      </div>
-
-      <DecisionRow
-        ok={decision.direction != null}
-        title="الاتجاه"
-        sub="Trend"
-        value={decision.direction === "up" ? "Bullish (صاعد)" : decision.direction === "down" ? "Bearish (هابط)" : "—"}
-        valueColor={decision.direction === "up" ? GREEN : decision.direction === "down" ? RED : "#999"}
-        note="الإطار: Daily / 4H / 1H"
-      />
-
-      <DecisionRow
-        ok={!!decision.priceLocation}
-        title="مكان السعر"
-        sub="Location"
-        value={decision.priceLocation ? `${decision.priceLocation.zone === "discount" ? "Discount" : decision.priceLocation.zone === "premium" ? "Premium" : "Equilibrium"} (${decision.priceLocation.ratio})` : "—"}
-        note="بين: 0.5 - 0.666"
-      />
-
-      <DecisionRow
-        ok={!!decision.ob?.touchedZoneType}
-        title="مناطق الاهتمام"
-        sub="POI"
-        value={decision.ob?.touchedZoneType ? `${decision.reasonTags?.[0] || decision.ob.touchedZoneType}` : "—"}
-        note={ob?.eligible ? `قوة المنطقة: ${ob.quality >= 70 ? "عالية" : ob.quality >= 40 ? "متوسطة" : "منخفضة"}` : "السعر لسا ما وصل لمنطقة اهتمام مؤكدة"}
-      />
-
-      <DecisionRow
-        ok={!!decision.smt?.valid}
-        title="SMT"
-        sub="Smart Money Technique"
-        value={decision.smt?.valid ? "Confirmed" : "غير متوفر"}
-        valueColor={decision.smt?.valid ? GREEN : "#999"}
-        note={decision.smt?.symbolB ? `• ${symbol} / ${decision.smt.symbolB}` : "لسا ما ظهر انحراف SMT واضح بين الأصول المرتبطة"}
-      />
-
-      <DecisionRow
-        ok={!!ob?.eligible && ob.status !== "Invalid"}
-        title="OB"
-        sub="Order Block"
-        value={ob?.eligible ? `${ob.status} OB` : "لم يتشكّل بعد"}
-        valueColor={ob?.status === "Fresh" || ob?.status === "Active" ? GREEN : ob?.status === "Weak" ? "#eab308" : RED}
-        note={decision.timeframe ? `${decision.timeframe} • ${ob?.direction === "up" ? "صاعد" : "هابط"}` : ""}
-      />
-
-      {seq?.active && meetsRR && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #2a2a2a" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: "#ddd" }}>الأهداف</span>
-            <span style={{ fontSize: 10, color: "#777" }}>Targets</span>
-          </div>
-          {seq.targets.map((t) => (
-            <div key={t.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0" }}>
-              <span style={{ color: t.color === "أخضر" ? GREEN : BLUE }}>
-                {t.key} ({t.color})
-              </span>
-              <span style={{ color: "#f0f0f0" }}>{t.price.toFixed(2)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {entry && stopLoss && meetsRR ? (
-        <>
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #2a2a2a", display: "flex", gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: "#888" }}>Entry</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: GREEN }}>{entry.toFixed(2)}</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: "#888" }}>Stop Loss</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: RED }}>{stopLoss.toFixed(2)}</div>
-            </div>
-          </div>
-
-          {rr != null && (
-            <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-              <span style={{ color: "#888" }}>Risk / Reward</span>
-              <span style={{ color: "#f0f0f0" }}>1 : {rr.toFixed(1)}</span>
-            </div>
-          )}
-          {riskPercent != null && (
-            <div style={{ marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-              <span style={{ color: "#888" }}>Risk %</span>
-              <span style={{ color: "#f0f0f0" }}>{riskPercent.toFixed(2)}%</span>
-            </div>
-          )}
-          <div style={{ marginTop: 4, fontSize: 10, color: "#555" }}>
-            * Risk % بناءً على مسافة الدخول-الوقف من السعر فقط (مش حجم اللوت الفعلي)
-          </div>
-        </>
-      ) : entry && stopLoss && rr != null ? (
-        <div
-          style={{
-            marginTop: 12,
-            paddingTop: 12,
-            borderTop: "1px solid #2a2a2a",
-            fontSize: 11.5,
-            color: "#a1a1a1",
-            background: "#181A20",
-            borderRadius: 8,
-            padding: "10px 12px",
-            lineHeight: 1.7,
-          }}
-        >
-          <div style={{ color: RED, fontWeight: 700, marginBottom: 4 }}>
-            ✕ لا تستاهل — RR فقط 1 : {rr.toFixed(1)}
-          </div>
-          الصفقة ما بتحقق الحد الأدنى المطلوب (1 : {MIN_RR}) لعلاقة المخاطرة/العائد، فما بنعرضها كإشارة دخول جاهزة ولا برسم أهدافها على الشارت. لو تغيّرت هيكلية السعر ووسّعت المسافة للهدف، رح تظهر تلقائياً.
-        </div>
-      ) : (
-        <div
-          style={{
-            marginTop: 12,
-            paddingTop: 12,
-            borderTop: "1px solid #2a2a2a",
-            fontSize: 11.5,
-            color: "#a1a1a1",
-            background: "#181A20",
-            borderRadius: 8,
-            padding: "10px 12px",
-            lineHeight: 1.7,
-          }}
-        >
-          <div style={{ color: "#eab308", fontWeight: 700, marginBottom: 4 }}>⏳ الإعداد لسا ما اكتمل</div>
-          لسا ما ظهر Order Block صالح لتحديد نقطة دخول ووقف خسارة واضحة على هالفريم. لما تتحقق باقي الشروط (SMT / OB) رح تظهر Entry و Stop Loss تلقائياً هون.
-        </div>
-      )}
-
+    <div style={{ ...cardStyle, width: 280, flexShrink: 0, overflow: "hidden" }}>
       <button
-        onClick={exportAnalysis}
+        onClick={() => setOpen((o) => !o)}
         style={{
-          marginTop: 14,
           width: "100%",
-          background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
+          background: "transparent",
           border: "none",
-          color: "#181A20",
-          fontWeight: 700,
-          borderRadius: 8,
-          padding: "10px 0",
-          fontSize: 13,
+          padding: "0.85rem 1.1rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
           cursor: "pointer",
         }}
       >
-        ⬇ تصدير التحليل
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f0f0", display: "flex", alignItems: "center", gap: 8 }}>
+          Trade Plan
+          {ready && <span style={{ width: 6, height: 6, borderRadius: "50%", background: GREEN }} />}
+        </span>
+        {open ? <ChevronDown size={16} color={GOLD} /> : <ChevronRight size={16} color="#666" />}
       </button>
+
+      {open && (
+        <div style={{ padding: "0 1.1rem 1rem" }}>
+          {ready ? (
+            <>
+              <PlanRow label="Entry" value={entry.toFixed(2)} color={GREEN} />
+              <PlanRow label="Stop Loss" value={stopLoss.toFixed(2)} color={RED} />
+              {seq?.targets?.slice(0, 2).map((t) => (
+                <PlanRow key={t.key} label={t.key} value={t.price.toFixed(2)} color={t.color === "أخضر" ? GREEN : BLUE} />
+              ))}
+              <PlanRow label="Risk / Reward" value={`1 : ${rr.toFixed(1)}`} />
+              {riskPercent != null && <PlanRow label="Risk %" value={`${riskPercent.toFixed(2)}%`} />}
+              <button
+                onClick={exportAnalysis}
+                style={{
+                  marginTop: 10,
+                  width: "100%",
+                  background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
+                  border: "none",
+                  color: "#181A20",
+                  fontWeight: 700,
+                  borderRadius: 7,
+                  padding: "8px 0",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                ⬇ تصدير
+              </button>
+            </>
+          ) : (
+            <div style={{ fontSize: 11.5, color: "#888", lineHeight: 1.7, padding: "4px 0" }}>
+              {entry && stopLoss && rr != null
+                ? `RR الحالي 1:${rr.toFixed(1)} — أقل من الحد الأدنى (1:${MIN_RR})، فما بنعرضها كصفقة جاهزة.`
+                : "لسا ما اكتمل الإعداد — رح تظهر Entry وStop Loss تلقائياً لما تتحقق الشروط."}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function DecisionRow({ ok, title, sub, value, valueColor, note }) {
+function PlanRow({ label, value, color }) {
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "7px 0", borderBottom: "1px solid #23262d" }}>
-      <span style={{ color: ok ? GREEN : "#555", fontSize: 14, marginTop: 1 }}>{ok ? "✓" : "○"}</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 12.5, color: "#ddd" }}>{title}</span>
-        </div>
-        <div style={{ fontSize: 10, color: "#777" }}>{sub}</div>
-        {note && <div style={{ fontSize: 10, color: "#666", marginTop: 1 }}>{note}</div>}
-      </div>
-      <span style={{ fontSize: 12.5, fontWeight: 600, color: valueColor || "#f0f0f0", whiteSpace: "nowrap" }}>{value}</span>
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid #20232a" }}>
+      <span style={{ fontSize: 11.5, color: "#888" }}>{label}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 700, color: color || "#f0f0f0" }}>{value}</span>
     </div>
   );
 }
