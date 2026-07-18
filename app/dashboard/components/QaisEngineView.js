@@ -266,6 +266,38 @@ export default function QaisEngineView() {
       ctx.fillText(label, x1 + 4, y1 + 12);
     };
 
+    const drawPOIHighlight = (zone) => {
+      if (!zone) return;
+      const lo = zone.from ?? zone.level;
+      const hi = zone.to ?? zone.level;
+      if (lo == null) return;
+      const c1 = candles[zone.index];
+      if (!c1) return;
+      const x1 = ts.timeToCoordinate(c1.time);
+      const lastCandle = candles[candles.length - 1];
+      const x2 = ts.timeToCoordinate(lastCandle.time) + 26;
+      const y1 = series.priceToCoordinate(hi);
+      const y2 = series.priceToCoordinate(lo === hi ? lo - 1 : lo); // خط سعر واحد (Sweep/RJB) بياخد سماكة بسيطة عشان يبين
+      if (x1 == null || x2 == null || y1 == null || y2 == null) return;
+
+      ctx.save();
+      ctx.setLineDash([6, 3]);
+      ctx.strokeStyle = GOLD;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x1 - 2, Math.min(y1, y2) - 2, x2 - x1 + 4, Math.abs(y2 - y1) + 4);
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      const tag = `★ POI (${zone.type})`;
+      ctx.font = "bold 11px sans-serif";
+      const tagW = ctx.measureText(tag).width + 10;
+      const tagY = Math.min(y1, y2) - 16;
+      ctx.fillStyle = GOLD;
+      ctx.fillRect(x1 - 2, tagY, tagW, 15);
+      ctx.fillStyle = "#0b0d10";
+      ctx.fillText(tag, x1 + 3, tagY + 11);
+    };
+
     for (const z of layers.fvgs) drawZone(z, TOOL_COLORS.FVG, "FVG", active.FVG);
     for (const z of layers.voids) drawZone(z, "#7c3aed", "Void", active.FVG);
     for (const z of layers.brkr) drawZone(z, TOOL_COLORS.BRKR, "BRKR", active.BRKR);
@@ -319,6 +351,10 @@ export default function QaisEngineView() {
     }
     for (const sw of layers.sweeps) drawLevelLine({ ...sw, level: sw.level }, TOOL_COLORS.Sweep, "Sweep", active.Sweep);
     for (const r of layers.rjb) drawLevelLine(r, TOOL_COLORS.RJB, "RJB", active.RJB);
+
+    // منطقة الاهتمام (POI) الفعلية يلي اعتمدها محرك القرار — دايماً تترسم لو موجودة
+    // بغض النظر عن حالة أزرار QAIS TOOLS، لأنها أساس القرار مش أداة استكشاف اختيارية
+    drawPOIHighlight(layers.poi);
 
     // -------- TP1-4: بس إذا الصفقة محققة 1:3 RR على الأقل، وبمكان فاضي يمين آخر شمعة --------
     const metrics = computeTradeMetrics(resultRef.current);
@@ -388,6 +424,7 @@ export default function QaisEngineView() {
         rjb: liquidity.rjb.slice(-3),
         structureEvents: struct.events.slice(-6),
         ob,
+        poi: liquidity.touchedZone, // منطقة الاهتمام الفعلية يلي اعتمدها محرك القرار
       };
       applyPriceLinesAndMarkers();
       drawOverlay();
