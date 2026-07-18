@@ -342,6 +342,30 @@ export default function QaisEngineView() {
     }
 
     // خطوط الهيكلية BOS/MSS (خط أفقي قصير من نقطة الكسر لآخر شمعة) + Sweep/RJB كنقاط
+    // مانع تصادم للتسميات: كل تسمية جديدة بتفحص هل بتتقاطع (نفس منطقة x وy) مع
+    // تسمية سبق رسمها بهاد الفريم، ولو في تقاطع بتزحها لفوق بمقدار ثابت لحد ما
+    // تلاقي مكان فاضي — هاد يمنع تكدّس BOS/MSS/Sweep/RJB فوق بعض لما يكونوا قريبين
+    // من نفس المنطقة الزمنية والسعرية (شائع لأنهم مأخوذين من آخر شموع الشارت).
+    const placedLevelLabels = [];
+    const LABEL_H = 14;
+    function placeLevelLabel(x, y, text, color) {
+      ctx.font = "11px sans-serif";
+      const w = ctx.measureText(text).width + 6;
+      let ly = y - 4;
+      for (let attempt = 0; attempt < 14; attempt++) {
+        const top = ly - 11;
+        const bottom = ly + 3;
+        const collides = placedLevelLabels.some(
+          (b) => x < b.x2 && x + w > b.x1 && top < b.bottom && bottom > b.top
+        );
+        if (!collides) break;
+        ly -= LABEL_H; // كل محاولة بتزح التسمية درجة لفوق
+      }
+      placedLevelLabels.push({ x1: x, x2: x + w, top: ly - 11, bottom: ly + 3 });
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, ly);
+    }
+
     const drawLevelLine = (ev, color, label, on) => {
       if (!on) return;
       const c1 = candles[ev.index];
@@ -357,9 +381,7 @@ export default function QaisEngineView() {
       ctx.moveTo(x1, y);
       ctx.lineTo(x2, y);
       ctx.stroke();
-      ctx.fillStyle = color;
-      ctx.font = "11px sans-serif";
-      ctx.fillText(label, x1, y - 4);
+      placeLevelLabel(x1, y, label, color);
     };
 
     for (const ev of layers.structureEvents) {
