@@ -45,6 +45,23 @@ const TOOL_COLORS = {
   SMT: "#22d3ee",
 };
 
+/* الحد الأدنى لعلاقة المخاطرة/العائد عشان نعتبر الصفقة صالحة للعرض/التنفيذ.
+   أي إعداد أقل من 1:3 (حتى لو باقي الشروط محققة) ما بنعرضه كصفقة جاهزة —
+   بس بنخلي شريط الفحص وتفاصيل POI/SMT/OB زي ما هي للتوعية. */
+const MIN_RR = 3;
+
+function computeTradeMetrics(decision) {
+  const ob = decision?.ob;
+  const seq = decision?.sequence;
+  const entry = ob?.eligible ? ob.levels.mt : null;
+  const stopLoss = ob?.eligible ? ob.levels.level4 : null;
+  const tp1 = seq?.active ? seq.targets[0]?.price : null;
+  const rr = entry != null && stopLoss != null && tp1 != null ? Math.abs(tp1 - entry) / Math.abs(entry - stopLoss) : null;
+  const meetsRR = rr != null && rr >= MIN_RR;
+  const riskPercent = entry != null && stopLoss != null ? (Math.abs(entry - stopLoss) / entry) * 100 : null;
+  return { entry, stopLoss, tp1, rr, meetsRR, riskPercent };
+}
+
 function sessionNow() {
   const h = new Date().getUTCHours();
   if (h >= 8 && h < 16) return "London";
@@ -202,27 +219,15 @@ export default function QaisEngineView() {
   const priceLinesRef = useRef([]);
   function applyPriceLinesAndMarkers() {
     const series = seriesRef.current;
-    const LineStyle = chartRef.current?.__LineStyle;
-    if (!series || !LineStyle) return;
-
+    if (!series) return;
+    // TP1-4 ما عادوا يترسموا كـ price lines تمتد بعرض الشارت كامل (كانت بتتراكب
+    // فوق الشموع القديمة) — صاروا يترسموا عبر drawOverlay() بالمساحة الفاضية
+    // يمين آخر شمعة بس، ونفس منطق drawOverlay هو اللي يقرر إذا الصفقة تستاهل
+    // تُعرض أصلاً (لازم تحقق 1:3 RR على الأقل — شوف MIN_RR/computeTradeMetrics).
     priceLinesRef.current.forEach((pl) => series.removePriceLine(pl));
     priceLinesRef.current = [];
-
-    const seq = resultRef.current?.sequence;
-    if (seq?.active) {
-      for (const t of seq.targets) {
-        const pl = series.createPriceLine({
-          price: t.price,
-          color: t.color === "أخضر" ? GREEN : BLUE,
-          lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: t.key,
-        });
-        priceLinesRef.current.push(pl);
-      }
-    }
   }
+
 
   /* ===================== رسم صناديق FVG/OB/BRKR/Void (Canvas overlay) ===================== */
   function drawOverlay() {
@@ -314,6 +319,50 @@ export default function QaisEngineView() {
     }
     for (const sw of layers.sweeps) drawLevelLine({ ...sw, level: sw.level }, TOOL_COLORS.Sweep, "Sweep", active.Sweep);
     for (const r of layers.rjb) drawLevelLine(r, TOOL_COLORS.RJB, "RJB", active.RJB);
+
+    // -------- TP1-4: بس إذا الصفقة محققة 1:3 RR على الأقل، وبمكان فاضي يمين آخر شمعة --------
+    const metrics = computeTradeMetrics(resultRef.current);
+    const seq = resultRef.current?.sequence;
+    if (seq?.active && metrics.meetsRR && candles.length) {
+      const lastCandle = candles[candles.length - 1];
+      const xStart = ts.timeToCoordinate(lastCandle.time);
+      if (xStart != null) {
+        const lineEnd = Math.min(xStart + 90, canvas.width - 60); // يوقف قبل صندوق التسمية
+        const boxRight = canvas.width - 6;
+
+        // رتّب الأهداف حسب السعر وامنع تراكب الصناديق عمودياً
+        const withY = seq.targets
+          .map((t) => ({ t, y: series.priceToCoordinate(t.price) }))
+          .filter((o) => o.y != null)
+          .sort((a, b) => a.y - b.y);
+        const minGap = 16;
+        for (let i = 1; i < withY.length; i++) {
+          if (withY[i].y - withY[i - 1].y < minGap) withY[i].y = withY[i - 1].y + minGap;
+        }
+
+        for (const { t, y } of withY) {
+          const color = t.color === "أخضر" ? GREEN : BLUE;
+          ctx.setLineDash([4, 3]);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(xStart, y);
+          ctx.lineTo(lineEnd, y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          const label = `${t.key} ${t.price.toFixed(2)}`;
+          ctx.font = "11px sans-serif";
+          const textW = ctx.measureText(label).width;
+          const boxW = textW + 12;
+          ctx.fillStyle = color;
+          ctx.fillRect(boxRight - boxW, y - 9, boxW, 18);
+          ctx.fillStyle = "#0b0d10";
+          ctx.textAlign = "left";
+          ctx.fillText(label, boxRight - boxW + 6, y + 4);
+        }
+      }
+    }
   }
 
   /* الطبقات الخام (fvgs/voids/brkr/mtg/ob/structureEvents/sweeps/rjb) بترجع من محرك lib/qais
@@ -564,11 +613,7 @@ function DecisionPanel({ decision, symbol }) {
 
   const ob = decision.ob;
   const seq = decision.sequence;
-  const entry = ob?.eligible ? ob.levels.mt : null;
-  const stopLoss = ob?.eligible ? ob.levels.level4 : null;
-  const tp1 = seq?.active ? seq.targets[0]?.price : null;
-  const rr = entry && stopLoss && tp1 ? Math.abs(tp1 - entry) / Math.abs(entry - stopLoss) : null;
-  const riskPercent = entry && stopLoss ? (Math.abs(entry - stopLoss) / entry) * 100 : null;
+  const { entry, stopLoss, rr, meetsRR, riskPercent } = computeTradeMetrics(decision);
 
   function exportAnalysis() {
     const lines = [
@@ -638,7 +683,7 @@ function DecisionPanel({ decision, symbol }) {
         note={decision.timeframe ? `${decision.timeframe} • ${ob?.direction === "up" ? "صاعد" : "هابط"}` : ""}
       />
 
-      {seq?.active && (
+      {seq?.active && meetsRR && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #2a2a2a" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
             <span style={{ fontSize: 12, color: "#ddd" }}>الأهداف</span>
@@ -655,7 +700,7 @@ function DecisionPanel({ decision, symbol }) {
         </div>
       )}
 
-      {entry && stopLoss ? (
+      {entry && stopLoss && meetsRR ? (
         <>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #2a2a2a", display: "flex", gap: 10 }}>
             <div style={{ flex: 1 }}>
@@ -684,6 +729,25 @@ function DecisionPanel({ decision, symbol }) {
             * Risk % بناءً على مسافة الدخول-الوقف من السعر فقط (مش حجم اللوت الفعلي)
           </div>
         </>
+      ) : entry && stopLoss && rr != null ? (
+        <div
+          style={{
+            marginTop: 12,
+            paddingTop: 12,
+            borderTop: "1px solid #2a2a2a",
+            fontSize: 11.5,
+            color: "#a1a1a1",
+            background: "#181A20",
+            borderRadius: 8,
+            padding: "10px 12px",
+            lineHeight: 1.7,
+          }}
+        >
+          <div style={{ color: RED, fontWeight: 700, marginBottom: 4 }}>
+            ✕ لا تستاهل — RR فقط 1 : {rr.toFixed(1)}
+          </div>
+          الصفقة ما بتحقق الحد الأدنى المطلوب (1 : {MIN_RR}) لعلاقة المخاطرة/العائد، فما بنعرضها كإشارة دخول جاهزة ولا برسم أهدافها على الشارت. لو تغيّرت هيكلية السعر ووسّعت المسافة للهدف، رح تظهر تلقائياً.
+        </div>
       ) : (
         <div
           style={{
