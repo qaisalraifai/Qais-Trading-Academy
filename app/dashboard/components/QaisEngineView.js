@@ -1,19 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import {
-  Activity,
-  Box,
-  Layers3,
-  ShieldAlert,
-  Target,
-  Zap,
-  Waves,
-  Radar,
-  ChevronDown,
-  ChevronRight,
-  Sparkles,
-} from "lucide-react";
+import { Layers3, ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol } from "@/lib/qais/engine";
 
@@ -46,16 +34,14 @@ const TF_OPTIONS = [
   { value: "4h", label: "H4" },
 ];
 
-/* ألوان أدوات QAIS — نفس الألوان مستخدمة بزر التفعيل وبرسم الطبقة على الشارت */
+/* ألوان أدوات QAIS — نفس الألوان مستخدمة بزر التفعيل وبرسم الطبقة على الشارت.
+   بنركّز بس على استراتيجية الـ OB (زي ما طلب المستخدم) — باقي الأدوات (FVG
+   المنفصلة، BRKR، MTG، RJB، Sweep، Structure BOS/MSS) ما عادت تترسم عالشارت
+   عشان نتجنب "العجقة" وتكدّس الصناديق/التسميات فوق بعض. */
 const TOOL_COLORS = {
-  Structure: "#c9c9c9",
-  FVG: "#9b59b6",
   OB: BLUE,
-  BRKR: RED,
-  MTG: "#f97316",
-  RJB: "#f59e0b",
-  Sweep: "#22d3ee",
-  SMT: "#22d3ee",
+  ENTER: GOLD_LIGHT,
+  SL: RED,
 };
 
 /* الحد الأدنى لعلاقة المخاطرة/العائد عشان نعتبر الصفقة صالحة للعرض/التنفيذ.
@@ -63,16 +49,11 @@ const TOOL_COLORS = {
    بس بنخلي شريط الفحص وتفاصيل POI/SMT/OB زي ما هي للتوعية. */
 const MIN_RR = 3;
 
-/* أيقونة صغيرة لكل أداة — بدل النص فقط، عشان الـ toolbar يصير أنيق ومضغوط */
+/* أيقونة صغيرة لكل أداة — بدل النص فقط، عشان الـ toolbar يصير أنيق ومضغوط.
+   زر وحيد بس (OB) — إظهار/إخفاء منطقة الأوردر بلوك كاملة (الصندوق + MT +
+   ENTER + SL + الأهداف)، لأنها كلها جزء من نفس الفرصة الواحدة. */
 const TOOL_ICONS = {
-  Structure: Activity,
-  FVG: Box,
   OB: Layers3,
-  BRKR: ShieldAlert,
-  MTG: Target,
-  RJB: Zap,
-  Sweep: Waves,
-  SMT: Radar,
 };
 
 
@@ -105,11 +86,9 @@ async function fetchCandles(yahoo, interval, count = 300) {
 export default function QaisEngineView() {
   const [symbol, setSymbol] = useState("XAUUSD");
   const [displayTF, setDisplayTF] = useState("1h");
-  /* Structure (فيبوناتشي + نقاط A/B/C) وOB (المنطقة + خط MT) مفعّلين افتراضياً —
-     هدول أساس أي تحليل يدوي على TradingView، فما لازم يضل المستخدم يفعّلهم يدوياً
-     كل مرة. باقي الأدوات (FVG/BRKR/MTG/RJB/Sweep/SMT) اختيارية عشان نتجنب
-     ازدحام الشارت بمربعات كتير فوق بعض ("عجقة"). */
-  const [activeTools, setActiveTools] = useState({ Structure: true, OB: true });
+  /* أداة واحدة بس مفعّلة: OB. كل ما يخص الفرصة (الصندوق + MT + ENTER + SL +
+     الأهداف) بيترسم/يختفي مع بعض كوحدة واحدة — مافي أدوات تانية تعمل "عجقة". */
+  const [activeTools, setActiveTools] = useState({ OB: true });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null); // نتيجة analyzeSymbol كاملة
@@ -325,80 +304,9 @@ export default function QaisEngineView() {
     };
 
 
-    const drawPOIHighlight = (zone, obZone) => {
-      if (!zone) return;
-      const lo = zone.from ?? zone.level;
-      const hi = zone.to ?? zone.level;
-      if (lo == null) return;
-      const c1 = candles[zone.index];
-      if (!c1) return;
-      const x1 = ts.timeToCoordinate(c1.time);
-      const lastCandle = candles[candles.length - 1];
-      const x2 = ts.timeToCoordinate(lastCandle.time) + 26;
-      const y1 = series.priceToCoordinate(hi);
-      const y2 = series.priceToCoordinate(lo === hi ? lo - 1 : lo); // خط سعر واحد (Sweep/RJB) بياخد سماكة بسيطة عشان يبين
-      if (x1 == null || x2 == null || y1 == null || y2 == null) return;
-
-      // لو منطقة الـ OB (المرسومة أصلاً فوق) بتغطي نفس مدى السعر تقريباً، ما
-      // منرسم صندوق تاني فوقها — هاد كان السبب الرئيسي للعجقة (صندوقين + تسميتين
-      // فوق نفس المنطقة). منكتفي بنجمة صغيرة بجانب تسمية OB تأكيد إنها منطقة القرار.
-      if (obZone) {
-        const [oLo, oHi] = [Math.min(obZone.from, obZone.to), Math.max(obZone.from, obZone.to)];
-        const [zLo, zHi] = [Math.min(lo, hi), Math.max(lo, hi)];
-        const overlaps = zLo <= oHi && zHi >= oLo;
-        if (overlaps) return;
-      }
-
-      ctx.save();
-      ctx.setLineDash([5, 3]);
-      ctx.strokeStyle = GOLD;
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(x1 - 2, Math.min(y1, y2) - 2, x2 - x1 + 4, Math.abs(y2 - y1) + 4);
-      ctx.setLineDash([]);
-      ctx.restore();
-
-      flatLabel(x1, Math.min(y1, y2) - 6, `★ POI (${zone.type})`, GOLD);
-    };
-
-    for (const z of layers.fvgs) drawZone(z, TOOL_COLORS.FVG, "FVG", active.FVG);
-    for (const z of layers.voids) drawZone(z, "#7c3aed", "Void", active.FVG);
-    for (const z of layers.brkr) drawZone(z, TOOL_COLORS.BRKR, "BRKR", active.BRKR);
-    for (const z of layers.mtg) drawZone(z, TOOL_COLORS.MTG, "MTG", active.MTG);
-
-    let obZoneBounds = null; // بنستخدمها تحت لمنع تكرار صندوق POI فوق نفس منطقة الـ OB
-    if (layers.ob?.eligible) {
-      const { level1, level2 } = layers.ob.levels;
-      const hi = level1 ?? level2;
-      const lo = layers.ob.merged.low;
-      obZoneBounds = { from: lo, to: hi };
-      const obLabel = `OB${layers.ob.direction === "down" ? "-" : "+"}`;
-      drawZone({ from: lo, to: hi, index: layers.ob.index }, TOOL_COLORS.OB, obLabel, active.OB);
-      // خط الـ MT (منتصف OB) — أقوى مستوى بالمنطقة، بنفس تسمية التحليل اليدوي "MT"
-      const c1 = candles[layers.ob.index];
-      if (c1 && active.OB) {
-        const x1 = ts.timeToCoordinate(c1.time);
-        const lastCandle = candles[candles.length - 1];
-        const x2 = ts.timeToCoordinate(lastCandle.time) + 26;
-        const ym = series.priceToCoordinate(layers.ob.levels.mt);
-        if (x1 != null && x2 != null && ym != null) {
-          ctx.setLineDash([4, 3]);
-          ctx.strokeStyle = "#e5e5e5";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(x1, ym);
-          ctx.lineTo(x2, ym);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          flatLabel(x2 + 4, ym + 4, "MT", "#e5e5e5");
-        }
-      }
-    }
-
-    // خطوط الهيكلية BOS/MSS (خط أفقي قصير من نقطة الكسر لآخر شمعة) + Sweep/RJB كنقاط
-    // مانع تصادم للتسميات: كل تسمية جديدة بتفحص هل بتتقاطع (نفس منطقة x وy) مع
-    // تسمية سبق رسمها بهاد الفريم، ولو في تقاطع بتزحها لفوق بمقدار ثابت لحد ما
-    // تلاقي مكان فاضي — هاد يمنع تكدّس BOS/MSS/Sweep/RJB فوق بعض لما يكونوا قريبين
-    // من نفس المنطقة الزمنية والسعرية (شائع لأنهم مأخوذين من آخر شموع الشارت).
+    // مانع تصادم للتسميات: كل تسمية جديدة بتفحص هل بتتقاطع مع تسمية سبق
+    // رسمها بهاد الفريم، ولو في تقاطع بتزحها لفوق بمقدار ثابت لحد ما تلاقي
+    // مكان فاضي — هاد يمنع تكدّس ENTER/SL/MT/الأهداف فوق بعض.
     const placedLevelLabels = [];
     const LABEL_H = 14;
     function placeLevelLabel(x, y, text, color) {
@@ -418,132 +326,65 @@ export default function QaisEngineView() {
       flatLabel(x, ly - 1, text, color);
     }
 
-    const drawLevelLine = (ev, color, label, on) => {
-      if (!on) return;
-      const c1 = candles[ev.index];
-      if (!c1) return;
+    const drawLevelLine = (index, price, color, label, dashed = true) => {
+      const c1 = candles[index];
+      if (!c1 || price == null) return;
       const x1 = ts.timeToCoordinate(c1.time);
       const lastCandle = candles[candles.length - 1];
       const x2 = ts.timeToCoordinate(lastCandle.time) + 26;
-      const y = series.priceToCoordinate(ev.level ?? ev.price);
+      const y = series.priceToCoordinate(price);
       if (x1 == null || x2 == null || y == null) return;
+      ctx.save();
+      if (dashed) ctx.setLineDash([4, 3]);
       ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(x1, y);
       ctx.lineTo(x2, y);
       ctx.stroke();
+      ctx.restore();
       placeLevelLabel(x1, y, label, color);
     };
 
-    for (const ev of layers.structureEvents) {
-      drawLevelLine(ev, ev.type === "BOS" ? GREEN : "#e5e5e5", ev.type, active.Structure);
-    }
-    for (const sw of layers.sweeps) drawLevelLine({ ...sw, level: sw.level }, TOOL_COLORS.Sweep, "Sweep", active.Sweep);
-    for (const r of layers.rjb) drawLevelLine(r, TOOL_COLORS.RJB, "RJB", active.RJB);
+    // ================= استراتيجية الـ OB فقط — ولا شي غيرها =================
+    // 1) ما في شي يترسم أبداً إلا إذا تشكّل OB كامل الشروط (eligible وغير Invalid).
+    // 2) أول ما يتشكّل: صندوق OB + خط MT.
+    // 3) بمجرد اكتمال شروط الدخول (OB صالح + الأهداف انحسبت): يترسم ENTER وSL
+    //    والأهداف الأربعة (1 / 1.618 / 1.809 / 2) مع بعض — نفس لحظة واحدة.
+    // 4) هاي دايماً "آخر فرصة" حصلت فعلياً بالسوق (مو فرصة قديمة عالقة بالغلط)
+    //    لأنه liquidity.js صار يدور من الأحدث للأقدم، وبتضل مرسومة لحد ما تُلغى
+    //    (كسر نقطة B بالعكس) — بغض النظر هل وصلت الأهداف ولا لسا.
+    const ob = layers.ob;
+    const obFormed = !!ob?.eligible && ob.status !== "Invalid" && active.OB;
 
-    // منطقة الاهتمام (POI) الفعلية يلي اعتمدها محرك القرار — دايماً تترسم لو موجودة
-    // بغض النظر عن حالة أزرار QAIS TOOLS، لأنها أساس القرار مش أداة استكشاف اختيارية.
-    // بنمرر حدود صندوق الـ OB عشان drawPOIHighlight يتجنب رسم صندوق مكرر فوقه.
-    drawPOIHighlight(layers.poi, obZoneBounds);
+    if (obFormed) {
+      const { level1, level2, level4, mt } = ob.levels;
+      const hi = level1 ?? level2;
+      const lo = ob.merged.low;
+      const obLabel = `OB${ob.direction === "down" ? "-" : "+"}`;
+      drawZone({ from: lo, to: hi, index: ob.index }, TOOL_COLORS.OB, obLabel, true);
 
-    // -------- نقاط A/B/C + خطوط فيبوناتشي الارتداد (زي أسلوب التحليل اليدوي) --------
-    // دي أهم إشارة بصرية ناقصة قبل هيك: بتوضح للمستخدم *ليش* اتحدد الهدف من نقطة C،
-    // وشو نسبة التصحيح اللي حصلت من الساق A-B، بالضبط متل الخطوط السودة بالمرجع.
-    const seqPoints = resultRef.current?.sequence?.points;
-    if (seqPoints && active.Structure) {
-      const { A, B, C } = seqPoints;
-      const FIB_LEVELS = [0.333, 0.5, 0.666];
-      const legLength = Math.abs(B.price - A.price);
-      const lastCandle = candles[candles.length - 1];
-      const xEnd = ts.timeToCoordinate(lastCandle.time) + 26;
+      const seq = resultRef.current?.sequence;
+      const entryReady = seq?.active; // شروط الدخول اكتملت = الأهداف انحسبت على أساس BOS مؤكَّد
+      if (!entryReady) {
+        drawLevelLine(ob.index, mt, "#e5e5e5", "MT");
+      } else {
+        // MT وENTER نفس المستوى بالضبط — أول ما تكتمل شروط الدخول منستبدل
+        // تسمية MT بـ ENTER بدل ما نرسم خطين فوق بعض بنفس السعر.
+        drawLevelLine(ob.index, mt, TOOL_COLORS.ENTER, "ENTER");
+        drawLevelLine(ob.index, level4, TOOL_COLORS.SL, "SL");
 
-      const markSwing = (point, tag) => {
-        const x = ts.timeToCoordinate(point.time);
-        const y = series.priceToCoordinate(point.price);
-        if (x == null || y == null) return;
-        ctx.fillStyle = "#e5e5e5";
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.font = "bold 11px sans-serif";
-        ctx.fillStyle = "#e5e5e5";
-        ctx.fillText(`(${tag})`, x - 6, point.type === "high" || tag === "B" ? y - 8 : y + 16);
-      };
-      markSwing(A, "A");
-      markSwing(B, "B");
-      markSwing(C, "C");
-
-      const xA = ts.timeToCoordinate(A.time);
-      if (xA != null) {
-        for (const ratio of FIB_LEVELS) {
-          const price = B.price - Math.sign(B.price - A.price) * legLength * ratio;
-          const y = series.priceToCoordinate(price);
-          if (y == null) continue;
-          ctx.save();
-          ctx.setLineDash([3, 3]);
-          ctx.strokeStyle = "#5a5a5a";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(xA, y);
-          ctx.lineTo(xEnd, y);
-          ctx.stroke();
-          ctx.restore();
-          const label = `${ratio} (${price.toFixed(2)})`;
-          ctx.font = "10px sans-serif";
-          ctx.fillStyle = "#9a9a9a";
-          ctx.fillText(label, xEnd - ctx.measureText(label).width - 4, y - 3);
-        }
-      }
-    }
-
-    // -------- TP1-4: بس إذا الصفقة محققة 1:3 RR على الأقل، وبمكان فاضي يمين آخر شمعة --------
-    const metrics = computeTradeMetrics(resultRef.current);
-    const seq = resultRef.current?.sequence;
-    if (seq?.active && metrics.meetsRR && candles.length) {
-      const lastCandle = candles[candles.length - 1];
-      const xStart = ts.timeToCoordinate(lastCandle.time);
-      if (xStart != null) {
-        const lineEnd = Math.min(xStart + 90, canvas.width - 60); // يوقف قبل صندوق التسمية
-        const boxRight = canvas.width - 6;
-
-        // رتّب الأهداف حسب السعر وامنع تراكب الصناديق عمودياً
-        const withY = seq.targets
-          .map((t) => ({ t, y: series.priceToCoordinate(t.price) }))
-          .filter((o) => o.y != null)
-          .sort((a, b) => a.y - b.y);
-        const minGap = 16;
-        for (let i = 1; i < withY.length; i++) {
-          if (withY[i].y - withY[i - 1].y < minGap) withY[i].y = withY[i - 1].y + minGap;
-        }
-
-        for (const { t, y } of withY) {
+        for (const t of seq.targets) {
           const color = t.color === "أخضر" ? GREEN : BLUE;
-          ctx.setLineDash([4, 3]);
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(xStart, y);
-          ctx.lineTo(lineEnd, y);
-          ctx.stroke();
-          ctx.setLineDash([]);
-
-          const label = `${t.key} ${t.price.toFixed(2)}`;
-          ctx.font = "11px sans-serif";
-          const textW = ctx.measureText(label).width;
-          const boxW = textW + 12;
-          ctx.fillStyle = color;
-          ctx.fillRect(boxRight - boxW, y - 9, boxW, 18);
-          ctx.fillStyle = "#0b0d10";
-          ctx.textAlign = "left";
-          ctx.fillText(label, boxRight - boxW + 6, y + 4);
+          drawLevelLine(ob.index, t.price, color, `${t.key} ${t.price.toFixed(2)}`);
         }
       }
     }
   }
 
-  /* الطبقات الخام (fvgs/voids/brkr/mtg/ob/structureEvents/sweeps/rjb) بترجع من محرك lib/qais
-     مباشرة عبر إعادة استدعاء الدوال الفرعية على نفس شموع العرض — منخزنها بـ ref لتفادي إعادة حساب مكلفة بكل رندر */
+  /* الطبقة الخام (ob بس) بترجع من محرك lib/qais مباشرة عبر إعادة استدعاء الدوال
+     الفرعية على نفس شموع العرض — منخزنها بـ ref لتفادي إعادة حساب مكلفة بكل رندر.
+     محصورة بالـ OB فقط (زي ما طلب المستخدم — استراتيجية واحدة، رسمة واحدة). */
   const rawLayersRef = useRef(null);
   const [debugInfo, setDebugInfo] = useState("");
   useEffect(() => {
@@ -554,26 +395,19 @@ export default function QaisEngineView() {
         const { analyzeStructure } = await import("@/lib/qais/structure");
         const { analyzeLiquidity } = await import("@/lib/qais/liquidity");
         const { analyzeOrderBlock } = await import("@/lib/qais/orderblock");
+        const { analyzeSequence } = await import("@/lib/qais/sequence");
         if (cancelled) return;
         const struct = analyzeStructure(candles);
         const liquidity = analyzeLiquidity(candles, struct);
         const ob = analyzeOrderBlock(candles, struct, liquidity);
-        rawLayersRef.current = {
-          // بس آخر نسخة فعّالة من كل أداة — مش كل التاريخ القريب. هاد يطابق أسلوب
-          // التحليل اليدوي (صورة المرجع): منطقة وحدة واضحة لكل أداة، مش تراكم نسخ قديمة.
-          fvgs: liquidity.fvgs.slice(-1),
-          voids: liquidity.voids.slice(-1),
-          brkr: liquidity.brkr.slice(-1),
-          mtg: liquidity.mtg.slice(-1),
-          sweeps: liquidity.sweeps.slice(-1),
-          rjb: liquidity.rjb.slice(-1),
-          structureEvents: struct.events.slice(-2),
-          ob,
-          poi: liquidity.touchedZone, // منطقة الاهتمام الفعلية يلي اعتمدها محرك القرار
-        };
+        const sequence = analyzeSequence(candles, struct);
+        rawLayersRef.current = { ob };
+        // نحدّث نتيجة السيكونز (الأهداف) بنفس فريم العرض، عشان الأهداف المرسومة
+        // على الشارت تكون محسوبة من نفس الشموع المعروضة بالضبط.
+        if (resultRef.current) resultRef.current = { ...resultRef.current, sequence };
         if (cancelled) return;
         setDebugInfo(
-          `FVG:${rawLayersRef.current.fvgs.length} OB:${ob?.eligible ? 1 : 0} MTG:${rawLayersRef.current.mtg.length} BRKR:${rawLayersRef.current.brkr.length} POI:${liquidity.touchedZone ? liquidity.touchedZone.type : "—"} candles:${candles.length}`
+          `OB:${ob?.eligible ? ob.status : "لم يتشكّل"} POI:${liquidity.touchedZone ? liquidity.touchedZone.type : "—"} Targets:${sequence?.active ? "جاهزة" : "—"} candles:${candles.length}`
         );
         applyPriceLinesAndMarkers();
         drawOverlay();
