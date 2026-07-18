@@ -455,8 +455,8 @@ export default function QaisEngineView() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      <div style={{ background: "#ff0033", color: "#fff", padding: "10px", borderRadius: 8, fontWeight: 900, textAlign: "center" }}>
-        🔧 DEBUG BUILD v2 — إذا شفت هالشريط الأحمر، الكود الجديد نزل فعلاً
+      <div style={{ background: "#ff0033", color: "#fff", padding: "10px", borderRadius: 8, fontWeight: 900, textAlign: "center", fontFamily: "monospace" }}>
+        🔧 candles: {candles.length} | rawLayers: {rawLayersRef.current ? "SET" : "NULL"} | debugInfo: {debugInfo || "(EMPTY)"}
       </div>
       {/* -------- الهيدر -------- */}
       <div style={{ ...cardStyle, padding: "1rem 1.2rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "1.2rem" }}>
