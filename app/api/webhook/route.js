@@ -1,39 +1,41 @@
 import { NextResponse } from "next/server";
-import { Paddle, Environment } from "@paddle/paddle-node-sdk";
 import { createClient } from "@supabase/supabase-js";
+import { getWhop } from "@/lib/whop";
 import { kickMemberFromGuild } from "@/lib/discord";
 import { logActivity } from "@/lib/activity-log";
 import { recordCommissionsForPayment } from "@/lib/affiliate";
 import { processMlmCommissionsForPayment } from "@/lib/compensation-engine";
 
-// مفاتيح الـ sandbox بتبلش بـ pdl_sdbx_ — لازم نحدد الـ environment صح
-// وإلا Paddle بيرفض الطلب بخطأ "forbidden"
-const isSandbox = process.env.PADDLE_API_KEY?.startsWith("pdl_sdbx_");
-const paddle = new Paddle(process.env.PADDLE_API_KEY, {
-  environment: isSandbox ? Environment.sandbox : Environment.production,
-});
-// عميل Supabase بصلاحية Service Role (يتجاوز RLS) لأنه هاد كود سيرفر-لسيرفر موثوق من Paddle
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// عميل Supabase بصلاحية Service Role — بيتكوّن بس أول ما يُستخدم فعلياً (lazy)،
+// مش وقت تحميل الملف. لو سويناه على مستوى الملف مباشرة، Next.js بمرحلة
+// "collect page data" وقت الـ build بيستورد الملف وينفّذ هاد السطر، ولو
+// NEXT_PUBLIC_SUPABASE_URL مش متوفر وقتها (env مش مفعّل لمرحلة الـ Build)
+// بيطلع خطأ ERR_INVALID_URL ويفشل الـ build كامل.
+let _supabaseAdmin = null;
+function getSupabaseAdmin() {
+  if (!_supabaseAdmin) {
+    _supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  }
+  return _supabaseAdmin;
+}
 
 // يسجل صف بجدول payments بشكل موحّد، وبعدين يحسب عمولات المسوّقين (لو في) على هاي الدفعة
-async function recordPayment(userId, txn, isFirstPayment) {
+async function recordPayment(userId, payment, isFirstPayment) {
   if (!userId) return;
-  const amount = txn?.details?.totals?.total
-    ? Number(txn.details.totals.total) / 100
-    : 0;
-  const currency = txn?.currencyCode || "USD";
-  const { data: payment, error } = await supabaseAdmin
+  const amount = typeof payment?.amount_after_fees === "number" ? payment.amount_after_fees : 0;
+  const currency = (payment?.currency || "usd").toUpperCase();
+  const { data: row, error } = await getSupabaseAdmin()
     .from("payments")
     .insert({
       user_id: userId,
       amount,
       currency,
       status: "paid",
-      method: "paddle",
-      invoice_url: txn?.invoiceUrl || null,
+      method: "whop",
+      invoice_url: payment?.receipt_url || null,
     })
     .select("id")
     .single();
@@ -44,66 +46,57 @@ async function recordPayment(userId, txn, isFirstPayment) {
   }
 
   // النظام القديم (3 مستويات، نسبة من قيمة الدفعة) — يضل شغال متل ما هو
-  await recordCommissionsForPayment(supabaseAdmin, {
+  await recordCommissionsForPayment(getSupabaseAdmin(), {
     paidUserId: userId,
-    paymentId: payment?.id,
+    paymentId: row?.id,
     amount,
   }).catch((e) => console.error("recordCommissionsForPayment error:", e));
 
   // نظام الخطة الجديد (CV + شجرة ثنائية + Direct/Renewal Bonus) — مستقل تمامًا
-  await processMlmCommissionsForPayment(supabaseAdmin, {
+  await processMlmCommissionsForPayment(getSupabaseAdmin(), {
     userId,
-    paymentId: payment?.id,
+    paymentId: row?.id,
     isFirstPayment,
   }).catch((e) => console.error("processMlmCommissionsForPayment error:", e));
 }
 
+function readUserId(metadata) {
+  if (!metadata || typeof metadata !== "object") return null;
+  return typeof metadata.user_id === "string" ? metadata.user_id : null;
+}
+
 export async function POST(request) {
-  const body = await request.text(); // لازم نص خام (raw) عشان التحقق من التوقيع يشتغل
-  const signature = request.headers.get("paddle-signature") || "";
+  const bodyText = await request.text(); // لازم نص خام (raw) عشان التحقق من التوقيع يشتغل
+  const headers = Object.fromEntries(request.headers);
 
   let event;
   try {
-    // unmarshal بيتحقق من التوقيع ويرجع الحدث محلل جاهز، وبيرمي خطأ لو التوقيع غلط
-    event = await paddle.webhooks.unmarshal(
-      body,
-      process.env.PADDLE_WEBHOOK_SECRET,
-      signature
-    );
+    // unwrap بيتحقق من التوقيع (Standard Webhooks) ويرجع الحدث محلل جاهز، وبيرمي خطأ لو التوقيع غلط
+    event = getWhop().webhooks.unwrap(bodyText, { headers });
   } catch (err) {
-    console.error("Paddle webhook signature verification failed:", err.message);
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    console.error("Whop webhook signature verification failed:", err.message);
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
   try {
-    switch (event.eventType) {
-      // ✅ أي دفعة ناجحة — أول دفعة تسجيل، أو أي تجديد شهري لاحق
-      case "transaction.completed": {
-        const txn = event.data;
-        const userId = txn.customData?.user_id;
-        const subscriptionId = txn.subscriptionId;
+    switch (event.type) {
+      // دفعة ناجحة — أول دفعة تسجيل، أو أي تجديد شهري لاحق.
+      // metadata.user_id موجودة فقط على أول دفعة (جاية من checkoutConfigurations.create
+      // اللي سوينا بـ app/api/checkout/route.js). التجديدات اللاحقة ما بتحمل metadata
+      // دايماً، فمنعتمد وقتها على membership.went_valid/activated (تحت) للمطابقة.
+      case "payment.succeeded": {
+        const payment = event.data;
+        const userId = readUserId(payment.metadata);
+        const membershipId = payment.member?.id || payment.membership?.id || null;
 
         if (userId) {
-          // أول دفعة: عندنا user_id مباشرة من الـ checkout (customData)
           const updateData = {
             subscription_status: "active",
-            paddle_customer_id: txn.customerId,
+            whop_user_id: payment.member?.user?.id || payment.user?.id || null,
           };
+          if (membershipId) updateData.whop_membership_id = membershipId;
 
-          if (subscriptionId) {
-            updateData.paddle_subscription_id = subscriptionId;
-            // منجيب تاريخ الفاتورة الجاية حتى نعرف امتى ينتهي الوصول لو ما تجدد
-            const subscription = await paddle.subscriptions.get(subscriptionId);
-            updateData.subscription_end = subscription.nextBilledAt
-              ? new Date(subscription.nextBilledAt).toISOString()
-              : null;
-          } else {
-            updateData.subscription_end = null;
-          }
-
-          // منجرب update عادي الأول (ما بيلمس username/role الموجودين).
-          // منستخدم select() حتى نعرف هل فعلاً في صف تحدّث ولا لأ.
-          const { data: updated, error } = await supabaseAdmin
+          const { data: updated, error } = await getSupabaseAdmin()
             .from("profiles")
             .update(updateData)
             .eq("id", userId)
@@ -112,62 +105,76 @@ export async function POST(request) {
           if (error) {
             console.error("Failed to activate subscription:", error);
           } else if (!updated || updated.length === 0) {
-            // ما في صف بهاد الـ id أصلاً — نادراً ما لازم يصير بعد إصلاح
-            // مسار التسجيل، بس هاد fallback أمان حتى ما تضيع دفعة ناجحة بصمت.
             console.error(
-              `⚠️ profiles row missing for user ${userId} during payment — creating fallback row`
+              "profiles row missing for user " + userId + " during payment — creating fallback row"
             );
-            const { error: insertError } = await supabaseAdmin
-              .from("profiles")
-              .insert({
-                id: userId,
-                username: `user_${userId.slice(0, 8)}`,
-                role: "student",
-                ...updateData,
-              });
-            if (insertError) {
-              console.error("Fallback profile insert also failed:", insertError);
-            }
+            const { error: insertError } = await getSupabaseAdmin().from("profiles").insert({
+              id: userId,
+              username: `user_${userId.slice(0, 8)}`,
+              role: "student",
+              ...updateData,
+            });
+            if (insertError) console.error("Fallback profile insert also failed:", insertError);
           }
-          await recordPayment(userId, txn, true);
-          await logActivity(userId, "renew", "دفعة ناجحة — تفعيل الاشتراك", {
-            subscriptionId,
-          });
-        } else if (subscriptionId) {
-          // تجديد شهري لاحق: ما رح يكون فيه customData، فمنربطه بمعرف الاشتراك المخزن مسبقاً
-          const subscription = await paddle.subscriptions.get(subscriptionId);
-          const { data: renewed, error } = await supabaseAdmin
+          await recordPayment(userId, payment, true);
+          await logActivity(userId, "renew", "دفعة ناجحة — تفعيل الاشتراك", { membershipId });
+        } else if (membershipId) {
+          // تجديد شهري بدون metadata: نطابق بمعرف العضوية المخزّن مسبقاً
+          const { data: renewed, error } = await getSupabaseAdmin()
             .from("profiles")
-            .update({
-              subscription_status: "active",
-              subscription_end: subscription.nextBilledAt
-                ? new Date(subscription.nextBilledAt).toISOString()
-                : null,
-            })
-            .eq("paddle_subscription_id", subscriptionId)
+            .update({ subscription_status: "active" })
+            .eq("whop_membership_id", membershipId)
             .select("id")
             .maybeSingle();
 
           if (error) {
             console.error("Failed to renew subscription:", error);
           } else if (renewed?.id) {
-            await recordPayment(renewed.id, txn, false);
-            await logActivity(renewed.id, "renew", "تجديد الاشتراك الشهري", {
-              subscriptionId,
-            });
+            await recordPayment(renewed.id, payment, false);
+            await logActivity(renewed.id, "renew", "تجديد الاشتراك الشهري", { membershipId });
+          } else {
+            console.error("payment.succeeded with no matching profile for membership:", membershipId);
           }
         }
         break;
       }
 
-      // ❌ فشل الدفع أو إلغاء الاشتراك — عطّل الوصول واطرد من Discord
-      case "subscription.past_due":
-      case "subscription.canceled": {
-        const subscriptionId = event.data.id;
-        const { data: updated, error } = await supabaseAdmin
+      // العضوية أصبحت فعّالة (بديل حدث تفعيل الاشتراك الأول أو استئنافه)
+      case "membership.went_valid":
+      case "membership.activated": {
+        const membership = event.data;
+        const userId = readUserId(membership.metadata);
+        const whopUserId = membership.user?.id || null;
+
+        const matchColumn = userId ? "id" : "whop_membership_id";
+        const matchValue = userId ? userId : membership.id;
+
+        const { data: updated, error } = await getSupabaseAdmin()
+          .from("profiles")
+          .update({
+            subscription_status: "active",
+            whop_membership_id: membership.id,
+            ...(whopUserId ? { whop_user_id: whopUserId } : {}),
+          })
+          .eq(matchColumn, matchValue)
+          .select("id")
+          .maybeSingle();
+
+        if (error) console.error("Failed to mark membership active:", error);
+        else if (updated?.id) {
+          await logActivity(updated.id, "note", "العضوية أصبحت فعّالة", { membershipId: membership.id });
+        }
+        break;
+      }
+
+      // فشل الدفع أو إلغاء/انتهاء الاشتراك — عطّل الوصول واطرد من Discord
+      case "membership.went_invalid":
+      case "membership.deactivated": {
+        const membership = event.data;
+        const { data: updated, error } = await getSupabaseAdmin()
           .from("profiles")
           .update({ subscription_status: "inactive" })
-          .eq("paddle_subscription_id", subscriptionId)
+          .eq("whop_membership_id", membership.id)
           .select("id, discord_id")
           .maybeSingle();
 
@@ -179,13 +186,18 @@ export async function POST(request) {
               console.error("Discord kick error:", e)
             );
           }
-          const isFailed = event.eventType === "subscription.past_due";
-          await logActivity(
-            updated.id,
-            isFailed ? "payment_failed" : "note",
-            isFailed ? "فشل الدفع" : "تم إلغاء الاشتراك",
-            { subscriptionId }
-          );
+          await logActivity(updated.id, "note", "أصبحت العضوية غير فعّالة", {
+            membershipId: membership.id,
+          });
+        }
+        break;
+      }
+
+      case "payment.failed": {
+        const payment = event.data;
+        const userId = readUserId(payment.metadata);
+        if (userId) {
+          await logActivity(userId, "payment_failed", "فشل الدفع", { paymentId: payment.id });
         }
         break;
       }
