@@ -254,6 +254,14 @@ export default function QaisEngineView() {
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // TEST مؤقت رقم 2 — تأكيد إذا إصلاح الحجم شغّال فعلياً
+    ctx.fillStyle = "lime";
+    ctx.fillRect(50, 50, 200, 200);
+    ctx.fillStyle = "#000";
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillText(`canvas: ${canvas.width}x${canvas.height}`, 55, 270);
+    ctx.fillText(`container: ${container.clientWidth}`, 55, 290);
+
     const ts = chart.timeScale();
     const active = activeToolsRef.current;
     const layers = rawLayersRef.current;
