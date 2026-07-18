@@ -96,6 +96,10 @@ export default function QaisEngineView() {
   useEffect(() => {
     activeToolsRef.current = activeTools;
   }, [activeTools]);
+  const drawOverlayRef = useRef(() => {});
+  useEffect(() => {
+    drawOverlayRef.current = drawOverlay;
+  });
 
   const asset = getAssetByValue(symbol);
 
@@ -170,7 +174,7 @@ export default function QaisEngineView() {
       seriesRef.current = series;
       chartRef.current.__LineStyle = LineStyle;
 
-      const redraw = () => drawOverlay();
+      const redraw = () => drawOverlayRef.current();
       chart.timeScale().subscribeVisibleTimeRangeChange(redraw);
 
       const handleResize = () => {
