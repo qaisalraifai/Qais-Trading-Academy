@@ -5572,11 +5572,12 @@ export default function ReplayClient({ userId }) {
           borderRadius: effectiveFullscreen ? 0 : 14,
           padding: effectiveFullscreen ? "0.6rem" : "1rem",
           position: cssFullscreen ? "fixed" : "relative",
+          // inset:0 (بدل width/height:100vw/100dvh) بيمدد الصندوق تلقائياً
+          // لحدود الشاشة الفعلية المرئية. استخدام 100dvh كان بيعطي ارتفاع مختلف
+          // شوي عن window.innerHeight (يلي منستخدمه بحساب ارتفاع الشارت بالجافاسكريبت)
+          // بسبب شريط أدوات سفاري المتحرك، فكان محور الوقت (الشريط السفلي) بيطلع
+          // خارج حدود الشاشة الفعلية ومش ظاهر.
           inset: cssFullscreen ? 0 : undefined,
-          top: cssFullscreen ? 0 : undefined,
-          left: cssFullscreen ? 0 : undefined,
-          width: cssFullscreen ? "100vw" : undefined,
-          height: cssFullscreen ? "100dvh" : undefined,
           zIndex: cssFullscreen ? 9999 : undefined,
           display: "flex",
           flexDirection: "column",
