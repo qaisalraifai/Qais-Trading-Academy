@@ -8,17 +8,17 @@ import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
 /* ============================================================================
    QaisEngineView — تبويب "QAIS SK Engine" المستقل. شارت حي + Decision Engine كامل.
 
-   تصميم مطابق للتوثيق الجديد (سابع عشر/ثامن عشر): الشارت هو العنصر الأساسي،
-   وكل عناصر QAIS (OB/ENTRY/SL/Targets/POI) تترسم كخطوط سعرية أفقية نظيفة
-   (نفس أسلوب TradingView الاحترافي) — بدون صناديق أو ألوان زائدة، ولأنها خطوط
-   سعرية بحتة (price lines) بتضل صحيحة بغض النظر عن أي فريم معروض بالشارت،
-   حتى لو كانت محسوبة أصلاً على فريم هيكلي أعلى (Daily/4H) أو فريم تنفيذ أصغر
-   (15m/5m) — عكس الصناديق اللي كانت تحتاج تطابق فريم العرض بالضبط.
-
-   المحرك (lib/qais/engine.js) بيختار تلقائياً:
-     - الفريم الرئيسي (Daily > 4H > 1H — أول واحد عنده اتجاه مؤكَّد)
-     - فريم تنفيذ الـ OB (15m أو 5m — الأقوى، وعند التعادل يُفضَّل 15m)
-   والواجهة هون بس "تعرض" النتيجة — ما في أي منطق تحليل بالواجهة نفسها.
+   نظام عرض الصفقة (Sequence Projection — تحديث بصري فقط، منطق الحساب بـ
+   lib/qais/sequence.js و decision.js لم يتغيّر إطلاقاً):
+     - ما في ولا خط سعري يمتد عبر كامل الشارت (لا Entry ولا SL ولا TP ولا حتى
+       مستويات الـ Sequence الداخلية). كل شي يترسم بـ Canvas overlay فوق الشارت،
+       بامتداد محدود فقط ضمن منطقة الحركة (A→B→C) أو منطقة "المسقط" الفارغة
+       بعد آخر شمعة (Projection Zone).
+     - نقاط A/B/C ومستويات الـ Sequence الداخلية بترتسم بس لما فريم العرض
+       المختار = نفس الفريم اللي حُسب عليه الـ Sequence فعلياً (sequence.displayTF)
+       — لأنها إحداثيات تاريخية حقيقية (وقت + سعر)، عكس المسقط اللي هو سعر بس.
+     - ENTRY/SL/TP1-4 (Trade/Sequence Projection) بترتسم دايماً بغض النظر عن
+       الفريم المعروض، لأنها مجرد مستويات سعرية مسقطة بمساحة فارغة يمين آخر شمعة.
    ============================================================================ */
 
 const GOLD = "#D4AF37";
@@ -27,6 +27,8 @@ const GREEN = "#02C076";
 const RED = "#F6465D";
 const BLUE = "#4f7cff";
 const NEUTRAL = "#c9c9c9";
+const CHART_H = 560;
+const ANIM_MS = 450;
 
 const cardStyle = {
   background: "linear-gradient(145deg, #22252B, #181A20)",
@@ -51,6 +53,8 @@ async function fetchCandles(yahoo, interval, count = 300) {
   }
 }
 
+const easeOutCubic = (x) => 1 - Math.pow(1 - x, 3);
+
 export default function QaisEngineView() {
   const [symbol, setSymbol] = useState("XAUUSD");
   const [displayTF, setDisplayTF] = useState("h1");
@@ -59,13 +63,26 @@ export default function QaisEngineView() {
   const [result, setResult] = useState(null); // نتيجة analyzeSymbol كاملة
   const [allCandles, setAllCandles] = useState({}); // { daily, h4, h1, m15, m5 }
 
-  const containerRef = useRef(null);
+  const wrapRef = useRef(null); // الحاوية (position:relative) — الشارت + الـ canvas فوق بعض
+  const containerRef = useRef(null); // حاوية lightweight-charts نفسها
+  const canvasRef = useRef(null); // كانفاس الرسم (Entry/SL/TP/Sequence)
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
-  const priceLinesRef = useRef([]);
+  const priceLinesRef = useRef([]); // خطوط سعرية أصيلة من lightweight-charts (POI + MT قبل الدخول فقط)
   const resultRef = useRef(null);
+  const displayTFRef = useRef(displayTF);
+  const candlesRef = useRef({});
+  const rafRef = useRef(null);
+  const animStartRef = useRef(0);
 
   const asset = getAssetByValue(symbol);
+
+  useEffect(() => {
+    displayTFRef.current = displayTF;
+  }, [displayTF]);
+  useEffect(() => {
+    candlesRef.current = allCandles;
+  }, [allCandles]);
 
   /* ===================== جلب كل الفريمات + تشغيل QAIS Decision Engine مرة وحدة ===================== */
   const runAnalysis = useCallback(async () => {
@@ -103,8 +120,10 @@ export default function QaisEngineView() {
       setAllCandles(candlesByTF);
       setResult(analysis);
       resultRef.current = analysis;
-      // فريم العرض الافتراضي: فريم تنفيذ الـ OB لو تشكّل، وإلا الفريم الرئيسي
-      setDisplayTF(analysis.executionTimeframe || analysis.mainTimeframe || "h1");
+      animStartRef.current = performance.now(); // إعادة تشغيل أنيميشن الدخول (٨)
+      // فريم العرض الافتراضي: فريم الـ Sequence نفسه (لعرض A/B/C بدقة)، وإلا فريم
+      // تنفيذ الـ OB، وإلا الفريم الرئيسي
+      setDisplayTF(analysis.sequence?.displayTF || analysis.executionTimeframe || analysis.mainTimeframe || "h1");
     } catch (e) {
       setError(e.message || "فشل تشغيل محرك التحليل");
     } finally {
@@ -117,7 +136,7 @@ export default function QaisEngineView() {
     runAnalysis();
   }, [runAnalysis]);
 
-  /* ===================== إنشاء الشارت مرة وحدة ===================== */
+  /* ===================== إنشاء الشارت + الكانفاس فوقه مرة وحدة ===================== */
   useEffect(() => {
     let cancelled = false;
     async function setup() {
@@ -130,10 +149,12 @@ export default function QaisEngineView() {
           vertLines: { color: "rgba(255,255,255,0.04)" },
           horzLines: { color: "rgba(255,255,255,0.04)" },
         },
-        timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false, rightOffset: 8 },
+        // rightOffset أكبر من الافتراضي عشان يفضّل فراغ كافي بعد آخر شمعة —
+        // هوّن بالضبط بترتسم منطقة الـ Sequence/Trade Projection (٤/٩)
+        timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false, rightOffset: 16 },
         rightPriceScale: { borderColor: "#3a3a3a" },
         width: containerRef.current.clientWidth,
-        height: 560,
+        height: CHART_H,
         crosshair: { mode: CrosshairMode.Normal },
       });
 
@@ -149,15 +170,20 @@ export default function QaisEngineView() {
       seriesRef.current = series;
       chartRef.current.__LineStyle = LineStyle;
 
+      const requestDraw = () => scheduleDraw();
+      chart.timeScale().subscribeVisibleTimeRangeChange(requestDraw);
+
       const handleResize = () => {
         if (!containerRef.current) return;
         chart.applyOptions({ width: containerRef.current.clientWidth });
+        requestDraw();
       };
       window.addEventListener("resize", handleResize);
       handleResize();
 
       return () => {
         window.removeEventListener("resize", handleResize);
+        chart.timeScale().unsubscribeVisibleTimeRangeChange(requestDraw);
         chart.remove();
       };
     }
@@ -165,70 +191,121 @@ export default function QaisEngineView() {
     return () => {
       cancelled = true;
       cleanupPromise?.then((fn) => fn && fn());
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ===================== خطوط QAIS السعرية (Entry/SL/Targets/OB/POI) =====================
-     كل شي هون خط سعري أفقي نظيف (Minimal — ثامن عشر) — ما في صناديق ولا رسم حر،
-     وكل الخطوط مبنية مباشرة على مخرجات analyzeSymbol() بدون أي حساب إضافي بالواجهة. */
-  function applyPriceLines() {
-    const series = seriesRef.current;
-    const r = resultRef.current;
-    if (!series) return;
-
-    priceLinesRef.current.forEach((pl) => series.removePriceLine(pl));
-    priceLinesRef.current = [];
-    if (!r) return;
-
-    const add = (price, color, title, lineWidth = 1, dashed = true) => {
-      if (price == null || !Number.isFinite(price)) return;
-      const pl = series.createPriceLine({
-        price,
-        color,
-        lineWidth,
-        lineStyle: dashed ? chartRef.current.__LineStyle.Dashed : chartRef.current.__LineStyle.Solid,
-        axisLabelVisible: true,
-        title,
-      });
-      priceLinesRef.current.push(pl);
-    };
-
-    // POI (خامساً): حدود منطقة الاهتمام اللي لمسها السعر ضمن نطاق MSS↔BOS
-    const poi = r.poi?.touchedZone;
-    if (poi) {
-      const lo = poi.from ?? poi.level;
-      const hi = poi.to ?? poi.level;
-      if (lo != null) add(lo, `${GOLD}99`, `POI ${poi.type}`, 1, true);
-      if (hi != null && hi !== lo) add(hi, `${GOLD}99`, `POI ${poi.type}`, 1, true);
-    }
-
-    const ob = r.ob;
-    if (ob?.eligible && ob.status !== "Invalid") {
-      if (r.tradeValid && r.entry != null) {
-        // اكتملت شروط الدخول: ENTRY + SL + كل الأهداف (خامس عشر/سادس عشر)
-        add(r.entry, GOLD_LIGHT, "ENTRY", 2, false);
-        add(r.stopLoss, RED, r.slSource === "SMT" ? "SL (SMT)" : "SL", 2, false);
-        for (const t of r.targets || []) {
-          add(t.price, t.color === "green" ? GREEN : BLUE, t.key, 1, false);
-        }
+  /* ===================== حلقة الرسم (أنيميشن fade/slide-in عند صفقة جديدة — ٦/٨) ===================== */
+  function scheduleDraw() {
+    if (rafRef.current) return;
+    const loop = () => {
+      draw();
+      const elapsed = performance.now() - animStartRef.current;
+      if (elapsed < ANIM_MS) {
+        rafRef.current = requestAnimationFrame(loop);
       } else {
-        // OB تشكّل بس الشروط لسا ما اكتملت: نعرض بس المستوى الأقوى (MT) كمؤشر متابعة
-        add(ob.levels.mt, NEUTRAL, `MT (${ob.status})`, 1, true);
+        rafRef.current = null;
       }
-    }
+    };
+    rafRef.current = requestAnimationFrame(loop);
   }
 
-  /* ===================== تحديث شموع الفريم المعروض + الخطوط ===================== */
+  function draw() {
+    const canvas = canvasRef.current;
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    const container = containerRef.current;
+    if (!canvas || !chart || !series || !container) return;
+
+    const w = container.clientWidth;
+    const h = CHART_H;
+    const dpr = window.devicePixelRatio || 1;
+    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+    }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const r = resultRef.current;
+    if (!r) return;
+    const candles = candlesRef.current[displayTFRef.current];
+    if (!candles || !candles.length) return;
+
+    const ts = chart.timeScale();
+    const priceToY = (p) => series.priceToCoordinate(p);
+    const timeToX = (t) => ts.timeToCoordinate(t);
+
+    const elapsed = performance.now() - animStartRef.current;
+    const progress = Math.max(0, Math.min(1, elapsed / ANIM_MS));
+    const ease = easeOutCubic(progress);
+
+    const lastCandle = candles[candles.length - 1];
+    const lastX = timeToX(lastCandle.time);
+    if (lastX == null) return;
+
+    /* -------- 1) Sequence التاريخي (A→B→C + المستويات الداخلية) --------
+       بس لما الفريم المعروض = نفس فريم حساب الـ Sequence (إحداثيات دقيقة ١٠٠٪) */
+    const seq = r.sequence;
+    if (seq?.active && seq.displayTF && seq.displayTF === displayTFRef.current) {
+      drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease);
+    }
+
+    /* -------- 2) منطقة المسقط (Projection Zone) بعد آخر شمعة: Entry/SL/TP1-4 --------
+       دايماً ظاهرة (بغض النظر عن الفريم المعروض) — لأنها مستويات سعرية بس */
+    drawProjection(ctx, r, priceToY, lastX, w, h, ease);
+  }
+
+  /* ===================== تحديث شموع الفريم المعروض + الخطوط السياقية (POI/MT) ===================== */
   useEffect(() => {
     if (!seriesRef.current) return;
     const candles = allCandles[displayTF];
     if (!candles || candles.length === 0) return;
     seriesRef.current.setData(candles.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close })));
     chartRef.current?.timeScale().fitContent();
-    applyPriceLines();
+    applyContextPriceLines();
+    scheduleDraw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCandles, displayTF, result]);
+
+  /* -------- خطوط سعرية أصيلة محدودة جداً: POI الملموسة + مستوى MT قبل اكتمال الدخول --------
+     (هاي مش جزء من شكوى Entry/SL/TP — بس سطرين خفيفين للسياق، فمنخليهم native price line) */
+  function applyContextPriceLines() {
+    const series = seriesRef.current;
+    const r = resultRef.current;
+    if (!series) return;
+    priceLinesRef.current.forEach((pl) => series.removePriceLine(pl));
+    priceLinesRef.current = [];
+    if (!r) return;
+
+    const add = (price, color, title) => {
+      if (price == null || !Number.isFinite(price)) return;
+      const pl = series.createPriceLine({
+        price,
+        color,
+        lineWidth: 1,
+        lineStyle: chartRef.current.__LineStyle.Dotted,
+        axisLabelVisible: true,
+        title,
+      });
+      priceLinesRef.current.push(pl);
+    };
+
+    const poi = r.poi?.touchedZone;
+    if (poi) {
+      const lo = poi.from ?? poi.level;
+      const hi = poi.to ?? poi.level;
+      if (lo != null) add(lo, `${GOLD}66`, `POI ${poi.type}`);
+      if (hi != null && hi !== lo) add(hi, `${GOLD}66`, `POI ${poi.type}`);
+    }
+    if (r.ob?.eligible && r.ob.status !== "Invalid" && !r.tradeValid) {
+      add(r.ob.levels.mt, `${NEUTRAL}88`, `MT (${r.ob.status})`);
+    }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
@@ -276,7 +353,15 @@ export default function QaisEngineView() {
             <button
               key={tf}
               onClick={() => setDisplayTF(tf)}
-              title={tf === result?.mainTimeframe ? "الفريم الرئيسي" : tf === result?.executionTimeframe ? "فريم التنفيذ" : ""}
+              title={
+                tf === result?.sequence?.displayTF
+                  ? "فريم الـ Sequence"
+                  : tf === result?.mainTimeframe
+                  ? "الفريم الرئيسي"
+                  : tf === result?.executionTimeframe
+                  ? "فريم التنفيذ"
+                  : ""
+              }
               style={{
                 background: displayTF === tf ? `${GOLD}1f` : "transparent",
                 border: `1px solid ${displayTF === tf ? GOLD : "#2e2e2e"}`,
@@ -318,18 +403,218 @@ export default function QaisEngineView() {
 
       {error && <div style={{ ...cardStyle, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
 
-      {/* ================= 2) الشارت — العنصر الأساسي والأكبر ================= */}
+      {/* ================= 2) الشارت — العنصر الأساسي والأكبر، + Canvas المسقط فوقه ================= */}
       <div style={{ ...cardStyle, padding: "0.6rem" }}>
-        <div ref={containerRef} style={{ width: "100%", height: 560 }} />
+        <div ref={wrapRef} style={{ position: "relative", width: "100%", height: CHART_H }}>
+          <div ref={containerRef} style={{ width: "100%", height: CHART_H }} />
+          <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
+        </div>
       </div>
 
-      {/* ================= 3) ANALYSIS PANEL + TRADE PLAN ================= */}
+      {/* ================= 3) ANALYSIS PANEL + SEQUENCE PROJECTION ================= */}
       <div style={{ display: "flex", gap: "0.7rem", flexWrap: "wrap" }}>
         <AnalysisPanel result={result} />
         <TradePlanCard result={result} symbol={symbol} />
       </div>
     </div>
   );
+}
+
+/* ============================================================================
+   رسم Canvas 1: تاريخ الـ Sequence (A→B→C + المستويات الداخلية) — بامتداد محدود
+   فقط ضمن نطاق الساق AB، وبدون تغيير أي منطق حساب (القيم جاهزة من sequence.js)
+   ============================================================================ */
+function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease) {
+  const { points, internalLevels } = seq;
+  const ax = timeToX(points.A.time);
+  const bx = timeToX(points.B.time);
+  const cx = timeToX(points.C.time);
+  const ay = priceToY(points.A.price);
+  const by = priceToY(points.B.price);
+  const cy = priceToY(points.C.price);
+  if ([ax, bx, cx, ay, by, cy].some((v) => v == null)) return;
+
+  ctx.save();
+  ctx.globalAlpha = ease;
+
+  // خط الحركة A→B→C (رفيع، ذهبي خافت)
+  ctx.strokeStyle = `${GOLD}99`;
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(bx, by);
+  ctx.lineTo(cx, cy);
+  ctx.stroke();
+
+  // النقاط + Labels
+  [
+    ["A", ax, ay],
+    ["B", bx, by],
+    ["C", cx, cy],
+  ].forEach(([label, x, y]) => {
+    ctx.beginPath();
+    ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+    ctx.fillStyle = GOLD_LIGHT;
+    ctx.fill();
+    ctx.font = "600 10px sans-serif";
+    ctx.fillStyle = "#e8e8e8";
+    ctx.fillText(label, x - 3, y - 8);
+  });
+
+  // المستويات الداخلية (0.333..0.786) — خط قصير بعرض الساق AB فقط، مش كامل الشارت
+  const x0 = Math.min(ax, bx);
+  const x1 = Math.max(bx, cx, lastX); // تمتد لحد آخر شمعة كحد أقصى (مش أبعد)
+  ctx.font = "500 9.5px sans-serif";
+  for (const lvl of internalLevels || []) {
+    const y = priceToY(lvl.price);
+    if (y == null) continue;
+    ctx.strokeStyle = `${NEUTRAL}40`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x1, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = `${NEUTRAL}cc`;
+    ctx.fillText(lvl.ratio.toFixed(3), x0 + 3, y - 3);
+  }
+
+  ctx.restore();
+}
+
+/* ============================================================================
+   رسم Canvas 2: منطقة المسقط (Trade/Sequence Projection Zone) — يمين آخر شمعة
+   ENTRY + SL + TP1-4 كنقاط/تكات قصيرة موصولة بخط عمودي رفيع (٤/٩)، بدون أي
+   خط يمتد عبر الشارت. بيشتغل بغض النظر عن الفريم المعروض (مستوى سعري بس).
+   ============================================================================ */
+function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
+  const ready = r.tradeValid && r.entry != null && r.stopLoss != null;
+
+  // لسا الشروط ما اكتملت: نكتفي بأي حالة انتظار — ما في داعي نرسم مسقط فاضي
+  if (!ready) return;
+
+  const targets = r.targets || [];
+  const dir = r.direction; // 'up' | 'down'
+  const entryY = priceToY(r.entry);
+  const slY = priceToY(r.stopLoss);
+  if (entryY == null || slY == null) return;
+
+  const margin = 14;
+  const maxX = chartW - 8;
+  const availableW = Math.max(60, maxX - (lastX + margin));
+  const rank = ["ENTRY", "SL", ...targets.map((t) => t.key)];
+  const step = Math.min(46, availableW / Math.max(1, rank.length));
+
+  let cursorX = lastX + margin;
+  const entryX = cursorX;
+  cursorX += step;
+  const slX = cursorX;
+
+  ctx.save();
+  ctx.globalAlpha = ease;
+
+  // العمود الرأسي الرفيع اللي يوصل بين آخر شمعة ومنطقة المسقط
+  ctx.strokeStyle = `${GOLD}55`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 3]);
+  ctx.beginPath();
+  ctx.moveTo(lastX, entryY);
+  ctx.lineTo(entryX, entryY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // -------- ENTRY --------
+  drawLevelTick(ctx, entryX, entryY, GOLD_LIGHT, "ENTRY", fmt(r.entry), null, false);
+
+  // -------- STOP LOSS (خط قصير من نقطة الدخول، مش خط طويل) --------
+  ctx.strokeStyle = `${RED}aa`;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(entryX, entryY);
+  ctx.lineTo(entryX, slY);
+  ctx.stroke();
+  const riskPct = (Math.abs(r.entry - r.stopLoss) / r.entry) * 100;
+  const slHit = dir === "up" ? false : false; // يُحدَّث فعلياً بمعرفة السعر الحي — راجع ملاحظة أسفل الكرت
+  drawLevelTick(ctx, slX, slY, RED, `SL (${r.slSource === "SMT" ? "SMT" : "OB"})`, fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`, slHit, true);
+
+  // -------- TP1..TP4 (سلّم صاعد بالمسافة X — كل هدف أبعد شوي عن السابق) --------
+  let tpX = slX;
+  for (const t of targets) {
+    tpX += step;
+    const y = priceToY(t.price);
+    if (y == null) continue;
+    const color = t.color === "green" ? GREEN : BLUE;
+    const rr = Math.abs(t.price - r.entry) / Math.abs(r.entry - r.stopLoss);
+    drawLevelTick(ctx, tpX, y, color, t.key, `${t.ratio} Fib  •  ${fmt(t.price)}`, `RR 1:${rr.toFixed(2)}`, t.hit, true, t.hit);
+  }
+
+  ctx.restore();
+}
+
+/* تِك قصير + Label بستايل Glass/Premium (٥/٧) — دايرة صغيرة + خط قصير + صندوق شفاف مدوّر */
+function drawLevelTick(ctx, x, y, color, title, line1, line2, glow) {
+  // خط أفقي قصير جداً (14px) بدل خط عبر الشارت
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(x - 7, y);
+  ctx.lineTo(x + 7, y);
+  ctx.stroke();
+
+  if (glow) {
+    ctx.beginPath();
+    ctx.arc(x, y, 7, 0, Math.PI * 2);
+    ctx.strokeStyle = `${color}55`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  // صندوق Label زجاجي مدوّر
+  const boxX = x + 12;
+  const lines = line2 ? [title, line1, line2] : [title, line1];
+  ctx.font = "700 10.5px sans-serif";
+  const textW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+  const boxW = textW + 16;
+  const boxH = lines.length * 13 + 8;
+  const boxY = y - boxH / 2;
+
+  ctx.fillStyle = "rgba(20,22,26,0.88)";
+  ctx.strokeStyle = `${color}77`;
+  ctx.lineWidth = 1;
+  roundRect(ctx, boxX, boxY, boxW, boxH, 6);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.font = "700 10.5px sans-serif";
+  ctx.fillStyle = color;
+  ctx.fillText(title, boxX + 8, boxY + 12);
+  ctx.font = "500 9.5px sans-serif";
+  ctx.fillStyle = "#d8d8d8";
+  if (line1) ctx.fillText(line1, boxX + 8, boxY + 25);
+  if (line2) {
+    ctx.fillStyle = "#999";
+    ctx.fillText(line2, boxX + 8, boxY + 37);
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function fmt(n) {
+  if (n == null) return "—";
+  return n >= 100 ? n.toFixed(2) : n.toFixed(4);
 }
 
 /* -------- Score Badge -------- */
@@ -380,9 +665,10 @@ function AnalysisPanel({ result: r }) {
           name: "STRUCTURE",
           result: r.mainTimeframe ? TF_LABELS[r.mainTimeframe] : "—",
           color: "#ddd",
-          detail: (r.structureLadder || [])
-            .map((s) => `${TF_LABELS[s.timeframe]}: ${s.trend === "up" ? "Bullish" : s.trend === "down" ? "Bearish" : "—"} (${s.role})`)
-            .join("  •  ") || "لا توجد بيانات هيكلية كافية.",
+          detail:
+            (r.structureLadder || [])
+              .map((s) => `${TF_LABELS[s.timeframe]}: ${s.trend === "up" ? "Bullish" : s.trend === "down" ? "Bearish" : "—"} (${s.role})`)
+              .join("  •  ") || "لا توجد بيانات هيكلية كافية.",
         },
         {
           key: "location",
@@ -504,13 +790,13 @@ function AnalysisPanel({ result: r }) {
   );
 }
 
-/* ================= بطاقة خطة الصفقة — Entry/SL/Targets جاهزين مباشرة من المحرك ================= */
+/* ================= SEQUENCE PROJECTION CARD — نفس بيانات الرسم على الشارت،
+   Direction/Entry/SL/TP1-4 كل وحدة بـ Fib ratio + السعر + RR (٩) ================= */
 function TradePlanCard({ result: r, symbol }) {
   const [open, setOpen] = useState(true);
   if (!r) return null;
 
   const ready = r.tradeValid && r.entry != null && r.stopLoss != null;
-  const rr = ready && r.targets?.[0] ? Math.abs(r.targets[0].price - r.entry) / Math.abs(r.entry - r.stopLoss) : null;
   const riskPercent = ready ? (Math.abs(r.entry - r.stopLoss) / r.entry) * 100 : null;
 
   function exportAnalysis() {
@@ -521,7 +807,7 @@ function TradePlanCard({ result: r, symbol }) {
       `Direction: ${r.direction || "—"}`,
       `Main TF: ${r.mainTimeframe || "—"} | Execution TF: ${r.executionTimeframe || "—"}`,
       `Entry: ${r.entry ?? "—"} | Stop Loss: ${r.stopLoss ?? "—"} (${r.slSource || "—"})`,
-      `Targets: ${(r.targets || []).map((t) => `${t.key}=${t.price.toFixed(2)}`).join(" | ") || "—"}`,
+      `Targets: ${(r.targets || []).map((t) => `${t.key} (${t.ratio} Fib)=${t.price.toFixed(2)}`).join(" | ") || "—"}`,
       `Reasons: ${(r.reasonTags || []).join(" + ")}`,
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
@@ -534,7 +820,7 @@ function TradePlanCard({ result: r, symbol }) {
   }
 
   return (
-    <div style={{ ...cardStyle, width: 280, flexShrink: 0, overflow: "hidden" }}>
+    <div style={{ ...cardStyle, width: 290, flexShrink: 0, overflow: "hidden" }}>
       <button
         onClick={() => setOpen((o) => !o)}
         style={{
@@ -549,7 +835,7 @@ function TradePlanCard({ result: r, symbol }) {
         }}
       >
         <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f0f0", display: "flex", alignItems: "center", gap: 8 }}>
-          Trade Plan
+          SEQUENCE PROJECTION
           {ready && <span style={{ width: 6, height: 6, borderRadius: "50%", background: GREEN }} />}
         </span>
         {open ? <ChevronDown size={16} color={GOLD} /> : <ChevronRight size={16} color="#666" />}
@@ -559,13 +845,20 @@ function TradePlanCard({ result: r, symbol }) {
         <div style={{ padding: "0 1.1rem 1rem" }}>
           {ready ? (
             <>
-              <PlanRow label="Entry" value={r.entry.toFixed(2)} color={GOLD_LIGHT} />
-              <PlanRow label={`Stop Loss (${r.slSource})`} value={r.stopLoss.toFixed(2)} color={RED} />
-              {r.targets?.slice(0, 3).map((t) => (
-                <PlanRow key={t.key} label={t.key} value={t.price.toFixed(2)} color={t.color === "green" ? GREEN : BLUE} />
+              <PlanRow label="Direction" value={r.direction === "up" ? "BUY" : "SELL"} color={r.direction === "up" ? GREEN : RED} />
+              <PlanRow label="Entry" value={fmt(r.entry)} color={GOLD_LIGHT} />
+              <PlanRow label={`Stop Loss (${r.slSource})`} value={fmt(r.stopLoss)} color={RED} />
+              <PlanRow label="Risk %" value={`${riskPercent.toFixed(2)}%`} />
+              <div style={{ height: 6 }} />
+              {r.targets?.map((t) => (
+                <PlanRow
+                  key={t.key}
+                  label={`${t.key} — ${t.ratio} Fib`}
+                  value={fmt(t.price)}
+                  color={t.color === "green" ? GREEN : BLUE}
+                  strong={t.hit}
+                />
               ))}
-              {rr != null && <PlanRow label="Risk / Reward" value={`1 : ${rr.toFixed(1)}`} />}
-              {riskPercent != null && <PlanRow label="Risk %" value={`${riskPercent.toFixed(2)}%`} />}
               <button
                 onClick={exportAnalysis}
                 style={{
@@ -586,7 +879,7 @@ function TradePlanCard({ result: r, symbol }) {
             </>
           ) : (
             <div style={{ fontSize: 11.5, color: "#888", lineHeight: 1.7, padding: "4px 0" }}>
-              لسا ما اكتمل الإعداد — رح تظهر Entry وStop Loss والأهداف تلقائياً لما تتحقق كل شروط الدخول (تاسعاً).
+              لسا ما اكتمل الإعداد — رح تظهر Entry وStop Loss والأهداف تلقائياً (على الشارت وهون) لما تتحقق كل شروط الدخول (تاسعاً).
             </div>
           )}
         </div>
@@ -595,9 +888,17 @@ function TradePlanCard({ result: r, symbol }) {
   );
 }
 
-function PlanRow({ label, value, color }) {
+function PlanRow({ label, value, color, strong }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid #20232a" }}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "5px 0",
+        borderBottom: "1px solid #20232a",
+        background: strong ? `${GREEN}14` : "transparent",
+      }}
+    >
       <span style={{ fontSize: 11.5, color: "#888" }}>{label}</span>
       <span style={{ fontSize: 12.5, fontWeight: 700, color: color || "#f0f0f0" }}>{value}</span>
     </div>
