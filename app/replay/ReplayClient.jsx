@@ -60,28 +60,6 @@ function getCurrentBarWindow(interval) {
   return { start, end: start + stepMs, stepMs, now };
 }
 
-/* الكريبتو بس بيتداول 24/7 - الباقي (فوركس/معادن/مؤشرات/أسهم) إلها ساعات سوق حقيقية،
-   فما بيصح نعرض عداد "إغلاق الشمعة خلال" ونشتغل وكأنه في تحديث حي وقت السوق مسكّر فعلياً. */
-const CRYPTO_ASSET_VALUES = new Set(["BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "BNBUSD", "DOGEUSD"]);
-
-/* نفس منطق تحديد "السوق مفتوح/مغلق" المستخدم بلوحة التحكم (MIC):
-   مغلق كل السبت، ومغلق الأحد قبل ~21:00 UTC (قبل افتتاح جلسة سيدني)،
-   ومغلق الجمعة بعد ~21:00 UTC (بعد إغلاق نيويورك). تقريب معقول لساعات
-   الفوركس/المعادن العالمية (الأسهم الفردية إلها ساعات بورصة أضيق، بس هاي
-   أفضل تقريب متاح بدون تقويم بورصات كامل لكل رمز). */
-function isForexMetalsMarketOpenNow(now) {
-  const day = now.getUTCDay();
-  const hour = now.getUTCHours();
-  if (day === 6) return false;
-  if (day === 0 && hour < 21) return false;
-  if (day === 5 && hour >= 21) return false;
-  return true;
-}
-function isMarketOpenNow(assetValue, now) {
-  if (CRYPTO_ASSET_VALUES.has(assetValue)) return true;
-  return isForexMetalsMarketOpenNow(now);
-}
-
 /* تصفية أي شمعة فاسدة (وقت/سعر مش رقمي أو تكرار بنفس الوقت) قبل ما توصل لمكتبة الشارت -
    مكتبة lightweight-charts بترفض هيك بيانات وبتعمل throw exception يكسر الصفحة كلها،
    فهاي طبقة حماية إضافية جوا الواجهة نفسها (فوق التصفية اللي صارت بالسيرفر) */
@@ -764,10 +742,6 @@ export default function ReplayClient({ userId }) {
 
   const [countdown, setCountdown] = useState("");
   const [countdownProgress, setCountdownProgress] = useState(0);
-  /* السوق فعلياً مفتوح هلق ولا لأ (فوركس/معادن بتسكر نهاية الأسبوع، الكريبتو 24/7) -
-     بيتحدث كل ثانية مع عداد الشمعة، ومستخدم لإخفاء عداد "إغلاق الشمعة خلال"
-     وتبديل بادج "مباشر" لما السوق يكون مسكّر فعلياً. */
-  const [marketOpen, setMarketOpen] = useState(true);
   const [liveLastPrice, setLiveLastPrice] = useState(null);
   const [priceDir, setPriceDir] = useState(0); // 1 صعود / -1 هبوط / 0 محايد
   const prevPriceRef = useRef(null);
@@ -784,6 +758,15 @@ export default function ReplayClient({ userId }) {
 
   const [cutMode, setCutMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // "شاشة كاملة" بديلة بـCSS بس (مش Fullscreen API الحقيقي): لازمة لأنه
+  // Safari على الآيفون ما بيدعم إطلاقاً element.requestFullscreen()، فزر الشاشة
+  // الكاملة العادي ما بيعمل شي هناك. هاي النسخة البديلة بتتفعّل تلقائياً لما
+  // التلفون يصير بوضع أفقي (landscape) عشان الشارت ياخد الشاشة كلها زي TradingView،
+  // بغض النظر عن دعم المتصفح لـFullscreen API.
+  const [cssFullscreen, setCssFullscreen] = useState(false);
+  const cssFullscreenRef = useRef(false);
+  useEffect(() => { cssFullscreenRef.current = cssFullscreen; }, [cssFullscreen]);
+  const effectiveFullscreen = isFullscreen || cssFullscreen;
   const chartWrapperRef = useRef(null);
   const headerRef = useRef(null);
 
@@ -2285,14 +2268,13 @@ export default function ReplayClient({ userId }) {
       setup: "من الاستعراض التاريخي",
       reason: tradeReason.trim(),
       riskAmount, rewardAmount, rr, riskPercent,
-      // مهم: هاي لازم تعتمد على كون الأصل نفسه مدعوم للمتابعة الحية (info.yahoo)،
-      // مش على وضع عرض الشارت وقت تسجيل الصفقة (مباشر/تاريخي). المستخدم ممكن
-      // يكون قاعد يراجع شارت تاريخي بس الصفقة يلي فتحها حقيقية ومفتوحة فعلاً،
-      // فلازم تنراقب بالسعر الحي بالباك تيست ولوحة التحكم متلها متل صفقات وضع
-      // "مباشر" بالظبط - وإلا عمود "السعر الحالي" بيضل عالم "—" للأبد.
-      isLive: !!info?.yahoo,
-      priceSource: info?.yahoo ? "yahoo" : null,
-      sourceSymbol: info?.yahoo || null,
+      isLive: mode === "live",
+      // لازم نبعت priceSource/sourceSymbol هون بالظبط متل ما بتعمل أداة الباك تيست،
+      // وإلا صفقات "مباشر" المفتوحة من الاستعراض التاريخي بتضل بدون مصدر سعر،
+      // فبتظهر دايماً "⚠️ خطأ" بعمود السعر الحالي بالباك تيست ومتابعتها الحية
+      // بتفشل فوراً بدون أي طلب شبكة (أصل غير مدعوم للمتابعة الحية).
+      priceSource: mode === "live" ? "yahoo" : null,
+      sourceSymbol: mode === "live" ? info?.yahoo || null : null,
     }, userId);
 
     const { data, error } = await supabase.from("trades").insert(row).select().single();
@@ -2536,7 +2518,7 @@ export default function ReplayClient({ userId }) {
 
       const handleResize = () => {
         if (!chartContainerRef.current) return;
-        const isFs = !!document.fullscreenElement;
+        const isFs = !!document.fullscreenElement || cssFullscreenRef.current;
         let totalHeight = 480;
         if (isFs) {
           const headerH = headerRef.current?.offsetHeight || 0;
@@ -3024,21 +3006,58 @@ export default function ReplayClient({ userId }) {
   /* ===================== تبديل الشاشة الكاملة ===================== */
   function toggleFullscreen() {
     if (!chartWrapperRef.current) return;
+    // لو الجهاز أصلاً بوضع أفقي وعم يستخدم الشاشة الكاملة البديلة تلقائياً،
+    // الزر بيقفلها/يفتحها يدوياً كمان
+    if (cssFullscreenRef.current) {
+      setCssFullscreen(false);
+      return;
+    }
     if (!document.fullscreenElement) {
-      chartWrapperRef.current.requestFullscreen?.();
+      // لو المتصفح ما بيدعم Fullscreen API إطلاقاً (متل Safari على الآيفون)
+      // منستخدم البديل الـCSS بدل ما نحاول نداء بيفشل بصمت
+      if (!chartWrapperRef.current.requestFullscreen) {
+        setCssFullscreen(true);
+        return;
+      }
+      chartWrapperRef.current.requestFullscreen?.().catch(() => setCssFullscreen(true));
     } else {
       document.exitFullscreen?.();
     }
   }
 
+  /* لما التلفون يدور لوضع أفقي (landscape)، منفعّل الشاشة الكاملة البديلة
+     تلقائياً زي TradingView بالظبط — بس على شاشات الموبايل (لمسية وصغيرة)،
+     حتى ما يأثر على نوافذ الديسكتوب أو التابلت لما تكون بوضع أفقي أصلاً. */
+  useEffect(() => {
+    const isPhoneSized = () => {
+      const isTouch = typeof window !== "undefined" && (("ontouchstart" in window) || navigator.maxTouchPoints > 0);
+      const smallSide = Math.min(window.innerWidth, window.innerHeight);
+      return isTouch && smallSide <= 500;
+    };
+    const syncWithOrientation = () => {
+      if (!isPhoneSized()) return;
+      const isLandscape = window.innerWidth > window.innerHeight;
+      // ما نتدخل إذا في شاشة كاملة حقيقية (Fullscreen API) شغالة أصلاً
+      if (document.fullscreenElement) return;
+      setCssFullscreen(isLandscape);
+    };
+    syncWithOrientation();
+    window.addEventListener("resize", syncWithOrientation);
+    window.addEventListener("orientationchange", syncWithOrientation);
+    return () => {
+      window.removeEventListener("resize", syncWithOrientation);
+      window.removeEventListener("orientationchange", syncWithOrientation);
+    };
+  }, []);
+
   /* لما محتوى شريط التحكم العلوي بيتغيّر بوضع الشاشة الكاملة (تبديل وضع/وضع القص/سرعة...)
      ممكن يتغيّر ارتفاعه، فلازم نعيد حساب ارتفاع الشارت عشان شريط الوقت السفلي يضل ظاهر بالكامل */
   useEffect(() => {
-    if (isFullscreen) {
+    if (effectiveFullscreen) {
       const t = setTimeout(() => chartRef.current?.__resize?.(), 30);
       return () => clearTimeout(t);
     }
-  }, [isFullscreen, mode, cutMode, randomChart, assetValue, interval, maxBars, speed, isPlaying, loading]);
+  }, [effectiveFullscreen, mode, cutMode, randomChart, assetValue, interval, maxBars, speed, isPlaying, loading]);
 
   /* لما تنفتح/تنقفل لوحة المقارنة أو ينكبّر أي جزء منها، لازم نعيد توزيع الارتفاع بين الشارتين.
      وكمان لازم نخفي محور الوقت (شريط التواريخ) بالشارت الرئيسي وقتها، عشان يضل
@@ -3452,15 +3471,6 @@ export default function ReplayClient({ userId }) {
   function startCountdownTick() {
     stopCountdownTick();
     const tick = () => {
-      const open = isMarketOpenNow(assetValue, new Date());
-      setMarketOpen(open);
-      if (!open) {
-        // السوق مسكّر فعلياً (نهاية أسبوع الفوركس/المعادن مثلاً) - ما في شمعة جديدة
-        // رح تتشكل، فبنوقف العداد بدل ما نضل نعده لشمعة مش رح تصير أصلاً.
-        setCountdown("");
-        setCountdownProgress(0);
-        return;
-      }
       const { end, stepMs, now } = getCurrentBarWindow(interval);
       const remain = Math.max(0, end - now);
       setCountdown(formatCountdown(remain));
@@ -3694,7 +3704,7 @@ export default function ReplayClient({ userId }) {
         <button onClick={() => setTemplatesPanelOpen((v) => !v)} style={iconBtn(templatesPanelOpen)} title="قوالب: احفظي أو حمّلي مجموعة مؤشرات/إعدادات جاهزة"><ToolIcon id="template2" /></button>
         <button onClick={handleExportImage} style={iconBtn(false)} title="تصدير كصورة"><ToolIcon id="camera" /></button>
         <button onClick={handleResetView} style={iconBtn(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي"><ToolIcon id="resetzoom" /></button>
-        <button onClick={toggleFullscreen} style={iconBtn(isFullscreen)} title="شاشة كاملة"><ToolIcon id={isFullscreen ? "fullscreenExit" : "fullscreen"} /></button>
+        <button onClick={toggleFullscreen} style={iconBtn(effectiveFullscreen)} title="شاشة كاملة"><ToolIcon id={effectiveFullscreen ? "fullscreenExit" : "fullscreen"} /></button>
         <div style={{ width: 1, height: 22, background: "#242832" }} />
         <button onClick={() => setRandomChart((r) => !r)} style={iconBtn(randomChart)} title="حركة سعر مولّدة عشوائياً بدل السوق الحقيقي"><ToolIcon id="dice2" /></button>
         <button
@@ -3733,13 +3743,11 @@ export default function ReplayClient({ userId }) {
         <span style={{
           display: "flex", alignItems: "center", gap: 6, padding: "0.3rem 0.7rem",
           borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "default",
-          border: `1px solid ${mode === "live" ? (marketOpen ? GREEN : RED) : GOLD}55`,
-          color: mode === "live" ? (marketOpen ? GREEN : RED) : GOLD_LIGHT,
-        }}
-          title={mode === "live" && !marketOpen ? "السوق مسكّر هلق (نهاية أسبوع الفوركس/المعادن) - الشارت رح يرجع يتحدث تلقائياً لما يفتح" : undefined}
-        >
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: mode === "live" ? (marketOpen ? GREEN : RED) : GOLD }} />
-          {mode === "live" ? (marketOpen ? "مباشر" : "السوق مغلق") : "تاريخي"}
+          border: `1px solid ${mode === "live" ? GREEN : GOLD}55`,
+          color: mode === "live" ? GREEN : GOLD_LIGHT,
+        }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: mode === "live" ? GREEN : GOLD }} />
+          {mode === "live" ? "مباشر" : "تاريخي"}
         </span>
 
         {mode === "training" && (
@@ -5545,7 +5553,7 @@ export default function ReplayClient({ userId }) {
 
   return (
     <div>
-      {!isFullscreen && renderTopBar()}
+      {!effectiveFullscreen && renderTopBar()}
 
       {!supported && !error && (
         <div style={{ color: "#f59e0b", fontSize: 13, marginBottom: "1rem" }}>
@@ -5554,21 +5562,27 @@ export default function ReplayClient({ userId }) {
       )}
       {error && <div style={{ color: RED, fontSize: 13, marginBottom: "1rem" }}>{error}</div>}
 
-      {!isFullscreen && renderLiveBadge()}
+      {!effectiveFullscreen && renderLiveBadge()}
 
       <div
         ref={chartWrapperRef}
         style={{
-          background: isFullscreen ? "#0a0a08" : "linear-gradient(145deg, #22252B, #181A20)",
+          background: effectiveFullscreen ? "#0a0a08" : "linear-gradient(145deg, #22252B, #181A20)",
           border: `1px solid ${GOLD}26`,
-          borderRadius: isFullscreen ? 0 : 14,
-          padding: isFullscreen ? "0.6rem" : "1rem",
-          position: "relative",
+          borderRadius: effectiveFullscreen ? 0 : 14,
+          padding: effectiveFullscreen ? "0.6rem" : "1rem",
+          position: cssFullscreen ? "fixed" : "relative",
+          inset: cssFullscreen ? 0 : undefined,
+          top: cssFullscreen ? 0 : undefined,
+          left: cssFullscreen ? 0 : undefined,
+          width: cssFullscreen ? "100vw" : undefined,
+          height: cssFullscreen ? "100dvh" : undefined,
+          zIndex: cssFullscreen ? 9999 : undefined,
           display: "flex",
           flexDirection: "column",
         }}
       >
-        {isFullscreen && (
+        {effectiveFullscreen && (
           <div ref={headerRef} style={{ marginBottom: "0.5rem" }}>
             {renderTopBar()}
             {renderLiveBadge()}
@@ -5714,7 +5728,7 @@ export default function ReplayClient({ userId }) {
         />
       )}
 
-      {mode === "training" && !isFullscreen && (
+      {mode === "training" && !effectiveFullscreen && (
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.75rem", fontSize: 12.5, color: "#777" }}>
           <span>الشموع الظاهرة: {revealCount} / {allCandles.length}</span>
           {finished && <span style={{ color: GOLD_LIGHT }}>خلصت الشموع — دوسي "بداية عشوائية جديدة" لجولة تانية 🎯</span>}
