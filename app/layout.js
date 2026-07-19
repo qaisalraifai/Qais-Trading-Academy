@@ -1,6 +1,5 @@
 import "./globals.css";
 import { Cairo, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
-import RegisterSW from "./register-sw";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -37,19 +36,8 @@ export const metadata = {
   verification: {
     google: "y3K0SdO26agCZv7Fs_4sYw7y2pbNyZO3slIJ6MCdmCs",
   },
-  manifest: "/manifest.json",
   icons: {
-    icon: [
-      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: "/icons/apple-touch-icon.png",
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "QTA",
+    icon: "/logo.jpg",
   },
   openGraph: {
     title: "Qais Trading Academy | QTA",
@@ -58,20 +46,10 @@ export const metadata = {
   },
 };
 
-export const viewport = {
-  themeColor: "#0a0a0a",
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
-};
-
 export default function RootLayout({ children }) {
   return (
     <html lang="ar" dir="rtl" className={`${cairo.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}>
-      <body style={{ margin: 0 }}>
-        <RegisterSW />
-        {children}
-      </body>
+      <body style={{ margin: 0 }}>{children}</body>
     </html>
   );
 }

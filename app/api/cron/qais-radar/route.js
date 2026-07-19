@@ -21,13 +21,15 @@ function yahooSymbolFor(symbol) {
 async function fetchTF(symbol) {
   const yahoo = yahooSymbolFor(symbol);
   if (!yahoo) return null;
-  const [h4, h1, m15] = await Promise.all([
+  const [daily, h4, h1, m15, m5] = await Promise.all([
+    fetchYahooCandles(yahoo, RADAR_TIMEFRAMES.daily, CANDLE_COUNT.daily),
     fetchYahooCandles(yahoo, RADAR_TIMEFRAMES.h4, CANDLE_COUNT.h4),
     fetchYahooCandles(yahoo, RADAR_TIMEFRAMES.h1, CANDLE_COUNT.h1),
     fetchYahooCandles(yahoo, RADAR_TIMEFRAMES.m15, CANDLE_COUNT.m15),
+    fetchYahooCandles(yahoo, RADAR_TIMEFRAMES.m5, CANDLE_COUNT.m5),
   ]);
-  if (h4.error && h1.error && m15.error) return null;
-  return { h4: h4.candles || [], h1: h1.candles || [], m15: m15.candles || [] };
+  if (daily.error && h4.error && h1.error && m15.error && m5.error) return null;
+  return { daily: daily.candles || [], h4: h4.candles || [], h1: h1.candles || [], m15: m15.candles || [], m5: m5.candles || [] };
 }
 
 export async function GET(request) {
