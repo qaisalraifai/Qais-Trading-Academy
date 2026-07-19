@@ -26,11 +26,9 @@ const INTERVALS = [
   { value: "1d", label: "يومي" },
 ];
 
-const SPEEDS = [
-  { value: 1500, label: "بطيء" },
-  { value: 700, label: "متوسط" },
-  { value: 300, label: "سريع" },
-];
+/* سرعات الـ Replay: القيمة هي عدد الشموع بالثانية (1x = شمعة/ثانية ... 10x = 10 شموع/ثانية)
+   وبنحولها لـ ms فاصل بين كل شمعة وتالية بمعادلة 1000/السرعة وقت التشغيل الفعلي */
+const SPEEDS = Array.from({ length: 10 }, (_, i) => ({ value: i + 1, label: `${i + 1}x` }));
 
 const CONTEXT_BARS = 60;
 const MAX_BARS_OPTIONS = [
@@ -78,12 +76,78 @@ function sanitizeCandles(list) {
   return clean.filter((c, i) => i === 0 || c.time !== clean[i - 1].time);
 }
 
+/* ===================== تحويل logical <-> timestamp عبر الفريمات =====================
+   الرسومات مخزّنة أصلاً بإحداثيات بيانات (logical index + price) مش بكسل شاشة،
+   بس الـ logical هو رقم الشمعة على مصفوفة الشموع الحالية، وهاي المصفوفة بتتغيّر
+   كلياً كل ما تغيّرنا الفريم (عدد/توقيت الشموع مختلف تماماً). عشان نضمن إن كل
+   نقطة رسم أو خط صفقة يضل مثبّت على نفس الوقت والسعر الحقيقيين بعد تغيير الفريم
+   (Data Coordinates = Timestamp + Price، مش Screen/Index)، منحول logical
+   لـ timestamp فعلي بالاعتماد على مصفوفة الشموع "القديمة" (يلي كانت معروضة قبل
+   التغيير)، وبعدين منحول هيك الـ timestamp لـ logical جديد بالاعتماد على مصفوفة
+   الشموع "الجديدة" (بعد ما توصل)، فتترسم بمكانها الصح تلقائياً (Data → Screen). */
+function logicalToTimeForCandles(logical, candles) {
+  if (!candles || candles.length === 0 || !Number.isFinite(logical)) return null;
+  const n = candles.length;
+  const i0 = Math.floor(logical);
+  const frac = logical - i0;
+  if (i0 < 0) {
+    const t0 = candles[0].time;
+    const t1 = candles[1] ? candles[1].time : t0 + 60;
+    return t0 + logical * (t1 - t0);
+  }
+  if (i0 >= n - 1) {
+    const tN1 = candles[n - 1].time;
+    const tN2 = candles[n - 2] ? candles[n - 2].time : tN1 - 60;
+    return tN1 + (logical - (n - 1)) * (tN1 - tN2);
+  }
+  const t0 = candles[i0].time;
+  const t1 = candles[i0 + 1].time;
+  return t0 + (t1 - t0) * frac;
+}
+function timeToLogicalForCandles(time, candles) {
+  if (!candles || candles.length === 0 || !Number.isFinite(time)) return 0;
+  const n = candles.length;
+  if (time <= candles[0].time) {
+    const t0 = candles[0].time;
+    const t1 = candles[1] ? candles[1].time : t0 + 60;
+    const step = t1 - t0 || 1;
+    return (time - t0) / step;
+  }
+  if (time >= candles[n - 1].time) {
+    const tN1 = candles[n - 1].time;
+    const tN2 = candles[n - 2] ? candles[n - 2].time : tN1 - 60;
+    const step = tN1 - tN2 || 1;
+    return (n - 1) + (time - tN1) / step;
+  }
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (candles[mid].time <= time) lo = mid; else hi = mid;
+  }
+  const t0 = candles[lo].time, t1 = candles[hi].time;
+  const frac = t1 > t0 ? (time - t0) / (t1 - t0) : 0;
+  return lo + frac;
+}
+function reprojectPoint(p, fromCandles, toCandles) {
+  if (!p || !Number.isFinite(p.logical)) return p;
+  const t = logicalToTimeForCandles(p.logical, fromCandles);
+  if (t == null) return p;
+  return { ...p, logical: timeToLogicalForCandles(t, toCandles) };
+}
+function reprojectDrawing(d, fromCandles, toCandles) {
+  const next = { ...d };
+  if (next.p1) next.p1 = reprojectPoint(next.p1, fromCandles, toCandles);
+  if (next.p2) next.p2 = reprojectPoint(next.p2, fromCandles, toCandles);
+  if (Array.isArray(next.points)) next.points = next.points.map((p) => reprojectPoint(p, fromCandles, toCandles));
+  return next;
+}
+
 /* ===================== إعدادات ألوان الشارت (تنحفظ محلياً بالمتصفح) ===================== */
 // رفعنا رقم النسخة v1 -> v2 قصداً: عشان أي متصفح عنده إعدادات محفوظة قديمة
 // (فيها مثلاً priceLineVisible: true من قبل) يرجع ياخذ القيم الافتراضية
 // الجديدة تلقائياً بدل ما يضل عالقيم القديمة المخزّنة عنده لحد ما يضغط
 // "الافتراضي" يدوياً. هاي أضمن طريقة لأي تغيير مستقبلي بالقيم الافتراضية.
-const CHART_SETTINGS_KEY = "qta_chart_settings_v2";
+const CHART_SETTINGS_KEY = "qta_chart_settings_v3";
 const DEFAULT_CHART_SETTINGS = {
   bg: "#181A20",
   up: GREEN,
@@ -95,6 +159,14 @@ const DEFAULT_CHART_SETTINGS = {
   watermarkText: "",
   scaleMarginTop: 8,
   scaleMarginBottom: 8,
+  // ألوان عناصر الصفقة (دخول/هدف/إيقاف/مناطق الربح والخسارة) - قابلة للتخصيص
+  // ومستقلة عن باقي ألوان الشارت، وتضل نفسها بعد تغيير الفريم/الزوم/التحريك
+  tradeEntryColor: GOLD_LIGHT,
+  tradeTpColor: GREEN,
+  tradeSlColor: RED,
+  tradeProfitZoneColor: GREEN,
+  tradeLossZoneColor: RED,
+  tradeZoneOpacity: 0.12,
   // رمز (Symbol)
   lastValueLabelVisible: true,
   ohlcVisible: true,
@@ -719,7 +791,7 @@ export default function ReplayClient({ userId }) {
 
   const [assetValue, setAssetValue] = useState("XAUUSD");
   const [interval, setIntervalValue] = useState("15m");
-  const [speed, setSpeed] = useState(700);
+  const [speed, setSpeed] = useState(3); // 3x = 3 شموع/ثانية (قيمة افتراضية معقولة)
   const [maxBars, setMaxBars] = useState(5000);
 
   // فتح الشارت مباشرة على رمز معيّن جاي من صفحة تانية (زر "افتح الشارت" برادار QAIS مثلاً)
@@ -757,6 +829,15 @@ export default function ReplayClient({ userId }) {
   }
 
   const [cutMode, setCutMode] = useState(false);
+  /* ===== حالة الـ Replay (ReplayState) - مستقلة تماماً عن الفريم الحالي =====
+     isActive: هل في Replay/تدريب شغال فعلياً (نقطة قص أو بداية عشوائية).
+     anchorTimestamp: الوقت الحقيقي لنقطة "القص" الأصلية (تنعيّن مرة وحدة، وما
+       بتتغيّر إلا بعملية قص جديدة أو تحميل سوق مختلف بالكامل).
+     currentTimestamp: آخر وقت حقيقي وصله الـ Replay فعلياً (بيتحرك مع كل تقدّم:
+       Play، خطوة يدوية، أو حتى بعد تحويله لفريم جديد).
+     originalTimeframe: الفريم يلي اتعمل عليه القص أساساً (معلومة توثيقية بس). */
+  const replayStateRef = useRef({ isActive: false, anchorTimestamp: null, currentTimestamp: null, originalTimeframe: null });
+  const cutHoverLogicalRef = useRef(null); // موقع تحويم الماوس أثناء اختيار نقطة بداية الـ Replay (لمعاينة Blur/شعاع حي)
   const [isFullscreen, setIsFullscreen] = useState(false);
   const chartWrapperRef = useRef(null);
   const headerRef = useRef(null);
@@ -862,6 +943,11 @@ export default function ReplayClient({ userId }) {
 
   /* إعدادات ألوان الشارت (خلفية + شموع صعود/هبوط) + قائمة الكليك يمين + نافذة الإعدادات */
   const [chartSettings, setChartSettings] = useState(DEFAULT_CHART_SETTINGS);
+  // بعض معالِجات الشارت (subscribeCrosshairMove/subscribeVisibleLogicalRangeChange) بتنعمل
+  // مرة وحدة بس عند إنشاء الشارت، فبتضل ماسكة نسخة قديمة (Stale) من drawOverlay. عشان ألوان
+  // الصفقة (Trade Colors) تنعكس فوراً حتى بعد أول تغيير، منقرأها هون من Ref دايماً محدّث
+  const chartSettingsRef = useRef(chartSettings);
+  useEffect(() => { chartSettingsRef.current = chartSettings; }, [chartSettings]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState("symbol");
   const [contextMenu, setContextMenu] = useState(null); // { x, y, price }
@@ -982,6 +1068,7 @@ export default function ReplayClient({ userId }) {
     }
     saveChartSettings(chartSettings);
     applyIndicatorPaneMargins();
+    drawOverlay();
   }, [chartSettings]);
 
   /* ===================== منطق أداة المؤشرات الفنية ===================== */
@@ -1217,6 +1304,29 @@ export default function ReplayClient({ userId }) {
     ctx.direction = "ltr";
     ctx.textAlign = "left";
 
+    /* معاينة "أداة القص" (اختيار نقطة بداية الـ Replay): شعاع رأسي عند موضع
+       المؤشر، والجزء يلي بعده (المستقبل غير المحدد بعد) يترسم بتغبيش خفيف
+       (Overlay شفاف غامق) بدل ما يكون واضح متل باقي الشارت - خفيف واحترافي
+       مش Blur قوي يخلي القراءة صعبة. بيتحدث حي مع كل حركة ماوس، وما بيثبّت
+       شي فعلياً إلا لما يصير كليك تأكيد */
+    if (cutMode && cutHoverLogicalRef.current != null) {
+      const hoverX = chart.timeScale().logicalToCoordinate(cutHoverLogicalRef.current);
+      if (hoverX != null) {
+        ctx.save();
+        ctx.fillStyle = "rgba(8,9,12,0.4)";
+        ctx.fillRect(hoverX, 0, Math.max(0, w - hoverX), h);
+        ctx.strokeStyle = GOLD_LIGHT;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(hoverX, 0);
+        ctx.lineTo(hoverX, h);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    }
+
     if (!drawingsVisibleRef.current) { ctx.restore(); return; }
 
     const ts = chart.timeScale();
@@ -1227,6 +1337,44 @@ export default function ReplayClient({ userId }) {
       ctx.lineWidth = style.width || 1.5;
       ctx.setLineDash(style.dash === "dashed" ? [6, 4] : style.dash === "dotted" ? [2, 3] : []);
     };
+
+    /* مناطق الربح/الخسارة تبع كل صفقة (بين الدخول والهدف = ربح، وبين الدخول
+       والإيقاف = خسارة) - بألوان قابلة للتخصيص من الإعدادات، وترتسم تحت خطوط
+       الصفقة نفسها. لازم تبدأ بالظبط من نقطة/وقت الدخول وتمتد يمين بس (نحو
+       المستقبل)، وممنوع يظهر أي تظليل قبلها (شوفي طلب "ثالثاً: تظليل الصفقة") */
+    const tradeGroups = {};
+    for (const d of drawingsRef.current) {
+      if (!d.tradeTag || d.hidden) continue;
+      (tradeGroups[d.tradeTag] ||= {})[d.tradeRole] = d;
+    }
+    for (const tag in tradeGroups) {
+      const g = tradeGroups[tag];
+      if (!g.entry) continue;
+      const entryY = series.priceToCoordinate(g.entry.p1.price);
+      const entryXRaw = ts.logicalToCoordinate(g.entry.p1.logical);
+      if (entryY == null || entryXRaw == null) continue;
+      // نقصّ التظليل عند نقطة الدخول بالضبط (حتى لو جزء من الشمعة نفسها قبلها
+      // بصرياً)، وما بنسمح تبدأ قبل حافة الشارت الشمال لو الدخول خارج النطاق الظاهر
+      const entryX = Math.max(0, entryXRaw);
+      const zoneW = Math.max(0, w - entryX);
+      if (zoneW <= 0) continue;
+      const opacity = chartSettingsRef.current.tradeZoneOpacity ?? 0.12;
+      if (g.tp) {
+        const tpY = series.priceToCoordinate(g.tp.p1.price);
+        if (tpY != null) {
+          ctx.fillStyle = hexToRgba(chartSettingsRef.current.tradeProfitZoneColor || GREEN, opacity);
+          ctx.fillRect(entryX, Math.min(entryY, tpY), zoneW, Math.abs(entryY - tpY));
+        }
+      }
+      if (g.sl) {
+        const slY = series.priceToCoordinate(g.sl.p1.price);
+        if (slY != null) {
+          ctx.fillStyle = hexToRgba(chartSettingsRef.current.tradeLossZoneColor || RED, opacity);
+          ctx.fillRect(entryX, Math.min(entryY, slY), zoneW, Math.abs(entryY - slY));
+        }
+      }
+    }
+
 
     const all = [...drawingsRef.current];
     if (drawStateRef.current) all.push(drawStateRef.current);
@@ -2079,7 +2227,9 @@ export default function ReplayClient({ userId }) {
     const pts = pathPointsRef.current;
     const tool = activeToolRef.current;
     if (pts && pts.length >= 2) {
-      drawingsRef.current.push({ id: Date.now(), type: tool, points: pts, style: styleForNewDrawing(tool) });
+      const newId = Date.now();
+      drawingsRef.current.push({ id: newId, type: tool, points: pts, style: styleForNewDrawing(tool) });
+      selectDrawing(newId); // نقاط التحكم تظهر تلقائياً فوراً بعد إنشاء الأداة متعددة النقاط
     }
     pathPointsRef.current = [];
     liveCursorRef.current = null;
@@ -2121,6 +2271,53 @@ export default function ReplayClient({ userId }) {
     return liveLastPrice;
   }
 
+  /* نسخة عامة من getLogicalPrice تشتغل بره الـ effect الكبير تبع إنشاء الشارت
+     (بالاعتماد على الـ refs مباشرة، نفس الكائنات) - محتاجينها هون عشان قائمة
+     الكليك اليمين تصير قابلة لإعادة الفتح من أكتر من مكان بنفس المنطق */
+  function getLogicalPriceGlobal(clientX, clientY) {
+    const canvas = overlayCanvasRef.current;
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!canvas || !chart || !series) return { logical: null, price: null, x: null, y: null };
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const logical = chart.timeScale().coordinateToLogical(x);
+    const price = series.coordinateToPrice(y);
+    return { logical, price, x, y };
+  }
+
+  /* فتح/إعادة فتح قائمة الكليك اليمين (شراء/بيع): أي كليك يمين جديد لازم يقفل
+     القائمة القديمة (إن وجدت) ويفتح وحدة جديدة بمكان الكليك الجديد فوراً بنفس
+     الحركة - مش يحتاج كليكتين. بما إنها State وحدة (مش Array)، ما بينفتح غير
+     قائمة وحدة بأي لحظة أصلاً؛ هاي الدالة مشتركة بين معالج الكليك عالشارت وبين
+     طبقة "اضغط برا لتقفل" تحت بالـ JSX عشان يصير نفس السلوك من الجهتين. */
+  function openContextMenuAt(clientX, clientY) {
+    const areaRect = chartAreaRef.current?.getBoundingClientRect();
+    const insideChart = !!areaRect && clientX >= areaRect.left && clientX <= areaRect.right && clientY >= areaRect.top && clientY <= areaRect.bottom;
+    if (!insideChart) { setContextMenu(null); return; }
+    // لو في رسمة نص التنفيذ ولسا ما اكتملت، كليك يمين بيلغيها بالكامل زي تريدنغ
+    // فيو، وما بيفتح قائمة الشراء/البيع نهائياً بهاي الحالة
+    const midDrawing = !!(isDrawingRef.current && drawStateRef.current) || pathPointsRef.current.length > 0;
+    if (midDrawing) {
+      isDrawingRef.current = false;
+      drawStateRef.current = null;
+      pathPointsRef.current = [];
+      liveCursorRef.current = null;
+      setActiveTool("cursor");
+      drawOverlay();
+      setContextMenu(null);
+      return;
+    }
+    const { price } = getLogicalPriceGlobal(clientX, clientY);
+    const x = clientX - areaRect.left;
+    const y = clientY - areaRect.top;
+    setContextMenu({ x, y, price: price != null ? price : null });
+  }
+  // القائمة لازم تقفل تلقائياً عند تغيير الأداة المفعّلة أو الفريم الحالي
+  useEffect(() => { setContextMenu(null); }, [activeTool]);
+  useEffect(() => { setContextMenu(null); }, [interval]);
+
   function openQuickTrade(direction, priceOverride) {
     if (!userId) {
       setTradeToast("سجّلي دخول أول عشان تقدري تسجّلي صفقات بالباك تيست");
@@ -2140,23 +2337,27 @@ export default function ReplayClient({ userId }) {
     const sl = direction === "buy" ? price - dist : price + dist;
     const vr = chartRef.current?.timeScale().getVisibleLogicalRange();
     const logical = vr ? vr.to - 2 : (visibleCandlesRef.current.length || 1) - 1;
+    // وقت الدخول الحقيقي (timestamp) محسوب من نفس نقطة الـ logical فوق - هاد
+    // هو "المرجع الحقيقي" لبداية الصفقة، وبيضل ثابت حتى لو تغيّر الفريم بعدين
+    // (تظليل الصفقة وتقييمها التاريخي بيعتمدو عليه، مش على الـ logical نفسه)
+    const entryTime = logicalToTimeForCandles(logical, allCandles);
 
     drawingsRef.current.push({
       id: Date.now(), type: "hline", p1: { logical, price },
-      style: { color: GOLD_LIGHT, width: 1, dash: "solid" }, tradeTag: tag, tradeRole: "entry",
+      style: { color: chartSettings.tradeEntryColor || GOLD_LIGHT, width: 1, dash: "solid" }, tradeTag: tag, tradeRole: "entry", entryTime,
     });
     drawingsRef.current.push({
       id: Date.now() + 1, type: "hline", p1: { logical, price: tp },
-      style: { color: GREEN, width: 1.5, dash: "dashed" }, tradeTag: tag, tradeRole: "tp",
+      style: { color: chartSettings.tradeTpColor || GREEN, width: 1.5, dash: "dashed" }, tradeTag: tag, tradeRole: "tp",
     });
     drawingsRef.current.push({
       id: Date.now() + 2, type: "hline", p1: { logical, price: sl },
-      style: { color: RED, width: 1.5, dash: "dashed" }, tradeTag: tag, tradeRole: "sl",
+      style: { color: chartSettings.tradeSlColor || RED, width: 1.5, dash: "dashed" }, tradeTag: tag, tradeRole: "sl",
     });
     drawOverlay();
     setTradeLot("0.01");
     setTradeReason("");
-    setPendingTrade({ tag, direction, entry: price, asset: assetValue });
+    setPendingTrade({ tag, direction, entry: price, asset: assetValue, entryTime });
   }
 
   /* بتزامن حقول الكتابة (دخول/هدف/إيقاف) مع الخطوط المرسومة عالشارت، أول ما تنفتح صفقة جديدة
@@ -2277,7 +2478,7 @@ export default function ReplayClient({ userId }) {
     // نحوّل الخطوط لصفقة "مفتوحة" مراقَبة بدل ما نمسحها، عشان تنقفل تلقائي لما يلمس السعر الهدف أو الإيقاف
     openPositionsRef.current.push({
       dbId: data.id, tag: pt.tag, direction: pt.direction, entry: pt.entry, sl, tp, lot,
-      riskAmount, rewardAmount, asset: pt.asset,
+      riskAmount, rewardAmount, asset: pt.asset, entryTime: pt.entryTime,
     });
     setOpenPositionsList([...openPositionsRef.current]);
     setPendingTrade(null);
@@ -2385,6 +2586,32 @@ export default function ReplayClient({ userId }) {
       .eq("id", pos.dbId)
       .eq("user_id", userId);
   }
+
+  /* ===== تقييم الصفقات المفتوحة (Trade Evaluation) =====
+     بدل ما نعتمد بس على آخر سعر ظاهر (يلي بيخليها تنتظر ضغطة Play)، هون
+     منمسح كل الشموع المعروفة من وقت الدخول (entryTime) لحد آخر شمعة وصلها
+     الـ Replay حالياً، ومنحدّد أول مستوى (SL أو TP) اتلمس زمنياً. هيك الصفقة
+     بتتقيّم صح فوراً حتى لو غيّرنا الفريم أو رجعنا لفريم سابق بدون تشغيل. */
+  function evaluateOpenPositionsFull(knownCandles) {
+    if (!knownCandles || !knownCandles.length || openPositionsRef.current.length === 0) return;
+    for (const pos of [...openPositionsRef.current]) {
+      // صفقات قديمة اتفتحت قبل هالتحديث وما عندها entryTime مسجّل - منسيبها
+      // على منطق المراقبة اللحظية القديم (checkOpenPositionsRef) بدل ما نخمّن وقتها
+      if (pos.entryTime == null) continue;
+      let startIdx = knownCandles.findIndex((c) => c.time >= pos.entryTime);
+      if (startIdx === -1) continue; // لسا ما وصلنا وقت الدخول بالبيانات المعروضة حالياً
+      for (let i = startIdx; i < knownCandles.length; i++) {
+        const c = knownCandles[i];
+        const hitSl = pos.direction === "buy" ? c.low <= pos.sl : c.high >= pos.sl;
+        const hitTp = pos.direction === "buy" ? c.high >= pos.tp : c.low <= pos.tp;
+        // نفس الشمعة وصلت للهدف والإيقاف مع بعض وما عنا بيانات داخل الشمعة (intrabar):
+        // قاعدة ثابتة محافظة - وقف الخسارة إله الأولوية دايماً (بفحص hitSl قبل hitTp)
+        if (hitSl) { closeOpenPosition(pos, "loss", pos.sl); break; }
+        if (hitTp) { closeOpenPosition(pos, "win", pos.tp); break; }
+      }
+    }
+  }
+
 
   /* تعديل الهدف/وقف الخسارة لصفقة مفتوحة (بعد ما اتأكدت وانسجلت) - بيحرّك الخط المطابق
      عالشارت وبيحدّث المراقبة الحية، وبيحفظ القيمة الجديدة بقاعدة البيانات كمان */
@@ -2621,8 +2848,10 @@ export default function ReplayClient({ userId }) {
           return;
         }
         if (tool === "hline" || tool === "hray" || tool === "vline" || tool === "crossline") {
-          drawingsRef.current.push({ id: Date.now(), type: tool, p1: { logical, price: snapped }, style: styleForNewDrawing(tool) });
+          const newId = Date.now();
+          drawingsRef.current.push({ id: newId, type: tool, p1: { logical, price: snapped }, style: styleForNewDrawing(tool) });
           setActiveTool("cursor");
+          selectDrawing(newId); // نقاط التحكم تظهر تلقائياً فوراً بعد إنشاء الأداة
           drawOverlay();
           return;
         }
@@ -2643,9 +2872,13 @@ export default function ReplayClient({ userId }) {
           drawStateRef.current = null;
           isDrawingRef.current = false;
           if (d.type !== "measure") {
-            drawingsRef.current.push({ id: Date.now(), ...d });
+            const newId = Date.now();
+            drawingsRef.current.push({ id: newId, ...d });
+            setActiveTool("cursor");
+            selectDrawing(newId); // نقاط التحكم (Anchors) تظهر تلقائياً فوراً بعد إنشاء الرسمة
+          } else {
+            setActiveTool("cursor");
           }
-          setActiveTool("cursor");
           drawOverlay();
           return;
         }
@@ -2788,15 +3021,65 @@ export default function ReplayClient({ userId }) {
       /* كليك يمين عالشارت: قائمة سياق (نسخ السعر، شراء/بيع فوري، إعدادات الألوان، إلخ) */
       function onContextMenu(e) {
         e.preventDefault();
-        const { price } = getLogicalPrice(e.clientX, e.clientY);
-        const areaRect = chartAreaRef.current?.getBoundingClientRect();
-        const x = areaRect ? e.clientX - areaRect.left : e.clientX;
-        const y = areaRect ? e.clientY - areaRect.top : e.clientY;
-        setContextMenu({ x, y, price: price != null ? price : null });
+        openContextMenuAt(e.clientX, e.clientY);
       }
+
+      /* ===== Zoom/Pan أثناء الرسم =====
+         لما تكون أداة رسم مفعّلة (activeTool != cursor)، الـ overlay canvas
+         بياخد كل أحداث الماوس (pointerEvents:auto) عشان يسمح برسم دقيق، وهاد
+         كان يمنع أي تكبير/تصغير أو تحريك للشارت لحد ما تخلصي الرسم. هون منعيد
+         توجيه العجلة (wheel) والسحب بالزر الأوسط يدوياً لمكتبة الشارت، بدون
+         ما نلمس أحداث الزر الشمال (يلي مسؤولة عن تثبيت نقاط الرسم) أو الزر
+         اليمين (يلي مسؤولة عن الإلغاء). الإحداثيات نفسها (logical + price)
+         ما بتتأثر أبداً بالزوم/البان لأنها مرتبطة بالبيانات مش بمكان البكسل،
+         فالرسم الجاري بيضل مثبّت صح بعد أي زوم. */
+      function onOverlayWheel(e) {
+        if (activeToolRef.current === "cursor") return; // بوضع المؤشر، الشارت نفسه بيتكفل بعجلة الزوم عادي
+        e.preventDefault();
+        const ts = chart.timeScale();
+        const vr = ts.getVisibleLogicalRange();
+        if (!vr) return;
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+          // تحريك أفقي (تراك باد بإصبعين، أو Shift+عجلة)
+          const span = vr.to - vr.from;
+          const shift = (e.deltaX / 100) * span * 0.08;
+          ts.setVisibleLogicalRange({ from: vr.from + shift, to: vr.to + shift });
+        } else {
+          // تكبير/تصغير حول موضع المؤشر الحالي
+          const { logical } = getLogicalPrice(e.clientX, e.clientY);
+          const center = logical != null ? logical : (vr.from + vr.to) / 2;
+          const factor = e.deltaY > 0 ? 1.1 : 1 / 1.1;
+          const newFrom = center - (center - vr.from) * factor;
+          const newTo = center + (vr.to - center) * factor;
+          if (newTo - newFrom >= 2) ts.setVisibleLogicalRange({ from: newFrom, to: newTo });
+        }
+        drawOverlay();
+      }
+      let panDrag = null;
+      function onOverlayAuxDown(e) {
+        if (e.button !== 1 || activeToolRef.current === "cursor") return; // الزر الأوسط بس، وأثناء الرسم فقط
+        e.preventDefault();
+        const vr0 = chart.timeScale().getVisibleLogicalRange();
+        if (!vr0) return;
+        panDrag = { startX: e.clientX, vr0 };
+      }
+      function onWindowMouseMoveForPan(e) {
+        if (!panDrag) return;
+        const ts = chart.timeScale();
+        const barSpacing = ts.options()?.barSpacing || 6;
+        const dxPx = e.clientX - panDrag.startX;
+        const shift = -dxPx / (barSpacing || 6);
+        ts.setVisibleLogicalRange({ from: panDrag.vr0.from + shift, to: panDrag.vr0.to + shift });
+        drawOverlay();
+      }
+      function onWindowMouseUpForPan() { panDrag = null; }
 
       const overlayEl = overlayCanvasRef.current;
       const containerEl = chartContainerRef.current;
+      overlayEl?.addEventListener("wheel", onOverlayWheel, { passive: false });
+      overlayEl?.addEventListener("mousedown", onOverlayAuxDown);
+      window.addEventListener("mousemove", onWindowMouseMoveForPan);
+      window.addEventListener("mouseup", onWindowMouseUpForPan);
       overlayEl?.addEventListener("mousedown", onMouseDown);
       overlayEl?.addEventListener("dblclick", onDblClickOverlay);
       containerEl?.addEventListener("dblclick", onContainerDblClick);
@@ -2960,6 +3243,10 @@ export default function ReplayClient({ userId }) {
       chart.__cleanup = () => {
         window.removeEventListener("resize", handleResize);
         document.removeEventListener("fullscreenchange", handleFsChange);
+        overlayEl?.removeEventListener("wheel", onOverlayWheel);
+        overlayEl?.removeEventListener("mousedown", onOverlayAuxDown);
+        window.removeEventListener("mousemove", onWindowMouseMoveForPan);
+        window.removeEventListener("mouseup", onWindowMouseUpForPan);
         overlayEl?.removeEventListener("mousedown", onMouseDown);
         overlayEl?.removeEventListener("dblclick", onDblClickOverlay);
         containerEl?.removeEventListener("dblclick", onContainerDblClick);
@@ -3307,17 +3594,45 @@ export default function ReplayClient({ userId }) {
     setLoading(true);
     setError("");
     setIsPlaying(false);
-    drawingsRef.current = [];
+
+    // نمسح الرسومات/الصفقات بس لما يتغيّر "السوق" فعلياً (الأصل، أو الوضع مباشر/تدريب،
+    // أو تفعيل/إلغاء الشارت العشوائي). أما لو تغيّر الفريم بس (أو عدد الشموع الأقصى)
+    // فمنحافظ عليها، ومنجهّز لاحقاً إعادة إسقاطها حسب وقتها الحقيقي بعد ما توصل
+    // بيانات الفريم الجديد (شوفي reprojectDrawing فوق + استخدامها تحت بعد setData).
+    const prevCtx = lastLoadContextRef.current;
+    const sameMarketContext = prevCtx.hasLoaded && prevCtx.asset === assetValue && prevCtx.mode === mode && prevCtx.randomChart === randomChart;
+    lastLoadContextRef.current = { asset: assetValue, mode, randomChart, hasLoaded: true };
+    if (sameMarketContext) {
+      pendingReprojectRef.current = { fromCandles: allCandles };
+    } else {
+      drawingsRef.current = [];
+      pendingReprojectRef.current = null;
+      // سوق مختلف كلياً = ما في داعي نحافظ على حالة Replay قديمة معه
+      replayStateRef.current = { isActive: false, anchorTimestamp: null, currentTimestamp: null, originalTimeframe: null };
+    }
     drawStateRef.current = null;
     forceFullReloadRef.current = true;
+
+    // يحدّد نقطة بداية التدريب على مصفوفة الشموع الجديدة: لو في Replay شغال
+    // أصلاً بنفس السياق (يعني الفريم بس تغيّر)، منحوّل "الوقت الحقيقي" الحالي
+    // تبعه لأقرب شمعة بالفريم الجديد (بدل ما نعتمد على index بيختلف بين
+    // الفريمات) - وإلا (أول تحميل/سوق جديد) منستخدم بداية عشوائية زي القديم.
+    function pickTrainingRevealCount(candles) {
+      if (sameMarketContext && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null) {
+        let idx = candles.findIndex((c) => c.time >= replayStateRef.current.currentTimestamp);
+        if (idx === -1) idx = candles.length - 1; // الوقت بعد آخر شمعة متوفرة بالفريم الجديد
+        return Math.min(candles.length, Math.max(1, idx + 1));
+      }
+      const maxStart = Math.max(CONTEXT_BARS, candles.length - 100);
+      const start = Math.floor(Math.random() * (maxStart - CONTEXT_BARS + 1)) + CONTEXT_BARS;
+      return Math.min(start, candles.length);
+    }
 
     if (randomChart) {
       const candles = generateRandomCandles(maxBars, interval);
       setAllCandles(candles);
       if (mode === "training") {
-        const maxStart = Math.max(CONTEXT_BARS, candles.length - 100);
-        const start = Math.floor(Math.random() * (maxStart - CONTEXT_BARS + 1)) + CONTEXT_BARS;
-        setRevealCount(Math.min(start, candles.length));
+        setRevealCount(pickTrainingRevealCount(candles));
       } else {
         setRevealCount(candles.length);
       }
@@ -3346,9 +3661,7 @@ export default function ReplayClient({ userId }) {
       setAllCandles(candles);
 
       if (mode === "training") {
-        const maxStart = Math.max(CONTEXT_BARS, candles.length - 100);
-        const start = Math.floor(Math.random() * (maxStart - CONTEXT_BARS + 1)) + CONTEXT_BARS;
-        setRevealCount(Math.min(start, candles.length));
+        setRevealCount(pickTrainingRevealCount(candles));
       } else {
         setRevealCount(candles.length);
         startLivePoll(candles);
@@ -3377,12 +3690,29 @@ export default function ReplayClient({ userId }) {
      بس عالشمعة الأخيرة، فتضل الشموع القديمة ظاهرة مع شمعة جديدة بعيدة زمنياً
      = فجوة وتعليق بالشارت). */
   const forceFullReloadRef = useRef(false);
+  // آخر "سياق سوق" تم التحميل فيه (أصل/وضع/شارت عشوائي) - نقارنه بالسياق الجديد
+  // عشان نعرف إذا لازم نمسح الرسومات (سوق مختلف) أو نحافظ عليها (فريم بس تغيّر)
+  const lastLoadContextRef = useRef({ asset: null, mode: null, randomChart: null, hasLoaded: false });
+  // لما يتغيّر الفريم بس (نفس السوق)، منخزّن هون مصفوفة الشموع "القديمة" مؤقتاً
+  // لحد ما توصل بيانات الفريم الجديد، وقتها منعيد إسقاط كل نقطة رسم/صفقة من
+  // logical القديم -> timestamp -> logical جديد (شوفي useEffect تحت)
+  const pendingReprojectRef = useRef(null);
   useEffect(() => {
     if (!seriesRef.current || allCandles.length === 0) return;
     const prevLen = prevCandlesRef.current?.length ?? -1;
     const prevReveal = prevRevealRef.current;
     const forceFullReload = forceFullReloadRef.current;
     forceFullReloadRef.current = false;
+
+    // إعادة إسقاط الرسومات/خطوط الصفقة على الفريم الجديد (حسب الوقت والسعر الحقيقيين)
+    // بدل ما تختفي أو تنزاح - هاي بتصير مرة وحدة بس أول ما توصل شموع فريم جديد
+    if (pendingReprojectRef.current) {
+      const { fromCandles } = pendingReprojectRef.current;
+      pendingReprojectRef.current = null;
+      if (fromCandles && fromCandles.length && allCandles.length) {
+        drawingsRef.current = drawingsRef.current.map((d) => reprojectDrawing(d, fromCandles, allCandles));
+      }
+    }
 
     // وضع التدريب: خطوة وحدة للأمام (تشغيل تلقائي / الشمعة التالية) بنفس مصفوفة الشموع
     const trainingStep = !forceFullReload && mode === "training" && allCandles.length === prevLen && revealCount === prevReveal + 1;
@@ -3394,7 +3724,6 @@ export default function ReplayClient({ userId }) {
         // نضيف/نحدّث الشمعة الأخيرة بس، من دون setData/fitContent
         // عشان ما يصير "رجوع" أو ريست مزعج للزوم والسكرول يلي عم تتفرجي عليه
         seriesRef.current.update(allCandles[revealCount - 1]);
-        checkOpenPositionsRef.current?.(allCandles[revealCount - 1].close);
       } else {
         // تحميل بيانات جديدة أو قفزة كبيرة (تبديل وضع/أصل/فريم/بداية عشوائية/قص نقطة/إعادة من البداية)
         seriesRef.current.setData(allCandles.slice(0, revealCount));
@@ -3405,11 +3734,30 @@ export default function ReplayClient({ userId }) {
       console.error("chart data error:", err);
       setError("صار خطأ بعرض بيانات هالفريم، جربي فريم/أصل تاني أو حدّثي الصفحة.");
     }
+    // تقييم كامل للصفقات المفتوحة على كل الشموع المعروفة لحد الآن - بغض النظر
+    // عن مسار التحديث (تشغيل عادي أو تبديل فريم/أصل كامل)، عشان الصفقة تتقفل
+    // فوراً إذا كانت وصلت SL/TP، بدون انتظار ضغطة Play (شوفي TEST 3 بالطلب)
+    evaluateOpenPositionsFull(allCandles.slice(0, revealCount));
     recalcAllIndicatorData(allCandles.slice(0, revealCount));
     prevRevealRef.current = revealCount;
     prevCandlesRef.current = allCandles;
     drawOverlay();
   }, [revealCount, allCandles, mode]);
+
+  /* بتحدّث "الوقت الحالي" لحالة الـ Replay مع كل تقدّم فعلي بالبيانات المكشوفة
+     (تشغيل، خطوة يدوية، قص نقطة...)، بغض النظر عن الفريم الحالي. أول مرة
+     بتتفعّل بوضع التدريب بتصير هي "نقطة القص" (anchor) تلقائياً. */
+  useEffect(() => {
+    if (mode !== "training" || !allCandles.length || revealCount < 1) return;
+    const c = allCandles[Math.min(revealCount, allCandles.length) - 1];
+    if (!c) return;
+    replayStateRef.current.currentTimestamp = c.time;
+    if (!replayStateRef.current.isActive) {
+      replayStateRef.current.isActive = true;
+      replayStateRef.current.anchorTimestamp = c.time;
+    }
+    replayStateRef.current.originalTimeframe = interval;
+  }, [revealCount, allCandles, mode, interval]);
 
   /* ===================== وضع سوق حي: متابعة الشمعة الحالية بعداد ===================== */
   function stopLivePoll() {
@@ -3551,12 +3899,14 @@ export default function ReplayClient({ userId }) {
   }
   useEffect(() => {
     if (!isPlaying) { clearInterval(playTimerRef.current); return; }
+    // السرعة مخزّنة كـ "شموع بالثانية" (1x..10x)، فمدة الفاصل الحقيقية = 1000 / السرعة
+    const stepMs = Math.max(30, Math.round(1000 / (speed || 1)));
     playTimerRef.current = setInterval(() => {
       setRevealCount((c) => {
         if (c >= allCandles.length) { setIsPlaying(false); return c; }
         return c + 1;
       });
-    }, speed);
+    }, stepMs);
     return () => clearInterval(playTimerRef.current);
   }, [isPlaying, speed, allCandles.length]);
 
@@ -3566,7 +3916,10 @@ export default function ReplayClient({ userId }) {
 
   /* ===================== أداة القص: اختيار نقطة بداية الاستعراض بالضغط على الشارت ===================== */
   useEffect(() => {
-    if (!chartRef.current || !cutMode) return;
+    if (!chartRef.current || !cutMode) {
+      cutHoverLogicalRef.current = null;
+      return;
+    }
     const handler = (param) => {
       if (!param?.time || allCandles.length === 0) return;
       let idx = allCandles.findIndex((c) => c.time === param.time);
@@ -3579,11 +3932,28 @@ export default function ReplayClient({ userId }) {
       stopLivePoll();
       setMode("training");
       setIsPlaying(false);
+      // قص جديد ومقصود من المستخدم = إعادة تثبيت نقطة الـ Replay (anchor) بشكل
+      // صريح على الوقت الحقيقي المختار، بغض النظر عن أي حالة سابقة
+      replayStateRef.current = { isActive: true, anchorTimestamp: allCandles[idx].time, currentTimestamp: allCandles[idx].time, originalTimeframe: intervalRef.current };
       setRevealCount(idx + 1);
       setCutMode(false);
     };
+    /* معاينة حيّة (Preview): وإحنا عم نحوّم بالماوس فوق الشارت بوضع "القص"، منتتبع
+       موقع المؤشر ومنرسم شعاع + تغبيش خفيف للجزء يلي لسا ما تحدد (بدالة drawOverlay
+       تحت)، وهاي المعاينة ما بتغيّر أي بيانات فعلياً إلا لما يصير كليك تأكيد فعلي */
+    const hoverHandler = (param) => {
+      if (!param?.point || !chartRef.current) { cutHoverLogicalRef.current = null; drawOverlay(); return; }
+      const logical = chartRef.current.timeScale().coordinateToLogical(param.point.x);
+      cutHoverLogicalRef.current = logical;
+      drawOverlay();
+    };
     chartRef.current.subscribeClick(handler);
-    return () => chartRef.current?.unsubscribeClick?.(handler);
+    chartRef.current.subscribeCrosshairMove(hoverHandler);
+    return () => {
+      chartRef.current?.unsubscribeClick?.(handler);
+      chartRef.current?.unsubscribeCrosshairMove?.(hoverHandler);
+      cutHoverLogicalRef.current = null;
+    };
   }, [cutMode, allCandles]);
 
   function toggleCutMode() {
@@ -4407,6 +4777,48 @@ export default function ReplayClient({ userId }) {
   /* أدوات التحكم (الأصل/الفريم/السرعة + أزرار الاستعراض) */
   /* لوحة تأكيد الصفقة الفورية: بتظهر بعد الضغط على شراء/بيع، فيها اللوت وأسعار الهدف/الإيقاف
      (بتتحدث لحظياً وقت ما تسحبي الخطين عالشارت) وزرّي تأكيد/إلغاء */
+  /* ===== سحب لوحة تأكيد الصفقة (Trade Confirmation Panel) لأي مكان =====
+     null = المكان الافتراضي (أعلى يمين). بعد أول سحب بتصير {x,y} بالبكسل
+     نسبة لمنطقة الشارت (chartAreaRef)، وبتضل ثابتة أثناء الجلسة حتى لو
+     تحدّث الشارت أو تغيّر الفريم (State مستقلة تماماً عن أي منهم). */
+  const [tradePanelPos, setTradePanelPos] = useState(null);
+  const [isDraggingTradePanel, setIsDraggingTradePanel] = useState(false);
+  const tradePanelDragRef = useRef(null);
+  function onTradePanelDragStart(e) {
+    e.preventDefault();
+    const areaRect = chartAreaRef.current?.getBoundingClientRect();
+    if (!areaRect) return;
+    const panelEl = e.currentTarget.closest("[data-trade-panel]");
+    const panelRect = panelEl?.getBoundingClientRect();
+    const curLeft = tradePanelPos ? tradePanelPos.x : (panelRect ? panelRect.left - areaRect.left : areaRect.width - 274);
+    const curTop = tradePanelPos ? tradePanelPos.y : (panelRect ? panelRect.top - areaRect.top : 10);
+    tradePanelDragRef.current = {
+      startClientX: e.clientX, startClientY: e.clientY, startLeft: curLeft, startTop: curTop,
+      areaW: areaRect.width, areaH: areaRect.height,
+      panelW: panelRect?.width || 260, panelH: panelRect?.height || 300,
+    };
+    setIsDraggingTradePanel(true);
+    window.addEventListener("mousemove", onTradePanelDragMove);
+    window.addEventListener("mouseup", onTradePanelDragEnd);
+  }
+  function onTradePanelDragMove(e) {
+    const d = tradePanelDragRef.current;
+    if (!d) return;
+    let nx = d.startLeft + (e.clientX - d.startClientX);
+    let ny = d.startTop + (e.clientY - d.startClientY);
+    // منمنعها تخرج بالكامل برا حدود منطقة الشارت - بيضل جزء صغير مرئي عالأقل
+    const margin = 32;
+    nx = Math.max(-d.panelW + margin, Math.min(nx, d.areaW - margin));
+    ny = Math.max(0, Math.min(ny, d.areaH - margin));
+    setTradePanelPos({ x: nx, y: ny });
+  }
+  function onTradePanelDragEnd() {
+    tradePanelDragRef.current = null;
+    setIsDraggingTradePanel(false);
+    window.removeEventListener("mousemove", onTradePanelDragMove);
+    window.removeEventListener("mouseup", onTradePanelDragEnd);
+  }
+
   function renderTradePanel() {
     if (!pendingTrade) return null;
     const tpLine = drawingsRef.current.find((d) => d.tradeTag === pendingTrade.tag && d.tradeRole === "tp");
@@ -4421,12 +4833,24 @@ export default function ReplayClient({ userId }) {
     const rr = riskAmount > 0 ? rrNum.toFixed(2) : "-";
     const isBuy = pendingTrade.direction === "buy";
     return (
-      <div style={{
-        position: "absolute", top: 10, right: 10, zIndex: 12, width: 260,
+      <div data-trade-panel style={{
+        position: "absolute",
+        ...(tradePanelPos ? { left: tradePanelPos.x, top: tradePanelPos.y } : { top: 10, right: 10 }),
+        zIndex: 12, width: 260,
         background: "#161616", border: `1px solid ${isBuy ? GREEN : RED}66`, borderRadius: 12,
         padding: 14, boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
       }}>
-        <div style={{ fontWeight: 700, color: isBuy ? GREEN : RED, marginBottom: 8, fontSize: 14 }}>
+        {/* Header قابل للسحب - نفس سطر العنوان، مع مقبض واضح وcursor يتغيّر أثناء السحب */}
+        <div
+          onMouseDown={onTradePanelDragStart}
+          title="اسحبي من هون لتحريك اللوحة"
+          style={{
+            fontWeight: 700, color: isBuy ? GREEN : RED, marginBottom: 8, fontSize: 14,
+            display: "flex", alignItems: "center", gap: 6, cursor: isDraggingTradePanel ? "grabbing" : "grab",
+            userSelect: "none", margin: "-4px -4px 8px", padding: "4px 4px",
+          }}
+        >
+          <span style={{ opacity: 0.5, fontSize: 12, letterSpacing: 1 }}>⠿</span>
           {isBuy ? "🟢 صفقة شراء" : "🔴 صفقة بيع"} — {pendingTrade.asset}
         </div>
 
@@ -5250,6 +5674,12 @@ export default function ReplayClient({ userId }) {
               {row("إظهار أزرار شراء/بيع فوري", toggleInput(chartSettings.showTradeButtons, (v) => set({ showTradeButtons: v })))}
               {sectionTitle("الحجم الافتراضي")}
               {row("حجم الصفقة (لوت)", textInput(tradeLot, setTradeLot, "0.01", 80))}
+              {sectionTitle("ألوان الصفقة (Trade Colors)")}
+              {row("لون الدخول (Entry)", colorInput(chartSettings.tradeEntryColor, (v) => set({ tradeEntryColor: v })))}
+              {row("لون الهدف (Take Profit)", colorInput(chartSettings.tradeTpColor, (v) => set({ tradeTpColor: v })))}
+              {row("لون وقف الخسارة (Stop Loss)", colorInput(chartSettings.tradeSlColor, (v) => set({ tradeSlColor: v })))}
+              {row("لون منطقة الربح (Profit Zone)", colorInput(chartSettings.tradeProfitZoneColor, (v) => set({ tradeProfitZoneColor: v })))}
+              {row("لون منطقة الخسارة (Loss Zone)", colorInput(chartSettings.tradeLossZoneColor, (v) => set({ tradeLossZoneColor: v })))}
             </>
           );
         case "alerts":
@@ -5664,7 +6094,7 @@ export default function ReplayClient({ userId }) {
       {contextMenu && (
         <div
           onClick={() => setContextMenu(null)}
-          onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+          onContextMenu={(e) => { e.preventDefault(); openContextMenuAt(e.clientX, e.clientY); }}
           style={{ position: "fixed", inset: 0, zIndex: 19 }}
         />
       )}
