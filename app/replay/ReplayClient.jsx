@@ -60,6 +60,28 @@ function getCurrentBarWindow(interval) {
   return { start, end: start + stepMs, stepMs, now };
 }
 
+/* الكريبتو بس بيتداول 24/7 - الباقي (فوركس/معادن/مؤشرات/أسهم) إلها ساعات سوق حقيقية،
+   فما بيصح نعرض عداد "إغلاق الشمعة خلال" ونشتغل وكأنه في تحديث حي وقت السوق مسكّر فعلياً. */
+const CRYPTO_ASSET_VALUES = new Set(["BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "BNBUSD", "DOGEUSD"]);
+
+/* نفس منطق تحديد "السوق مفتوح/مغلق" المستخدم بلوحة التحكم (MIC):
+   مغلق كل السبت، ومغلق الأحد قبل ~21:00 UTC (قبل افتتاح جلسة سيدني)،
+   ومغلق الجمعة بعد ~21:00 UTC (بعد إغلاق نيويورك). تقريب معقول لساعات
+   الفوركس/المعادن العالمية (الأسهم الفردية إلها ساعات بورصة أضيق، بس هاي
+   أفضل تقريب متاح بدون تقويم بورصات كامل لكل رمز). */
+function isForexMetalsMarketOpenNow(now) {
+  const day = now.getUTCDay();
+  const hour = now.getUTCHours();
+  if (day === 6) return false;
+  if (day === 0 && hour < 21) return false;
+  if (day === 5 && hour >= 21) return false;
+  return true;
+}
+function isMarketOpenNow(assetValue, now) {
+  if (CRYPTO_ASSET_VALUES.has(assetValue)) return true;
+  return isForexMetalsMarketOpenNow(now);
+}
+
 /* تصفية أي شمعة فاسدة (وقت/سعر مش رقمي أو تكرار بنفس الوقت) قبل ما توصل لمكتبة الشارت -
    مكتبة lightweight-charts بترفض هيك بيانات وبتعمل throw exception يكسر الصفحة كلها،
    فهاي طبقة حماية إضافية جوا الواجهة نفسها (فوق التصفية اللي صارت بالسيرفر) */
@@ -742,6 +764,10 @@ export default function ReplayClient({ userId }) {
 
   const [countdown, setCountdown] = useState("");
   const [countdownProgress, setCountdownProgress] = useState(0);
+  /* السوق فعلياً مفتوح هلق ولا لأ (فوركس/معادن بتسكر نهاية الأسبوع، الكريبتو 24/7) -
+     بيتحدث كل ثانية مع عداد الشمعة، ومستخدم لإخفاء عداد "إغلاق الشمعة خلال"
+     وتبديل بادج "مباشر" لما السوق يكون مسكّر فعلياً. */
+  const [marketOpen, setMarketOpen] = useState(true);
   const [liveLastPrice, setLiveLastPrice] = useState(null);
   const [priceDir, setPriceDir] = useState(0); // 1 صعود / -1 هبوط / 0 محايد
   const prevPriceRef = useRef(null);
@@ -2259,13 +2285,14 @@ export default function ReplayClient({ userId }) {
       setup: "من الاستعراض التاريخي",
       reason: tradeReason.trim(),
       riskAmount, rewardAmount, rr, riskPercent,
-      isLive: mode === "live",
-      // لازم نبعت priceSource/sourceSymbol هون بالظبط متل ما بتعمل أداة الباك تيست،
-      // وإلا صفقات "مباشر" المفتوحة من الاستعراض التاريخي بتضل بدون مصدر سعر،
-      // فبتظهر دايماً "⚠️ خطأ" بعمود السعر الحالي بالباك تيست ومتابعتها الحية
-      // بتفشل فوراً بدون أي طلب شبكة (أصل غير مدعوم للمتابعة الحية).
-      priceSource: mode === "live" ? "yahoo" : null,
-      sourceSymbol: mode === "live" ? info?.yahoo || null : null,
+      // مهم: هاي لازم تعتمد على كون الأصل نفسه مدعوم للمتابعة الحية (info.yahoo)،
+      // مش على وضع عرض الشارت وقت تسجيل الصفقة (مباشر/تاريخي). المستخدم ممكن
+      // يكون قاعد يراجع شارت تاريخي بس الصفقة يلي فتحها حقيقية ومفتوحة فعلاً،
+      // فلازم تنراقب بالسعر الحي بالباك تيست ولوحة التحكم متلها متل صفقات وضع
+      // "مباشر" بالظبط - وإلا عمود "السعر الحالي" بيضل عالم "—" للأبد.
+      isLive: !!info?.yahoo,
+      priceSource: info?.yahoo ? "yahoo" : null,
+      sourceSymbol: info?.yahoo || null,
     }, userId);
 
     const { data, error } = await supabase.from("trades").insert(row).select().single();
@@ -3425,6 +3452,15 @@ export default function ReplayClient({ userId }) {
   function startCountdownTick() {
     stopCountdownTick();
     const tick = () => {
+      const open = isMarketOpenNow(assetValue, new Date());
+      setMarketOpen(open);
+      if (!open) {
+        // السوق مسكّر فعلياً (نهاية أسبوع الفوركس/المعادن مثلاً) - ما في شمعة جديدة
+        // رح تتشكل، فبنوقف العداد بدل ما نضل نعده لشمعة مش رح تصير أصلاً.
+        setCountdown("");
+        setCountdownProgress(0);
+        return;
+      }
       const { end, stepMs, now } = getCurrentBarWindow(interval);
       const remain = Math.max(0, end - now);
       setCountdown(formatCountdown(remain));
@@ -3697,11 +3733,13 @@ export default function ReplayClient({ userId }) {
         <span style={{
           display: "flex", alignItems: "center", gap: 6, padding: "0.3rem 0.7rem",
           borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "default",
-          border: `1px solid ${mode === "live" ? GREEN : GOLD}55`,
-          color: mode === "live" ? GREEN : GOLD_LIGHT,
-        }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: mode === "live" ? GREEN : GOLD }} />
-          {mode === "live" ? "مباشر" : "تاريخي"}
+          border: `1px solid ${mode === "live" ? (marketOpen ? GREEN : RED) : GOLD}55`,
+          color: mode === "live" ? (marketOpen ? GREEN : RED) : GOLD_LIGHT,
+        }}
+          title={mode === "live" && !marketOpen ? "السوق مسكّر هلق (نهاية أسبوع الفوركس/المعادن) - الشارت رح يرجع يتحدث تلقائياً لما يفتح" : undefined}
+        >
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: mode === "live" ? (marketOpen ? GREEN : RED) : GOLD }} />
+          {mode === "live" ? (marketOpen ? "مباشر" : "السوق مغلق") : "تاريخي"}
         </span>
 
         {mode === "training" && (
