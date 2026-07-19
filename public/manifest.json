@@ -2,7 +2,7 @@
   "name": "Qais Trading Academy",
   "short_name": "QTA",
   "description": "أكاديمية Qais Trading Academy لتعليم التداول من الأساسيات حتى الاحترافية",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
