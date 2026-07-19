@@ -60,7 +60,7 @@ const ASSETS = [
 ];
 
 const INITIAL_BALANCE = 3000;
-const DEFAULT_API_KEY = "d91i93hr01qqfqkca0b0d91i93hr01qqfqkca0bg";
+const DEFAULT_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY || "";
 const APIKEY_STORAGE_KEY = "qta_finnhub_apikey";
 
 function getAssetInfo(symbol) {
