@@ -2152,6 +2152,10 @@ export default function ReplayClient({ userId }) {
       setTradeToast("سجّلي دخول أول عشان تقدري تسجّلي صفقات بالباك تيست");
       return;
     }
+    if (mode === "live" && !marketOpen) {
+      setTradeToast("⛔ السوق مسكّر هلق (نهاية أسبوع الفوركس/المعادن) - ما بتقدري تسجّلي صفقة لحد ما يفتح");
+      return;
+    }
     const price = priceOverride != null ? priceOverride : getCurrentPrice();
     if (!price) {
       setTradeToast("ما في سعر متاح لسا، جربي كمان شوي");
