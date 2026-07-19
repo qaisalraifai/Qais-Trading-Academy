@@ -43,7 +43,7 @@ const TF_ORDER = ["daily", "h4", "h1", "m15", "m5"];
 /* رموز مرجعية لأصول SMT مش موجودة أصلاً بقائمة أصول المنصة (نفس خارطة الكرون) */
 const YAHOO_OVERRIDE = { XAUEUR: "XAUEUR=X" };
 
-async function fetchCandles(yahoo, interval, count = 300) {
+async function fetchCandles(yahoo, interval, count = 5000) {
   try {
     const res = await fetch(`/api/replay-candles?symbol=${encodeURIComponent(yahoo)}&interval=${interval}&count=${count}`);
     const data = await res.json();
@@ -91,11 +91,11 @@ export default function QaisEngineView() {
     setError("");
     try {
       const [daily, h4, h1, m15, m5] = await Promise.all([
-        fetchCandles(asset.yahoo, "1day", 300),
-        fetchCandles(asset.yahoo, "4h", 300),
-        fetchCandles(asset.yahoo, "1h", 300),
-        fetchCandles(asset.yahoo, "15min", 300),
-        fetchCandles(asset.yahoo, "5min", 300),
+        fetchCandles(asset.yahoo, "1day", 5000),
+        fetchCandles(asset.yahoo, "4h", 5000),
+        fetchCandles(asset.yahoo, "1h", 5000),
+        fetchCandles(asset.yahoo, "15min", 5000),
+        fetchCandles(asset.yahoo, "5min", 5000),
       ]);
       const candlesByTF = { daily, h4, h1, m15, m5 };
 
