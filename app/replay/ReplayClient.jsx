@@ -3628,20 +3628,34 @@ export default function ReplayClient({ userId }) {
     // الفريمات) - وإلا (أول تحميل/سوق جديد) منستخدم بداية عشوائية زي القديم.
     function pickTrainingRevealCount(candles) {
       if (sameMarketContext && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null) {
-        let idx = candles.findIndex((c) => c.time >= replayStateRef.current.currentTimestamp);
-        if (idx === -1) idx = candles.length - 1; // الوقت بعد آخر شمعة متوفرة بالفريم الجديد
-        // حماية إضافية: لو نقطة "القص" الأصلية أقدم من أول شمعة متوفرة أصلاً
-        // بالفريم الجديد (يعني idx=0 لأنه ولا شمعة قبلها بالداتا المتاحة، مش
-        // لأنها فعلاً أول شمعة بالتاريخ)، منعرض شمعة وحدة بلا أي سياق وهاد
-        // مربك بصرياً. بهاي الحالة (نادرة بعد رفع سقف عمق البيانات فوق)
-        // منرجع لسياق طبيعي (CONTEXT_BARS) بدل ما "نتيه" بشمعة واحدة، ومنبلّغ
-        // بتوست إنه هاد الفريم ما بيوصل لتاريخ نقطة القص الأصلية.
-        if (idx === 0 && candles[0].time > replayStateRef.current.currentTimestamp) {
+        const cutTs = replayStateRef.current.currentTimestamp;
+        // لازم "آخر شمعة زمنها <= نقطة القص" (مش "أول شمعة زمنها >= نقطة القص"
+        // زي قبل). الفرق مو تفصيل بسيط:
+        // 1) findIndex(>=) كانت بترجع -1 لو نقطة القص واقعة *جوا* الشمعة
+        //    الجارية حالياً بالفريم الجديد (بداية هاي الشمعة قبل نقطة القص،
+        //    فما في ولا شمعة "أحدث أو تساويها" فعلياً) - وهاد بالضبط اللي كان
+        //    عم يصير كل ما ترجعي لفريم أوسع (H4) بعد قص حديث نسبياً، فكان
+        //    الكود القديم يعتبرها "تجاوزت آخر شمعة" ويعرض idx=candles.length-1
+        //    = الشارت كامل، فيختفي الـ Cut تماماً (بالضبط الشكوى المذكورة).
+        // 2) حتى لو لقت تطابق، findIndex(>=) ممكن ترجع شمعة *بعد* نقطة القص
+        //    فعلياً لو ما كان في تطابق تام بالتايم ستامب بين الفريمين (فجوة
+        //    سوق/عطلة نهاية أسبوع) - وهاد يخالف الشرط الصريح "ما تظهرش شمعة
+        //    بعد نقطة القص".
+        // findLastIndex(<=) بيحل الحالتين مع بعض بمنطق واحد وصحيح.
+        let idx = -1;
+        for (let i = candles.length - 1; i >= 0; i--) {
+          if (candles[i].time <= cutTs) { idx = i; break; }
+        }
+        if (idx === -1) {
+          // ولا شمعة وحدة بالفريم الجديد زمنها <= نقطة القص = عمق البيانات
+          // المتاحة بهاد الفريم فعلاً ما بيوصل لتاريخ نقطة القص (قيد عمق
+          // حقيقي بالمصدر، شوفي rangeDays بـ lib/yahoo-candles.js) - مو
+          // "بيانات غير متاحة نهائياً". منبلّغ ومنرجع لسياق طبيعي بدل ما نتيه.
           setTradeToast("⚠️ بيانات هاد الفريم ما بتوصل لتاريخ نقطة القص، تم البدء من أقرب نقطة متاحة");
           suppressAnchorSyncOnceRef.current = true;
           return Math.min(CONTEXT_BARS, candles.length);
         }
-        return Math.min(candles.length, Math.max(1, idx + 1));
+        return idx + 1;
       }
       const maxStart = Math.max(CONTEXT_BARS, candles.length - 100);
       const start = Math.floor(Math.random() * (maxStart - CONTEXT_BARS + 1)) + CONTEXT_BARS;
