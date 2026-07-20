@@ -10,7 +10,7 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const symbol = searchParams.get("symbol");
   const interval = searchParams.get("interval") || "15min";
-  const wanted = Math.min(Number(searchParams.get("count") || 1000), 5000);
+  const wanted = Math.min(Number(searchParams.get("count") || 1000), 20000);
 
   if (!symbol) {
     return NextResponse.json({ error: "الرجاء تحديد symbol" }, { status: 400 });

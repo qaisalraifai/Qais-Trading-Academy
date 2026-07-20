@@ -792,7 +792,10 @@ export default function ReplayClient({ userId }) {
   const [assetValue, setAssetValue] = useState("XAUUSD");
   const [interval, setIntervalValue] = useState("15m");
   const [speed, setSpeed] = useState(3); // 3x = 3 شموع/ثانية (قيمة افتراضية معقولة)
-  const [maxBars, setMaxBars] = useState(5000);
+  // مرفوع لـ 20000 (متزامن مع الحد الأقصى الجديد بـ lib/yahoo-candles.js) عشان
+  // فريمات زي الساعة توصل لنفس عمق التاريخ يلي فريم الـ 4 ساعات بيوصله (شوفي
+  // الشرح بـ lib/yahoo-candles.js)
+  const [maxBars, setMaxBars] = useState(20000);
 
   // فتح الشارت مباشرة على رمز معيّن جاي من صفحة تانية (زر "افتح الشارت" برادار QAIS مثلاً)
   const radarSearchParams = useSearchParams();
@@ -3621,6 +3624,16 @@ export default function ReplayClient({ userId }) {
       if (sameMarketContext && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null) {
         let idx = candles.findIndex((c) => c.time >= replayStateRef.current.currentTimestamp);
         if (idx === -1) idx = candles.length - 1; // الوقت بعد آخر شمعة متوفرة بالفريم الجديد
+        // حماية إضافية: لو نقطة "القص" الأصلية أقدم من أول شمعة متوفرة أصلاً
+        // بالفريم الجديد (يعني idx=0 لأنه ولا شمعة قبلها بالداتا المتاحة، مش
+        // لأنها فعلاً أول شمعة بالتاريخ)، منعرض شمعة وحدة بلا أي سياق وهاد
+        // مربك بصرياً. بهاي الحالة (نادرة بعد رفع سقف عمق البيانات فوق)
+        // منرجع لسياق طبيعي (CONTEXT_BARS) بدل ما "نتيه" بشمعة واحدة، ومنبلّغ
+        // بتوست إنه هاد الفريم ما بيوصل لتاريخ نقطة القص الأصلية.
+        if (idx === 0 && candles[0].time > replayStateRef.current.currentTimestamp) {
+          setTradeToast("⚠️ بيانات هاد الفريم ما بتوصل لتاريخ نقطة القص، تم البدء من أقرب نقطة متاحة");
+          return Math.min(CONTEXT_BARS, candles.length);
+        }
         return Math.min(candles.length, Math.max(1, idx + 1));
       }
       const maxStart = Math.max(CONTEXT_BARS, candles.length - 100);
@@ -6089,15 +6102,24 @@ export default function ReplayClient({ userId }) {
           {!loading && allCandles.length > 0 && renderDrawToolbar()}
         </div>
         {renderSettingsDialog()}
-      </div>
 
-      {contextMenu && (
-        <div
-          onClick={() => setContextMenu(null)}
-          onContextMenu={(e) => { e.preventDefault(); openContextMenuAt(e.clientX, e.clientY); }}
-          style={{ position: "fixed", inset: 0, zIndex: 19 }}
-        />
-      )}
+        {/* طبقة "اضغط برا لتقفل" لقائمة الكليك اليمين: لازم تكون *جوا* chartWrapperRef
+            (مش بعده كأخ منفصل بالشجرة) لأنه لما الشارت يفتح بوضع "شاشة كاملة" عن طريق
+            Fullscreen API الحقيقي (requestFullscreen على chartWrapperRef نفسه)، المتصفح
+            ما بيعرض إلا العناصر يلي هي فعلياً جوا الـ subtree تبع العنصر المفعّل
+            fullscreen - أي عنصر برا هاد الـ subtree (متل ما كانت هاي الطبقة سابقاً)
+            ما بينعرض ولا بياخد أي كليك إطلاقاً، فالقائمة كانت تضل عالقة لما تكوني
+            بوضع الشاشة الكاملة وتنقري بمكان فاضي. نقلها لجوا هون بيخليها تشتغل صح
+            بكل الحالتين (شاشة كاملة أو عادي) مع الحفاظ على نفس سلوك position:fixed
+            (بيتموضع دايماً بالنسبة للـ viewport بغض النظر عن مكانه بالشجرة). */}
+        {contextMenu && (
+          <div
+            onClick={() => setContextMenu(null)}
+            onContextMenu={(e) => { e.preventDefault(); openContextMenuAt(e.clientX, e.clientY); }}
+            style={{ position: "fixed", inset: 0, zIndex: 19 }}
+          />
+        )}
+      </div>
 
       {openToolGroup !== null && (
         <div
