@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, Sparkles, RotateCcw } from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
 
@@ -307,6 +307,15 @@ export default function QaisEngineView() {
     }
   }
 
+  /* -------- إعادة تعيين الشارت: رجوع للتقريب والتمرير الافتراضي (زوم/سكرول) -------- */
+  function resetChart() {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.timeScale().fitContent();
+    chart.timeScale().scrollToRealTime();
+    scheduleDraw();
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
       {/* ================= 1) TOP HEADER ================= */}
@@ -378,6 +387,27 @@ export default function QaisEngineView() {
             </button>
           ))}
         </div>
+
+        <button
+          onClick={resetChart}
+          title="إعادة تعيين الشارت (تصفير الزوم/السكرول)"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            background: "transparent",
+            border: "1px solid #2e2e2e",
+            color: "#aaa",
+            borderRadius: 6,
+            padding: "5px 9px",
+            fontSize: 11.5,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          <RotateCcw size={12} />
+          إعادة تعيين
+        </button>
 
         <button
           onClick={runAnalysis}
