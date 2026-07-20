@@ -26,6 +26,13 @@ const INTERVALS = [
   { value: "1d", label: "يومي" },
 ];
 
+/* نفس أرقام rangeDays المضبوطة بـ lib/yahoo-candles.js (INTERVAL_CONFIG) —
+   عمق البيانات التاريخي الحقيقي المتاح من يوهو فايننس لكل فريم. مكرّرة هون
+   (بدل استيراد ملف سيرفر-فقط جوا كومبوننت كلاينت) عشان نقدر نعطّل بالواجهة
+   أي فريم ما بيقدر يوصل لنقطة القص الحالية بالـ Replay، بدل ما نخلّي المستخدم
+   يبدّل وبعدين يفاجأ بتوست "أقرب نقطة متاحة" وبيانات غلط الموقع. */
+const RANGE_DAYS_BY_INTERVAL = { "1m": 7, "5m": 58, "15m": 58, "1h": 725, "4h": 725, "1d": 3650 };
+
 /* سرعات الـ Replay: القيمة هي عدد الشموع بالثانية (1x = شمعة/ثانية ... 10x = 10 شموع/ثانية)
    وبنحولها لـ ms فاصل بين كل شمعة وتالية بمعادلة 1000/السرعة وقت التشغيل الفعلي */
 const SPEEDS = Array.from({ length: 10 }, (_, i) => ({ value: i + 1, label: `${i + 1}x` }));
@@ -832,6 +839,10 @@ export default function ReplayClient({ userId }) {
   }
 
   const [cutMode, setCutMode] = useState(false);
+  // نسخة State من نقطة قص الـ Replay الحالية (currentTimestamp بالـ ref تحت) —
+  // بس عشان نقدر نستخدمها بالـ render (تعطيل خيارات الفريم بالـ select)،
+  // لأن الـ ref لحاله ما بيعمل re-render.
+  const [replayCutTs, setReplayCutTs] = useState(null);
   /* ===== حالة الـ Replay (ReplayState) - مستقلة تماماً عن الفريم الحالي =====
      isActive: هل في Replay/تدريب شغال فعلياً (نقطة قص أو بداية عشوائية).
      anchorTimestamp: الوقت الحقيقي لنقطة "القص" الأصلية (تنعيّن مرة وحدة، وما
@@ -3618,6 +3629,7 @@ export default function ReplayClient({ userId }) {
       pendingReprojectRef.current = null;
       // سوق مختلف كلياً = ما في داعي نحافظ على حالة Replay قديمة معه
       replayStateRef.current = { isActive: false, anchorTimestamp: null, currentTimestamp: null, originalTimeframe: null };
+      setReplayCutTs(null);
     }
     drawStateRef.current = null;
     forceFullReloadRef.current = true;
@@ -3804,6 +3816,7 @@ export default function ReplayClient({ userId }) {
       replayStateRef.current.anchorTimestamp = c.time;
     }
     replayStateRef.current.originalTimeframe = interval;
+    setReplayCutTs(c.time);
   }, [revealCount, allCandles, mode, interval]);
 
   /* ===================== وضع سوق حي: متابعة الشمعة الحالية بعداد ===================== */
@@ -4130,7 +4143,25 @@ export default function ReplayClient({ userId }) {
 
         <select value={interval} onChange={(e) => setIntervalValue(e.target.value)} title="الفريم"
           style={{ ...selectStyle, minWidth: 70, padding: "0.35rem 0.5rem", fontSize: 12.5 }}>
-          {INTERVALS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
+          {INTERVALS.map((o) => {
+            // لو في نقطة قص Replay فعّالة، منحسب عمرها بالأيام ومنعطّل أي فريم
+            // عمق بياناته الحقيقي (rangeDays) أقصر من هيك عمر — بدل ما نخلّي
+            // المستخدم يبدّل وبعدين يوصله توست "أقرب نقطة متاحة".
+            const cutAgeDays = replayStateRef.current.isActive && replayCutTs
+              ? (Date.now() / 1000 - replayCutTs) / 86400
+              : null;
+            const unreachable = cutAgeDays != null && cutAgeDays > RANGE_DAYS_BY_INTERVAL[o.value];
+            return (
+              <option
+                key={o.value}
+                value={o.value}
+                disabled={unreachable}
+                title={unreachable ? "نقطة القص أبعد من عمق البيانات المتاح لهاد الفريم" : undefined}
+              >
+                {o.label}{unreachable ? " (بعيد عن نقطة القص)" : ""}
+              </option>
+            );
+          })}
         </select>
 
         <select
