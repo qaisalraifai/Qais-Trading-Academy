@@ -2359,8 +2359,20 @@ export default function ReplayClient({ userId }) {
     const logical = vr ? vr.to - 2 : (visibleCandlesRef.current.length || 1) - 1;
     // وقت الدخول الحقيقي (timestamp) محسوب من نفس نقطة الـ logical فوق - هاد
     // هو "المرجع الحقيقي" لبداية الصفقة، وبيضل ثابت حتى لو تغيّر الفريم بعدين
-    // (تظليل الصفقة وتقييمها التاريخي بيعتمدو عليه، مش على الـ logical نفسه)
-    const entryTime = logicalToTimeForCandles(logical, allCandles);
+    // (تظليل الصفقة وتقييمها التاريخي بيعتمدو عليه، مش على الـ logical نفسه).
+    // ملاحظة مهمة: "logical" فوق ممكن يكون أكبر من (عدد الشموع - 1) لأنه
+    // مبني على vr.to (حافة المدى المرئي)، ولايتبريت-تشارتس عادة بيسيب فراغ
+    // فاضي بعد آخر شمعة حقيقية (يمين الشارت). لو استخدمنا هاد الـ logical
+    // مباشرة بـ logicalToTimeForCandles، بيصير extrapolation لقدام الوقت
+    // الحقيقي لآخر شمعة (يعني entryTime "بالمستقبل" شوي). وهاد بالضبط كان
+    // سبب صفقات ما بتنقفل مع وصول الهدف: evaluateOpenPositionsFull بتدوّر
+    // عن أول شمعة زمنها >= entryTime، فلو entryTime مستقبلي بالغلط، بتتخطى
+    // كل الشموع الحقيقية يلي صارت بين لحظة الدخول الفعلية وهاد الوقت الوهمي
+    // - حتى لو وحدة منهم لمست الهدف فعلاً. فمنقصّ الـ logical هون (بس لحساب
+    // entryTime، مش لموضع الرسمة نفسها) لأقصى (عدد الشموع - 1) عشان entryTime
+    // ما يتجاوز أبداً آخر شمعة حقيقية معروفة وقت الدخول.
+    const entryLogical = allCandles.length ? Math.min(logical, allCandles.length - 1) : logical;
+    const entryTime = logicalToTimeForCandles(entryLogical, allCandles);
 
     drawingsRef.current.push({
       id: Date.now(), type: "hline", p1: { logical, price },
