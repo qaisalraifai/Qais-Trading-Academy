@@ -840,6 +840,12 @@ export default function ReplayClient({ userId }) {
        Play، خطوة يدوية، أو حتى بعد تحويله لفريم جديد).
      originalTimeframe: الفريم يلي اتعمل عليه القص أساساً (معلومة توثيقية بس). */
   const replayStateRef = useRef({ isActive: false, anchorTimestamp: null, currentTimestamp: null, originalTimeframe: null });
+  // لما نضطر نرجع لـ CONTEXT_BARS احتياطي (نقطة القص الأصلية مش متوفرة بالفريم
+  // الجديد)، ما بدنا الـ useEffect تحت (اللي بيزامن currentTimestamp مع آخر
+  // شمعة مكشوفة) "يصدّق" هاد الموضع المؤقت ويكتب فوق نقطة القص الحقيقية بشكل
+  // دائم. هاد الفلاغ بيخلي الـ useEffect يتخطى مرة وحدة بس (أول مرة بعد
+  // الاحتياطي)، فنقطة القص الأصلية تضل محفوظة وترجع صح لو رجعنا لفريم بيوصلها.
+  const suppressAnchorSyncOnceRef = useRef(false);
   const cutHoverLogicalRef = useRef(null); // موقع تحويم الماوس أثناء اختيار نقطة بداية الـ Replay (لمعاينة Blur/شعاع حي)
   const [isFullscreen, setIsFullscreen] = useState(false);
   const chartWrapperRef = useRef(null);
@@ -3632,6 +3638,7 @@ export default function ReplayClient({ userId }) {
         // بتوست إنه هاد الفريم ما بيوصل لتاريخ نقطة القص الأصلية.
         if (idx === 0 && candles[0].time > replayStateRef.current.currentTimestamp) {
           setTradeToast("⚠️ بيانات هاد الفريم ما بتوصل لتاريخ نقطة القص، تم البدء من أقرب نقطة متاحة");
+          suppressAnchorSyncOnceRef.current = true;
           return Math.min(CONTEXT_BARS, candles.length);
         }
         return Math.min(candles.length, Math.max(1, idx + 1));
@@ -3663,8 +3670,17 @@ export default function ReplayClient({ userId }) {
 
     try {
       const tdInterval = INTERVAL_MAP[interval];
+      // لو في نقطة قص/Replay شغالة بنفس السوق، منبعت وقتها كـ anchor عشان
+      // السيرفر يجيب مدى تاريخي يضمن يغطيها فعلياً (بدل الاعتماد بس على
+      // "آخر X يوم من الآن" واللي ممكن ما توصلها بفريمات دقيقة زي الساعة
+      // حتى لو نظرياً المفروض توصل - يوهو نفسه أحياناً ما بيرجّع كل المدى
+      // المطلوب لما يكون الطلب من "الآن" للخلف بس).
+      const anchorParam =
+        sameMarketContext && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null
+          ? `&anchor=${replayStateRef.current.currentTimestamp}`
+          : "";
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}`
+        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}`
       );
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -3762,6 +3778,10 @@ export default function ReplayClient({ userId }) {
      بتتفعّل بوضع التدريب بتصير هي "نقطة القص" (anchor) تلقائياً. */
   useEffect(() => {
     if (mode !== "training" || !allCandles.length || revealCount < 1) return;
+    if (suppressAnchorSyncOnceRef.current) {
+      suppressAnchorSyncOnceRef.current = false;
+      return;
+    }
     const c = allCandles[Math.min(revealCount, allCandles.length) - 1];
     if (!c) return;
     replayStateRef.current.currentTimestamp = c.time;

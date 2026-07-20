@@ -11,12 +11,14 @@ export async function GET(req) {
   const symbol = searchParams.get("symbol");
   const interval = searchParams.get("interval") || "15min";
   const wanted = Math.min(Number(searchParams.get("count") || 1000), 20000);
+  const anchorRaw = searchParams.get("anchor");
+  const anchor = anchorRaw != null && Number.isFinite(Number(anchorRaw)) ? Number(anchorRaw) : null;
 
   if (!symbol) {
     return NextResponse.json({ error: "الرجاء تحديد symbol" }, { status: 400 });
   }
 
-  const result = await fetchYahooCandles(symbol, interval, wanted);
+  const result = await fetchYahooCandles(symbol, interval, wanted, anchor);
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 502 });
   }
