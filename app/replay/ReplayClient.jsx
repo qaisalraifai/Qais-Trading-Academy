@@ -17,6 +17,35 @@ const DEFAULT_COMPARE_HEIGHT = 200; // ارتفاع لوحة المقارنة ا
 // (هاي كانت سبب مشكلة "آخر شمعة فوق مش طالعة فوق آخر شمعة تحت بالضبط").
 const PRICE_SCALE_WIDTH = 78;
 
+/* ===== أدوات مساعدة لمحرك تنفيذ الصفقات (TP/SL) =====
+   بنستخدم تسامح نسبي صغير (epsilon) بدل المقارنة المباشرة (<=, >=) عشان
+   مشاكل دقة الفاصلة العائمة (floating point) ما تمنع إغلاق صفقة وصلت فعلياً
+   لهدفها أو وقف خسارتها (مثلاً 1.19999999999 لازم تتعامل معاملة 1.2 بالظبط). */
+function priceTolerance(level) {
+  return Math.max(Math.abs(level) * 1e-7, 1e-8);
+}
+// a <= b مع تسامح
+function lteWithTolerance(a, b) {
+  return a <= b + priceTolerance(b);
+}
+// a >= b مع تسامح
+function gteWithTolerance(a, b) {
+  return a >= b - priceTolerance(b);
+}
+
+/* بتتأكد إذا كان عنصر الصفحة الحالي (document.activeElement) هو حقل كتابة
+   (input/textarea/select/contenteditable) - عشان اختصارات لوحة المفاتيح
+   (Delete/Backspace/Ctrl+Z/Ctrl+Y) ما تتدخل بالكتابة العادية جوا الحقول */
+function isEditableTarget(el) {
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!el.isContentEditable;
+}
+
+/* أدوات الرسم الخطية يلي بتنعمل عليها تقييد الزاوية (Shift) زي تريدنغ فيو -
+   بتتقيّد لأقرب زاوية شائعة (0°/45°/90°/135°/180°) طول ما Shift مضغوط */
+const LINE_ANGLE_SNAP_TYPES = new Set(["trendline", "ray", "extendedline", "infoline", "angle"]);
+
 const INTERVALS = [
   { value: "1m", label: "1 دقيقة" },
   { value: "5m", label: "5 دقايق" },
@@ -880,6 +909,9 @@ export default function ReplayClient({ userId }) {
   const allDrawingsLockedRef = useRef(false);
   const activeToolRef = useRef("cursor");
   const magnetRef = useRef(false);
+  /* Shift مضغوط حالياً؟ - بتعطّل المغناطيس مؤقتاً وبتفعّل تقييد زاوية الخطوط،
+     وبترجع تلقائياً عادي أول ما يترفع الزر (بدون ما تغيّر إعداد Magnet نفسه) */
+  const shiftPressedRef = useRef(false);
   /* قائمة منسدلة لكل مجموعة أدوات (زي تريدنغ فيو): ضغطة عالسهم بتفتح قائمة
      بأسماء كل الأدوات جوا المجموعة، وبتتذكر آخر أداة مختارة من كل مجموعة */
   const [openToolGroup, setOpenToolGroup] = useState(null);
@@ -933,9 +965,20 @@ export default function ReplayClient({ userId }) {
   const selectedIdRef = useRef(null);
   const [selectionRenderTick, setSelectionRenderTick] = useState(0);
   const selectionToolbarRef = useRef(null);
+  /* موضع الشريط العائم (مركز أفقي X، حافة علوية Y) - مستقل تماماً عن الرسمة
+     المختارة. أول ما يظهر الشريط منحسب موضع ابتدائي معقول قريب من أول رسمة،
+     وبعدها بيضل بمكانه لحد ما المستخدم نفسه يسحبه لمكان تاني (زي تريدنغ فيو:
+     تغيير التحديد بيحدّث أدوات الشريط بس، بدون ما يحرّك الشريط نفسه) */
+  const toolbarPosRef = useRef(null);
   const [drawingTemplatesMenuOpen, setDrawingTemplatesMenuOpen] = useState(false);
   const [textPopoverOpen, setTextPopoverOpen] = useState(false);
   const [textPopoverValue, setTextPopoverValue] = useState("");
+  /* ===== تراجع/إعادة (Undo/Redo) على مستوى الرسومات - Ctrl+Z / Ctrl+Y =====
+     كل عملية "تُحدث" على الرسومات (إنشاء/حذف/نقل/تعديل خصائص) بتحفظ نسخة
+     من الحالة قبلها هون قبل ما تصير، عشان نقدر نرجع لها بالضبط */
+  const historyRef = useRef([]);
+  const redoStackRef = useRef([]);
+  const HISTORY_LIMIT = 100;
 
   /* ===== مقارنة الرموز (شارت مقسوم) + تكبير أي جزء بضغطتين ماوس ===== */
   const [compareOpen, setCompareOpen] = useState(false);
@@ -1286,6 +1329,9 @@ export default function ReplayClient({ userId }) {
      أوبن/كلوز) حسب أيهم أقرب فعلياً للماوس. */
   const SNAP_THRESHOLD_PX = 46;
   function snapPrice(logical, rawPrice, rawY) {
+    // Shift مضغوط: تعطيل مؤقت للمغناطيس بدون تغيير إعداد Magnet نفسه - بيرجع
+    // يشتغل عادي تلقائياً أول ما ينترفع زر Shift (شوفي onKeyUp)
+    if (shiftPressedRef.current) return rawPrice;
     if (!magnetRef.current) return rawPrice;
     const series = seriesRef.current;
     if (!series || rawY == null) return rawPrice;
@@ -1302,6 +1348,35 @@ export default function ReplayClient({ userId }) {
     }
     if (best == null || bestDist > SNAP_THRESHOLD_PX) return rawPrice;
     return best;
+  }
+
+  /* تقييد زاوية الخط أثناء الرسم لما يكون Shift مضغوط - بالضبط متل تريدنغ فيو:
+     بنحسب الزاوية بالبكسل (نظام إحداثيات الشاشة) بين نقطة البداية (p1) والموضع
+     الحالي، ومنقرّبها لأقرب مضاعف لـ45 درجة (يعطي فعلياً 0°/45°/90°/135°/180°
+     بالاتجاهين)، وبعدين منحول النقطة المقيّدة هاي رجوع لـ logical/price. */
+  function applyAngleSnap(type, p1, rawLogical, rawPrice) {
+    const fallback = { logical: rawLogical, price: rawPrice };
+    if (!LINE_ANGLE_SNAP_TYPES.has(type) || !p1) return fallback;
+    const chart = chartRef.current, series = seriesRef.current;
+    if (!chart || !series) return fallback;
+    const ts = chart.timeScale();
+    const x1 = ts.logicalToCoordinate(p1.logical);
+    const y1 = series.priceToCoordinate(p1.price);
+    const x2 = ts.logicalToCoordinate(rawLogical);
+    const y2 = series.priceToCoordinate(rawPrice);
+    if (x1 == null || y1 == null || x2 == null || y2 == null) return fallback;
+    const dx = x2 - x1, dy = y2 - y1;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1) return fallback;
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    const snappedAngle = Math.round(angle / 45) * 45;
+    const rad = (snappedAngle * Math.PI) / 180;
+    const nx = x1 + dist * Math.cos(rad);
+    const ny = y1 + dist * Math.sin(rad);
+    const newLogical = ts.coordinateToLogical(nx);
+    const newPrice = series.coordinateToPrice(ny);
+    if (newLogical == null || newPrice == null) return fallback;
+    return { logical: newLogical, price: newPrice };
   }
 
   function drawOverlay() {
@@ -2124,6 +2199,48 @@ export default function ReplayClient({ userId }) {
     setEditDraft(JSON.parse(JSON.stringify(d)));
   }
 
+  /* ===== إغلاق كل القوائم/النوافذ المؤقتة دفعة وحدة (زي تريدنغ فيو) =====
+     منستدعيها من أي حدث "بيقفل القوائم المؤقتة عادةً": كليك بمساحة فاضية،
+     بدء رسم، تغيير أداة، Escape، بان، زوم، تغيير فريم أو رمز... إلخ. */
+  function closeTransientMenus() {
+    setContextMenu(null);
+    setOpenToolGroup(null);
+    setDrawingTemplatesMenuOpen(false);
+    setTextPopoverOpen(false);
+  }
+
+  /* ===== تراجع/إعادة (Undo/Redo) =====
+     pushHistory() لازم تنستدعى *قبل* أي تعديل فعلي عالرسومات، عشان تحفظ
+     الحالة "متل ما كانت" قبل التعديل. أي عملية تراجع/إعادة بترجع نسخة كاملة
+     من مصفوفة الرسومات (بما فيها خطوط الهدف/الإيقاف تبع صفقة مفتوحة). */
+  function pushHistory() {
+    try {
+      historyRef.current.push(JSON.parse(JSON.stringify(drawingsRef.current)));
+      if (historyRef.current.length > HISTORY_LIMIT) historyRef.current.shift();
+      redoStackRef.current = [];
+    } catch {}
+  }
+  function performUndo() {
+    if (historyRef.current.length === 0) return;
+    const prev = historyRef.current.pop();
+    redoStackRef.current.push(JSON.parse(JSON.stringify(drawingsRef.current)));
+    drawingsRef.current = prev;
+    clearSelection();
+    setEditingId(null);
+    setEditDraft(null);
+    drawOverlay();
+  }
+  function performRedo() {
+    if (redoStackRef.current.length === 0) return;
+    const next = redoStackRef.current.pop();
+    historyRef.current.push(JSON.parse(JSON.stringify(drawingsRef.current)));
+    drawingsRef.current = next;
+    clearSelection();
+    setEditingId(null);
+    setEditDraft(null);
+    drawOverlay();
+  }
+
   /* ===== اختيار رسمة بكبسة وحدة: يطلع شريط أدوات سريع فوقها مباشرة ===== */
   function selectDrawing(id) {
     selectedIdRef.current = id;
@@ -2174,6 +2291,7 @@ export default function ReplayClient({ userId }) {
   }
   function deleteSelectedDrawing() {
     if (selectedIdRef.current == null) return;
+    pushHistory();
     drawingsRef.current = drawingsRef.current.filter((d) => d.id !== selectedIdRef.current);
     clearSelection();
     drawOverlay();
@@ -2181,6 +2299,7 @@ export default function ReplayClient({ userId }) {
   function duplicateSelectedDrawing() {
     const d = getSelectedDrawing();
     if (!d) return;
+    pushHistory();
     const offset = 6;
     const clone = JSON.parse(JSON.stringify(d));
     clone.id = Date.now();
@@ -2202,17 +2321,26 @@ export default function ReplayClient({ userId }) {
   function applyQuickText() {
     const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
     if (idx !== -1) {
+      pushHistory();
       drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: textPopoverValue };
       drawOverlay();
     }
     setTextPopoverOpen(false);
   }
-  /* بتحسب مكان الشريط العائم فوق الرسمة المختارة مباشرة (تتحدث مع كل تحريك/زوم للشارت) */
+  /* بتحسب مكان الشريط العائم *مرة وحدة بس* (أول ظهور له)، وبعدها بيضل بمكانه
+     بغض النظر عن تغيير الرسمة المختارة أو الزوم/البان - تماماً متل تريدنغ فيو:
+     شريط عائم مستقل بيتحرك بس لما المستخدم نفسه يسحبه (شوفي onToolbarDragStart) */
   function positionSelectionToolbar() {
     const el = selectionToolbarRef.current;
     if (!el) return;
     const d = getSelectedDrawing();
     if (!d) { el.style.display = "none"; return; }
+    el.style.display = "flex";
+    if (toolbarPosRef.current) {
+      el.style.left = `${toolbarPosRef.current.x}px`;
+      el.style.top = `${toolbarPosRef.current.y}px`;
+      return;
+    }
     const pts = [];
     if (d.p1) pts.push(logicalPriceToXY(d.p1));
     if (d.p2) pts.push(logicalPriceToXY(d.p2));
@@ -2224,12 +2352,35 @@ export default function ReplayClient({ userId }) {
     const minY = Math.min(...valid.map((p) => p.y));
     const areaW = chartAreaRef.current?.clientWidth || 0;
     const cx = Math.min(Math.max((minX + maxX) / 2, 100), Math.max(100, areaW - 100));
-    el.style.display = "flex";
+    const top = Math.max(6, minY - 46);
+    toolbarPosRef.current = { x: cx, y: top };
     el.style.left = `${cx}px`;
-    el.style.top = `${Math.max(6, minY - 46)}px`;
+    el.style.top = `${top}px`;
+  }
+  /* سحب الشريط العائم بالماوس من أيقونة "::" - بتحدّث toolbarPosRef مباشرة
+     (imperative، بدون re-render بكل حركة ماوس) عشان السحب يكون سلس بدون تقطيع */
+  function onToolbarDragStart(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.clientX, startY = e.clientY;
+    const orig = toolbarPosRef.current || { x: 0, y: 0 };
+    function onMove(ev) {
+      const nx = orig.x + (ev.clientX - startX);
+      const ny = orig.y + (ev.clientY - startY);
+      toolbarPosRef.current = { x: nx, y: ny };
+      const el = selectionToolbarRef.current;
+      if (el) { el.style.left = `${nx}px`; el.style.top = `${ny}px`; }
+    }
+    function onUp() {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   }
   function saveProperties() {
     if (!editDraft) return;
+    pushHistory();
     const idx = drawingsRef.current.findIndex((d) => d.id === editDraft.id);
     if (idx !== -1) drawingsRef.current[idx] = editDraft;
     setEditingId(null);
@@ -2238,6 +2389,7 @@ export default function ReplayClient({ userId }) {
   }
   function deleteEditingDrawing() {
     if (!editDraft) return;
+    pushHistory();
     drawingsRef.current = drawingsRef.current.filter((d) => d.id !== editDraft.id);
     setEditingId(null);
     setEditDraft(null);
@@ -2247,6 +2399,7 @@ export default function ReplayClient({ userId }) {
     const pts = pathPointsRef.current;
     const tool = activeToolRef.current;
     if (pts && pts.length >= 2) {
+      pushHistory();
       const newId = Date.now();
       drawingsRef.current.push({ id: newId, type: tool, points: pts, style: styleForNewDrawing(tool) });
       selectDrawing(newId); // نقاط التحكم تظهر تلقائياً فوراً بعد إنشاء الأداة متعددة النقاط
@@ -2261,6 +2414,7 @@ export default function ReplayClient({ userId }) {
     const clearable = drawingsRef.current.filter((d) => !d.tradeTag);
     if (clearable.length === 0) return;
     if (!window.confirm("مسح كل الرسومات من الشارت؟ (خطوط الهدف/الإيقاف لصفقة مفتوحة ما بتتأثر)")) return;
+    pushHistory();
     drawingsRef.current = drawingsRef.current.filter((d) => !!d.tradeTag);
     drawOverlay();
   }
@@ -2335,8 +2489,10 @@ export default function ReplayClient({ userId }) {
     setContextMenu({ x, y, price: price != null ? price : null });
   }
   // القائمة لازم تقفل تلقائياً عند تغيير الأداة المفعّلة أو الفريم الحالي
-  useEffect(() => { setContextMenu(null); }, [activeTool]);
-  useEffect(() => { setContextMenu(null); }, [interval]);
+  useEffect(() => { closeTransientMenus(); }, [activeTool]);
+  useEffect(() => { closeTransientMenus(); }, [interval]);
+  // تغيير الرمز (الأصل) بيسكّر القوائم المؤقتة المفتوحة كمان
+  useEffect(() => { closeTransientMenus(); }, [assetValue]);
 
   function openQuickTrade(direction, priceOverride) {
     if (!userId) {
@@ -2623,7 +2779,10 @@ export default function ReplayClient({ userId }) {
      بدل ما نعتمد بس على آخر سعر ظاهر (يلي بيخليها تنتظر ضغطة Play)، هون
      منمسح كل الشموع المعروفة من وقت الدخول (entryTime) لحد آخر شمعة وصلها
      الـ Replay حالياً، ومنحدّد أول مستوى (SL أو TP) اتلمس زمنياً. هيك الصفقة
-     بتتقيّم صح فوراً حتى لو غيّرنا الفريم أو رجعنا لفريم سابق بدون تشغيل. */
+     بتتقيّم صح فوراً حتى لو غيّرنا الفريم أو رجعنا لفريم سابق بدون تشغيل.
+
+     المقارنة بتستخدم High/Low الشمعة (مش بس Close) + تسامح نسبي صغير
+     (priceTolerance) عشان مشاكل دقة الفاصلة العائمة ما تمنع الإغلاق. */
   function evaluateOpenPositionsFull(knownCandles) {
     if (!knownCandles || !knownCandles.length || openPositionsRef.current.length === 0) return;
     for (const pos of [...openPositionsRef.current]) {
@@ -2634,10 +2793,12 @@ export default function ReplayClient({ userId }) {
       if (startIdx === -1) continue; // لسا ما وصلنا وقت الدخول بالبيانات المعروضة حالياً
       for (let i = startIdx; i < knownCandles.length; i++) {
         const c = knownCandles[i];
-        const hitSl = pos.direction === "buy" ? c.low <= pos.sl : c.high >= pos.sl;
-        const hitTp = pos.direction === "buy" ? c.high >= pos.tp : c.low <= pos.tp;
+        const hitSl = pos.direction === "buy" ? lteWithTolerance(c.low, pos.sl) : gteWithTolerance(c.high, pos.sl);
+        const hitTp = pos.direction === "buy" ? gteWithTolerance(c.high, pos.tp) : lteWithTolerance(c.low, pos.tp);
         // نفس الشمعة وصلت للهدف والإيقاف مع بعض وما عنا بيانات داخل الشمعة (intrabar):
-        // قاعدة ثابتة محافظة - وقف الخسارة إله الأولوية دايماً (بفحص hitSl قبل hitTp)
+        // قاعدة ثابتة محافظة ومطبّقة بشكل موحّد بكل مكان بالكود - وقف الخسارة
+        // إله الأولوية دايماً (بفحص hitSl قبل hitTp)، وبتنقفل على نفس الشمعة
+        // يلي لمست فيها السعر الأول (مش شمعة لاحقة أبداً).
         if (hitSl) { closeOpenPosition(pos, "loss", pos.sl); break; }
         if (hitTp) { closeOpenPosition(pos, "win", pos.tp); break; }
       }
@@ -2688,16 +2849,17 @@ export default function ReplayClient({ userId }) {
     if (!isNaN(num)) updateOpenPositionLevel(pos, role, num);
   }
 
+  /* مراقبة لحظية بسيطة (تيك واحد بدون OHLC) - مستخدمة كخط دفاع ثاني لصفقات
+     قديمة بدون entryTime، وللشارت العشوائي/المباشر أثناء اللحظة نفسها قبل ما
+     تشتغل evaluateOpenPositionsFull عالشمعة الكاملة. نفس تسامح الدقة العائمة
+     ونفس أولوية SL أولاً، عشان يكون سلوك محرك التنفيذ موحّد بكل مكان بالكود. */
   checkOpenPositionsRef.current = function checkOpenPositions(price) {
     if (!price || openPositionsRef.current.length === 0) return;
     for (const pos of [...openPositionsRef.current]) {
-      if (pos.direction === "buy") {
-        if (price >= pos.tp) closeOpenPosition(pos, "win", price);
-        else if (price <= pos.sl) closeOpenPosition(pos, "loss", price);
-      } else {
-        if (price <= pos.tp) closeOpenPosition(pos, "win", price);
-        else if (price >= pos.sl) closeOpenPosition(pos, "loss", price);
-      }
+      const hitSl = pos.direction === "buy" ? lteWithTolerance(price, pos.sl) : gteWithTolerance(price, pos.sl);
+      const hitTp = pos.direction === "buy" ? gteWithTolerance(price, pos.tp) : lteWithTolerance(price, pos.tp);
+      if (hitSl) { closeOpenPosition(pos, "loss", pos.sl); continue; }
+      if (hitTp) { closeOpenPosition(pos, "win", pos.tp); }
     }
   };
 
@@ -2866,6 +3028,8 @@ export default function ReplayClient({ userId }) {
       function onMouseDown(e) {
         const tool = activeToolRef.current;
         if (tool === "cursor") return; // بوضع المؤشر السحب بيصير من onContainerMouseDownCapture تحت
+        // بدء الرسم (أي نقرة بأي أداة غير المؤشر) بيسكّر كل قائمة/نافذة مؤقتة مفتوحة
+        closeTransientMenus();
         const { logical, price, y } = getLogicalPrice(e.clientX, e.clientY);
         if (logical == null || price == null) return;
         const snapped = snapPrice(logical, price, y);
@@ -2873,6 +3037,7 @@ export default function ReplayClient({ userId }) {
         if (tool === "text") {
           const content = window.prompt("اكتبي النص:");
           if (content) {
+            pushHistory();
             drawingsRef.current.push({ id: Date.now(), type: "text", p1: { logical, price: snapped }, text: content, style: styleForNewDrawing("text") });
           }
           setActiveTool("cursor");
@@ -2880,6 +3045,7 @@ export default function ReplayClient({ userId }) {
           return;
         }
         if (tool === "hline" || tool === "hray" || tool === "vline" || tool === "crossline") {
+          pushHistory();
           const newId = Date.now();
           drawingsRef.current.push({ id: newId, type: tool, p1: { logical, price: snapped }, style: styleForNewDrawing(tool) });
           setActiveTool("cursor");
@@ -2891,7 +3057,7 @@ export default function ReplayClient({ userId }) {
           pathPointsRef.current.push({ logical, price: snapped });
           const need = MULTI_POINT_COUNT[tool];
           if (need && pathPointsRef.current.length >= need) {
-            finishMultiPoint();
+            finishMultiPoint(); // finishMultiPoint نفسها بتعمل pushHistory قبل الإضافة
           }
           drawOverlay();
           return;
@@ -2900,10 +3066,14 @@ export default function ReplayClient({ userId }) {
         // بدون الحاجة لإبقاء الزر مضغوط، ونقرة ثانية عند أي مكان تثبّت الرسمة نهائياً.
         if (isDrawingRef.current && drawStateRef.current && drawStateRef.current.type === tool) {
           const d = drawStateRef.current;
-          d.p2 = { logical, price: snapped };
+          // Shift مضغوط وقت التثبيت النهائي: نطبّق نفس تقييد الزاوية على النقطة الأخيرة
+          d.p2 = shiftPressedRef.current
+            ? applyAngleSnap(d.type, d.p1, logical, snapped)
+            : { logical, price: snapped };
           drawStateRef.current = null;
           isDrawingRef.current = false;
           if (d.type !== "measure") {
+            pushHistory();
             const newId = Date.now();
             drawingsRef.current.push({ id: newId, ...d });
             setActiveTool("cursor");
@@ -2968,7 +3138,9 @@ export default function ReplayClient({ userId }) {
         }
         if (!isDrawingRef.current && !activePath) return;
         if (isDrawingRef.current && drawStateRef.current) {
-          drawStateRef.current.p2 = { logical, price: snapped };
+          drawStateRef.current.p2 = shiftPressedRef.current
+            ? applyAngleSnap(drawStateRef.current.type, drawStateRef.current.p1, logical, snapped)
+            : { logical, price: snapped };
         }
         if (activePath) {
           liveCursorRef.current = { logical, price: snapped };
@@ -3005,6 +3177,7 @@ export default function ReplayClient({ userId }) {
           e.stopPropagation();
           selectDrawing(handleHit.drawing.id);
           if (handleHit.drawing.locked) { drawOverlay(); return; }
+          if (!handleHit.drawing.tradeTag) pushHistory();
           dragStateRef.current = { mode: "handle", id: handleHit.drawing.id, key: handleHit.key };
           chart.applyOptions({ handleScroll: false, handleScale: false });
           return;
@@ -3015,13 +3188,17 @@ export default function ReplayClient({ userId }) {
           e.stopPropagation();
           selectDrawing(hit.id);
           if (hit.locked) { drawOverlay(); return; }
+          if (!hit.tradeTag) pushHistory();
           dragStateRef.current = { mode: "move", id: hit.id, lastLogical: logical, lastPrice: price };
           chart.applyOptions({ handleScroll: false, handleScale: false });
           return;
         }
         clearSelection();
+        closeTransientMenus();
       }
       function onKeyDown(e) {
+        if (e.key === "Shift") shiftPressedRef.current = true;
+        const typing = isEditableTarget(document.activeElement);
         if (e.key === "Escape") {
           isDrawingRef.current = false;
           drawStateRef.current = null;
@@ -3032,11 +3209,43 @@ export default function ReplayClient({ userId }) {
             chart.applyOptions({ handleScroll: true, handleScale: true });
           }
           clearSelection();
+          closeTransientMenus();
           setActiveTool("cursor");
           drawOverlay();
-        } else if (e.key === "Enter" && activeToolRef.current === "path" && pathPointsRef.current.length >= 2) {
-          finishMultiPoint();
+          return;
         }
+        if (e.key === "Enter" && activeToolRef.current === "path" && pathPointsRef.current.length >= 2) {
+          finishMultiPoint();
+          return;
+        }
+        // اختصارات لوحة المفاتيح التالية (تراجع/إعادة/حذف) لازم تتجاهل الكتابة
+        // العادية جوا حقول الإدخال (نص/رقم/textarea...إلخ)
+        if (typing) return;
+        if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+          e.preventDefault();
+          if (e.shiftKey) performRedo(); else performUndo();
+          return;
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === "y" || e.key === "Y")) {
+          e.preventDefault();
+          performRedo();
+          return;
+        }
+        if (e.key === "Delete" || e.key === "Backspace") {
+          // إذا في رسمة محددة حالياً: نحذفها فوراً بدون تأكيد (بالضبط متل تريدنغ فيو)
+          // - وإلا (ما في شي محدد) منسيب Backspace يشتغل بسلوكه الافتراضي بالمتصفح
+          if (selectedIdRef.current != null) {
+            e.preventDefault();
+            deleteSelectedDrawing(); // هاي نفسها بتعمل pushHistory قبل الحذف
+          }
+        }
+      }
+      function onKeyUp(e) {
+        if (e.key === "Shift") shiftPressedRef.current = false;
+      }
+      function onWindowBlurResetShift() {
+        // لو المستخدم بدّل تبويب/نافذة وهو ماسك Shift، منضمن رجوعه لحالته الطبيعية
+        shiftPressedRef.current = false;
       }
       function onDblClickOverlay() {
         if (activeToolRef.current === "path" && pathPointsRef.current.length >= 2) {
@@ -3121,8 +3330,14 @@ export default function ReplayClient({ userId }) {
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
       window.addEventListener("keydown", onKeyDown);
+      window.addEventListener("keyup", onKeyUp);
+      window.addEventListener("blur", onWindowBlurResetShift);
       chart.timeScale().subscribeVisibleLogicalRangeChange(drawOverlay);
       chart.subscribeCrosshairMove(drawOverlay);
+      // أي بان أو زوم عالشارت (تغيير المدى المرئي) بيسكّر القوائم المؤقتة المفتوحة،
+      // زي أي حدث تاني "بيقفل القوائم عادة" (شوفي closeTransientMenus)
+      function onVisibleRangeChangeCloseMenus() { closeTransientMenus(); }
+      chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChangeCloseMenus);
 
       /* خانة السعر الحيّة على محور السعر (زي TradingView): اسم الزوج + السعر
          + الوقت المتبقي لإغلاق الشمعة الحالية. بتتحدث بتيكر دوري بسيط عشان
@@ -3204,6 +3419,8 @@ export default function ReplayClient({ userId }) {
       function onCrosshairMagnet(param) {
         if (settingCrosshairPos) { settingCrosshairPos = false; return; }
         if (!magnetRef.current) return;
+        // Shift مضغوط: تعطيل مؤقت للمغناطيس (نفس فكرة snapPrice فوق)
+        if (shiftPressedRef.current) return;
         // المغناطيس بده يشتغل بس وإحنا عم نرسم (أداة رسم مفعّلة فعلياً، مش وضع
         // المؤشر العادي "cursor") - هيك ما بيتدخل بحركة المؤشر الحرة العادية.
         if (activeToolRef.current === "cursor") return;
@@ -3288,7 +3505,10 @@ export default function ReplayClient({ userId }) {
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseup", onMouseUp);
         window.removeEventListener("keydown", onKeyDown);
+        window.removeEventListener("keyup", onKeyUp);
+        window.removeEventListener("blur", onWindowBlurResetShift);
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(drawOverlay);
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChangeCloseMenus);
         chart.unsubscribeCrosshairMove(drawOverlay);
         chart.unsubscribeCrosshairMove(onCrosshairMagnet);
         chart.unsubscribeCrosshairMove(onMainCrosshairSync);
@@ -4741,7 +4961,11 @@ export default function ReplayClient({ userId }) {
           <ToolIcon id="templatePlus" />
         </button>
         {drawingTemplatesMenuOpen && renderDrawingTemplatesMenu(d)}
-        <span style={{ ...selToolBtnStyle, cursor: "default", color: "#555" }} title="اسحبي لتحريك الشريط">
+        <span
+          onMouseDown={onToolbarDragStart}
+          style={{ ...selToolBtnStyle, cursor: "grab", color: "#555" }}
+          title="اسحبي لتحريك الشريط"
+        >
           <ToolIcon id="dragDots" />
         </span>
       </div>
@@ -4805,6 +5029,7 @@ export default function ReplayClient({ userId }) {
     function applyDefaultTemplate() {
       const t = defaultName ? templates.find((tt) => tt.name === defaultName) : null;
       const patch = t ? { ...t.style } : defaultStyleFor(type);
+      pushHistory();
       updateSelectedStyle(patch);
       if (t && t.text != null) {
         const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
@@ -4813,6 +5038,7 @@ export default function ReplayClient({ userId }) {
       setDrawingTemplatesMenuOpen(false);
     }
     function applyTemplate(t) {
+      pushHistory();
       updateSelectedStyle({ ...t.style });
       const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
       if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: t.text ?? drawingsRef.current[idx].text };

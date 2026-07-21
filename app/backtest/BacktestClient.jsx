@@ -60,6 +60,17 @@ const ASSETS = [
 ];
 
 const INITIAL_BALANCE = 3000;
+/* تسامح نسبي صغير لمقارنات TP/SL - نفس فكرة الاستعراض التاريخي (ReplayClient)،
+   عشان مشاكل دقة الفاصلة العائمة ما تمنع إغلاق صفقة وصلت فعلياً لسعرها المستهدف */
+function priceTolerance(level) {
+  return Math.max(Math.abs(level) * 1e-7, 1e-8);
+}
+function lteWithTolerance(a, b) {
+  return a <= b + priceTolerance(b);
+}
+function gteWithTolerance(a, b) {
+  return a >= b - priceTolerance(b);
+}
 const DEFAULT_API_KEY = "d91i93hr01qqfqkca0b0d91i93hr01qqfqkca0bg";
 const APIKEY_STORAGE_KEY = "qta_finnhub_apikey";
 
@@ -483,11 +494,11 @@ export default function BacktestClient({ userId, username, initialBalance, initi
           metaUpdates[t.id] = { currentPrice: price, lastError: null };
           successCount++;
           if (t.direction === "buy") {
-            if (price <= t.sl) await closeLiveTrade(t, "loss", "ضرب وقف الخسارة فعلياً بالسوق");
-            else if (price >= t.tp) await closeLiveTrade(t, "win", "ضرب الهدف فعلياً بالسوق");
+            if (lteWithTolerance(price, t.sl)) await closeLiveTrade(t, "loss", "ضرب وقف الخسارة فعلياً بالسوق");
+            else if (gteWithTolerance(price, t.tp)) await closeLiveTrade(t, "win", "ضرب الهدف فعلياً بالسوق");
           } else {
-            if (price >= t.sl) await closeLiveTrade(t, "loss", "ضرب وقف الخسارة فعلياً بالسوق");
-            else if (price <= t.tp) await closeLiveTrade(t, "win", "ضرب الهدف فعلياً بالسوق");
+            if (gteWithTolerance(price, t.sl)) await closeLiveTrade(t, "loss", "ضرب وقف الخسارة فعلياً بالسوق");
+            else if (lteWithTolerance(price, t.tp)) await closeLiveTrade(t, "win", "ضرب الهدف فعلياً بالسوق");
           }
         }
       } catch (e) {
