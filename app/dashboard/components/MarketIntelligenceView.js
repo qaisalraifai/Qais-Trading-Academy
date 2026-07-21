@@ -54,26 +54,54 @@ function fmt(n) {
   return n >= 100 ? n.toFixed(2) : n.toFixed(4);
 }
 
-/* -------------------- الجلسات (UTC) — نفس الأوقات المعتمدة عالمياً -------------------- */
+/* -------------------- الجلسات (UTC) — نفس الأوقات المعتمدة عالمياً --------------------
+   أربع جلسات كاملة (Sydney/Tokyo/London/New York). Sydney بتلف منتصف الليل
+   (21:00 → 06:00 UTC) فمنعاملها كنطاق "ملفوف" في كل الحسابات تحت. */
 const SESSION_DEFS = [
-  { key: "asia", label: "Asian Session", start: 0, end: 9, volatility: "Low", liquidity: "Medium Liquidity" },
-  { key: "london", label: "London Session", start: 8, end: 17, volatility: "High", liquidity: "Very High Liquidity" },
-  { key: "ny", label: "New York Session", start: 13, end: 22, volatility: "High", liquidity: "High Liquidity" },
+  { key: "sydney", label: "Sydney", short: "SYD", start: 21, end: 6, color: "#9b6cf0" },
+  { key: "tokyo", label: "Tokyo", short: "TOK", start: 0, end: 9, color: GOLD },
+  { key: "london", label: "London", short: "LON", start: 7, end: 16, color: BLUE },
+  { key: "newyork", label: "New York", short: "NY", start: 12, end: 21, color: GREEN },
 ];
+
+/* أي جلستين متلاقيتين = أعلى سيولة باليوم، وبالأخص London + New York */
+const OVERLAP_DEFS = [
+  { keys: ["london", "newyork"], label: "London + New York", liquidity: "Very High" },
+  { keys: ["tokyo", "london"], label: "Tokyo + London", liquidity: "High" },
+  { keys: ["sydney", "tokyo"], label: "Sydney + Tokyo", liquidity: "Medium" },
+];
+
+/* محتوى تعليمي ثابت لكل جلسة — هاد يلي بيتعبى بكروت الشرح تحت الخط الزمني */
+const SESSION_INFO = {
+  sydney: { liquidity: "Low", volatility: "Low", behaviour: "Quiet, narrow ranges", recommendation: "Avoid new trend trades — wait for Tokyo/London to build direction." },
+  tokyo: { liquidity: "Medium", volatility: "Medium", behaviour: "Asia range building", recommendation: "Trade the range and fade extremes; save breakouts for London." },
+  london: { liquidity: "Very High", volatility: "High", behaviour: "Trend Expansion", recommendation: "Trade pullbacks with the trend." },
+  newyork: { liquidity: "High", volatility: "High", behaviour: "News-driven continuation or reversal", recommendation: "Watch US news releases; follow or fade the London trend with confirmation." },
+  off: { liquidity: "Very Low", volatility: "Very Low", behaviour: "Thin, illiquid, wider spreads", recommendation: "Avoid opening new trades — wait for a major session to open." },
+};
+
+/* هل الساعة h ضمن نطاق الجلسة s؟ بيدعم النطاقات الملفوفة لمنتصف الليل (start > end) */
+function isSessionActive(s, h) {
+  return s.start < s.end ? h >= s.start && h < s.end : h >= s.start || h < s.end;
+}
 
 export function getSessionsStatus() {
   const h = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
-  return SESSION_DEFS.map((s) => ({ ...s, active: h >= s.start && h < s.end }));
+  return SESSION_DEFS.map((s) => ({ ...s, active: isSessionActive(s, h) }));
+}
+
+/* أفضل تداخل مطابق (لو أي جلستين نشطتين بنفس الوقت)، وإلا null */
+export function getActiveOverlap(sessions) {
+  const activeKeys = sessions.filter((s) => s.active).map((s) => s.key);
+  if (activeKeys.length < 2) return null;
+  return OVERLAP_DEFS.find((o) => o.keys.every((k) => activeKeys.includes(k))) || null;
 }
 
 export function getPrimarySession(sessions) {
-  const london = sessions.find((s) => s.key === "london");
-  const ny = sessions.find((s) => s.key === "ny");
-  const asia = sessions.find((s) => s.key === "asia");
-  if (london?.active && ny?.active) return "London / New York Overlap";
-  if (london?.active) return "London";
-  if (ny?.active) return "New York";
-  if (asia?.active) return "Asian";
+  const overlap = getActiveOverlap(sessions);
+  if (overlap) return `${overlap.label} Overlap`;
+  const active = sessions.find((s) => s.active);
+  if (active) return active.label;
   return "Off-Hours";
 }
 
@@ -135,6 +163,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   const [radarItems, setRadarItems] = useState([]);
   const [newsToday, setNewsToday] = useState({ high: 0 });
   const [sessions, setSessions] = useState(getSessionsStatus());
+  const [selectedLiqSymbol, setSelectedLiqSymbol] = useState(null);
 
   const wrapRef = useRef(null);
   const containerRef = useRef(null);
@@ -448,6 +477,8 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         .qmi-dot { animation: qmiPulse 1.8s ease-in-out infinite; }
         .qmi-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .qmi-scroll::-webkit-scrollbar-thumb { background: ${GOLD}33; border-radius: 6px; }
+        .qmi-concept-card { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+        .qmi-concept-card:hover { transform: translateY(-2px); background: #181a1f; }
       `}</style>
 
       {/* ================= HEADER ================= */}
@@ -571,13 +602,15 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         <AIPanel result={result} signal={signal} tab={tab} setTab={setTab} primarySession={primarySession} />
       </div>
 
-      {/* ================= FOUR PREMIUM CARDS ================= */}
-      <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(240px, 1fr))", gap: "1rem" }}>
+      {/* ================= THREE PREMIUM CARDS ================= */}
+      <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(240px, 1fr))", gap: "1rem" }}>
         <CurrencyHeatMapCard snapshot={snapshot} />
         <SessionMapCard sessions={sessions} />
         <LiveOpportunitiesCard items={radarItems} onOpen={openOpportunity} />
-        <LiquidityMapCard items={radarItems} primarySession={primarySession} />
       </div>
+
+      {/* ================= LIQUIDITY MAP + PERMANENT ANALYSIS WORKSPACE ================= */}
+      <LiquidityMapSection items={radarItems} selectedSymbol={selectedLiqSymbol} onSelect={setSelectedLiqSymbol} />
 
       {/* ================= MARKET SUMMARY + NOTIFICATIONS ================= */}
       <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: "1rem", alignItems: "start" }}>
@@ -1092,72 +1125,134 @@ export function CurrencyHeatMapCard({ snapshot }) {
    كرت 2: Session Map — محسوب من الوقت الحالي (UTC)
    ============================================================================ */
 export function SessionMapCard({ sessions }) {
-  const { current, next } = useMemo(() => getSessionTimeline(sessions), [sessions]);
+  const { next } = useMemo(() => getSessionTimeline(sessions), [sessions]);
+  const overlap = useMemo(() => getActiveOverlap(sessions), [sessions]);
+  const activeSessions = sessions.filter((s) => s.active);
+
+  const currentLabel = overlap ? `${overlap.label} Overlap` : activeSessions[0]?.label || "Off-Hours";
+  const info = overlap
+    ? { liquidity: overlap.liquidity, volatility: "Very High", behaviour: "Trend Expansion / Breakouts", recommendation: "The busiest window of the day — best conditions for breakout and trend-continuation trades." }
+    : SESSION_INFO[activeSessions[0]?.key] || SESSION_INFO.off;
 
   return (
     <CardShell title="Session Map" icon="🕐">
-      {/* -------- بانر واضح: احنا هلأ بأي جلسة، وبتنتهي إمتى / وشو الجلسة الجاية -------- */}
-      <div
-        style={{
-          background: current ? `linear-gradient(135deg, ${GREEN}18, ${GREEN}08)` : "#14161a",
-          border: `1px solid ${current ? GREEN : "#333"}40`,
-          borderRadius: 10,
-          padding: "10px 12px",
-          marginBottom: 10,
-        }}
-      >
-        {current ? (
-          <>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span className="qmi-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: GREEN }} />
-              <span style={{ fontSize: 11, color: "#9fdcbf" }}>الجلسة الحالية</span>
-            </div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "#f0f0f0", marginTop: 2 }}>{current.label}</div>
-            <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>
-              تنتهي خلال <b style={{ color: GREEN }}>{hoursLabel(current.remaining)}</b>
-            </div>
-          </>
-        ) : (
-          <div style={{ fontSize: 12.5, color: "#888" }}>لا توجد جلسة تداول رئيسية نشطة الآن</div>
-        )}
-        {next && (
-          <div style={{ fontSize: 10.5, color: "#777", marginTop: 6, paddingTop: 6, borderTop: "1px solid #ffffff10" }}>
-            الجلسة القادمة: <b style={{ color: "#ccc" }}>{next.label}</b> تبدأ خلال <b style={{ color: GOLD_LIGHT }}>{hoursLabel(next.startsIn)}</b>
-          </div>
-        )}
+      <div style={{ fontSize: 10.5, color: "#777", marginBottom: 10, lineHeight: 1.6 }}>
+        A live 24-hour view of the four major FX sessions. The white line is right now — watch for the gold-striped zone, that's when two sessions overlap and liquidity is highest.
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <SessionTimelineVisual sessions={sessions} overlap={overlap} />
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "12px 0 12px" }}>
         {sessions.map((s) => (
-          <div key={s.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#14161a", borderRadius: 10, padding: "7px 10px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <span className={s.active ? "qmi-dot" : ""} style={{ width: 7, height: 7, borderRadius: "50%", background: s.active ? GREEN : "#555" }} />
-              <div>
-                <div style={{ fontSize: 11.5, color: "#e5e5e5", fontWeight: 700 }}>{s.label}</div>
-                <div style={{ fontSize: 9.5, color: "#777" }}>{s.active ? "Active" : "Closed"} · {String(s.start).padStart(2, "0")}:00–{String(s.end).padStart(2, "0")}:00 UTC</div>
-              </div>
-            </div>
-            <div style={{ textAlign: "left" }}>
-              <div style={{ fontSize: 9.5, color: "#888" }}>{s.volatility} Volatility</div>
-              <div style={{ fontSize: 9.5, color: "#888" }}>{s.liquidity}</div>
-            </div>
+          <div
+            key={s.key}
+            title={`${s.label} · ${String(s.start).padStart(2, "0")}:00–${String(s.end).padStart(2, "0")}:00 UTC`}
+            style={{ display: "flex", alignItems: "center", gap: 5, background: "#14161a", border: `1px solid ${s.active ? s.color : "#2a2a2a"}88`, borderRadius: 20, padding: "3px 9px" }}
+          >
+            <span className={s.active ? "qmi-dot" : ""} style={{ width: 6, height: 6, borderRadius: "50%", background: s.active ? s.color : "#555" }} />
+            <span style={{ fontSize: 10, color: s.active ? "#f0f0f0" : "#777", fontWeight: s.active ? 800 : 600 }}>{s.label}</span>
           </div>
         ))}
       </div>
-      <SessionTimeline sessions={sessions} />
+
+      {/* -------- كروت الشرح: الجلسة الحالية / مستوى السيولة / التقلب / السلوك / أسلوب التداول المقترح -------- */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <MiniStat label="Current Session" value={currentLabel} color={GOLD_LIGHT} />
+        <MiniStat label="Liquidity Level" value={info.liquidity} color={GREEN} />
+        <MiniStat label="Expected Volatility" value={info.volatility} color={AMBER} />
+        <MiniStat label="Typical Behaviour" value={info.behaviour} color={BLUE} />
+      </div>
+      <div style={{ marginTop: 8, background: "#14161a", borderRadius: 10, padding: "9px 11px" }}>
+        <div style={{ fontSize: 9.5, color: "#777", marginBottom: 3 }}>Recommended Trading Style</div>
+        <div style={{ fontSize: 11.5, color: "#e5e5e5", fontWeight: 700, lineHeight: 1.6 }}>{info.recommendation}</div>
+      </div>
+
+      {next && (
+        <div style={{ fontSize: 10.5, color: "#777", marginTop: 10, paddingTop: 8, borderTop: "1px solid #ffffff10" }}>
+          Next session: <b style={{ color: "#ccc" }}>{next.label}</b> opens in <b style={{ color: GOLD_LIGHT }}>{hoursLabel(next.startsIn)}</b>
+        </div>
+      )}
     </CardShell>
   );
 }
 
-function SessionTimeline({ sessions }) {
+/* خط الجلسات المرئي: 24 ساعة، بدعم النطاقات الملفوفة (Sydney) + تظليل التداخل الفعلي + مؤشر الوقت الحالي */
+function SessionTimelineVisual({ sessions, overlap }) {
   const now = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
-  const colors = { asia: `${GOLD}77`, london: `${BLUE}99`, ny: `${GREEN}99` };
+
+  function segmentsOf(s) {
+    return s.start < s.end ? [[s.start, s.end]] : [[s.start, 24], [0, s.end]];
+  }
+
+  const overlapSegments = useMemo(() => {
+    if (!overlap) return [];
+    const [a, b] = overlap.keys.map((k) => sessions.find((s) => s.key === k));
+    if (!a || !b) return [];
+    const out = [];
+    for (const [as, ae] of segmentsOf(a)) {
+      for (const [bs, be] of segmentsOf(b)) {
+        const lo = Math.max(as, bs);
+        const hi = Math.min(ae, be);
+        if (hi > lo) out.push([lo, hi]);
+      }
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlap, sessions]);
+
   return (
-    <div style={{ marginTop: 10, position: "relative", height: 10, background: "#14161a", borderRadius: 6, overflow: "hidden" }}>
-      {sessions.map((s) => (
-        <div key={s.key} style={{ position: "absolute", left: `${(s.start / 24) * 100}%`, width: `${((s.end - s.start) / 24) * 100}%`, top: 0, bottom: 0, background: colors[s.key] }} />
-      ))}
-      <div style={{ position: "absolute", left: `${(now / 24) * 100}%`, top: -2, bottom: -2, width: 2, background: "#fff", boxShadow: "0 0 6px #fff" }} />
+    <div>
+      <div style={{ position: "relative", height: 34, background: "#101114", borderRadius: 8, overflow: "hidden", border: "1px solid #262626" }}>
+        {sessions.map((s) =>
+          segmentsOf(s).map(([st, en], i) => (
+            <div
+              key={`${s.key}-${i}`}
+              title={s.label}
+              style={{
+                position: "absolute",
+                left: `${(st / 24) * 100}%`,
+                width: `${((en - st) / 24) * 100}%`,
+                top: 4,
+                bottom: 4,
+                background: `${s.color}${s.active ? "55" : "20"}`,
+                border: `1px solid ${s.color}${s.active ? "aa" : "40"}`,
+                borderRadius: 5,
+                transition: "all .3s ease",
+              }}
+            />
+          ))
+        )}
+        {overlapSegments.map(([st, en], i) => (
+          <div
+            key={`ov-${i}`}
+            title={`${overlap.label} — highest liquidity`}
+            style={{
+              position: "absolute",
+              left: `${(st / 24) * 100}%`,
+              width: `${((en - st) / 24) * 100}%`,
+              top: 0,
+              bottom: 0,
+              background: `repeating-linear-gradient(45deg, ${GOLD}55, ${GOLD}55 3px, transparent 3px, transparent 6px)`,
+              border: `1px solid ${GOLD}`,
+              borderRadius: 5,
+              boxShadow: `0 0 8px ${GOLD}88`,
+            }}
+          />
+        ))}
+        <div style={{ position: "absolute", left: `${(now / 24) * 100}%`, top: -2, bottom: -2, width: 2, background: "#fff", boxShadow: "0 0 6px #fff", transition: "left 1s linear" }} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8.5, color: "#555", marginTop: 3 }}>
+        <span>00:00</span>
+        <span>06:00</span>
+        <span>12:00</span>
+        <span>18:00</span>
+        <span>24:00</span>
+      </div>
+      {overlap && (
+        <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 10.5, color: GOLD_LIGHT, fontWeight: 700 }}>
+          🔥 {overlap.label} overlap — {overlap.liquidity} liquidity right now
+        </div>
+      )}
     </div>
   );
 }
@@ -1205,43 +1300,190 @@ function LiveOpportunitiesCard({ items, onOpen }) {
 }
 
 /* ============================================================================
-   كرت 4: Liquidity Map — Top Symbols — من نفس بيانات /api/radar (decision كامل)
+   Liquidity Map — قسم كامل بعرض الصفحة: كروت شرح المفاهيم + جدول قابل للنقر +
+   Analysis Workspace دائم تحته (بيتحدّث بس، من غير أي popup). من نفس بيانات
+   /api/radar (decision كامل لكل رمز مراقَب).
    ============================================================================ */
-export function LiquidityMapCard({ items, primarySession, limit = 5 }) {
+export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8 }) {
   const sorted = useMemo(
     () => [...items].filter((i) => i.decision).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, limit),
     [items, limit]
   );
+  const active = items.find((i) => i.symbol === selectedSymbol) || sorted[0] || null;
 
   return (
-    <CardShell title="Liquidity Map" icon="💧">
-      {sorted.length === 0 ? (
-        <EmptyNote text="بانتظار أول دورة تحليل من المحرك" />
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ display: "flex", fontSize: 9.5, color: "#666", padding: "0 4px" }}>
-            <span style={{ flex: 1.2 }}>Symbol</span>
-            <span style={{ flex: 1 }}>Liquidity</span>
-            <span style={{ flex: 1 }}>OB/FVG</span>
-            <span style={{ flex: 0.8, textAlign: "left" }}>Score</span>
-          </div>
-          {sorted.map((it) => {
-            const d = it.decision;
-            const liq = d?.poi?.touchedZone ? (it.direction === "up" ? "Below Low" : "Above High") : "—";
-            const liqColor = d?.poi?.touchedZone ? (it.direction === "up" ? RED : GREEN) : "#666";
-            const obLabel = d?.ob?.eligible ? `${it.direction === "up" ? "Bullish" : "Bearish"} OB` : "—";
-            return (
-              <div key={it.symbol} style={{ display: "flex", alignItems: "center", background: "#14161a", borderRadius: 8, padding: "6px 8px", fontSize: 11 }}>
-                <span style={{ flex: 1.2, fontWeight: 700, color: "#e5e5e5" }}>{it.symbol}</span>
-                <span style={{ flex: 1, color: liqColor }}>{liq}</span>
-                <span style={{ flex: 1, color: d?.ob?.eligible ? GOLD_LIGHT : "#666" }}>{obLabel}</span>
-                <span style={{ flex: 0.8, textAlign: "left", fontWeight: 800, color: it.score >= 85 ? GREEN : "#ccc" }}>{it.score ?? 0}%</span>
-              </div>
-            );
-          })}
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <div className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
+        <SectionHeader
+          icon="💧"
+          title="Liquidity Map"
+          subtitle="Where price is hunting liquidity right now. Click any row to load its full breakdown in the Analysis Workspace below — nothing pops up, the page just updates."
+        />
+
+        {/* -------- كروت شرح المفاهيم (بدل الفقرة الطويلة) -------- */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, margin: "16px 0 18px" }}>
+          <ConceptCard icon="⬆️" title="Above High" lines={["Price swept previous highs.", "Usually takes Buy Side Liquidity."]} color={RED} />
+          <ConceptCard icon="⬇️" title="Below Low" lines={["Price swept previous lows.", "Usually takes Sell Side Liquidity."]} color={GREEN} />
+          <ConceptCard icon="🧱" title="Order Block" lines={["Institutional supply or demand zone."]} color={GOLD_LIGHT} />
+          <ConceptCard icon="⚡" title="Fair Value Gap" lines={["Price imbalance waiting to be rebalanced."]} color={BLUE} />
+          <ConceptCard icon="🎯" title="Score" lines={["Overall confidence calculated by Qais SK Engine."]} color={GOLD} />
         </div>
-      )}
-    </CardShell>
+
+        {sorted.length === 0 ? (
+          <EmptyNote text="بانتظار أول دورة تحليل من المحرك" />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", fontSize: 10, color: "#666", padding: "0 12px" }}>
+              <span style={{ flex: 1.3 }}>Symbol</span>
+              <span style={{ flex: 1.3 }}>Liquidity</span>
+              <span style={{ flex: 1.3 }}>Order Block</span>
+              <span style={{ flex: 1.1 }}>Fair Value Gap</span>
+              <span style={{ flex: 0.8, textAlign: "left" }}>Score</span>
+            </div>
+            {sorted.map((it) => {
+              const d = it.decision;
+              const swept = !!d?.liquidityStatus?.startsWith?.("Swept");
+              const liqLabel = swept ? (it.direction === "up" ? "Below Low" : "Above High") : d?.liquidityStatus || "Not Swept";
+              const liqColor = swept ? (it.direction === "up" ? GREEN : RED) : "#666";
+              const obLabel = d?.ob?.eligible ? `${it.direction === "up" ? "Bullish" : "Bearish"} OB` : "—";
+              const fvgLabel = d?.fvgStatus || "—";
+              const isSelected = active?.symbol === it.symbol;
+              return (
+                <button
+                  key={it.symbol}
+                  onClick={() => onSelect(it.symbol)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    width: "100%",
+                    textAlign: "right",
+                    cursor: "pointer",
+                    background: isSelected ? `${GOLD}18` : "#14161a",
+                    border: `1px solid ${isSelected ? `${GOLD}80` : "transparent"}`,
+                    borderRadius: 10,
+                    padding: "9px 12px",
+                    fontSize: 11.5,
+                    transition: "all .2s ease",
+                  }}
+                >
+                  <span style={{ flex: 1.3, fontWeight: 800, color: "#e5e5e5", display: "flex", alignItems: "center", gap: 6 }}>
+                    {isSelected && <span style={{ width: 5, height: 5, borderRadius: "50%", background: GOLD }} />}
+                    {it.symbol}
+                  </span>
+                  <span style={{ flex: 1.3, color: liqColor, fontWeight: 700 }}>{liqLabel}</span>
+                  <span style={{ flex: 1.3, color: d?.ob?.eligible ? GOLD_LIGHT : "#666" }}>{obLabel}</span>
+                  <span style={{ flex: 1.1, color: fvgLabel === "Present" ? BLUE : "#666" }}>{fvgLabel}</span>
+                  <span style={{ flex: 0.8, textAlign: "left", fontWeight: 800, color: (it.score ?? 0) >= 85 ? GREEN : "#ccc" }}>{it.score ?? 0}%</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <AnalysisWorkspace item={active} />
+    </div>
+  );
+}
+
+/* -------------------- Analysis Workspace: دائم، بيتحدث بس لما تتغير الأصل المختار -------------------- */
+function AnalysisWorkspace({ item }) {
+  if (!item) {
+    return (
+      <div className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
+        <SectionHeader icon="🧠" title="Analysis Workspace" subtitle="Click any asset in the Liquidity Map above to load its full breakdown here." />
+        <EmptyNote text="لا يوجد أصل محدد بعد" />
+      </div>
+    );
+  }
+
+  const d = item.decision;
+  const dirLabel = item.direction === "up" ? "Bullish" : item.direction === "down" ? "Bearish" : "Neutral";
+  const dirColor = item.direction === "up" ? GREEN : item.direction === "down" ? RED : "#888";
+  const htfLabel = d?.htfTrend === "up" ? "Bullish" : d?.htfTrend === "down" ? "Bearish" : "—";
+  const htfColor = d?.htfTrend === "up" ? GREEN : d?.htfTrend === "down" ? RED : "#888";
+  const swept = !!d?.liquidityStatus?.startsWith?.("Swept");
+  const liqTypeLabel = swept
+    ? item.direction === "up"
+      ? "Below Low — Sell-Side Liquidity Taken"
+      : "Above High — Buy-Side Liquidity Taken"
+    : d?.liquidityStatus || "Not Swept Yet";
+  const obLabel = d?.ob?.eligible ? `${dirLabel} OB · ${d.ob.status} · Quality ${d.ob.quality}%` : "No Valid Order Block Yet";
+  const lastTarget = d?.targets?.[d.targets.length - 1];
+  const expectedMove = d?.entry != null && lastTarget ? `${fmt(d.entry)} → ${fmt(lastTarget.price)}` : "—";
+  const score = d?.score ?? 0;
+
+  const summary = d
+    ? `${item.symbol} is showing a ${dirLabel.toLowerCase()} bias${d.sessionLabel ? ` during the ${d.sessionLabel}` : ""}. ${
+        d.why?.length ? `Key drivers: ${d.why.join(", ")}. ` : ""
+      }QAIS Score is ${score}/100 — ${d.tradeValid ? "every step in the entry checklist has been confirmed." : "not every step in the entry checklist is confirmed yet, so this setup is still forming."}`
+    : `Waiting for the QAIS SK Engine to complete the first analysis cycle for ${item.symbol}.`;
+
+  return (
+    <div key={item.symbol} className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
+      <SectionHeader icon="🧠" title="Analysis Workspace" subtitle={`Full breakdown for ${item.symbol} — always visible, refreshes automatically when you pick another asset above.`} />
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))", gap: 10, marginTop: 14 }}>
+        <WorkspaceStat label="Liquidity Status" value={d?.liquidityStatus || "—"} />
+        <WorkspaceStat label="Market Structure" value={d?.marketStructure || (d?.bosStatus === "Detected" ? "Break of Structure" : "Ranging")} />
+        <WorkspaceStat label="Trend" value={dirLabel} color={dirColor} />
+        <WorkspaceStat label="HTF Trend" value={htfLabel} color={htfColor} />
+        <WorkspaceStat label="Liquidity Type" value={liqTypeLabel} color={swept ? (item.direction === "up" ? GREEN : RED) : "#888"} />
+        <WorkspaceStat label="Order Block" value={obLabel} color={d?.ob?.eligible ? GOLD_LIGHT : "#888"} />
+        <WorkspaceStat label="Fair Value Gap" value={d?.fvgStatus || "—"} color={d?.fvgStatus === "Present" ? BLUE : "#888"} />
+        <WorkspaceStat label="Expected Move" value={expectedMove} color={GOLD_LIGHT} />
+        <WorkspaceStat label="Entry Zone" value={fmt(d?.entry)} color={GOLD_LIGHT} />
+        <WorkspaceStat label="Stop Loss" value={fmt(d?.stopLoss)} color={RED} />
+        <WorkspaceStat label="Take Profit" value={lastTarget ? fmt(lastTarget.price) : "—"} color={GREEN} />
+        <WorkspaceStat label="Confidence" value={`${score}%`} color={score >= 85 ? GREEN : GOLD_LIGHT} />
+      </div>
+
+      <div style={{ marginTop: 12, background: "#14161a", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "12px 14px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+          <Sparkles size={12} color={GOLD} />
+          <span style={{ fontSize: 11, fontWeight: 800, color: GOLD_LIGHT, letterSpacing: 0.3 }}>AI SUMMARY</span>
+        </div>
+        <div style={{ fontSize: 12, color: "#ccc", lineHeight: 1.8 }}>{summary}</div>
+      </div>
+    </div>
+  );
+}
+
+function WorkspaceStat({ label, value, color }) {
+  return (
+    <div style={{ background: "#14161a", borderRadius: 10, padding: "10px 12px" }}>
+      <div style={{ fontSize: 10, color: "#777", marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 800, color: color || "#e5e5e5", lineHeight: 1.4 }}>{value}</div>
+    </div>
+  );
+}
+
+/* -------------------- كرت شرح مفهوم واحد (تعليمي، بدون بيانات حيّة) -------------------- */
+function ConceptCard({ icon, title, lines, color }) {
+  return (
+    <div className="qmi-concept-card" style={{ background: "#14161a", border: `1px solid ${color}33`, borderRadius: 12, padding: "12px 14px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
+        <span style={{ fontSize: 15 }}>{icon}</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: color || "#f0f0f0" }}>{title}</span>
+      </div>
+      {lines.map((l, i) => (
+        <div key={i} style={{ fontSize: 11, color: "#999", lineHeight: 1.6 }}>
+          {l}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SectionHeader({ icon, title, subtitle }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+      <span style={{ fontSize: 18 }}>{icon}</span>
+      <div>
+        <div style={{ fontSize: 14.5, fontWeight: 800, color: "#f5f5f5" }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 11, color: "#888", marginTop: 2, lineHeight: 1.6 }}>{subtitle}</div>}
+      </div>
+    </div>
   );
 }
 
