@@ -11,7 +11,7 @@ import SettingsView from "./components/SettingsView";
 import TraderDnaView from "./components/TraderDnaView";
 import ReportsView from "./components/ReportsView";
 import RadarView from "./components/RadarView";
-import QaisEngineView from "./components/QaisEngineView";
+import MarketIntelligenceView from "./components/MarketIntelligenceView";
 import AffiliateClient from "../affiliate/AffiliateClient";
 import MlmClient from "../mlm/MlmClient";
 import AppShell from "../components/layout/AppShell";
@@ -26,7 +26,7 @@ const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: "👥", view: "accounts" },
   { key: "live", label: "البث المباشر", icon: "🔴", view: "live" },
   { key: "radar", label: "Trading Radar", icon: "📡", view: "radar" },
-  { key: "qais-engine", label: "QAIS SK Engine", icon: "🧠", view: "qais-engine" },
+  { key: "qais-engine", label: "Market Intelligence", icon: "📊", view: "qais-engine" },
   { key: "trader-dna", label: "بصمتك كمتداول", icon: "🧬", view: "trader-dna" },
   { key: "lectures", label: "المحاضرات", icon: "🎓", view: "lectures" },
   { key: "calendar", label: "التقويم الاقتصادي", icon: "📅", view: "calendar" },
@@ -433,7 +433,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
         ) : activeKey === "radar" ? (
           <RadarView />
         ) : activeKey === "qais-engine" ? (
-          <QaisEngineView />
+          <MarketIntelligenceView />
         ) : activeKey === "trader-dna" ? (
           <TraderDnaView userId={userId} />
         ) : activeKey === "reports" ? (
