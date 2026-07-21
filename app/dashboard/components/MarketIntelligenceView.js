@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Sparkles, RotateCcw, ChevronDown, ChevronRight, Zap, Bell, Radio } from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
@@ -204,6 +204,12 @@ export default function MarketIntelligenceView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
 
+  // مهم: runAnalysis (وبالتالي إعادة حساب السيكونز/الأهداف بالكامل) بيتفعّل
+  // فقط لما "symbol" يتغيّر (اختيار أصل جديد) — أي تفاعل بالشارت (سحب/زوم/
+  // تحجيم/تمرير الفريمات) بيمر فقط بحلقة الرسم (draw) اللي بتحول نفس نقاط
+  // 0/A/B/C والأهداف المحسوبة سلفاً لإحداثيات شاشة جديدة، بدون ما تلمس نتيجة
+  // التحليل نفسها. يعني مسقط السيكونز ما بينعاد بناؤه أبداً أثناء حركة الشارت
+  // — فقط لما السوق فعلياً يشكّل هيكلية جديدة (نتيجة analyzeSymbol تتغيّر)
   useEffect(() => { runAnalysis(); }, [runAnalysis]);
 
   /* ===================== بيانات الكروت السفلية — Heat Map / Radar / News ===================== */
@@ -274,13 +280,34 @@ export default function MarketIntelligenceView() {
       seriesRef.current = series;
       chartRef.current.__LineStyle = LineStyle;
 
-      const requestDraw = () => scheduleDraw();
+      /* -------- خط أنابيب الرسم: حلقة rAF دائمة، لا رسم عند الطلب --------
+         المشكلة الأصلية: كنا نرسم مرة وحدة فقط رداً على حدث (تغيّر المدى
+         المرئي)، يعني الأوفرلاي كان يتأخر خطوة كاملة عن رسم الشارت نفسه
+         (اللي بيتحدث بشكل متزامن وبتردد أعلى أثناء السحب/الزوم/التمرير
+         بالعجلة) — فرق التوقيت هاد هو سبب "القفزة" و"الفليكر" اللي كانت
+         تظهر لجزء من الثانية قبل ما ترجع الرسومات لمكانها الصحيح.
+         الحل: حلقة rAF واحدة تشتغل طول عمر الشارت (تبلش مع mount وتوقف مع
+         unmount بس)، بترسم من جديد كل فريم من مصدر واحد (الوقت/السعر
+         الحقيقيين عبر timeToCoordinate/priceToCoordinate)، بدون أي إحداثيات
+         بكسل محفوظة مسبقاً. هيك الأوفرلاي بيبقى مقفول 100٪ على نفس فريم رسم
+         الشارت الأصلي بغض النظر عن نوع التفاعل (سحب/زوم/تحجيم/ريبلاي/تحديث حي) */
+      function paintLoop() {
+        draw();
+        rafRef.current = requestAnimationFrame(paintLoop);
+      }
+      rafRef.current = requestAnimationFrame(paintLoop);
+
+      // نبقي subscribeVisibleTimeRangeChange كتحفيز إضافي رخيص (زيادة تأكيد،
+      // مش مصدر أساسي للرسم بعد اليوم) — يضمن رسمة فورية حتى لو الفريم القادم
+      // تأخر لأي سبب (تبويب غير نشط مثلاً)
+      const requestDraw = () => draw();
       chart.timeScale().subscribeVisibleTimeRangeChange(requestDraw);
 
       const handleResize = () => {
         if (!containerRef.current) return;
         chart.applyOptions({ width: containerRef.current.clientWidth });
-        requestDraw();
+        // الرسم التالي بحلقة الـ rAF (سطر واحد بعد) بيلتقط الحجم الجديد أوتوماتيكياً
+        draw();
       };
       window.addEventListener("resize", handleResize);
       handleResize();
@@ -299,17 +326,6 @@ export default function MarketIntelligenceView() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  function scheduleDraw() {
-    if (rafRef.current) return;
-    const loop = () => {
-      draw();
-      const elapsed = performance.now() - animStartRef.current;
-      if (elapsed < ANIM_MS) rafRef.current = requestAnimationFrame(loop);
-      else rafRef.current = null;
-    };
-    rafRef.current = requestAnimationFrame(loop);
-  }
 
   function draw() {
     const canvas = canvasRef.current;
@@ -361,14 +377,14 @@ export default function MarketIntelligenceView() {
     drawProjection(ctx, r, priceToY, lastX, w, h, ease);
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!seriesRef.current) return;
     const candles = allCandles[displayTF];
     if (!candles || candles.length === 0) return;
     seriesRef.current.setData(candles.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close })));
     chartRef.current?.timeScale().fitContent();
     applyContextPriceLines();
-    scheduleDraw();
+    draw(); // رسم متزامن فوري (قبل أي paint) — الحلقة الدائمة بترسم كل فريم بعدين
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCandles, displayTF, result]);
 

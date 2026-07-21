@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets";
 import { createClient } from "@/lib/supabase-client";
@@ -3984,7 +3984,14 @@ export default function ReplayClient({ userId }) {
   // لحد ما توصل بيانات الفريم الجديد، وقتها منعيد إسقاط كل نقطة رسم/صفقة من
   // logical القديم -> timestamp -> logical جديد (شوفي useEffect تحت)
   const pendingReprojectRef = useRef(null);
-  useEffect(() => {
+  /* useLayoutEffect لا useEffect: هاي هي نقطة تحديث الشارت الحقيقية (شموع +
+     رسومات) رداً على أي تقدّم بالـ Replay (سحب التايم لاين، خطوة تلقائية،
+     تيك حي). useEffect العادي بيشتغل بعد ما المتصفح يرسم الفريم (بعد الـ
+     paint)، يعني كان ممكن يظهر فريم واحد فيه الـ UI (شريط التقدّم مثلاً)
+     محدَّث لكن الشموع لسا القديمة = "قفزة" مرئية قبل ما تصحح حالها بالفريم
+     التالي. useLayoutEffect بيشتغل بشكل متزامن قبل الـ paint، فالشموع
+     والرسومات بترتسم بنفس الفريم اللي فيه أي تغيير UI تاني، بدون أي وميض. */
+  useLayoutEffect(() => {
     if (!seriesRef.current || allCandles.length === 0) return;
     const prevLen = prevCandlesRef.current?.length ?? -1;
     const prevReveal = prevRevealRef.current;
