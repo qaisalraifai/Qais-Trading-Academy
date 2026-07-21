@@ -77,6 +77,40 @@ function getPrimarySession(sessions) {
   return "Off-Hours";
 }
 
+/* فرق الوقت (بالساعات) من now لغاية target، بيلف لليوم التالي لو الفرق سالب */
+function hoursUntil(target, now) {
+  let diff = target - now;
+  if (diff <= 0) diff += 24;
+  return diff;
+}
+
+function hoursLabel(h) {
+  const totalMin = Math.max(0, Math.round(h * 60));
+  const hh = Math.floor(totalMin / 60);
+  const mm = totalMin % 60;
+  if (hh <= 0) return `${mm} د`;
+  if (mm === 0) return `${hh} س`;
+  return `${hh} س ${mm} د`;
+}
+
+/* الجلسة النشطة هلأ (يلي رح تنتهي أقرب لو في أكثر من وحدة نشطة بنفس الوقت —
+   حالة التداخل London/NY) + أقرب جلسة قادمة لسا ما بلشت */
+function getSessionTimeline(sessions) {
+  const now = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
+  const active = sessions.filter((s) => s.active);
+  const inactive = sessions.filter((s) => !s.active);
+
+  const current = active.length
+    ? active.map((s) => ({ ...s, remaining: hoursUntil(s.end, now) })).sort((a, b) => a.remaining - b.remaining)[0]
+    : null;
+
+  const next = inactive.length
+    ? inactive.map((s) => ({ ...s, startsIn: hoursUntil(s.start, now) })).sort((a, b) => a.startsIn - b.startsIn)[0]
+    : null;
+
+  return { now, current, next };
+}
+
 function relTime(iso) {
   if (!iso) return "—";
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -525,33 +559,86 @@ function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease) {
   ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy);
   ctx.stroke();
 
+  // نقاط A/B/C: نحدد اتجاه الليبل (فوق/تحت) حسب كون B قمة أو قاع بالنسبة لـ A/C،
+  // عشان الليبل ما يطلع فوق الشمعة أو فوق ليبل تاني (هيك كانوا يتراكبوا فوق بعض)
+  const midY = (ay + cy) / 2;
+  const bIsPeak = by < midY; // y أصغر = سعر أعلى
+  const dyFor = { A: bIsPeak ? 15 : -15, B: bIsPeak ? -15 : 15, C: bIsPeak ? 15 : -15 };
   [["A", ax, ay], ["B", bx, by], ["C", cx, cy]].forEach(([label, x, y]) => {
     ctx.beginPath();
-    ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
     ctx.fillStyle = GOLD_LIGHT;
     ctx.fill();
-    ctx.font = "600 10px sans-serif";
-    ctx.fillStyle = "#e8e8e8";
-    ctx.fillText(label, x - 3, y - 8);
+    drawPill(ctx, x, y + dyFor[label], label, GOLD_LIGHT, "700 10.5px sans-serif");
   });
 
+  // المستويات الداخلية: الليبلات دايماً عند الطرف اليمين (قرب آخر شمعة) بدل
+  // عند نقطة A — هيك ما بتتراكب مع نقاط A/B/C ولا مع الشموع نفسها. وبنبعد كل
+  // ليبل عن يلي جنبه أقل مسافة ثابتة (Decluttering) حتى لو أسعارهم قريبة كتير.
   const x0 = Math.min(ax, bx);
-  const x1 = Math.max(bx, cx, lastX);
+  const x1 = Math.max(bx, cx, lastX - 4);
+  const labelX = x1 + 10;
+
+  const levels = (internalLevels || [])
+    .map((lvl) => ({ ...lvl, trueY: priceToY(lvl.price) }))
+    .filter((l) => l.trueY != null)
+    .sort((a, b) => a.trueY - b.trueY);
+
+  // labelY منفصل تماماً عن trueY (موقع الخط الحقيقي بالسعر) عشان نقدر نبعد
+  // الليبلات عن بعض (Decluttering) بدون ما نحرّك الخط المتقطع عن سعره الصحيح
+  const minGap = 14;
+  let prevLabelY = -Infinity;
+  levels.forEach((lvl) => {
+    lvl.labelY = Math.max(lvl.trueY, prevLabelY + minGap);
+    prevLabelY = lvl.labelY;
+  });
+
   ctx.font = "500 9.5px sans-serif";
-  for (const lvl of internalLevels || []) {
-    const y = priceToY(lvl.price);
-    if (y == null) continue;
-    ctx.strokeStyle = `${NEUTRAL}40`;
+  for (const lvl of levels) {
+    ctx.strokeStyle = `${NEUTRAL}35`;
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     ctx.beginPath();
-    ctx.moveTo(x0, y); ctx.lineTo(x1, y);
+    ctx.moveTo(x0, lvl.trueY); ctx.lineTo(x1, lvl.trueY);
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = `${NEUTRAL}cc`;
-    ctx.fillText(lvl.ratio.toFixed(3), x0 + 3, y - 3);
+
+    // خط رابط قصير من الخط الحقيقي للّيبل لو انزاح بسبب الـ Decluttering
+    if (Math.abs(lvl.labelY - lvl.trueY) > 1) {
+      ctx.strokeStyle = `${NEUTRAL}55`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x1, lvl.trueY); ctx.lineTo(labelX, lvl.labelY);
+      ctx.stroke();
+    }
+
+    drawPill(ctx, labelX, lvl.labelY, lvl.ratio.toFixed(3), NEUTRAL, "600 10px sans-serif", "left");
   }
   ctx.restore();
+}
+
+/* ليبل بخلفية زجاجية مدوّرة — بديل للنص المكشوف اللي كان بيتراكب فوق الشموع
+   والليبلات التانية. align: "center" (فوق نقطة) أو "left" (يبلش من x يمين) */
+function drawPill(ctx, x, y, text, color, font, align = "center") {
+  ctx.font = font;
+  const tw = ctx.measureText(text).width;
+  const padX = 6;
+  const boxW = tw + padX * 2;
+  const boxH = 15;
+  const boxX = align === "left" ? x : x - boxW / 2;
+  const boxY = y - boxH / 2;
+
+  ctx.fillStyle = "rgba(18,20,24,0.92)";
+  ctx.strokeStyle = `${color}66`;
+  ctx.lineWidth = 1;
+  roundRect(ctx, boxX, boxY, boxW, boxH, 5);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = color;
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, boxX + padX, y + 0.5);
+  ctx.textBaseline = "alphabetic";
 }
 
 function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
@@ -836,8 +923,41 @@ function CurrencyHeatMapCard({ snapshot }) {
    كرت 2: Session Map — محسوب من الوقت الحالي (UTC)
    ============================================================================ */
 function SessionMapCard({ sessions }) {
+  const { current, next } = useMemo(() => getSessionTimeline(sessions), [sessions]);
+
   return (
     <CardShell title="Session Map" icon="🕐">
+      {/* -------- بانر واضح: احنا هلأ بأي جلسة، وبتنتهي إمتى / وشو الجلسة الجاية -------- */}
+      <div
+        style={{
+          background: current ? `linear-gradient(135deg, ${GREEN}18, ${GREEN}08)` : "#14161a",
+          border: `1px solid ${current ? GREEN : "#333"}40`,
+          borderRadius: 10,
+          padding: "10px 12px",
+          marginBottom: 10,
+        }}
+      >
+        {current ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span className="qmi-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: GREEN }} />
+              <span style={{ fontSize: 11, color: "#9fdcbf" }}>الجلسة الحالية</span>
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#f0f0f0", marginTop: 2 }}>{current.label}</div>
+            <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>
+              تنتهي خلال <b style={{ color: GREEN }}>{hoursLabel(current.remaining)}</b>
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize: 12.5, color: "#888" }}>لا توجد جلسة تداول رئيسية نشطة الآن</div>
+        )}
+        {next && (
+          <div style={{ fontSize: 10.5, color: "#777", marginTop: 6, paddingTop: 6, borderTop: "1px solid #ffffff10" }}>
+            الجلسة القادمة: <b style={{ color: "#ccc" }}>{next.label}</b> تبدأ خلال <b style={{ color: GOLD_LIGHT }}>{hoursLabel(next.startsIn)}</b>
+          </div>
+        )}
+      </div>
+
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {sessions.map((s) => (
           <div key={s.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#14161a", borderRadius: 10, padding: "7px 10px" }}>
