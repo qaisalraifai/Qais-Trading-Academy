@@ -61,12 +61,12 @@ const SESSION_DEFS = [
   { key: "ny", label: "New York Session", start: 13, end: 22, volatility: "High", liquidity: "High Liquidity" },
 ];
 
-function getSessionsStatus() {
+export function getSessionsStatus() {
   const h = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
   return SESSION_DEFS.map((s) => ({ ...s, active: h >= s.start && h < s.end }));
 }
 
-function getPrimarySession(sessions) {
+export function getPrimarySession(sessions) {
   const london = sessions.find((s) => s.key === "london");
   const ny = sessions.find((s) => s.key === "ny");
   const asia = sessions.find((s) => s.key === "asia");
@@ -122,8 +122,8 @@ function relTime(iso) {
   return `منذ ${Math.round(hr / 24)} يوم`;
 }
 
-export default function MarketIntelligenceView() {
-  const [symbol, setSymbol] = useState("XAUUSD");
+export default function MarketIntelligenceView({ initialSymbol, embedded = false, onClose } = {}) {
+  const [symbol, setSymbol] = useState(initialSymbol || "XAUUSD");
   const [displayTF, setDisplayTF] = useState("h1");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -153,6 +153,11 @@ export default function MarketIntelligenceView() {
 
   useEffect(() => { displayTFRef.current = displayTF; }, [displayTF]);
   useEffect(() => { candlesRef.current = allCandles; }, [allCandles]);
+  // لما يُفتح هالمكوّن من داخل Trading Radar (Open Full Analysis) برمز مختلف، منزامنه هون
+  useEffect(() => {
+    if (initialSymbol) setSymbol(initialSymbol);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSymbol]);
 
   /* تحديث ساعة الجلسات كل دقيقة */
   useEffect(() => {
@@ -448,10 +453,29 @@ export default function MarketIntelligenceView() {
       {/* ================= HEADER ================= */}
       <div className="qmi-anim" style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: 20 }}>👑</span>
-        <div>
-          <div style={{ fontSize: 19, fontWeight: 800, color: "#f5f5f5" }}>Qais Market Intelligence</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 19, fontWeight: 800, color: "#f5f5f5" }}>Qais Market Intelligence — Full Analysis</div>
           <div style={{ fontSize: 11.5, color: "#888" }}>Powered by QAIS SK Engine</div>
         </div>
+        {embedded && onClose && (
+          <button
+            onClick={onClose}
+            style={{
+              background: "#14161a",
+              border: `1px solid ${GOLD}40`,
+              color: "#ccc",
+              borderRadius: 10,
+              width: 34,
+              height: 34,
+              cursor: "pointer",
+              fontSize: 16,
+              lineHeight: 1,
+            }}
+            title="Close"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* ================= TOP TOOLBAR ================= */}
@@ -1032,7 +1056,7 @@ function MiniStat({ label, value, color }) {
 /* ============================================================================
    كرت 1: Currency Heat Map — من /api/market-intelligence?type=snapshot
    ============================================================================ */
-function CurrencyHeatMapCard({ snapshot }) {
+export function CurrencyHeatMapCard({ snapshot }) {
   const currencies = snapshot?.currencies || {};
   const entries = Object.entries(currencies).filter(([, v]) => v != null);
 
@@ -1067,7 +1091,7 @@ function CurrencyHeatMapCard({ snapshot }) {
 /* ============================================================================
    كرت 2: Session Map — محسوب من الوقت الحالي (UTC)
    ============================================================================ */
-function SessionMapCard({ sessions }) {
+export function SessionMapCard({ sessions }) {
   const { current, next } = useMemo(() => getSessionTimeline(sessions), [sessions]);
 
   return (
@@ -1183,10 +1207,10 @@ function LiveOpportunitiesCard({ items, onOpen }) {
 /* ============================================================================
    كرت 4: Liquidity Map — Top Symbols — من نفس بيانات /api/radar (decision كامل)
    ============================================================================ */
-function LiquidityMapCard({ items, primarySession }) {
+export function LiquidityMapCard({ items, primarySession, limit = 5 }) {
   const sorted = useMemo(
-    () => [...items].filter((i) => i.decision).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5),
-    [items]
+    () => [...items].filter((i) => i.decision).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, limit),
+    [items, limit]
   );
 
   return (
@@ -1304,7 +1328,7 @@ function LiveNotificationsCard({ items, onOpen }) {
 /* ============================================================================
    عناصر مشتركة
    ============================================================================ */
-function CardShell({ title, icon, children }) {
+export function CardShell({ title, icon, children }) {
   return (
     <div style={{ ...glass, padding: "1rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>

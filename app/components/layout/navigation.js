@@ -17,14 +17,12 @@ import {
   LogOut,
   Crown,
   Radar,
-  LineChart,
 } from "lucide-react";
 
 export const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: Users, view: "accounts", adminOnly: true },
   { key: "live", label: "البث المباشر", icon: Radio, view: "live" },
   { key: "radar", label: "Trading Radar", icon: Radar, view: "radar" },
-  { key: "qais-engine", label: "Market Intelligence", icon: LineChart, view: "qais-engine" },
   { key: "trader-dna", label: "بصمتك كمتداول", icon: Dna, view: "trader-dna" },
   { key: "lectures", label: "المحاضرات", icon: GraduationCap, view: "lectures" },
   { key: "calendar", label: "التقويم الاقتصادي", icon: Calendar, view: "calendar" },
