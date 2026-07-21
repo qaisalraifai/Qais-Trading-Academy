@@ -26,24 +26,29 @@ export async function GET() {
   const { data: states, error } = await admin.from("qais_radar_state").select("*").in("symbol", symbols);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  const { data: favRows } = await admin.from("qais_favorites").select("symbol").eq("user_id", user.id);
+  const favSet = new Set((favRows || []).map((f) => f.symbol));
+
   const bySymbol = Object.fromEntries((states || []).map((s) => [s.symbol, s]));
 
   // لو رمز بقائمة المتابعة لسا ما انحسب (أول مرة قبل ما يشتغل الكرون)، منرجعه بحالة "gray" مؤقتة
-  const items = symbols.map(
-    (symbol) =>
-      bySymbol[symbol] || {
-        symbol,
-        status: "gray",
-        score: 0,
-        direction: null,
-        price: null,
-        timeframe: "M15",
-        reason_tags: [],
-        decision: null,
-        updated_at: null,
-        pending: true,
-      }
-  );
+  const items = symbols.map((symbol) => ({
+    ...(bySymbol[symbol] || {
+      symbol,
+      status: "gray",
+      score: 0,
+      radar_status: "gray",
+      radar_score: 0,
+      direction: null,
+      price: null,
+      timeframe: "M15",
+      reason_tags: [],
+      decision: null,
+      updated_at: null,
+      pending: true,
+    }),
+    favorite: favSet.has(symbol),
+  }));
 
   return NextResponse.json({ items });
 }
