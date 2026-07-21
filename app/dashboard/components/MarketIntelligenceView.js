@@ -349,7 +349,7 @@ export default function MarketIntelligenceView() {
     if (lastX == null) return;
 
     const seq = r.sequence;
-    if (seq?.active && seq.displayTF && seq.displayTF === displayTFRef.current) {
+    if (seq?.points && seq.displayTF && seq.displayTF === displayTFRef.current) {
       drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease);
     }
     drawProjection(ctx, r, priceToY, lastX, w, h, ease);
@@ -543,80 +543,57 @@ export default function MarketIntelligenceView() {
 }
 
 /* ============================================================================
-   رسم الشارت — نفس منطق QaisEngineView.js (لا تغيير بالحسابات، عرض فقط)
+   رسم هيكل السيكونز (0 → A → B → C) على الشارت — منطق TradingView's Trend-Based
+   Fib Extension حرفياً، بس بأربع نقاط مؤكَّدة هيكلياً بدل ثلاثة. لو C لسا ما
+   تأكدت (stage="awaiting-c")، منرسم 0→A→B بس وبنص خفيف "بانتظار C" — بدون أي
+   خطوط فيبوناتشي تصحيحية (القرار اعتمد بالكامل على هيكلية السوق لا على نسب
+   الارتداد التقليدية).
    ============================================================================ */
 function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease) {
-  const { points, internalLevels } = seq;
-  const ax = timeToX(points.A.time), bx = timeToX(points.B.time), cx = timeToX(points.C.time);
-  const ay = priceToY(points.A.price), by = priceToY(points.B.price), cy = priceToY(points.C.price);
-  if ([ax, bx, cx, ay, by, cy].some((v) => v == null)) return;
+  const { points, stage } = seq;
+  const pts = [
+    ["0", points.origin],
+    ["A", points.A],
+    ["B", points.B],
+    ...(points.C ? [["C", points.C]] : []),
+  ]
+    .map(([label, p]) => (p ? { label, x: timeToX(p.time), y: priceToY(p.price) } : null))
+    .filter((p) => p && p.x != null && p.y != null);
+
+  if (pts.length < 3) return;
 
   ctx.save();
   ctx.globalAlpha = ease;
-  ctx.strokeStyle = `${GOLD}99`;
-  ctx.lineWidth = 1.3;
-  ctx.beginPath();
-  ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy);
-  ctx.stroke();
 
-  // نقاط A/B/C: نحدد اتجاه الليبل (فوق/تحت) حسب كون B قمة أو قاع بالنسبة لـ A/C،
-  // عشان الليبل ما يطلع فوق الشمعة أو فوق ليبل تاني (هيك كانوا يتراكبوا فوق بعض)
-  const midY = (ay + cy) / 2;
-  const bIsPeak = by < midY; // y أصغر = سعر أعلى
-  const dyFor = { A: bIsPeak ? 15 : -15, B: bIsPeak ? -15 : 15, C: bIsPeak ? 15 : -15 };
-  [["A", ax, ay], ["B", bx, by], ["C", cx, cy]].forEach(([label, x, y]) => {
+  // الخط الواصل 0→A→B→(C)
+  ctx.strokeStyle = stage === "confirmed" ? `${GOLD}b0` : `${GOLD}60`;
+  ctx.lineWidth = 1.3;
+  if (stage !== "confirmed") ctx.setLineDash([4, 3]); // خط متقطع طالما C لسا ما تأكدت (قيد التكوين)
+  ctx.beginPath();
+  pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // اتجاه الليبل (فوق/تحت) يتبادل تلقائياً حسب كون النقطة قمة أو قاع بالتسلسل
+  pts.forEach((p, i) => {
+    const isPeak = i > 0 ? p.y < pts[i - 1].y : p.y < (pts[1]?.y ?? p.y);
+    const dy = isPeak ? -15 : 15;
     ctx.beginPath();
-    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
     ctx.fillStyle = "#181A20";
     ctx.fill();
     ctx.lineWidth = 1.4;
-    ctx.strokeStyle = GOLD_LIGHT;
+    ctx.strokeStyle = p.label === "C" ? GREEN : GOLD_LIGHT;
     ctx.stroke();
-    drawPill(ctx, x, y + dyFor[label], `(${label})`, GOLD_LIGHT, "700 10.5px sans-serif");
+    drawPill(ctx, p.x, p.y + dy, `(${p.label})`, p.label === "C" ? GREEN : GOLD_LIGHT, "700 10.5px sans-serif");
   });
 
-  // المستويات الداخلية: الليبلات دايماً عند الطرف اليمين (قرب آخر شمعة) بدل
-  // عند نقطة A — هيك ما بتتراكب مع نقاط A/B/C ولا مع الشموع نفسها. وبنبعد كل
-  // ليبل عن يلي جنبه أقل مسافة ثابتة (Decluttering) حتى لو أسعارهم قريبة كتير.
-  const x0 = Math.min(ax, bx);
-  const x1 = Math.max(bx, cx, lastX - 4);
-  const labelX = x1 + 10;
-
-  const levels = (internalLevels || [])
-    .map((lvl) => ({ ...lvl, trueY: priceToY(lvl.price) }))
-    .filter((l) => l.trueY != null)
-    .sort((a, b) => a.trueY - b.trueY);
-
-  // labelY منفصل تماماً عن trueY (موقع الخط الحقيقي بالسعر) عشان نقدر نبعد
-  // الليبلات عن بعض (Decluttering) بدون ما نحرّك الخط المتقطع عن سعره الصحيح
-  const minGap = 14;
-  let prevLabelY = -Infinity;
-  levels.forEach((lvl) => {
-    lvl.labelY = Math.max(lvl.trueY, prevLabelY + minGap);
-    prevLabelY = lvl.labelY;
-  });
-
-  ctx.font = "500 9.5px sans-serif";
-  for (const lvl of levels) {
-    ctx.strokeStyle = `${NEUTRAL}35`;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    ctx.moveTo(x0, lvl.trueY); ctx.lineTo(x1, lvl.trueY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // خط رابط قصير من الخط الحقيقي للّيبل لو انزاح بسبب الـ Decluttering
-    if (Math.abs(lvl.labelY - lvl.trueY) > 1) {
-      ctx.strokeStyle = `${NEUTRAL}55`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x1, lvl.trueY); ctx.lineTo(labelX, lvl.labelY);
-      ctx.stroke();
-    }
-
-    drawPill(ctx, labelX, lvl.labelY, lvl.ratio.toFixed(3), NEUTRAL, "600 10px sans-serif", "left");
+  // طالما C لسا ما تأكدت: ملاحظة صغيرة توضح إنه السيكونز قيد التكوين
+  if (stage === "awaiting-c") {
+    const last = pts[pts.length - 1];
+    drawPill(ctx, last.x + 46, last.y, "بانتظار تأكيد C", `${GOLD_LIGHT}`, "600 9.5px sans-serif", "left");
   }
+
   ctx.restore();
 }
 
