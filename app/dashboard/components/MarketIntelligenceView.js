@@ -566,10 +566,13 @@ function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease) {
   const dyFor = { A: bIsPeak ? 15 : -15, B: bIsPeak ? -15 : 15, C: bIsPeak ? 15 : -15 };
   [["A", ax, ay], ["B", bx, by], ["C", cx, cy]].forEach(([label, x, y]) => {
     ctx.beginPath();
-    ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fillStyle = GOLD_LIGHT;
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#181A20";
     ctx.fill();
-    drawPill(ctx, x, y + dyFor[label], label, GOLD_LIGHT, "700 10.5px sans-serif");
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = GOLD_LIGHT;
+    ctx.stroke();
+    drawPill(ctx, x, y + dyFor[label], `(${label})`, GOLD_LIGHT, "700 10.5px sans-serif");
   });
 
   // المستويات الداخلية: الليبلات دايماً عند الطرف اليمين (قرب آخر شمعة) بدل
@@ -641,6 +644,11 @@ function drawPill(ctx, x, y, text, color, font, align = "center") {
   ctx.textBaseline = "alphabetic";
 }
 
+/* ============================================================================
+   مسقط الصفقة (Entry/SL/TP) — بنفس منطق أداة "Trend-Based Fib Extension"
+   بتريدنغ فيو: خط أفقي مستمر لكل مستوى من آخر شمعة لغاية حافة محور السعر،
+   وليبل (النسبة + السعر) ملزوق على الحافة اليمين، بدل تِكات قصيرة مبعثرة.
+   ============================================================================ */
 function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
   const ready = r.tradeValid && r.entry != null && r.stopLoss != null;
   if (!ready) return;
@@ -650,90 +658,122 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
   const slY = priceToY(r.stopLoss);
   if (entryY == null || slY == null) return;
 
-  const margin = 14;
-  const maxX = chartW - 8;
-  const availableW = Math.max(60, maxX - (lastX + margin));
-  const rank = ["ENTRY", "SL", ...targets.map((t) => t.key)];
-  const step = Math.min(46, availableW / Math.max(1, rank.length));
+  const rightEdge = chartW - 6;
+  const bendX = Math.max(lastX + 40, rightEdge - 90);
+  const riskPct = (Math.abs(r.entry - r.stopLoss) / r.entry) * 100;
 
-  let cursorX = lastX + margin;
-  const entryX = cursorX;
-  cursorX += step;
-  const slX = cursorX;
+  const rows = [
+    { y: entryY, color: GOLD_LIGHT, dash: [2, 3], lines: ["ENTRY", fmt(r.entry)] },
+    { y: slY, color: RED, dash: [2, 3], lines: [`SL · ${r.slSource === "SMT" ? "SMT" : "OB Invalidation"}`, fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`] },
+  ];
+  targets.forEach((t) => {
+    const y = priceToY(t.price);
+    if (y == null) return;
+    const color = t.color === "green" ? GREEN : BLUE;
+    const rr = Math.abs(t.price - r.entry) / Math.abs(r.entry - r.stopLoss);
+    rows.push({ y, color, dash: [5, 4], glow: t.hit, lines: [`${t.key} · ${t.ratio} Fib`, fmt(t.price), `RR 1 : ${rr.toFixed(2)}`] });
+  });
+
+  // Decluttering: بنفصل موقع الليبل (labelY) عن موقع السعر الحقيقي (y) عشان
+  // ولا ليبل يتراكب فوق التاني، بغض النظر قد إيش المستويات قريبة من بعض.
+  const sorted = [...rows].sort((a, b) => a.y - b.y);
+  const rowGap = 38;
+  let prevLabelY = -Infinity;
+  sorted.forEach((row) => {
+    row.labelY = Math.max(row.y, prevLabelY + rowGap);
+    prevLabelY = row.labelY;
+  });
 
   ctx.save();
   ctx.globalAlpha = ease;
-  ctx.strokeStyle = `${GOLD}55`;
-  ctx.lineWidth = 1;
-  ctx.setLineDash([2, 3]);
-  ctx.beginPath();
-  ctx.moveTo(lastX, entryY); ctx.lineTo(entryX, entryY);
-  ctx.stroke();
-  ctx.setLineDash([]);
 
-  drawLevelTick(ctx, entryX, entryY, GOLD_LIGHT, "ENTRY", fmt(r.entry), null, false);
+  sorted.forEach((row) => {
+    // الخط الأفقي من آخر شمعة لحد قرب المحور (بسعره الحقيقي، بدون انزياح)
+    ctx.strokeStyle = `${row.color}70`;
+    ctx.lineWidth = row.glow ? 1.6 : 1;
+    ctx.setLineDash(row.dash);
+    ctx.beginPath();
+    ctx.moveTo(lastX, row.y);
+    ctx.lineTo(bendX, row.y);
+    ctx.stroke();
+    // قطعة قصيرة تربط السعر الحقيقي بموقع الليبل لو انزاح بسبب الديكلترينغ
+    ctx.beginPath();
+    ctx.moveTo(bendX, row.y);
+    ctx.lineTo(rightEdge - 4, row.labelY);
+    ctx.stroke();
+    ctx.setLineDash([]);
 
-  ctx.strokeStyle = `${RED}aa`;
+    drawEdgeBox(ctx, rightEdge, row.labelY, row.lines, row.color, row.glow);
+  });
+
+  // خط المسقط القطري (زي أداة Trend-Based Extension) — من نقطة الدخول الحالية
+  // لحد أبعد هدف، لإعطاء إحساس بصري بمسار/زخم الحركة المتوقعة
+  const farthest = sorted[sorted.length - 1];
+  if (farthest) {
+    ctx.strokeStyle = `${GOLD}35`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([1, 4]);
+    ctx.beginPath();
+    ctx.moveTo(lastX, entryY);
+    ctx.lineTo(rightEdge - 4, farthest.labelY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // القطعة الرأسية القصيرة بين Entry وSL جنب آخر شمعة — إحساس فوري بحجم المخاطرة
+  ctx.strokeStyle = `${RED}99`;
   ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.moveTo(entryX, entryY); ctx.lineTo(entryX, slY);
+  ctx.moveTo(lastX + 3, entryY);
+  ctx.lineTo(lastX + 3, slY);
   ctx.stroke();
-  const riskPct = (Math.abs(r.entry - r.stopLoss) / r.entry) * 100;
-  drawLevelTick(ctx, slX, slY, RED, `SL (${r.slSource === "SMT" ? "SMT" : "OB"})`, fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`, false, true);
 
-  let tpX = slX;
-  for (const t of targets) {
-    tpX += step;
-    const y = priceToY(t.price);
-    if (y == null) continue;
-    const color = t.color === "green" ? GREEN : BLUE;
-    const rr = Math.abs(t.price - r.entry) / Math.abs(r.entry - r.stopLoss);
-    drawLevelTick(ctx, tpX, y, color, t.key, `${t.ratio} Fib  •  ${fmt(t.price)}`, `RR 1:${rr.toFixed(2)}`, t.hit, true, t.hit);
-  }
   ctx.restore();
 }
 
-function drawLevelTick(ctx, x, y, color, title, line1, line2, glowFlag) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(x - 7, y); ctx.lineTo(x + 7, y);
-  ctx.stroke();
-
-  if (glowFlag) {
-    ctx.beginPath();
-    ctx.arc(x, y, 7, 0, Math.PI * 2);
-    ctx.strokeStyle = `${color}55`;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-  }
-  ctx.beginPath();
-  ctx.arc(x, y, 3, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-
-  const boxX = x + 12;
-  const lines = line2 ? [title, line1, line2] : [title, line1];
+/* صندوق ليبل ملزوق على حافة محور السعر (يمين الشارت) — عنوان بولد + سطر/سطرين
+   تفاصيل تحته، بالإضافة لنقطة صغيرة عالخط الحقيقي. لو "glow" (هدف تحقق) منزيد
+   هالة حول النقطة. */
+function drawEdgeBox(ctx, edgeX, y, lines, color, glow) {
+  const lineH = 12;
   ctx.font = "700 10.5px sans-serif";
-  const textW = Math.max(...lines.map((l) => ctx.measureText(l).width));
-  const boxW = textW + 16;
-  const boxH = lines.length * 13 + 8;
+  const w0 = ctx.measureText(lines[0]).width;
+  ctx.font = "500 9.5px sans-serif";
+  const wRest = lines.slice(1).reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
+  const textW = Math.max(w0, wRest);
+  const padX = 8;
+  const boxW = textW + padX * 2;
+  const boxH = lines.length * lineH + 8;
+  const boxX = edgeX - boxW - 2;
   const boxY = y - boxH / 2;
 
-  ctx.fillStyle = "rgba(20,22,26,0.9)";
-  ctx.strokeStyle = `${color}77`;
+  ctx.fillStyle = "rgba(18,20,24,0.94)";
+  ctx.strokeStyle = `${color}88`;
   ctx.lineWidth = 1;
   roundRect(ctx, boxX, boxY, boxW, boxH, 6);
   ctx.fill();
   ctx.stroke();
 
+  if (glow) {
+    ctx.beginPath();
+    ctx.arc(boxX - 6, y, 6, 0, Math.PI * 2);
+    ctx.strokeStyle = `${color}55`;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(boxX - 6, y, 2.6, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
   ctx.font = "700 10.5px sans-serif";
   ctx.fillStyle = color;
-  ctx.fillText(title, boxX + 8, boxY + 12);
+  ctx.fillText(lines[0], boxX + padX, boxY + 11);
   ctx.font = "500 9.5px sans-serif";
-  ctx.fillStyle = "#d8d8d8";
-  if (line1) ctx.fillText(line1, boxX + 8, boxY + 25);
-  if (line2) { ctx.fillStyle = "#999"; ctx.fillText(line2, boxX + 8, boxY + 37); }
+  ctx.fillStyle = "#ccc";
+  for (let i = 1; i < lines.length; i++) {
+    ctx.fillText(lines[i], boxX + padX, boxY + 11 + lineH * i);
+  }
 }
 
 function roundRect(ctx, x, y, w, h, r) {
