@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
-import { Sparkles, RotateCcw, ChevronDown, ChevronRight, Zap, Bell, Radio } from "lucide-react";
+import { Sparkles, RotateCcw, ChevronDown, ChevronRight, Zap, Bell, Radio, Brain, Eye, TrendingUp, TrendingDown, Target, Lightbulb, CheckCircle2 } from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
 import { createClient } from "@/lib/supabase-client";
@@ -479,6 +479,10 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         .qmi-scroll::-webkit-scrollbar-thumb { background: ${GOLD}33; border-radius: 6px; }
         .qmi-concept-card { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
         .qmi-concept-card:hover { transform: translateY(-2px); background: #181a1f; }
+        .qmi-briefing-card { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+        .qmi-briefing-card:hover { transform: translateY(-2px); background: #181a1f; }
+        @keyframes qmiBarGrow { from { width: 0%; } }
+        .qmi-conf-bar { animation: qmiBarGrow 0.9s ease both; }
       `}</style>
 
       {/* ================= HEADER ================= */}
@@ -1386,6 +1390,260 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
   );
 }
 
+/* ============================================================================
+   Qais SK Engine — AI Briefing generator
+   يبني بريفنغ مؤسسي كامل (وضع السوق الآن، ايش ناقص، سيناريو صعودي/هبوطي،
+   شرح الثقة، وتوصية نهائية) من بيانات القرار الحقيقية (d) — ولا نص ثابت.
+   ============================================================================ */
+const CHECKLIST_LABELS = {
+  trend: "A clear directional trend on the main structure",
+  bosConfirmed: "Break of Structure (BOS) confirmation",
+  mssConfirmed: "Market Structure Shift (MSS/CHOCH) confirmation",
+  liquidityHit: "A liquidity sweep inside the point of interest",
+  priceLocationOk: "Price reaching a valid Fibonacci location",
+  smtPresent: "A confirmed SMT divergence",
+  obCreated: "A valid Order Block on the execution timeframe",
+  retest: "A retest of the Order Block",
+  riskOk: "Risk kept within 2% per trade",
+  targetsCalculated: "A calculated, confirmed target sequence",
+};
+
+function buildAiBriefing(item, d) {
+  if (!d) return null;
+
+  const symbol = item.symbol;
+  const dir = d.direction; // 'up' | 'down' | null
+  const dirLabel = dir === "up" ? "bullish" : dir === "down" ? "bearish" : "neutral";
+  const htfLabel = d.htfTrend === "up" ? "bullish" : d.htfTrend === "down" ? "bearish" : null;
+  const liq = d.liquidityStatus || "";
+  const swept = liq.startsWith("Swept");
+  const approaching = liq === "Approaching";
+  const zone = d.premiumDiscount;
+  const session = d.sessionLabel || "the current session";
+  const bosOk = d.bosStatus === "Detected";
+  const obReady = !!d.ob?.eligible && d.ob.status !== "Invalid";
+  const obQuality = d.ob?.quality;
+  const tradeValid = !!d.tradeValid;
+  const targets = d.targets || [];
+  const tp1 = targets[0];
+  const tpLast = targets[targets.length - 1];
+  const score = d.score ?? d.confidence ?? 0;
+
+  /* ---------- 1) Current Market Situation ---------- */
+  let situation;
+  if (!dir) {
+    situation = `${symbol} does not have a clear directional trend on the main structure right now. Price is moving without a confirmed bias, so the market is best described as ranging while the Qais SK Engine keeps scanning for the next structural break.`;
+  } else {
+    let s = `${symbol} is currently showing a ${dirLabel} bias on the main structure`;
+    if (swept) {
+      s += liq.includes("Below") ? ", after sweeping liquidity below the previous low" : liq.includes("Above") ? ", after sweeping liquidity above the previous high" : ", after sweeping a key liquidity zone";
+    } else if (approaching) {
+      s += ", and price is approaching a liquidity zone that has not been swept yet";
+    }
+    s += ".";
+    if (htfLabel && htfLabel !== dirLabel) {
+      s += ` The higher-timeframe trend remains ${htfLabel}, so this move is currently going against the broader trend and should be treated with extra caution.`;
+    } else if (htfLabel && htfLabel === dirLabel) {
+      s += ` This lines up with the higher-timeframe trend, which is also ${htfLabel}, adding weight behind the current move.`;
+    }
+    if (zone && zone !== "—") {
+      const favors = (dir === "up" && zone === "Discount Zone") || (dir === "down" && zone === "Premium Zone");
+      s += ` Price is trading inside the ${zone.toLowerCase()}${favors ? " — a favorable area for the current bias" : ""} during ${session}.`;
+    }
+    situation = s;
+  }
+
+  /* ---------- 2) What Are We Waiting For ---------- */
+  const waitingFor = (d.reasonsChecklist || []).filter((c) => !c.ok).map((c) => CHECKLIST_LABELS[c.key] || c.label);
+
+  /* ---------- 3) Bullish Scenario ---------- */
+  let bullish;
+  if (dir === "up" && tradeValid && tp1) {
+    bullish = `Buyers are already in control here. If this holds, price is expected to continue toward TP1 near ${fmt(tp1.price)} first${
+      tpLast && tpLast !== tp1 ? `, and if momentum stays strong, extend toward the higher target near ${fmt(tpLast.price)}.` : "."
+    }`;
+  } else if (dir === "up" && !tradeValid) {
+    bullish = `If buyers confirm the missing conditions above — especially ${waitingFor[0] ? waitingFor[0].toLowerCase() : "the remaining checklist items"} — the bullish continuation becomes valid, and price could then push toward the next liquidity pool above. Until those confirmations land, this stays a conditional scenario rather than a live setup.`;
+  } else {
+    bullish = `For the bullish case to develop, price would first need to reclaim the current ${dir === "down" ? "bearish" : ""} structure with a confirmed break above the recent swing high, followed by a BOS to the upside. Only then would upside continuation toward the next liquidity pool become realistic.`;
+  }
+
+  /* ---------- 4) Bearish Scenario ---------- */
+  let bearish;
+  if (dir === "down" && tradeValid && tp1) {
+    bearish = `Sellers are already in control here. If this holds, price is expected to continue toward TP1 near ${fmt(tp1.price)} first${
+      tpLast && tpLast !== tp1 ? `, and if momentum stays strong, extend toward the lower target near ${fmt(tpLast.price)}.` : "."
+    }`;
+  } else if (dir === "down" && !tradeValid) {
+    bearish = `If sellers confirm the missing conditions above — especially ${waitingFor[0] ? waitingFor[0].toLowerCase() : "the remaining checklist items"} — the bearish continuation becomes valid, and price could then push toward the next liquidity pool below. Until those confirmations land, this stays a conditional scenario rather than a live setup.`;
+  } else {
+    bearish = `If price rejects the current area, the market could revisit the lower liquidity zone before attempting another move. A confirmed break of structure to the downside would be the first signal that sellers are taking back control.`;
+  }
+
+  /* ---------- 5) AI Confidence ---------- */
+  const confidenceLabel = score >= 80 ? "High" : score >= 50 ? "Medium" : "Low";
+  const confidenceReasons = [];
+  confidenceReasons.push(dir ? `Trend is ${dirLabel}` : "No confirmed trend yet");
+  confidenceReasons.push(swept ? "Liquidity has been swept" : approaching ? "Liquidity zone identified but not swept yet" : "No liquidity sweep yet");
+  confidenceReasons.push(bosOk ? "BOS is confirmed" : "BOS is not confirmed");
+  if (obReady) confidenceReasons.push(`Order Block quality is ${obQuality}%`);
+  confidenceReasons.push(tradeValid ? "Entry conditions are complete" : "Entry conditions are incomplete");
+
+  /* ---------- 6) Recommendation ---------- */
+  let recommendation;
+  if (tradeValid && dir === "up") recommendation = { text: "Buy setup is valid.", tone: "buy" };
+  else if (tradeValid && dir === "down") recommendation = { text: "Sell setup is valid.", tone: "sell" };
+  else if (!dir) recommendation = { text: "Market is ranging — avoid entering until a clear trend forms.", tone: "range" };
+  else if (approaching) recommendation = { text: "Wait for the liquidity zone to be swept before considering entry.", tone: "wait" };
+  else if (!bosOk) recommendation = { text: "Wait for BOS confirmation before entering.", tone: "wait" };
+  else recommendation = { text: "Wait for confirmation — avoid entering early.", tone: "wait" };
+
+  return { situation, waitingFor, bullish, bearish, confidence: { score, label: confidenceLabel, reasons: confidenceReasons }, recommendation };
+}
+
+const BRIEFING_TONE = {
+  buy: { color: GREEN, bg: "rgba(2,192,118,0.08)" },
+  sell: { color: RED, bg: "rgba(246,70,93,0.08)" },
+  wait: { color: AMBER, bg: "rgba(245,158,11,0.08)" },
+  range: { color: AMBER, bg: "rgba(245,158,11,0.08)" },
+};
+
+function BriefingCard({ icon: Icon, emoji, title, color, delay, children }) {
+  return (
+    <div
+      className="qmi-anim qmi-briefing-card"
+      style={{
+        animationDelay: `${delay}ms`,
+        background: "#14161a",
+        border: `1px solid ${color}33`,
+        borderLeft: `3px solid ${color}`,
+        borderRadius: 12,
+        padding: "12px 14px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+        {Icon ? <Icon size={14} color={color} /> : <span style={{ fontSize: 14 }}>{emoji}</span>}
+        <span style={{ fontSize: 11.5, fontWeight: 800, color, letterSpacing: 0.3, textTransform: "uppercase" }}>{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function AiBriefing({ item, d }) {
+  const briefing = useMemo(() => buildAiBriefing(item, d), [item, d]);
+
+  if (!briefing) {
+    return (
+      <div style={{ marginTop: 12, background: "#14161a", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "12px 14px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+          <Sparkles size={12} color={GOLD} />
+          <span style={{ fontSize: 11, fontWeight: 800, color: GOLD_LIGHT, letterSpacing: 0.3 }}>AI SUMMARY</span>
+        </div>
+        <div style={{ fontSize: 12, color: "#ccc", lineHeight: 1.8 }}>Waiting for the Qais SK Engine to complete the first analysis cycle for {item.symbol}.</div>
+      </div>
+    );
+  }
+
+  const tone = BRIEFING_TONE[briefing.recommendation.tone] || BRIEFING_TONE.wait;
+  const RecIcon = briefing.recommendation.tone === "buy" ? TrendingUp : briefing.recommendation.tone === "sell" ? TrendingDown : CheckCircle2;
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
+        <Sparkles size={13} color={GOLD} />
+        <span style={{ fontSize: 12, fontWeight: 800, color: GOLD_LIGHT, letterSpacing: 0.5 }}>QAIS AI MARKET BRIEFING</span>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* 1. Current Market Situation — Blue / Information */}
+        <BriefingCard icon={Brain} title="Current Market Situation" color={BLUE} delay={0}>
+          <div style={{ fontSize: 12, color: "#dcdcdc", lineHeight: 1.8 }}>{briefing.situation}</div>
+        </BriefingCard>
+
+        {/* 2. What Are We Waiting For — Blue / Information */}
+        <BriefingCard icon={Eye} title="What Are We Waiting For?" color={BLUE} delay={60}>
+          {briefing.waitingFor.length === 0 ? (
+            <div style={{ fontSize: 12, color: GREEN, lineHeight: 1.8, display: "flex", alignItems: "center", gap: 6 }}>
+              <CheckCircle2 size={13} color={GREEN} /> All entry confirmations are complete — nothing left to wait for.
+            </div>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 4 }}>
+              {briefing.waitingFor.map((w, i) => (
+                <li key={i} style={{ fontSize: 12, color: "#dcdcdc", lineHeight: 1.6 }}>
+                  {w}
+                </li>
+              ))}
+            </ul>
+          )}
+        </BriefingCard>
+
+        {/* 3. Bullish Scenario — Green */}
+        <BriefingCard icon={TrendingUp} title="Bullish Scenario" color={GREEN} delay={120}>
+          <div style={{ fontSize: 12, color: "#dcdcdc", lineHeight: 1.8 }}>{briefing.bullish}</div>
+        </BriefingCard>
+
+        {/* 4. Bearish Scenario — Red */}
+        <BriefingCard icon={TrendingDown} title="Bearish Scenario" color={RED} delay={180}>
+          <div style={{ fontSize: 12, color: "#dcdcdc", lineHeight: 1.8 }}>{briefing.bearish}</div>
+        </BriefingCard>
+
+        {/* 5. AI Confidence — Blue */}
+        <BriefingCard icon={Target} title="AI Confidence" color={BLUE} delay={240}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 20, fontWeight: 900, color: GOLD_LIGHT }}>{briefing.confidence.score}%</span>
+            <span style={{ fontSize: 11.5, fontWeight: 800, color: BLUE }}>{briefing.confidence.label} confidence</span>
+          </div>
+          <div
+            style={{
+              height: 6,
+              borderRadius: 4,
+              background: "#0e1013",
+              overflow: "hidden",
+              marginBottom: 8,
+            }}
+          >
+            <div
+              className="qmi-conf-bar"
+              style={{
+                height: "100%",
+                width: `${briefing.confidence.score}%`,
+                background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`,
+                borderRadius: 4,
+              }}
+            />
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 4 }}>
+            {briefing.confidence.reasons.map((r, i) => (
+              <li key={i} style={{ fontSize: 11.5, color: "#aaa", lineHeight: 1.6 }}>
+                {r}
+              </li>
+            ))}
+          </ul>
+        </BriefingCard>
+
+        {/* 6. Recommendation — Yellow */}
+        <BriefingCard icon={Lightbulb} title="Recommendation" color={AMBER} delay={300}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: tone.bg,
+              border: `1px solid ${tone.color}44`,
+              borderRadius: 8,
+              padding: "8px 10px",
+            }}
+          >
+            <RecIcon size={15} color={tone.color} />
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: tone.color }}>{briefing.recommendation.text}</span>
+          </div>
+        </BriefingCard>
+      </div>
+    </div>
+  );
+}
+
 /* -------------------- Analysis Workspace: دائم، بيتحدث بس لما تتغير الأصل المختار -------------------- */
 function AnalysisWorkspace({ item }) {
   if (!item) {
@@ -1413,12 +1671,6 @@ function AnalysisWorkspace({ item }) {
   const expectedMove = d?.entry != null && lastTarget ? `${fmt(d.entry)} → ${fmt(lastTarget.price)}` : "—";
   const score = d?.score ?? 0;
 
-  const summary = d
-    ? `${item.symbol} is showing a ${dirLabel.toLowerCase()} bias${d.sessionLabel ? ` during the ${d.sessionLabel}` : ""}. ${
-        d.why?.length ? `Key drivers: ${d.why.join(", ")}. ` : ""
-      }QAIS Score is ${score}/100 — ${d.tradeValid ? "every step in the entry checklist has been confirmed." : "not every step in the entry checklist is confirmed yet, so this setup is still forming."}`
-    : `Waiting for the QAIS SK Engine to complete the first analysis cycle for ${item.symbol}.`;
-
   return (
     <div key={item.symbol} className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
       <SectionHeader icon="🧠" title="Analysis Workspace" subtitle={`Full breakdown for ${item.symbol} — always visible, refreshes automatically when you pick another asset above.`} />
@@ -1438,13 +1690,7 @@ function AnalysisWorkspace({ item }) {
         <WorkspaceStat label="Confidence" value={`${score}%`} color={score >= 85 ? GREEN : GOLD_LIGHT} />
       </div>
 
-      <div style={{ marginTop: 12, background: "#14161a", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "12px 14px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-          <Sparkles size={12} color={GOLD} />
-          <span style={{ fontSize: 11, fontWeight: 800, color: GOLD_LIGHT, letterSpacing: 0.3 }}>AI SUMMARY</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#ccc", lineHeight: 1.8 }}>{summary}</div>
-      </div>
+      <AiBriefing item={item} d={d} />
     </div>
   );
 }
