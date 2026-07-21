@@ -351,6 +351,12 @@ export default function MarketIntelligenceView() {
     const seq = r.sequence;
     if (seq?.points && seq.displayTF && seq.displayTF === displayTFRef.current) {
       drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease);
+      // أهداف السيكونز (TP1..TP4) — تترسم تلقائياً فور تأكيد C، بغض النظر عن
+      // اكتمال شروط الصفقة الكاملة (Entry/SL) — هاي أهداف الـ QAIS SK Engine
+      // الرسمية المسقطة من C مباشرة (تاسع عشر)
+      if (seq.stage === "confirmed" && seq.targets?.length) {
+        drawSequenceProjection(ctx, seq, timeToX, priceToY, w, h, ease);
+      }
     }
     drawProjection(ctx, r, priceToY, lastX, w, h, ease);
   }
@@ -575,17 +581,35 @@ function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease) {
   ctx.setLineDash([]);
 
   // اتجاه الليبل (فوق/تحت) يتبادل تلقائياً حسب كون النقطة قمة أو قاع بالتسلسل
+  const isAnchor = stage === "confirmed"; // C أصبحت نقطة انطلاق المسقط الرسمي
   pts.forEach((p, i) => {
     const isPeak = i > 0 ? p.y < pts[i - 1].y : p.y < (pts[1]?.y ?? p.y);
     const dy = isPeak ? -15 : 15;
+    const isC = p.label === "C";
+
+    // C كنقطة انطلاق المسقط: هالة مضيئة واضحة حول النقطة تميّزها بصرياً عن
+    // 0/A/B (اللي هي مجرد سوينغز هيكلية عادية) — يشوفها المتداول فوراً كمصدر الأهداف
+    if (isC && isAnchor) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+      ctx.strokeStyle = `${GREEN}50`;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+      ctx.strokeStyle = `${GREEN}25`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, isC && isAnchor ? 4.2 : 3.5, 0, Math.PI * 2);
     ctx.fillStyle = "#181A20";
     ctx.fill();
-    ctx.lineWidth = 1.4;
-    ctx.strokeStyle = p.label === "C" ? GREEN : GOLD_LIGHT;
+    ctx.lineWidth = isC && isAnchor ? 1.8 : 1.4;
+    ctx.strokeStyle = isC ? GREEN : GOLD_LIGHT;
     ctx.stroke();
-    drawPill(ctx, p.x, p.y + dy, `(${p.label})`, p.label === "C" ? GREEN : GOLD_LIGHT, "700 10.5px sans-serif");
+    drawPill(ctx, p.x, p.y + dy, isC && isAnchor ? "(C) Anchor" : `(${p.label})`, isC ? GREEN : GOLD_LIGHT, "700 10.5px sans-serif");
   });
 
   // طالما C لسا ما تأكدت: ملاحظة صغيرة توضح إنه السيكونز قيد التكوين
@@ -619,6 +643,94 @@ function drawPill(ctx, x, y, text, color, font, align = "center") {
   ctx.textBaseline = "middle";
   ctx.fillText(text, boxX + padX, y + 0.5);
   ctx.textBaseline = "alphabetic";
+}
+
+/* ============================================================================
+   مسقط أهداف السيكونز (Sequence Projection — TP1..TP4) — تاسع عشر:
+   هاي الأهداف الرسمية اللي يطلعها QAIS SK Engine فور تأكيد نقطة C، بغض النظر
+   عن اكتمال شروط الصفقة الكاملة (Entry/SL/OB..إلخ). تماماً متل أداة
+   "Trend-Based Fib Extension" بتريدنغ فيو: كل هدف عبارة عن شعاع أفقي يبلش من
+   C نفسها (مش من آخر شمعة) ويمتد يمين لحد حافة الشارت، بليبل واضح فيه:
+   TPn + النسبة + السعر المسقط. لو تغيّرت C (سيكونز جديد) — الرسم بينعاد بالكامل
+   من الصفر كل فريم (ما في state محفوظ)، فالأهداف القديمة بتختفي تلقائياً.
+   ============================================================================ */
+function drawSequenceProjection(ctx, seq, timeToX, priceToY, chartW, chartH, ease) {
+  const { points, targets, direction } = seq;
+  const C = points?.C;
+  if (!C || !targets?.length) return;
+
+  const cx = timeToX(C.time);
+  const cy = priceToY(C.price);
+  if (cx == null || cy == null) return;
+
+  const rows = targets
+    .map((t, i) => ({
+      y: priceToY(t.price),
+      price: t.price,
+      ratio: t.ratio,
+      key: t.key, // "TP1".."TP4"
+      idx: i + 1,
+      color: i === 0 ? GREEN : BLUE,
+      hit: !!t.hit,
+    }))
+    .filter((row) => row.y != null);
+  if (!rows.length) return;
+
+  const rightEdge = chartW - 6;
+  const bendX = Math.max(cx + 40, rightEdge - 100);
+
+  ctx.save();
+  ctx.globalAlpha = ease;
+
+  // -------- الدليل العمودي الخفيف من C نحو الأهداف — يوضّح بصرياً إنه C هي
+  // نقطة انطلاق المسقط بالكامل، مش مجرد سوينغ عادي --------
+  const farthestY = direction === "up" ? Math.min(...rows.map((r) => r.y)) : Math.max(...rows.map((r) => r.y));
+  ctx.strokeStyle = `${GREEN}45`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 4]);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx, farthestY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Decluttering: نفس منطق مسقط الصفقة — نفصل موقع الليبل عن السعر الحقيقي
+  // عشان الأهداف المتقاربة (TP2/TP3 مثلاً) ما تتراكب ليبلاتها فوق بعض
+  const sorted = [...rows].sort((a, b) => a.y - b.y);
+  const rowGap = 34;
+  let prevLabelY = -Infinity;
+  sorted.forEach((row) => {
+    row.labelY = Math.max(row.y, prevLabelY + rowGap);
+    prevLabelY = row.labelY;
+  });
+
+  sorted.forEach((row) => {
+    // الشعاع الأفقي — يبلش بالضبط من C (مش من آخر شمعة) ويمتد للمستقبل
+    ctx.strokeStyle = row.hit ? `${row.color}b0` : `${row.color}70`;
+    ctx.lineWidth = row.hit ? 1.8 : 1.2;
+    ctx.setLineDash([6, 3]);
+    ctx.beginPath();
+    ctx.moveTo(cx, row.y);
+    ctx.lineTo(bendX, row.y);
+    ctx.stroke();
+    // قطعة انزياح قصيرة لموقع الليبل لو تراكبت المستويات
+    ctx.beginPath();
+    ctx.moveTo(bendX, row.y);
+    ctx.lineTo(rightEdge - 4, row.labelY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    drawEdgeBox(
+      ctx,
+      rightEdge,
+      row.labelY,
+      [`${row.key}  ·  Target ${row.idx} (${row.ratio.toFixed(3)})`, fmt(row.price)],
+      row.color,
+      row.hit
+    );
+  });
+
+  ctx.restore();
 }
 
 /* ============================================================================
