@@ -150,6 +150,83 @@ function relTime(iso) {
   return `منذ ${Math.round(hr / 24)} يوم`;
 }
 
+/* ============================================================================
+   PRESENTATION-ONLY HELPERS — Chart Info Bar / Header status strip
+   لا شي هون بيلمس محرك QAIS أو أي منطق قرار: كل القيم هون مجرد قراءة/تجميع
+   عرضي لبيانات موجودة أصلاً (شموع حقيقية من allCandles، أو عناصر radarItems
+   الجايه من /api/radar). ما في أي رقم مصطنع.
+   ============================================================================ */
+
+/* ATR(14) كلاسيكي (Wilder) من شموع حقيقية — مؤشر عرض فقط، ما بيتغذّى منه القرار */
+function calcATR(candles, period = 14) {
+  if (!candles || candles.length < period + 1) return null;
+  const trs = [];
+  for (let i = 1; i < candles.length; i++) {
+    const c = candles[i], p = candles[i - 1];
+    if (!Number.isFinite(c.high) || !Number.isFinite(c.low) || !Number.isFinite(p.close)) continue;
+    trs.push(Math.max(c.high - c.low, Math.abs(c.high - p.close), Math.abs(c.low - p.close)));
+  }
+  if (trs.length < period) return null;
+  const last = trs.slice(-period);
+  return last.reduce((a, b) => a + b, 0) / last.length;
+}
+
+/* نسبة تغيّر اليوم: آخر شمعة يومية مقابل السابقة لها */
+function dailyChangeFromCandles(dailyCandles) {
+  if (!dailyCandles || dailyCandles.length < 2) return null;
+  const last = dailyCandles[dailyCandles.length - 1];
+  const prev = dailyCandles[dailyCandles.length - 2];
+  if (!Number.isFinite(last?.close) || !Number.isFinite(prev?.close) || prev.close === 0) return null;
+  return ((last.close - prev.close) / prev.close) * 100;
+}
+
+function lastVolume(candles) {
+  if (!candles || !candles.length) return null;
+  const v = candles[candles.length - 1]?.volume;
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+function fmtVolume(n) {
+  if (n == null) return "—";
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return `${n}`;
+}
+
+function fmtPct(n) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+}
+
+function fmtClock(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+/* عدّاد تنازلي دقيق (H:MM:SS) لبدء أقرب جلسة — نفس بيانات hoursUntil، بس بدقة الثانية بدل الدقيقة */
+function countdownLabel(hoursFraction) {
+  const totalSec = Math.max(0, Math.round(hoursFraction * 3600));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+  return `${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+}
+
+/* ألوان/تسميات نظام radar_status v2 — نفس القيم يلي بيرجعها المحرك (lib/qais/decision.js) بدون أي تغيير */
+function radarStatusMeta(it) {
+  const MAP = {
+    green: { color: GREEN, label: it?.radar_signal_label || "Strong Buy" },
+    blue: { color: BLUE, label: it?.radar_signal_label || "Buy Setup" },
+    yellow: { color: "#eab308", label: it?.radar_signal_label || "Neutral / Waiting" },
+    orange: { color: AMBER, label: it?.radar_signal_label || "Sell Setup" },
+    red: { color: RED, label: it?.radar_signal_label || "Strong Sell" },
+    gray: { color: "#888", label: it?.radar_signal_label || "No Setup" },
+  };
+  return MAP[it?.radar_status] || MAP.gray;
+}
+
 export default function MarketIntelligenceView({ initialSymbol, embedded = false, onClose } = {}) {
   const [symbol, setSymbol] = useState(initialSymbol || "XAUUSD");
   const [displayTF, setDisplayTF] = useState("h1");
@@ -164,6 +241,10 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   const [newsToday, setNewsToday] = useState({ high: 0 });
   const [sessions, setSessions] = useState(getSessionsStatus());
   const [selectedLiqSymbol, setSelectedLiqSymbol] = useState(null);
+  const [lastUpdateAt, setLastUpdateAt] = useState(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  const [currencyTrend, setCurrencyTrend] = useState({});
+  const prevCurrenciesRef = useRef(null);
 
   const wrapRef = useRef(null);
   const containerRef = useRef(null);
@@ -191,6 +272,13 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   /* تحديث ساعة الجلسات كل دقيقة */
   useEffect(() => {
     const t = setInterval(() => setSessions(getSessionsStatus()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  /* نبضة حيّة كل ثانية — تُستخدم فقط للعرض (عدّاد الجلسة القادمة + تحديث "منذ...")،
+     لا تلمس أي بيانات أو منطق قرار، مجرد إعادة رسم العناصر الزمنية بدقة الثانية */
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
 
@@ -230,6 +318,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       resultRef.current = analysis;
       animStartRef.current = performance.now();
       setDisplayTF(analysis.sequence?.displayTF || analysis.executionTimeframe || analysis.mainTimeframe || "h1");
+      setLastUpdateAt(new Date().toISOString());
     } catch (e) {
       setError(e.message || "فشل تشغيل محرك التحليل");
     } finally {
@@ -251,7 +340,23 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     try {
       const res = await fetch("/api/market-intelligence?type=snapshot");
       const data = await res.json();
-      if (!data.error) setSnapshot(data);
+      if (!data.error) {
+        // نتابع اتجاه كل عملة بمقارنتها بآخر سنابشوت حقيقي استلمناه (لا بيانات وهمية،
+        // فقط فرق حقيقي بين آخر قراءتين حيّتين من نفس المصدر)
+        const prev = prevCurrenciesRef.current;
+        if (prev) {
+          const trend = {};
+          Object.entries(data.currencies || {}).forEach(([ccy, v]) => {
+            const pv = prev[ccy];
+            if (v == null || pv == null) { trend[ccy] = null; return; }
+            const delta = v - pv;
+            trend[ccy] = delta > 0.4 ? "up" : delta < -0.4 ? "down" : "flat";
+          });
+          setCurrencyTrend(trend);
+        }
+        prevCurrenciesRef.current = data.currencies || {};
+        setSnapshot(data);
+      }
     } catch {}
   }, []);
 
@@ -468,6 +573,42 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   const biasLabel = result?.direction === "up" ? "Bullish" : result?.direction === "down" ? "Bearish" : "—";
   const biasColor = result?.direction === "up" ? GREEN : result?.direction === "down" ? RED : "#888";
 
+  /* -------- Chart Info Bar — كل القيم مشتقة من نفس الشموع المحمّلة فعلاً بالشارت -------- */
+  const dailyCandles = allCandles.daily;
+  const chartDailyChange = useMemo(() => dailyChangeFromCandles(dailyCandles), [dailyCandles]);
+  const chartATR = useMemo(() => calcATR(dailyCandles, 14), [dailyCandles]);
+  const chartVolume = useMemo(() => lastVolume(dailyCandles), [dailyCandles]);
+
+  /* -------- Live Market Status Bar (الهيدر) — تجميع حي من radarItems الحقيقية -------- */
+  const marketStatus = useMemo(() => {
+    const withScore = radarItems.filter((i) => (i.radar_score ?? i.score ?? 0) > 0);
+    const active = radarItems.filter((i) => ["green", "blue", "orange", "red"].includes(i.radar_status));
+    const strongest = withScore.length
+      ? withScore.reduce((a, b) => ((b.radar_score ?? b.score ?? 0) > (a.radar_score ?? a.score ?? 0) ? b : a))
+      : null;
+    const weakest = withScore.length
+      ? withScore.reduce((a, b) => ((b.radar_score ?? b.score ?? 0) < (a.radar_score ?? a.score ?? 0) ? b : a))
+      : null;
+    const bullish = active.filter((i) => i.direction === "up").length;
+    const bearish = active.filter((i) => i.direction === "down").length;
+    const totalDir = bullish + bearish;
+    const biasLbl = totalDir === 0 ? "Neutral" : bullish >= bearish ? "Bullish" : "Bearish";
+    const avgConfidence = withScore.length
+      ? Math.round(withScore.reduce((s, i) => s + (i.radar_score ?? i.score ?? 0), 0) / withScore.length)
+      : null;
+    const lastScan = radarItems.reduce((max, i) => (i.updated_at && (!max || new Date(i.updated_at) > new Date(max)) ? i.updated_at : max), null);
+    return {
+      lastScan,
+      scanned: radarItems.length,
+      activeCount: active.length,
+      strongest,
+      weakest,
+      biasLbl,
+      avgConfidence,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [radarItems]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <style>{`
@@ -512,6 +653,9 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           </button>
         )}
       </div>
+
+      {/* ================= LIVE MARKET STATUS ================= */}
+      <LiveMarketStatusBar status={marketStatus} />
 
       {/* ================= TOP TOOLBAR ================= */}
       <div className="qmi-anim" style={{ ...glass, padding: "0.75rem 1.1rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
@@ -597,6 +741,16 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
               إعادة تعيين
             </button>
           </div>
+
+          <ChartInfoBar
+            price={result?.price}
+            dailyChange={chartDailyChange}
+            atr={chartATR}
+            volume={chartVolume}
+            lastUpdateAt={lastUpdateAt}
+            nowTick={nowTick}
+          />
+
           <div ref={wrapRef} style={{ position: "relative", width: "100%", height: CHART_H }}>
             <div ref={containerRef} style={{ width: "100%", height: CHART_H }} />
             <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
@@ -608,8 +762,8 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
       {/* ================= THREE PREMIUM CARDS ================= */}
       <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(240px, 1fr))", gap: "1rem" }}>
-        <CurrencyHeatMapCard snapshot={snapshot} />
-        <SessionMapCard sessions={sessions} />
+        <CurrencyHeatMapCard snapshot={snapshot} trend={currencyTrend} />
+        <SessionMapCard sessions={sessions} nowTick={nowTick} />
         <LiveOpportunitiesCard items={radarItems} onOpen={openOpportunity} />
       </div>
 
@@ -621,6 +775,105 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         <MarketSummaryCard snapshot={snapshot} radarItems={radarItems} newsToday={newsToday} />
         <LiveNotificationsCard items={radarItems} onOpen={openOpportunity} />
       </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+   Live Market Status Bar — شريط حالة السوق الحي أسفل العنوان مباشرة.
+   كله مجمّع من radarItems (نفس /api/radar) — لا بيانات جديدة، فقط عرض مُجمّع.
+   ============================================================================ */
+function LiveMarketStatusBar({ status }) {
+  const { lastScan, scanned, activeCount, strongest, weakest, biasLbl, avgConfidence } = status;
+  const biasColor = biasLbl === "Bullish" ? GREEN : biasLbl === "Bearish" ? RED : "#888";
+
+  const items = [
+    { label: "Last Scan", value: lastScan ? relTime(lastScan) : "—", icon: <Radio size={13} color={BLUE} /> },
+    { label: "Assets Scanned", value: scanned, icon: <Eye size={13} color={GOLD_LIGHT} /> },
+    { label: "Active Opportunities", value: activeCount, icon: <Zap size={13} color={GOLD} /> },
+    {
+      label: "Strongest Asset",
+      value: strongest ? `${strongest.symbol} · ${strongest.radar_score ?? strongest.score}%` : "—",
+      icon: <TrendingUp size={13} color={GREEN} />,
+      color: GREEN,
+    },
+    {
+      label: "Weakest Asset",
+      value: weakest ? `${weakest.symbol} · ${weakest.radar_score ?? weakest.score}%` : "—",
+      icon: <TrendingDown size={13} color={RED} />,
+      color: RED,
+    },
+    { label: "Market Bias", value: biasLbl, icon: <Target size={13} color={biasColor} />, color: biasColor },
+    {
+      label: "Market Confidence",
+      value: avgConfidence != null ? `${avgConfidence}%` : "—",
+      icon: <Brain size={13} color={GOLD} />,
+    },
+  ];
+
+  return (
+    <div className="qmi-anim" style={{ ...glass, padding: "0.7rem 1rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+      {items.map((it) => (
+        <div key={it.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 26, height: 26, borderRadius: 7, background: "#14161a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            {it.icon}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 9.5, color: "#777", whiteSpace: "nowrap" }}>{it.label}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: it.color || "#f0f0f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {it.value}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ============================================================================
+   Chart Info Bar — شريط معلومات مضغوط فوق الشارت مباشرة (لا يستبدل الشارت،
+   فقط يضيف سياق سريع). كل القيم من نفس شموع الشارت المحمّلة أصلاً.
+   ============================================================================ */
+function ChartInfoBar({ price, dailyChange, atr, volume, lastUpdateAt, nowTick }) {
+  const changeColor = dailyChange == null ? "#888" : dailyChange >= 0 ? GREEN : RED;
+  void nowTick; // يفرض إعادة تقييم "منذ..." كل ثانية
+
+  const cells = [
+    { label: "Price", value: fmt(price) },
+    { label: "Daily Change", value: fmtPct(dailyChange), color: changeColor },
+    { label: "ATR (14)", value: atr != null ? fmt(atr) : "—" },
+    { label: "Volume", value: volume != null ? fmtVolume(volume) : "—" },
+    { label: "Spread", value: "—", title: "Not provided by the data feed" },
+    { label: "Last Update", value: lastUpdateAt ? relTime(lastUpdateAt) : "—" },
+  ];
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 0,
+        background: "#101114",
+        border: "1px solid #22252b",
+        borderRadius: 10,
+        margin: "0 0.5rem 0.6rem",
+        overflow: "hidden",
+      }}
+    >
+      {cells.map((c, i) => (
+        <div
+          key={c.label}
+          title={c.title}
+          style={{
+            flex: "1 1 110px",
+            padding: "7px 12px",
+            borderInlineStart: i === 0 ? "none" : "1px solid #22252b",
+          }}
+        >
+          <div style={{ fontSize: 9, color: "#666" }}>{c.label}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: c.color || "#e5e5e5" }}>{c.value}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -976,14 +1229,33 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
     ? Math.abs(lastTarget.price - r.entry) / Math.abs(r.entry - r.stopLoss)
     : null;
 
-  const rows = [
-    ["Trend", r?.direction === "up" ? "Bullish" : r?.direction === "down" ? "Bearish" : "—", "Liquidity", liquidityLabel],
-    ["HTF Trend", htfTrend === "up" ? "Bullish" : htfTrend === "down" ? "Bearish" : "—", "Premium/Discount", premiumDiscount],
-    ["Market Structure", marketStructure, "Session", primarySession],
-    ["BOS", bosOk ? "Confirmed" : "Pending", "Volume", volume],
-    ["CHOCH", chochOk ? "Confirmed" : "Pending", "Risk Reward", rr ? `1 : ${rr.toFixed(1)}` : "—"],
-    ["Order Block", r?.ob?.eligible ? `${r.ob.status} ${r.direction === "up" ? "Bullish" : "Bearish"} OB` : "Not Formed", "Entry Status", entryStatus],
-    ["Fair Value Gap", r?.ob?.fvgExists ? "Open" : "None", "Signal Strength", signalStrength],
+  // -------- تسلسل الأهمية البصرية (نفس القيم المحسوبة فوق تماماً، فقط إعادة تنظيم للعرض) --------
+  // Tier 1: أهم شي يشوفه المتداول أول ثانية — Signal / Confidence / Current Status / Session
+  const tier1 = [
+    { label: "Signal", value: signal || "—", color: signalColor },
+    { label: "Confidence", value: `${score}%`, color: scoreColor },
+    { label: "Current Status", value: entryStatus, color: entryStatus === "Ready" ? GREEN : GOLD_LIGHT },
+    { label: "Session", value: primarySession, color: BLUE },
+  ];
+  // Tier 2: اتجاه وهيكلية السوق
+  const tier2 = [
+    { label: "Trend", value: r?.direction === "up" ? "Bullish" : r?.direction === "down" ? "Bearish" : "—", color: r?.direction === "up" ? GREEN : r?.direction === "down" ? RED : "#888" },
+    { label: "HTF Trend", value: htfTrend === "up" ? "Bullish" : htfTrend === "down" ? "Bearish" : "—", color: htfTrend === "up" ? GREEN : htfTrend === "down" ? RED : "#888" },
+    { label: "Market Structure", value: marketStructure },
+    { label: "Liquidity", value: liquidityLabel },
+  ];
+  // Tier 3: تفاصيل الأكشن السعري
+  const tier3 = [
+    { label: "Order Block", value: r?.ob?.eligible ? `${r.ob.status} ${r.direction === "up" ? "Bullish" : "Bearish"} OB` : "Not Formed" },
+    { label: "Fair Value Gap", value: r?.ob?.fvgExists ? "Open" : "None" },
+    { label: "CHOCH", value: chochOk ? "Confirmed" : "Pending", color: chochOk ? GREEN : "#888" },
+    { label: "BOS", value: bosOk ? "Confirmed" : "Pending", color: bosOk ? GREEN : "#888" },
+  ];
+  // معلومات إضافية (Premium/Discount, Volume, Signal Strength) — نفس القيم القديمة، منعرضها ضمن تير 3 كصف ثاني
+  const tier3b = [
+    { label: "Premium/Discount", value: premiumDiscount },
+    { label: "Volume", value: volume },
+    { label: "Signal Strength", value: signalStrength },
   ];
 
   return (
@@ -1036,25 +1308,49 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
           </div>
 
           {tab === "analysis" ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-              {rows.map(([l1, v1, l2, v2], i) => (
-                <div key={i} style={{ display: "flex", borderTop: i === 0 ? "none" : "1px solid #20232a", padding: "7px 0" }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10.5, color: "#777" }}>{l1}</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#e5e5e5" }}>{v1}</div>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10.5, color: "#777" }}>{l2}</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#e5e5e5" }}>{v2}</div>
-                  </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* -------- Tier 1: الأهم — يُقرأ خلال ثانية واحدة -------- */}
+              <div>
+                <TierLabel text="Key Signal" />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {tier1.map((it) => (
+                    <PriorityStat key={it.label} label={it.label} value={it.value} color={it.color} size="lg" />
+                  ))}
                 </div>
-              ))}
+              </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
-                <MiniStat label="Entry Zone" value={fmt(r.entry)} color={GOLD_LIGHT} />
-                <MiniStat label="Stop Loss" value={fmt(r.stopLoss)} color={RED} />
-                <MiniStat label="Take Profit" value={lastTarget ? fmt(lastTarget.price) : "—"} color={GREEN} />
-                <MiniStat label="RR Ratio" value={rr ? `1 : ${rr.toFixed(1)}` : "—"} color={BLUE} />
+              {/* -------- Tier 2: اتجاه وهيكلية السوق -------- */}
+              <div>
+                <TierLabel text="Trend &amp; Structure" />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+                  {tier2.map((it) => (
+                    <PriorityStat key={it.label} label={it.label} value={it.value} color={it.color} size="md" />
+                  ))}
+                </div>
+              </div>
+
+              {/* -------- Tier 3: تفاصيل الأكشن السعري -------- */}
+              <div>
+                <TierLabel text="Price Action Detail" />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  {tier3.map((it) => (
+                    <PriorityStat key={it.label} label={it.label} value={it.value} color={it.color} size="sm" />
+                  ))}
+                  {tier3b.map((it) => (
+                    <PriorityStat key={it.label} label={it.label} value={it.value} color={it.color} size="sm" />
+                  ))}
+                </div>
+              </div>
+
+              {/* -------- أخيراً: مستويات الصفقة -------- */}
+              <div>
+                <TierLabel text="Trade Levels" />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <MiniStat label="Entry Zone" value={fmt(r.entry)} color={GOLD_LIGHT} />
+                  <MiniStat label="Stop Loss" value={fmt(r.stopLoss)} color={RED} />
+                  <MiniStat label="Take Profit" value={lastTarget ? fmt(lastTarget.price) : "—"} color={GREEN} />
+                  <MiniStat label="RR Ratio" value={rr ? `1 : ${rr.toFixed(1)}` : "—"} color={BLUE} />
+                </div>
               </div>
             </div>
           ) : (
@@ -1090,17 +1386,63 @@ function MiniStat({ label, value, color }) {
   );
 }
 
+/* عنوان صغير لكل مجموعة أهمية داخل لوحة التحليل — يفصل بصرياً بين المستويات */
+function TierLabel({ text }) {
+  return (
+    <div style={{ fontSize: 9.5, fontWeight: 800, color: "#666", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 6 }}>
+      {text}
+    </div>
+  );
+}
+
+/* بطاقة إحصائية بثلاث كثافات بصرية (lg/md/sm) — تُستخدم لبناء تسلسل الأهمية بلوحة التحليل */
+function PriorityStat({ label, value, color, size = "md" }) {
+  const sizing = {
+    lg: { pad: "10px 12px", labelSize: 10, valueSize: 15, borderW: 3 },
+    md: { pad: "8px 10px", labelSize: 9.5, valueSize: 12.5, borderW: 2 },
+    sm: { pad: "6px 9px", labelSize: 9, valueSize: 11, borderW: 2 },
+  }[size];
+  const c = color || "#8a8a8a";
+  return (
+    <div
+      style={{
+        background: "#14161a",
+        borderRadius: 9,
+        padding: sizing.pad,
+        borderInlineStart: `${sizing.borderW}px solid ${c}`,
+        border: "1px solid #1f2128",
+        borderInlineStartWidth: sizing.borderW,
+        borderInlineStartColor: c,
+      }}
+    >
+      <div style={{ fontSize: sizing.labelSize, color: "#777", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: sizing.valueSize, fontWeight: 800, color: size === "sm" ? "#ccc" : c }}>{value}</div>
+    </div>
+  );
+}
+
 /* ============================================================================
    كرت 1: Currency Heat Map — من /api/market-intelligence?type=snapshot
    ============================================================================ */
-export function CurrencyHeatMapCard({ snapshot }) {
+export function CurrencyHeatMapCard({ snapshot, trend = {} }) {
   const currencies = snapshot?.currencies || {};
-  const entries = Object.entries(currencies).filter(([, v]) => v != null);
+  const entries = Object.entries(currencies)
+    .filter(([, v]) => v != null)
+    .sort((a, b) => b[1] - a[1]);
 
   function meta(v) {
     if (v >= 65) return { label: "Strong", color: GREEN };
     if (v <= 40) return { label: "Weak", color: RED };
     return { label: "Neutral", color: "#888" };
+  }
+
+  // اتجاه حقيقي مبني على فرق آخر سنابشوتين حيّين (لا شي مصطنع) — trend[ccy] تُحسب بـ loadSnapshot أعلى بالمكوّن الأب
+  function trendMeta(ccy, color) {
+    const t = trend[ccy];
+    if (t === "up") return { arrow: "↑", text: "Strength increasing", color: GREEN };
+    if (t === "down") return { arrow: "↓", text: "Losing strength", color: RED };
+    if (t === "flat") return { arrow: "→", text: "Holding steady", color: "#888" };
+    return { arrow: "", text: "", color };
   }
 
   return (
@@ -1111,11 +1453,16 @@ export function CurrencyHeatMapCard({ snapshot }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {entries.map(([ccy, v]) => {
             const m = meta(v);
+            const tm = trendMeta(ccy, m.color);
             return (
               <div key={ccy} style={{ background: "#14161a", border: `1px solid ${m.color}33`, borderRadius: 10, padding: "8px 10px" }}>
-                <div style={{ fontSize: 11, color: "#888" }}>{ccy}</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 11, color: "#888", fontWeight: 700 }}>{ccy}</span>
+                  {tm.arrow && <span style={{ fontSize: 12, fontWeight: 800, color: tm.color }}>{tm.arrow}</span>}
+                </div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: m.color }}>{v}</div>
                 <div style={{ fontSize: 10, color: m.color }}>{m.label}</div>
+                {tm.text && <div style={{ fontSize: 9, color: tm.color, marginTop: 2 }}>{tm.text}</div>}
               </div>
             );
           })}
@@ -1128,7 +1475,7 @@ export function CurrencyHeatMapCard({ snapshot }) {
 /* ============================================================================
    كرت 2: Session Map — محسوب من الوقت الحالي (UTC)
    ============================================================================ */
-export function SessionMapCard({ sessions }) {
+export function SessionMapCard({ sessions, nowTick }) {
   const { next } = useMemo(() => getSessionTimeline(sessions), [sessions]);
   const overlap = useMemo(() => getActiveOverlap(sessions), [sessions]);
   const activeSessions = sessions.filter((s) => s.active);
@@ -1138,20 +1485,36 @@ export function SessionMapCard({ sessions }) {
     ? { liquidity: overlap.liquidity, volatility: "Very High", behaviour: "Trend Expansion / Breakouts", recommendation: "The busiest window of the day — best conditions for breakout and trend-continuation trades." }
     : SESSION_INFO[activeSessions[0]?.key] || SESSION_INFO.off;
 
+  // عدّاد تنازلي حي بدقة الثانية لأقرب جلسة قادمة — نفس next.startsIn (بالساعات)، محسوب هون
+  // بدقة أعلى اعتماداً على نبضة nowTick (كل ثانية) بدل الاعتماد فقط على تحديث sessions كل دقيقة
+  const liveCountdown = useMemo(() => {
+    if (!next) return null;
+    const d = new Date(nowTick);
+    const hFrac = d.getUTCHours() + d.getUTCMinutes() / 60 + d.getUTCSeconds() / 3600;
+    let diff = next.start - hFrac;
+    if (diff <= 0) diff += 24;
+    return countdownLabel(diff);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [next, nowTick]);
+
   return (
     <CardShell title="Session Map" icon="🕐">
       <div style={{ fontSize: 10.5, color: "#777", marginBottom: 10, lineHeight: 1.6 }}>
         A live 24-hour view of the four major FX sessions. The white line is right now — watch for the gold-striped zone, that's when two sessions overlap and liquidity is highest.
       </div>
 
-      <SessionTimelineVisual sessions={sessions} overlap={overlap} />
+      <SessionTimelineVisual sessions={sessions} overlap={overlap} nowTick={nowTick} />
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "12px 0 12px" }}>
         {sessions.map((s) => (
           <div
             key={s.key}
             title={`${s.label} · ${String(s.start).padStart(2, "0")}:00–${String(s.end).padStart(2, "0")}:00 UTC`}
-            style={{ display: "flex", alignItems: "center", gap: 5, background: "#14161a", border: `1px solid ${s.active ? s.color : "#2a2a2a"}88`, borderRadius: 20, padding: "3px 9px" }}
+            style={{
+              display: "flex", alignItems: "center", gap: 5, background: "#14161a",
+              border: `1px solid ${s.active ? s.color : "#2a2a2a"}88`, borderRadius: 20, padding: "3px 9px",
+              transition: "border-color .4s ease, background .4s ease",
+            }}
           >
             <span className={s.active ? "qmi-dot" : ""} style={{ width: 6, height: 6, borderRadius: "50%", background: s.active ? s.color : "#555" }} />
             <span style={{ fontSize: 10, color: s.active ? "#f0f0f0" : "#777", fontWeight: s.active ? 800 : 600 }}>{s.label}</span>
@@ -1161,7 +1524,13 @@ export function SessionMapCard({ sessions }) {
 
       {/* -------- كروت الشرح: الجلسة الحالية / مستوى السيولة / التقلب / السلوك / أسلوب التداول المقترح -------- */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <MiniStat label="Current Session" value={currentLabel} color={GOLD_LIGHT} />
+        <div style={{ background: "#14161a", borderRadius: 8, padding: "7px 9px" }}>
+          <div style={{ fontSize: 10, color: "#777", display: "flex", alignItems: "center", gap: 5 }}>
+            <span className="qmi-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: GOLD_LIGHT, display: "inline-block" }} />
+            Current Session
+          </div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: GOLD_LIGHT }}>{currentLabel}</div>
+        </div>
         <MiniStat label="Liquidity Level" value={info.liquidity} color={GREEN} />
         <MiniStat label="Expected Volatility" value={info.volatility} color={AMBER} />
         <MiniStat label="Typical Behaviour" value={info.behaviour} color={BLUE} />
@@ -1172,8 +1541,18 @@ export function SessionMapCard({ sessions }) {
       </div>
 
       {next && (
-        <div style={{ fontSize: 10.5, color: "#777", marginTop: 10, paddingTop: 8, borderTop: "1px solid #ffffff10" }}>
-          Next session: <b style={{ color: "#ccc" }}>{next.label}</b> opens in <b style={{ color: GOLD_LIGHT }}>{hoursLabel(next.startsIn)}</b>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10, paddingTop: 8, borderTop: "1px solid #ffffff10" }}>
+          <span style={{ fontSize: 10.5, color: "#777" }}>
+            Next session: <b style={{ color: "#ccc" }}>{next.label}</b>
+          </span>
+          <span
+            style={{
+              fontSize: 11, fontWeight: 800, color: GOLD_LIGHT, background: `${GOLD}14`,
+              border: `1px solid ${GOLD}40`, borderRadius: 20, padding: "2px 9px", fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {liveCountdown || hoursLabel(next.startsIn)}
+          </span>
         </div>
       )}
     </CardShell>
@@ -1181,8 +1560,9 @@ export function SessionMapCard({ sessions }) {
 }
 
 /* خط الجلسات المرئي: 24 ساعة، بدعم النطاقات الملفوفة (Sydney) + تظليل التداخل الفعلي + مؤشر الوقت الحالي */
-function SessionTimelineVisual({ sessions, overlap }) {
-  const now = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
+function SessionTimelineVisual({ sessions, overlap, nowTick }) {
+  const d = new Date(nowTick ?? Date.now());
+  const now = d.getUTCHours() + d.getUTCMinutes() / 60 + d.getUTCSeconds() / 3600;
 
   function segmentsOf(s) {
     return s.start < s.end ? [[s.start, s.end]] : [[s.start, 24], [0, s.end]];
@@ -1243,7 +1623,10 @@ function SessionTimelineVisual({ sessions, overlap }) {
             }}
           />
         ))}
-        <div style={{ position: "absolute", left: `${(now / 24) * 100}%`, top: -2, bottom: -2, width: 2, background: "#fff", boxShadow: "0 0 6px #fff", transition: "left 1s linear" }} />
+        <div
+          className="qmi-dot"
+          style={{ position: "absolute", left: `${(now / 24) * 100}%`, top: -2, bottom: -2, width: 2, background: "#fff", boxShadow: "0 0 6px #fff", transition: "left 1s linear" }}
+        />
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8.5, color: "#555", marginTop: 3 }}>
         <span>00:00</span>
@@ -1252,6 +1635,17 @@ function SessionTimelineVisual({ sessions, overlap }) {
         <span>18:00</span>
         <span>24:00</span>
       </div>
+
+      {/* -------- شرح دائم لعناصر الخط الزمني: الخط الأبيض = الآن، والشرائط الذهبية = تداخل جلستين -------- */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, fontSize: 9, color: "#666" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ width: 2, height: 9, background: "#fff", display: "inline-block", boxShadow: "0 0 4px #fff" }} /> Right now
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ width: 12, height: 9, borderRadius: 2, display: "inline-block", background: `repeating-linear-gradient(45deg, ${GOLD}88, ${GOLD}88 2px, transparent 2px, transparent 4px)`, border: `1px solid ${GOLD}` }} /> Session overlap · highest liquidity
+        </span>
+      </div>
+
       {overlap && (
         <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 10.5, color: GOLD_LIGHT, fontWeight: 700 }}>
           🔥 {overlap.label} overlap — {overlap.liquidity} liquidity right now
@@ -1262,42 +1656,83 @@ function SessionTimelineVisual({ sessions, overlap }) {
 }
 
 /* ============================================================================
-   كرت 3: Live Opportunities — من /api/radar (نفس QAIS Engine، مخزّنة بالكرون)
+   كرت 3: Active Opportunities — من /api/radar (نفس QAIS Engine، مخزّنة بالكرون)
+   يعرض كل صف كامل (رمز/اتجاه/سكور/حالة/فريم) بدل رقم واحد فقط — كل القيم من
+   نفس أعمدة radar v2 الحقيقية (radar_status/radar_score/entry_status/timeframe).
    ============================================================================ */
+const OPP_PREVIEW_COUNT = 5;
+
 function LiveOpportunitiesCard({ items, onOpen }) {
+  const [showAll, setShowAll] = useState(false);
+
   const sorted = useMemo(() => {
-    const order = { green: 0, orange: 1, yellow: 2, red: 3, gray: 4 };
-    return [...items].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || (b.score || 0) - (a.score || 0)).slice(0, 6);
+    const order = { green: 0, blue: 1, orange: 2, red: 3, yellow: 4, gray: 5 };
+    return [...items].sort(
+      (a, b) => (order[a.radar_status] ?? 9) - (order[b.radar_status] ?? 9) || (b.radar_score ?? b.score ?? 0) - (a.radar_score ?? a.score ?? 0)
+    );
   }, [items]);
 
+  const visible = showAll ? sorted : sorted.slice(0, OPP_PREVIEW_COUNT);
+
   return (
-    <CardShell title="Live Opportunities" icon="⚡">
+    <CardShell title="Active Opportunities" icon="⚡">
       {sorted.length === 0 ? (
         <EmptyNote text="لا توجد أصول مراقبة بعد" />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          {sorted.map((it) => {
-            const sig = it.status === "green" ? (it.direction === "up" ? "BUY" : "SELL") : "WAIT";
-            const color = sig === "BUY" ? GREEN : sig === "SELL" ? RED : "#888";
-            return (
-              <div key={it.symbol} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#14161a", borderRadius: 10, padding: "7px 10px" }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#e5e5e5" }}>{it.symbol}</span>
-                    <span style={{ fontSize: 9.5, fontWeight: 800, color, background: `${color}22`, borderRadius: 5, padding: "1px 6px" }}>{sig}</span>
-                  </div>
-                  <div style={{ fontSize: 9.5, color: "#888" }}>{it.score != null ? `Score ${it.score}%` : "—"}</div>
-                </div>
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {visible.map((it) => {
+              const meta = radarStatusMeta(it);
+              const dirLabel = it.direction === "up" ? "BUY" : it.direction === "down" ? "SELL" : "—";
+              const dirColor = it.direction === "up" ? GREEN : it.direction === "down" ? RED : "#888";
+              const confidence = it.radar_score ?? it.score ?? 0;
+              return (
                 <button
+                  key={it.symbol}
                   onClick={() => onOpen(it.symbol)}
-                  style={{ background: "transparent", border: `1px solid ${GOLD}55`, color: GOLD_LIGHT, borderRadius: 6, padding: "4px 9px", fontSize: 10.5, cursor: "pointer", fontWeight: 700 }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "right",
+                    background: "#14161a", border: "1px solid transparent", borderRadius: 10, padding: "8px 10px",
+                    cursor: "pointer", transition: "border-color .2s ease, background .2s ease",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${GOLD}40`)}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
                 >
-                  Open
+                  {/* مؤشر ملوّن صغير لحالة الإشارة */}
+                  <span className={["green", "red"].includes(it.radar_status) ? "qmi-dot" : ""} style={{ width: 7, height: 7, borderRadius: "50%", background: meta.color, flexShrink: 0 }} />
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "#e5e5e5" }}>{it.symbol}</span>
+                      <span style={{ fontSize: 9, fontWeight: 800, color: dirColor, background: `${dirColor}22`, borderRadius: 5, padding: "1px 6px" }}>{dirLabel}</span>
+                      {it.timeframe && (
+                        <span style={{ fontSize: 8.5, fontWeight: 700, color: "#888", background: "#1c1e24", borderRadius: 5, padding: "1px 6px" }}>{it.timeframe}</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 9.5, color: meta.color, marginTop: 2, fontWeight: 700 }}>{it.entry_status || meta.label}</div>
+                  </div>
+
+                  <div style={{ textAlign: "left", flexShrink: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 800, color: confidence >= 80 ? GREEN : confidence >= 60 ? GOLD_LIGHT : "#999" }}>{confidence}%</div>
+                    <div style={{ fontSize: 8, color: "#666" }}>Score</div>
+                  </div>
                 </button>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {sorted.length > OPP_PREVIEW_COUNT && (
+            <button
+              onClick={() => setShowAll((v) => !v)}
+              style={{
+                marginTop: 9, width: "100%", background: "transparent", border: `1px solid ${GOLD}40`,
+                color: GOLD_LIGHT, borderRadius: 8, padding: "7px 0", fontSize: 11, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              {showAll ? "Show Less" : `View All Opportunities (${sorted.length})`}
+            </button>
+          )}
+        </>
       )}
     </CardShell>
   );
