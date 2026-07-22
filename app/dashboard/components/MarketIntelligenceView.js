@@ -569,7 +569,10 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   }
 
   const primarySession = useMemo(() => getPrimarySession(sessions), [sessions]);
-  const signal = result ? (result.tradeValid ? (result.direction === "up" ? "BUY" : "SELL") : "WAIT") : null;
+  // Single source of truth: `signal` comes straight from the engine's decision
+  // object (lib/qais/decision.js) instead of being re-derived here — this is
+  // the exact field Active Opportunities/Liquidity Map compare against too.
+  const signal = result?.signal ?? null;
   const biasLabel = result?.direction === "up" ? "Bullish" : result?.direction === "down" ? "Bearish" : "—";
   const biasColor = result?.direction === "up" ? GREEN : result?.direction === "down" ? RED : "#888";
 
@@ -791,7 +794,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#0f3d2c", border: `1px solid ${GREEN}40`, borderRadius: 20, padding: "6px 12px" }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: GREEN }} className="qmi-dot" />
           <span style={{ fontSize: 11.5, color: "#aaa" }}>Confidence</span>
-          <span style={{ fontSize: 13, fontWeight: 800, color: GREEN }}>{result?.score ?? 0}%</span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: GREEN }}>{result?.aiConfidence ?? result?.radarScore ?? 0}%</span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 20, padding: "6px 12px" }}>
@@ -1343,21 +1346,29 @@ function roundRect(ctx, x, y, w, h, r) {
    لوحة تحليل QAIS SK Engine — يمين الشارت (٣٠٪) — كل قيمة من analyzeSymbol()
    ============================================================================ */
 function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
-  const STATUS_COLOR = { green: GREEN, orange: AMBER, yellow: "#eab308", red: RED, gray: "#888" };
-  const scoreColor = STATUS_COLOR[r?.status] || "#888";
-  const score = r?.score ?? 0;
+  // Single source of truth: every value below reads directly from the same
+  // decision object (r) that Active Opportunities / Liquidity Map / AI
+  // Briefing also read — nothing here is recomputed independently anymore.
+  const STATUS_COLOR = { green: GREEN, blue: BLUE, orange: AMBER, yellow: "#eab308", red: RED, gray: "#888" };
+  const scoreColor = STATUS_COLOR[r?.radarStatus] || "#888";
+  // Quality Score = how complete the setup is. AI Confidence = how likely it is to play out.
+  // Shown separately and labeled — see decision.js for the full definitions.
+  const qualityScore = r?.qualityScore ?? r?.score ?? 0;
+  const aiConfidence = r?.aiConfidence ?? r?.radarScore ?? 0;
   const signalColor = signal === "BUY" ? GREEN : signal === "SELL" ? RED : "#888";
 
-  const htfTrend = r?.context?.weekly?.trend || r?.structureLadder?.[0]?.trend || r?.direction;
-  const marketStructure = r?.direction === "up" ? "HH / HL" : r?.direction === "down" ? "LH / LL" : "—";
-  const bosOk = !!r?.structureLadder?.find((s) => s.isMain)?.hasBOS;
-  const chochOk = !!r?.structureLadder?.find((s) => s.isMain)?.hasMSS;
-  const poi = r?.poi?.touchedZone;
-  const liquidityLabel = poi ? (r.direction === "up" ? `Swept (Below)` : `Swept (Above)`) : "No POI Yet";
-  const premiumDiscount = r?.priceLocation ? (r.priceLocation.zone === "discount" ? "Discount" : r.priceLocation.zone === "premium" ? "Premium" : "Equilibrium") : "—";
-  const volume = r?.ob?.merged ? "High" : r?.ob?.eligible ? "Medium" : "Low";
-  const entryStatus = r?.tradeValid ? "Ready" : r?.ob?.eligible ? "Forming" : "Waiting";
-  const signalStrength = score >= 85 ? "Very Strong" : score >= 70 ? "Strong" : score >= 50 ? "Moderate" : "Weak";
+  const htfTrend = r?.htfTrend ?? (r?.context?.weekly?.trend || r?.structureLadder?.[0]?.trend || r?.direction);
+  const marketStructure = r?.marketStructure || (r?.direction === "up" ? "HH / HL" : r?.direction === "down" ? "LH / LL" : "—");
+  const bosOk = r?.bosStatus === "Detected";
+  const chochOk = r?.chochStatus === "Detected";
+  const liquidityLabel = r?.liquidityStatus || "Not Swept";
+  const premiumDiscount = r?.premiumDiscount || "—";
+  const volume = r?.volumeConfirmed ? "High" : r?.ob?.eligible ? "Medium" : "Low";
+  // entryStatus and signalStrength come straight from the engine — both are
+  // gated by the same tradeValid boolean as `signal`, so they can never say
+  // "Ready" / "Strong" while signal says WAIT.
+  const entryStatus = r?.entryStatus || "Monitoring";
+  const signalStrength = r?.radarSignalStrengthLabel || "—";
   const lastTarget = r?.targets?.[r.targets.length - 1];
   const rr = lastTarget && r?.entry != null && r?.stopLoss != null
     ? Math.abs(lastTarget.price - r.entry) / Math.abs(r.entry - r.stopLoss)
@@ -1367,7 +1378,8 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
   // Tier 1: أهم شي يشوفه المتداول أول ثانية — Signal / Confidence / Current Status / Session
   const tier1 = [
     { label: "Signal", value: signal || "—", color: signalColor },
-    { label: "Confidence", value: `${score}%`, color: scoreColor },
+    { label: "AI Confidence", value: `${aiConfidence}%`, color: scoreColor },
+    { label: "Quality Score", value: `${qualityScore}%`, color: qualityScore >= 80 ? GREEN : qualityScore >= 50 ? GOLD_LIGHT : "#888" },
     { label: "Current Status", value: entryStatus, color: entryStatus === "Ready" ? GREEN : GOLD_LIGHT },
     { label: "Session", value: primarySession, color: BLUE },
   ];
@@ -1416,12 +1428,12 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
             <div
               style={{
                 width: 58, height: 58, borderRadius: "50%", flexShrink: 0,
-                background: `conic-gradient(${scoreColor} ${score * 3.6}deg, #23262d 0deg)`,
+                background: `conic-gradient(${scoreColor} ${aiConfidence * 3.6}deg, #23262d 0deg)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
               <div style={{ width: 46, height: 46, borderRadius: "50%", background: "#181A20", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: "#f0f0f0" }}>{score}%</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#f0f0f0" }}>{aiConfidence}%</span>
               </div>
             </div>
           </div>
@@ -1501,7 +1513,7 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
                 </div>
               ))}
               <div style={{ fontSize: 11, color: "#777", marginTop: 6, lineHeight: 1.7 }}>
-                QAIS Score: {score}/100 — {r.tradeValid ? "كل شروط الدخول اكتملت (Trend → BOS → POI → OB → Targets)." : "لسا في شرط أو أكثر ما تحقق ضمن تسلسل الفحص."}
+                QAIS Quality Score: {qualityScore}/100 — {r.tradeValid ? "كل شروط الدخول اكتملت (Trend → BOS → POI → OB → Targets)." : "لسا في شرط أو أكثر ما تحقق ضمن تسلسل الفحص."}
               </div>
             </div>
           )}
@@ -1799,25 +1811,41 @@ const OPP_PREVIEW_COUNT = 5;
 function LiveOpportunitiesCard({ items, onOpen }) {
   const [showAll, setShowAll] = useState(false);
 
-  const sorted = useMemo(() => {
+  // "Active Opportunities" must only contain setups that are genuinely
+  // actionable right now (entry_status === "Ready", the same tradeValid-gated
+  // field the Analysis Panel and every other card read). Everything else is
+  // still forming and gets shown as Building/Watching/Monitoring further
+  // down — never mislabeled as a ready opportunity.
+  const { ready, forming } = useMemo(() => {
     const order = { green: 0, blue: 1, orange: 2, red: 3, yellow: 4, gray: 5 };
-    return [...items].sort(
-      (a, b) => (order[a.radar_status] ?? 9) - (order[b.radar_status] ?? 9) || (b.radar_score ?? b.score ?? 0) - (a.radar_score ?? a.score ?? 0)
-    );
+    const byScore = (a, b) =>
+      (order[a.radar_status] ?? 9) - (order[b.radar_status] ?? 9) || (b.radar_score ?? b.score ?? 0) - (a.radar_score ?? a.score ?? 0);
+    const ready = items.filter((i) => i.entry_status === "Ready").sort(byScore);
+    const forming = items.filter((i) => i.entry_status !== "Ready").sort(byScore);
+    return { ready, forming };
   }, [items]);
 
+  const sorted = ready.length ? ready : forming; // fall back to showing forming setups only when nothing is ready yet
   const visible = showAll ? sorted : sorted.slice(0, OPP_PREVIEW_COUNT);
 
   return (
     <CardShell title="Active Opportunities" icon="⚡">
-      {sorted.length === 0 ? (
+      {items.length === 0 ? (
         <EmptyNote text="لا توجد أصول مراقبة بعد" />
+      ) : sorted.length === 0 ? (
+        <EmptyNote text="No actionable setups right now — the engine is still scanning." />
       ) : (
         <>
+          {!ready.length && (
+            <div style={{ fontSize: 10.5, color: GOLD_LIGHT, marginBottom: 8, fontWeight: 700 }}>
+              No setup is fully confirmed yet — showing what's currently forming.
+            </div>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {visible.map((it) => {
               const meta = radarStatusMeta(it);
-              const dirLabel = it.direction === "up" ? "BUY" : it.direction === "down" ? "SELL" : "—";
+              const isReady = it.entry_status === "Ready";
+              const dirLabel = it.direction === "up" ? (isReady ? "BUY" : "BUY BIAS") : it.direction === "down" ? (isReady ? "SELL" : "SELL BIAS") : "—";
               const dirColor = it.direction === "up" ? GREEN : it.direction === "down" ? RED : "#888";
               const confidence = it.radar_score ?? it.score ?? 0;
               return (
@@ -1879,7 +1907,11 @@ function LiveOpportunitiesCard({ items, onOpen }) {
    ============================================================================ */
 export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8 }) {
   const sorted = useMemo(
-    () => [...items].filter((i) => i.decision).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, limit),
+    () =>
+      [...items]
+        .filter((i) => i.decision)
+        .sort((a, b) => (b.radar_score ?? b.score ?? 0) - (a.radar_score ?? a.score ?? 0))
+        .slice(0, limit),
     [items, limit]
   );
   const active = items.find((i) => i.symbol === selectedSymbol) || sorted[0] || null;
@@ -1899,7 +1931,8 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
           <ConceptCard icon="⬇️" title="Below Low" lines={["Price swept previous lows.", "Usually takes Sell Side Liquidity."]} color={GREEN} />
           <ConceptCard icon="🧱" title="Order Block" lines={["Institutional supply or demand zone."]} color={GOLD_LIGHT} />
           <ConceptCard icon="⚡" title="Fair Value Gap" lines={["Price imbalance waiting to be rebalanced."]} color={BLUE} />
-          <ConceptCard icon="🎯" title="Score" lines={["Overall confidence calculated by Qais SK Engine."]} color={GOLD} />
+          <ConceptCard icon="🎯" title="Quality Score" lines={["How complete the setup is (structure, liquidity, OB, targets)."]} color={GOLD} />
+          <ConceptCard icon="🧠" title="AI Confidence" lines={["How likely the AI thinks the setup is to play out (HTF, session, volume)."]} color={GOLD_LIGHT} />
         </div>
 
         {sorted.length === 0 ? (
@@ -1924,9 +1957,12 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
               const liqColor = swept ? (it.direction === "up" ? GREEN : RED) : "#666";
               const obLabel = d?.ob?.eligible ? `${it.direction === "up" ? "Bullish" : "Bearish"} OB` : "—";
               const fvgLabel = d?.fvgStatus || "—";
+              // Quality Score (setup completeness) vs AI Confidence (likelihood to play out) —
+              // two distinct metrics, same numbers Active Opportunities / Analysis Panel show.
               const score = it.score ?? 0;
-              const confLabel = score >= 80 ? "High" : score >= 50 ? "Medium" : "Low";
-              const confColor = score >= 80 ? GREEN : score >= 50 ? GOLD_LIGHT : "#888";
+              const confidence = it.radar_score ?? d?.radarScore ?? 0;
+              const confLabel = confidence >= 80 ? "High" : confidence >= 50 ? "Medium" : "Low";
+              const confColor = confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : "#888";
               const dirLabel = it.direction === "up" ? "BUY" : it.direction === "down" ? "SELL" : "—";
               const dirColor = it.direction === "up" ? GREEN : it.direction === "down" ? RED : "#888";
               const meta = radarStatusMeta(it);
@@ -1955,7 +1991,7 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
                   <span data-label="Fair Value Gap" style={{ color: fvgLabel === "Present" ? BLUE : "#666" }}>{fvgLabel}</span>
                   <span data-label="Confidence" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ width: 34, height: 5, borderRadius: 4, background: "#0e1013", overflow: "hidden", flexShrink: 0 }}>
-                      <span style={{ display: "block", height: "100%", width: `${score}%`, background: confColor, borderRadius: 4 }} />
+                      <span style={{ display: "block", height: "100%", width: `${confidence}%`, background: confColor, borderRadius: 4 }} />
                     </span>
                     <span style={{ fontSize: 10.5, fontWeight: 700, color: confColor }}>{confLabel}</span>
                   </span>
@@ -2015,7 +2051,11 @@ function buildAiBriefing(item, d) {
   const targets = d.targets || [];
   const tp1 = targets[0];
   const tpLast = targets[targets.length - 1];
-  const score = d.score ?? d.confidence ?? 0;
+  // AI Briefing's "confidence" is the same AI Confidence number shown in the
+  // Analysis Panel and Active Opportunities (radarScore) — not the legacy
+  // quality-completeness score, so the briefing never contradicts the rest
+  // of the page.
+  const score = d.aiConfidence ?? d.radarScore ?? d.score ?? 0;
 
   /* ---------- 1) Current Market Situation ---------- */
   let situation;
@@ -2304,7 +2344,11 @@ function AnalysisWorkspace({ item }) {
   const obLabel = d?.ob?.eligible ? `${dirLabel} OB · ${d.ob.status} · Quality ${d.ob.quality}%` : "No Valid Order Block Yet";
   const lastTarget = d?.targets?.[d.targets.length - 1];
   const expectedMove = d?.entry != null && lastTarget ? `${fmt(d.entry)} → ${fmt(lastTarget.price)}` : "—";
-  const score = d?.score ?? 0;
+  // Same AI Confidence / Quality Score / Entry Status fields the Analysis
+  // Panel and Active Opportunities use — single source of truth.
+  const confidence = d?.aiConfidence ?? d?.radarScore ?? 0;
+  const qualityScore = d?.qualityScore ?? d?.score ?? 0;
+  const entryStatus = d?.entryStatus || "Monitoring";
   const structureLabel = d?.marketStructure || (d?.bosStatus === "Detected" ? "Break of Structure" : "Ranging");
 
   /* -------- Smart Explanations — كل قيمة بتفسّر حالها بجملة بسيطة، مبنية من
@@ -2353,7 +2397,9 @@ function AnalysisWorkspace({ item }) {
         <WorkspaceStat label="Entry Zone" value={fmt(d?.entry)} color={GOLD_LIGHT} />
         <WorkspaceStat label="Stop Loss" value={fmt(d?.stopLoss)} color={RED} />
         <WorkspaceStat label="Take Profit" value={lastTarget ? fmt(lastTarget.price) : "—"} color={GREEN} />
-        <WorkspaceStat label="Confidence" value={`${score}%`} color={score >= 85 ? GREEN : GOLD_LIGHT} />
+        <WorkspaceStat label="Entry Status" value={entryStatus} color={entryStatus === "Ready" ? GREEN : GOLD_LIGHT} />
+        <WorkspaceStat label="Quality Score" value={`${qualityScore}%`} color={qualityScore >= 85 ? GREEN : GOLD_LIGHT} explain="How complete the setup is." />
+        <WorkspaceStat label="AI Confidence" value={`${confidence}%`} color={confidence >= 85 ? GREEN : GOLD_LIGHT} explain="How likely the AI thinks this setup is to play out." />
       </div>
 
       <AiBriefing item={item} d={d} />
@@ -2447,7 +2493,7 @@ function LiveNotificationsCard({ items, onOpen }) {
   const notifs = useMemo(
     () =>
       [...items]
-        .filter((i) => i.status === "green" && i.updated_at)
+        .filter((i) => i.entry_status === "Ready" && i.updated_at)
         .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
         .slice(0, 5),
     [items]
@@ -2470,7 +2516,7 @@ function LiveNotificationsCard({ items, onOpen }) {
                 <div style={{ fontSize: 11.5, color: "#e5e5e5", fontWeight: 700 }}>
                   New Opportunity — {it.symbol} <span style={{ color: it.direction === "up" ? GREEN : RED }}>{it.direction === "up" ? "BUY" : "SELL"}</span>
                 </div>
-                <div style={{ fontSize: 10, color: "#888" }}>{it.score}% Confidence · {relTime(it.updated_at)}</div>
+                <div style={{ fontSize: 10, color: "#888" }}>{it.radar_score ?? it.score}% Confidence · {relTime(it.updated_at)}</div>
               </div>
             </button>
           ))}
