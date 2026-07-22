@@ -10,8 +10,6 @@ export default function MobileNav({
   onClose,
   isAdmin,
   daysLeft,
-  activeKey,
-  onNavigate,
   onLogout,
 }) {
   useEffect(() => {
@@ -55,11 +53,7 @@ export default function MobileNav({
           <Sidebar
             isAdmin={isAdmin}
             daysLeft={daysLeft}
-            activeKey={activeKey}
-            onNavigate={(view, key) => {
-              onNavigate(view, key);
-              onClose();
-            }}
+            onNavigate={onClose}
             onLogout={onLogout}
             className={cn("h-full w-full border-l-0")}
           />

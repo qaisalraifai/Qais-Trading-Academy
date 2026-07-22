@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Settings } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button, ProgressBar } from "@/app/components/ui";
@@ -12,13 +13,20 @@ import {
   LOGOUT_ITEM,
 } from "./navigation";
 
-function NavButton({ item, isActive, onClick }) {
+// عنصر نشط = المسار الحالي يبدأ بنفس href العنصر (يغطي الصفحات الفرعية
+// زي /mlm/tree تحت عنصر "الشبكة" اللي href الأساسي تبعه /mlm).
+function isPathActive(pathname, href) {
+  if (!pathname || !href) return false;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function NavButton({ item, isActive, onNavigate }) {
   const Icon = item.icon;
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <Link
+      href={item.href}
+      onClick={onNavigate}
       className={cn("nav-item group w-full text-right", isActive ? "nav-item-active" : "nav-item-inactive")}
       aria-current={isActive ? "page" : undefined}
     >
@@ -35,7 +43,7 @@ function NavButton({ item, isActive, onClick }) {
           قريباً
         </span>
       )}
-    </button>
+    </Link>
   );
 }
 
@@ -69,16 +77,17 @@ function FooterLink({ item }) {
 export default function Sidebar({
   isAdmin,
   daysLeft,
-  activeKey,
   onNavigate,
   onLogout,
   className,
 }) {
+  const pathname = usePathname();
   const VipIcon = VIP_CARD.icon;
   const HomeIcon = HOME_NAV.icon;
   const LogoutIcon = LOGOUT_ITEM.icon;
 
   const visibleNavItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  const isHomeActive = isPathActive(pathname, HOME_NAV.href) && !visibleNavItems.some((item) => isPathActive(pathname, item.href));
 
   return (
     <aside
@@ -108,15 +117,11 @@ export default function Sidebar({
           </>
         )}
 
-        <Button
-          variant="secondary"
-          size="sm"
-          className="w-full"
-          icon={Settings}
-          onClick={() => onNavigate("settings")}
-        >
-          إدارة الاشتراك
-        </Button>
+        <Link href="/settings" onClick={onNavigate}>
+          <Button variant="secondary" size="sm" className="w-full" icon={Settings}>
+            إدارة الاشتراك
+          </Button>
+        </Link>
       </div>
 
       <div className="mb-4 flex items-center gap-2.5 px-1">
@@ -131,28 +136,23 @@ export default function Sidebar({
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => onNavigate(HOME_NAV.view)}
+      <Link
+        href={HOME_NAV.href}
+        onClick={onNavigate}
         className={cn(
           "group mb-4 flex w-full items-center justify-center gap-2 rounded-md px-3.5 py-3",
           "gold-gradient-bg text-sm font-extrabold text-ink shadow-glow-sm",
           "transition-all duration-300 hover:shadow-glow hover:brightness-110 hover:-translate-y-0.5",
-          activeKey === HOME_NAV.view && "ring-2 ring-gold-200/30"
+          isHomeActive && "ring-2 ring-gold-200/30"
         )}
       >
         <HomeIcon className="h-5 w-5 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
         <span>{HOME_NAV.label}</span>
-      </button>
+      </Link>
 
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto" aria-label="التنقل الرئيسي">
         {visibleNavItems.map((item) => (
-          <NavButton
-            key={item.key}
-            item={item}
-            isActive={item.view === activeKey}
-            onClick={() => onNavigate(item.view, item.key)}
-          />
+          <NavButton key={item.key} item={item} isActive={isPathActive(pathname, item.href)} onNavigate={onNavigate} />
         ))}
       </nav>
 

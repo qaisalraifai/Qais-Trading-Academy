@@ -168,14 +168,14 @@ export async function GET(request) {
               type: "qais_radar_signal",
               title: `${symbol} جاهز 🟢`,
               message: `Setup: SK + ICT ${result.direction === "up" ? "Buy" : "Sell"} — Confidence: ${result.confidence}% — Timeframe: ${result.timeframe}`,
-              link: `/dashboard?tab=radar&symbol=${symbol}`,
+              link: `/trading-radar?symbol=${symbol}`,
             });
           } else {
             await createNotification(supabase, userId, {
               type: "qais_radar_signal",
               title: `${symbol} — ${result.radarSignalLabel} ${result.direction === "up" ? "🟢" : "🔴"}`,
               message: `Confidence: ${result.radarScore}% — ${result.sessionLabel} — Tap to open chart`,
-              link: `/dashboard?tab=radar&symbol=${symbol}`,
+              link: `/trading-radar?symbol=${symbol}`,
             });
           }
         }

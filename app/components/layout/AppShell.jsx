@@ -7,30 +7,21 @@ import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import ProfileHeaderCard from "./ProfileHeaderCard";
 
+// غلاف موحّد لكل صفحة (Workspace مستقلة أو /dashboard) — نفس الـ Header والـ
+// Sidebar بكل مكان. التنقل بين الأدوات صار عبر روابط Next.js حقيقية (كل واحد
+// إله مساره الخاص)، فالـ Sidebar بيحدد العنصر النشط تلقائياً من الـ URL الحالي
+// بدل ما يعتمد على state يوصله من هون.
 export default function AppShell({
   username,
   initials,
   isAdmin = false,
   daysLeft = null,
-  activeKey,
-  setActiveKey,
-  onNavToLectures,
   balance,
   formatBalance,
   showProfileHeader = true,
   children,
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
-  const handleNavigate = useCallback(
-    (view, key) => {
-      setActiveKey(view);
-      if (view === "lectures" || key === "lectures") {
-        onNavToLectures?.();
-      }
-    },
-    [setActiveKey, onNavToLectures]
-  );
 
   const handleLogout = useCallback(async () => {
     const supabase = createClient();
@@ -55,13 +46,7 @@ export default function AppShell({
 
       <div className="flex min-h-0 flex-1">
         <div className="hidden lg:flex">
-          <Sidebar
-            isAdmin={isAdmin}
-            daysLeft={daysLeft}
-            activeKey={activeKey}
-            onNavigate={handleNavigate}
-            onLogout={handleLogout}
-          />
+          <Sidebar isAdmin={isAdmin} daysLeft={daysLeft} onLogout={handleLogout} />
         </div>
 
         <main className="page-container min-w-0 flex-1">
@@ -82,8 +67,6 @@ export default function AppShell({
         onClose={() => setMobileNavOpen(false)}
         isAdmin={isAdmin}
         daysLeft={daysLeft}
-        activeKey={activeKey}
-        onNavigate={handleNavigate}
         onLogout={handleLogout}
       />
     </div>

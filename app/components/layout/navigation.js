@@ -17,22 +17,29 @@ import {
   LogOut,
   Crown,
   Radar,
+  LineChart,
 } from "lucide-react";
 
+/* ============================================================================
+   كل عنصر هلأ إله href حقيقي (Workspace مستقلة بمسارها الخاص) بدل ما يكون
+   مجرد "تبويب" داخلي بحالة الداشبورد. الـ key محفوظ للتوافق الخلفي (تمييز
+   العنصر النشط...) لكن التنقل الفعلي صار عبر Next.js Link حسب المسار الحالي.
+   ============================================================================ */
 export const NAV_ITEMS = [
-  { key: "accounts", label: "إدارة الحسابات", icon: Users, view: "accounts", adminOnly: true },
-  { key: "live", label: "البث المباشر", icon: Radio, view: "live" },
-  { key: "radar", label: "Trading Radar", icon: Radar, view: "radar" },
-  { key: "trader-dna", label: "بصمتك كمتداول", icon: Dna, view: "trader-dna" },
-  { key: "lectures", label: "المحاضرات", icon: GraduationCap, view: "lectures" },
-  { key: "calendar", label: "التقويم الاقتصادي", icon: Calendar, view: "calendar" },
-  { key: "replay", label: "Replay التدريب", icon: Target, view: "replay" },
-  { key: "strategies", label: "الاستراتيجيات", icon: Puzzle, view: "strategies", comingSoon: true },
-  { key: "trades", label: "الصفقات", icon: BarChart3, view: "backtest" },
-  { key: "reports", label: "التقارير", icon: FileText, view: "reports" },
-  { key: "mlm", label: "شبكتي (الشجرة الثنائية)", icon: TreePine, view: "mlm" },
-  { key: "affiliate", label: "برنامج التسويق بالعمولة", icon: Handshake, view: "affiliate" },
-  { key: "settings", label: "الإعدادات", icon: Settings, view: "settings" },
+  { key: "accounts", label: "إدارة الحسابات", icon: Users, href: "/accounts", adminOnly: true },
+  { key: "live", label: "البث المباشر", icon: Radio, href: "/live-sessions" },
+  { key: "radar", label: "Trading Radar", icon: Radar, href: "/trading-radar" },
+  { key: "market-intelligence", label: "Market Intelligence", icon: LineChart, href: "/market-intelligence" },
+  { key: "trader-dna", label: "بصمتك كمتداول", icon: Dna, href: "/trader-dna" },
+  { key: "lectures", label: "المحاضرات", icon: GraduationCap, href: "/courses" },
+  { key: "calendar", label: "التقويم الاقتصادي", icon: Calendar, href: "/economic-calendar" },
+  { key: "replay", label: "Replay التدريب", icon: Target, href: "/replay" },
+  { key: "strategies", label: "الاستراتيجيات", icon: Puzzle, href: "/strategies", comingSoon: true },
+  { key: "trades", label: "الصفقات", icon: BarChart3, href: "/backtest" },
+  { key: "reports", label: "التقارير", icon: FileText, href: "/reports" },
+  { key: "mlm", label: "الشبكة (Network)", icon: TreePine, href: "/mlm" },
+  { key: "affiliate", label: "برنامج التسويق بالعمولة", icon: Handshake, href: "/affiliate" },
+  { key: "settings", label: "الإعدادات", icon: Settings, href: "/settings" },
 ];
 
 export const FOOTER_LINKS = [
@@ -40,16 +47,11 @@ export const FOOTER_LINKS = [
   { key: "help", label: "مركز المساعدة", icon: HelpCircle, href: null, color: "muted" },
 ];
 
-export const PLACEHOLDER_LABELS = {
-  strategies: "الاستراتيجيات",
-  reports: "التقارير",
-};
-
 export const HOME_NAV = {
   key: "dashboard",
   label: "لوحة التحكم",
   icon: LayoutDashboard,
-  view: "dashboard",
+  href: "/dashboard",
 };
 
 export const VIP_CARD = {
