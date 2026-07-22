@@ -340,6 +340,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   const [executedTrade, setExecutedTrade] = useState(null);
   const [executing, setExecuting] = useState(false);
   const [executeError, setExecuteError] = useState("");
+<<<<<<< HEAD
   const [syncedTrade, setSyncedTrade] = useState(null); // صفقة QAIS AI مفتوحة أصلاً على هاد الرمز (Chart Sync)
   const [syncLoading, setSyncLoading] = useState(false);
 
@@ -366,6 +367,17 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
   const handleExecuteTrade = useCallback(async () => {
     if (!result || result.entryStatus !== "Ready" || executing || syncedTrade) return;
+=======
+
+  // كل ما يتغيّر الرمز، منصفّر حالة التنفيذ المحلية (منطق التحليل نفسه ما تغيّر)
+  useEffect(() => {
+    setExecutedTrade(null);
+    setExecuteError("");
+  }, [symbol]);
+
+  const handleExecuteTrade = useCallback(async () => {
+    if (!result || result.entryStatus !== "Ready" || executing) return;
+>>>>>>> 78c8b079865f7a3d39b558276aeea7711219e066
     setExecuting(true);
     setExecuteError("");
     try {
@@ -377,12 +389,16 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "فشل تنفيذ الصفقة");
       setExecutedTrade(data.trade);
+<<<<<<< HEAD
       setSyncedTrade(data.trade);
+=======
+>>>>>>> 78c8b079865f7a3d39b558276aeea7711219e066
     } catch (e) {
       setExecuteError(e.message || "فشل تنفيذ الصفقة");
     } finally {
       setExecuting(false);
     }
+<<<<<<< HEAD
   }, [result, symbol, displayTF, executing, syncedTrade]);
 
   const handleCheckSyncedTrade = useCallback(async () => {
@@ -399,6 +415,9 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     }
   }, [syncedTrade]);
 
+=======
+  }, [result, symbol, displayTF, executing]);
+>>>>>>> 78c8b079865f7a3d39b558276aeea7711219e066
 
   /* ===================== بيانات الكروت السفلية — Heat Map / Radar / News ===================== */
   const loadSnapshot = useCallback(async () => {
@@ -875,7 +894,11 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
       {error && <div style={{ ...glass, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
 
+<<<<<<< HEAD
       {(result?.entryStatus === "Ready" || syncedTrade) && (
+=======
+      {result?.entryStatus === "Ready" && (
+>>>>>>> 78c8b079865f7a3d39b558276aeea7711219e066
         <AITradeCard
           result={result}
           symbol={symbol}
@@ -885,9 +908,12 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           executing={executing}
           executeError={executeError}
           onExecute={handleExecuteTrade}
+<<<<<<< HEAD
           syncedTrade={syncedTrade}
           syncLoading={syncLoading}
           onCheckSynced={handleCheckSyncedTrade}
+=======
+>>>>>>> 78c8b079865f7a3d39b558276aeea7711219e066
         />
       )}
 
@@ -1428,6 +1454,7 @@ function roundRect(ctx, x, y, w, h, r) {
    يلي بيتحكم بالـ signal/status بكل مكان تاني بالواجهة). ما بتحسب أي شي جديد —
    كل قيمة مسحوبة مباشرة من result (نتيجة analyzeSymbol() الجاهزة).
    ============================================================================ */
+<<<<<<< HEAD
 /* ============================================================================
    AI Trade Card (Phase 4) — إما تعرض إعداد جاهز للتنفيذ (entryStatus === "Ready")
    أو، لو فيه صفقة QAIS AI مفتوحة أصلاً على هاد الرمز (Chart Sync)، بتعرض تلك
@@ -1494,6 +1521,9 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
   }
 
   // -------- حالة 2: إعداد جديد جاهز للتنفيذ (entryStatus === "Ready") --------
+=======
+function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, executing, executeError, onExecute }) {
+>>>>>>> 78c8b079865f7a3d39b558276aeea7711219e066
   const isBuy = r.direction === "up";
   const dirColor = isBuy ? GREEN : RED;
   const targets = Array.isArray(r.targets) ? r.targets : [];
@@ -1580,6 +1610,7 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
   );
 }
 
+<<<<<<< HEAD
 function statusColor(status) {
   if (status === "Closed Winner") return GREEN;
   if (status === "Stopped Out") return RED;
@@ -1587,6 +1618,8 @@ function statusColor(status) {
   return GOLD_LIGHT; // Running / TPx Hit
 }
 
+=======
+>>>>>>> 78c8b079865f7a3d39b558276aeea7711219e066
 function TradeCardStat({ label, value, color = "#f0f0f0" }) {
   return (
     <div style={{ background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 8, padding: "7px 10px" }}>
