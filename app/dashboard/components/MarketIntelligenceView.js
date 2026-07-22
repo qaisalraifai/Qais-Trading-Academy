@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
-import { Sparkles, RotateCcw, ChevronDown, ChevronRight, Zap, Bell, Radio, Brain, Eye, TrendingUp, TrendingDown, Target, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, RotateCcw, ChevronDown, ChevronRight, Zap, Bell, Radio, Brain, Eye, TrendingUp, TrendingDown, Target, CheckCircle2, RefreshCw, ExternalLink } from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
 import { createClient } from "@/lib/supabase-client";
@@ -334,6 +335,70 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   // التحليل نفسها. يعني مسقط السيكونز ما بينعاد بناؤه أبداً أثناء حركة الشارت
   // — فقط لما السوق فعلياً يشكّل هيكلية جديدة (نتيجة analyzeSymbol تتغيّر)
   useEffect(() => { runAnalysis(); }, [runAnalysis]);
+
+  /* ===================== AI Trade Lifecycle (Phase 4) ===================== */
+  const [executedTrade, setExecutedTrade] = useState(null);
+  const [executing, setExecuting] = useState(false);
+  const [executeError, setExecuteError] = useState("");
+  const [syncedTrade, setSyncedTrade] = useState(null); // صفقة QAIS AI مفتوحة أصلاً على هاد الرمز (Chart Sync)
+  const [syncLoading, setSyncLoading] = useState(false);
+
+  const fetchSyncedTrade = useCallback(async (sym) => {
+    setSyncLoading(true);
+    try {
+      const res = await fetch(`/api/ai-trades?symbol=${encodeURIComponent(sym)}`);
+      const data = await res.json();
+      setSyncedTrade(res.ok ? data.trade : null);
+    } catch {
+      setSyncedTrade(null);
+    } finally {
+      setSyncLoading(false);
+    }
+  }, []);
+
+  // Chart Synchronization — كل ما يتغيّر الرمز، منفحص إذا فيه صفقة QAIS AI مفتوحة
+  // أصلاً عليه. إذا موجودة، الرادار بيعرضها بدل ما يسمح بإنشاء صفقة جديدة مكررة.
+  useEffect(() => {
+    setExecutedTrade(null);
+    setExecuteError("");
+    fetchSyncedTrade(symbol);
+  }, [symbol, fetchSyncedTrade]);
+
+  const handleExecuteTrade = useCallback(async () => {
+    if (!result || result.entryStatus !== "Ready" || executing || syncedTrade) return;
+    setExecuting(true);
+    setExecuteError("");
+    try {
+      const res = await fetch("/api/ai-trades", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbol, timeframe: TF_LABELS[displayTF] || "M15", decision: result }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "فشل تنفيذ الصفقة");
+      setExecutedTrade(data.trade);
+      setSyncedTrade(data.trade);
+    } catch (e) {
+      setExecuteError(e.message || "فشل تنفيذ الصفقة");
+    } finally {
+      setExecuting(false);
+    }
+  }, [result, symbol, displayTF, executing, syncedTrade]);
+
+  const handleCheckSyncedTrade = useCallback(async () => {
+    if (!syncedTrade) return;
+    setSyncLoading(true);
+    try {
+      const res = await fetch(`/api/ai-trades/${syncedTrade.id}/check`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.trade) setSyncedTrade(data.trade);
+    } catch {
+      /* فشل الفحص — الطالب فيه يعيد المحاولة يدوياً */
+    } finally {
+      setSyncLoading(false);
+    }
+  }, [syncedTrade]);
+
 
   /* ===================== بيانات الكروت السفلية — Heat Map / Radar / News ===================== */
   const loadSnapshot = useCallback(async () => {
@@ -809,6 +874,22 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       </div>
 
       {error && <div style={{ ...glass, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
+
+      {(result?.entryStatus === "Ready" || syncedTrade) && (
+        <AITradeCard
+          result={result}
+          symbol={symbol}
+          asset={asset}
+          timeframeLabel={TF_LABELS[displayTF] || "M15"}
+          executedTrade={executedTrade}
+          executing={executing}
+          executeError={executeError}
+          onExecute={handleExecuteTrade}
+          syncedTrade={syncedTrade}
+          syncLoading={syncLoading}
+          onCheckSynced={handleCheckSyncedTrade}
+        />
+      )}
 
       {/* ================= MAIN: CHART (≈70%) + AI PANEL (≈30%) ================= */}
       <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 360px", gap: "1rem", alignItems: "start" }}>
@@ -1340,6 +1421,179 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+/* ============================================================================
+   AI Trade Card (Phase 4) — بتظهر بس لما entryStatus === "Ready" (نفس الشرط
+   يلي بيتحكم بالـ signal/status بكل مكان تاني بالواجهة). ما بتحسب أي شي جديد —
+   كل قيمة مسحوبة مباشرة من result (نتيجة analyzeSymbol() الجاهزة).
+   ============================================================================ */
+/* ============================================================================
+   AI Trade Card (Phase 4) — إما تعرض إعداد جاهز للتنفيذ (entryStatus === "Ready")
+   أو، لو فيه صفقة QAIS AI مفتوحة أصلاً على هاد الرمز (Chart Sync)، بتعرض تلك
+   الصفقة وتقدمها الحالي بدل زر التنفيذ. ما بتحسب أي شي جديد بحالة "جاهز
+   للتنفيذ" — كل قيمة مسحوبة مباشرة من result (نتيجة analyzeSymbol() الجاهزة).
+   ============================================================================ */
+function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, executing, executeError, onExecute, syncedTrade, syncLoading, onCheckSynced }) {
+  // -------- حالة 1: فيه صفقة مفتوحة أصلاً على هاد الرمز (Chart Sync) --------
+  if (syncedTrade) {
+    const isBuy = syncedTrade.direction === "up";
+    const dirColor = isBuy ? GREEN : RED;
+    const stColor = statusColor(syncedTrade.status);
+    return (
+      <div
+        className="qmi-anim"
+        style={{ ...glass, border: `1.5px solid ${GOLD}55`, boxShadow: `0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px ${GOLD}22`, padding: "1rem 1.2rem" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: `${dirColor}1f`, border: `1px solid ${dirColor}66`, color: dirColor, fontWeight: 900, fontSize: 13, borderRadius: 8, padding: "5px 12px" }}>
+              {isBuy ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              {isBuy ? "BUY" : "SELL"}
+            </div>
+            <span style={{ fontWeight: 800, fontSize: 14, color: "#f0f0f0" }}>{asset?.label || symbol}</span>
+            <span style={{ fontSize: 11.5, color: "#999", background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 6, padding: "3px 8px" }}>
+              {syncedTrade.timeframe}
+            </span>
+            <span style={{ fontSize: 11.5, fontWeight: 800, color: stColor, background: `${stColor}1a`, border: `1px solid ${stColor}55`, borderRadius: 6, padding: "3px 9px" }}>
+              {syncedTrade.status}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={onCheckSynced}
+              disabled={syncLoading}
+              style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #2e2e2e", color: "#aaa", borderRadius: 6, padding: "5px 10px", fontSize: 11, cursor: syncLoading ? "default" : "pointer" }}
+            >
+              <RefreshCw size={11} /> {syncLoading ? "جارٍ الفحص..." : "فحص السعر الآن"}
+            </button>
+            <Link
+              href={`/ai-trades/${syncedTrade.id}`}
+              style={{ display: "flex", alignItems: "center", gap: 5, background: `${GOLD}15`, border: `1px solid ${GOLD}40`, color: GOLD_LIGHT, borderRadius: 6, padding: "5px 10px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}
+            >
+              التفاصيل الكاملة <ExternalLink size={11} />
+            </Link>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10 }}>
+          <TradeCardStat label="Confidence" value={syncedTrade.confidence != null ? `${syncedTrade.confidence}%` : "—"} color={GOLD_LIGHT} />
+          <TradeCardStat label="Entry" value={fmt(syncedTrade.entry)} />
+          <TradeCardStat label="Stop Loss" value={fmt(syncedTrade.stop_loss)} color={RED} />
+          <TradeCardStat label="TP1" value={fmt(syncedTrade.tp1)} color={GREEN} />
+          <TradeCardStat label="TP2" value={fmt(syncedTrade.tp2)} color={GREEN} />
+          <TradeCardStat label="TP3" value={fmt(syncedTrade.tp3)} color={BLUE} />
+          <TradeCardStat label="TP4" value={fmt(syncedTrade.tp4)} color={BLUE} />
+          <TradeCardStat label="Risk/Reward" value={syncedTrade.risk_reward != null ? `${syncedTrade.risk_reward}R` : "—"} />
+        </div>
+        <div style={{ marginTop: 10, fontSize: 11, color: "#777" }}>
+          آخر سعر تم فحصه: <b style={{ color: "#ccc" }}>{fmt(syncedTrade.last_checked_price)}</b>
+        </div>
+      </div>
+    );
+  }
+
+  // -------- حالة 2: إعداد جديد جاهز للتنفيذ (entryStatus === "Ready") --------
+  const isBuy = r.direction === "up";
+  const dirColor = isBuy ? GREEN : RED;
+  const targets = Array.isArray(r.targets) ? r.targets : [];
+  const tpPrice = (i) => {
+    const t = targets[i];
+    if (!t) return null;
+    return t.price ?? t.level ?? null;
+  };
+  const tps = [tpPrice(0), tpPrice(1), tpPrice(2), tpPrice(3)];
+
+  return (
+    <div
+      className="qmi-anim"
+      style={{
+        ...glass,
+        border: `1.5px solid ${GOLD}55`,
+        boxShadow: `0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px ${GOLD}22`,
+        padding: "1rem 1.2rem",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: `${dirColor}1f`, border: `1px solid ${dirColor}66`,
+              color: dirColor, fontWeight: 900, fontSize: 13, borderRadius: 8, padding: "5px 12px",
+            }}
+          >
+            {isBuy ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+            {isBuy ? "BUY" : "SELL"}
+          </div>
+          <span style={{ fontWeight: 800, fontSize: 14, color: "#f0f0f0" }}>{asset?.label || symbol}</span>
+          <span style={{ fontSize: 11.5, color: "#999", background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 6, padding: "3px 8px" }}>
+            {timeframeLabel}
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, color: GOLD_LIGHT, background: `${GOLD}15`, border: `1px solid ${GOLD}40`, borderRadius: 6, padding: "3px 8px" }}>
+            <CheckCircle2 size={11} /> Entry Status: Ready
+          </span>
+        </div>
+        <span style={{ fontSize: 11, color: "#777" }}>{new Date().toLocaleString("en-GB")}</span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10, marginBottom: 16 }}>
+        <TradeCardStat label="Confidence" value={`${r.aiConfidence ?? r.radarScore ?? 0}%`} color={GOLD_LIGHT} />
+        <TradeCardStat label="Entry" value={fmt(r.entry)} />
+        <TradeCardStat label="Stop Loss" value={fmt(r.stopLoss)} color={RED} />
+        <TradeCardStat label="TP1" value={fmt(tps[0])} color={GREEN} />
+        <TradeCardStat label="TP2" value={fmt(tps[1])} color={GREEN} />
+        <TradeCardStat label="TP3" value={fmt(tps[2])} color={BLUE} />
+        <TradeCardStat label="TP4" value={fmt(tps[3])} color={BLUE} />
+        <TradeCardStat label="Risk/Reward" value={r.riskReward != null ? `${r.riskReward}R` : "—"} />
+      </div>
+
+      {executeError && <div style={{ color: RED, fontSize: 12, marginBottom: 10 }}>{executeError}</div>}
+
+      {executedTrade ? (
+        <div
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            background: `${GREEN}18`, border: `1px solid ${GREEN}55`, color: GREEN,
+            fontWeight: 800, fontSize: 13.5, borderRadius: 10, padding: "12px 20px",
+          }}
+        >
+          <CheckCircle2 size={16} /> تم تنفيذ الصفقة داخل الأكاديمية — Status: {executedTrade.status}
+        </div>
+      ) : (
+        <button
+          onClick={onExecute}
+          disabled={executing}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
+            border: "none", color: "#181A20", fontWeight: 900, fontSize: 14.5,
+            borderRadius: 10, padding: "13px 20px", cursor: executing ? "default" : "pointer",
+            opacity: executing ? 0.7 : 1,
+          }}
+        >
+          <Zap size={16} fill="#181A20" />
+          {executing ? "جارٍ التنفيذ..." : "🚀 Execute AI Trade"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function statusColor(status) {
+  if (status === "Closed Winner") return GREEN;
+  if (status === "Stopped Out") return RED;
+  if (status === "Open") return "#999";
+  return GOLD_LIGHT; // Running / TPx Hit
+}
+
+function TradeCardStat({ label, value, color = "#f0f0f0" }) {
+  return (
+    <div style={{ background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 8, padding: "7px 10px" }}>
+      <div style={{ fontSize: 10.5, color: "#888", marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 13.5, fontWeight: 800, color }}>{value}</div>
+    </div>
+  );
 }
 
 /* ============================================================================

@@ -17,6 +17,7 @@ import {
   LogOut,
   Crown,
   Radar,
+  Bot,
 } from "lucide-react";
 
 /* ============================================================================
@@ -28,6 +29,8 @@ export const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: Users, href: "/accounts", adminOnly: true },
   { key: "live", label: "البث المباشر", icon: Radio, href: "/live-sessions" },
   { key: "radar", label: "Trading Radar", icon: Radar, href: "/trading-radar" },
+  { key: "ai-trades", label: "صفقات QAIS AI", icon: Bot, href: "/ai-trades" },
+  { key: "ai-trades-history", label: "سجل صفقات QAIS AI", icon: BarChart3, href: "/ai-trades/history" },
   { key: "trader-dna", label: "بصمتك كمتداول", icon: Dna, href: "/trader-dna" },
   { key: "lectures", label: "المحاضرات", icon: GraduationCap, href: "/courses" },
   { key: "calendar", label: "التقويم الاقتصادي", icon: Calendar, href: "/economic-calendar" },
