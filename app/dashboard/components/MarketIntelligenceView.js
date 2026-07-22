@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
-import { Sparkles, RotateCcw, ChevronDown, ChevronRight, Zap, Bell, Radio, Brain, Eye, TrendingUp, TrendingDown, Target, Lightbulb, CheckCircle2 } from "lucide-react";
+import { Sparkles, RotateCcw, ChevronDown, ChevronRight, Zap, Bell, Radio, Brain, Eye, TrendingUp, TrendingDown, Target, CheckCircle2 } from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
 import { createClient } from "@/lib/supabase-client";
@@ -609,6 +609,39 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [radarItems]);
 
+  /* -------- AI Summary (top of page) — مجمّع تلقائياً من نفس بيانات marketStatus/snapshot/radarItems،
+     بدون أي رقم جديد أو نص ثابت. مجرد صياغة لغوية لما هو محسوب أصلاً -------- */
+  const aiSummary = useMemo(() => {
+    const currencies = snapshot?.currencies || {};
+    const entries = Object.entries(currencies).filter(([, v]) => v != null);
+    const strongestCcy = entries.length ? entries.reduce((a, b) => (b[1] > a[1] ? b : a)) : null;
+    const qualitySetups = radarItems.filter((i) => (i.radar_score ?? i.score ?? 0) >= 80).length;
+    const leadAsset = marketStatus.strongest;
+    const leadAssetSymbol = leadAsset ? (getAssetByValue(leadAsset.symbol)?.label || leadAsset.symbol) : null;
+
+    const lines = [];
+    lines.push(
+      marketStatus.biasLbl === "Neutral"
+        ? "The market is mixed right now, without a clear dominant bias across watched assets."
+        : `The market remains ${marketStatus.biasLbl.toLowerCase()} overall across watched assets.`
+    );
+    if (leadAsset) {
+      const zone = leadAsset.decision?.premiumDiscount;
+      const dirTxt = leadAsset.direction === "up" ? "building bullish momentum" : leadAsset.direction === "down" ? "under bearish pressure" : "in a ranging structure";
+      lines.push(`${leadAssetSymbol} is the strongest setup on the radar right now, ${dirTxt}${zone && zone !== "—" ? ` inside the ${zone.toLowerCase()}` : ""}.`);
+    }
+    if (strongestCcy) {
+      lines.push(`${strongestCcy[0]} remains the strongest currency at the moment, which tends to weigh on pairs quoted against it.`);
+    }
+    lines.push(
+      qualitySetups > 0
+        ? `${qualitySetups} high-quality setup${qualitySetups === 1 ? "" : "s"} ${qualitySetups === 1 ? "is" : "are"} currently forming above 80% confidence.`
+        : "No high-quality setups (80%+ confidence) are currently forming — the engine is still scanning."
+    );
+
+    return { lines, confidence: marketStatus.avgConfidence, biasLbl: marketStatus.biasLbl };
+  }, [snapshot, radarItems, marketStatus]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <style>{`
@@ -624,6 +657,53 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         .qmi-briefing-card:hover { transform: translateY(-2px); background: #181a1f; }
         @keyframes qmiBarGrow { from { width: 0%; } }
         .qmi-conf-bar { animation: qmiBarGrow 0.9s ease both; }
+
+        .qmi-summary-card { transition: box-shadow .25s ease, transform .25s ease; }
+        .qmi-summary-card:hover { box-shadow: 0 10px 34px rgba(212,175,55,0.14); }
+
+        .qmi-wstat { transition: transform .18s ease, background .18s ease, box-shadow .18s ease; border: 1px solid transparent; }
+        .qmi-wstat:hover { transform: translateY(-2px); background: #181a1f; border-color: ${GOLD}2a; box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
+
+        .qmi-liq-row {
+          display: grid;
+          grid-template-columns: 1.1fr 0.8fr 0.7fr 1.3fr 1.2fr 1.1fr 1fr 0.8fr 1.2fr;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 12px;
+          font-size: 11.5px;
+        }
+        .qmi-liq-head { color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; padding: 0 12px; }
+        .qmi-liq-body {
+          width: 100%;
+          text-align: right;
+          cursor: pointer;
+          border-radius: 10px;
+          transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+        }
+        .qmi-liq-body:hover { transform: translateY(-2px); border-color: ${GOLD}55 !important; box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+        .qmi-liq-body span[data-label] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        @media (max-width: 900px) {
+          .qmi-liq-head { display: none; }
+          .qmi-liq-row {
+            grid-template-columns: 1fr 1fr;
+            row-gap: 8px;
+          }
+          .qmi-liq-body span[data-label] {
+            white-space: normal;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+          .qmi-liq-body span[data-label]::before {
+            content: attr(data-label);
+            font-size: 8.5px;
+            font-weight: 700;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+          }
+        }
       `}</style>
 
       {/* ================= HEADER ================= */}
@@ -653,6 +733,9 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           </button>
         )}
       </div>
+
+      {/* ================= AI SUMMARY (TOP OF PAGE) ================= */}
+      <AiSummaryCard summary={aiSummary} />
 
       {/* ================= LIVE MARKET STATUS ================= */}
       <LiveMarketStatusBar status={marketStatus} />
@@ -774,6 +857,57 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: "1rem", alignItems: "start" }}>
         <MarketSummaryCard snapshot={snapshot} radarItems={radarItems} newsToday={newsToday} />
         <LiveNotificationsCard items={radarItems} onOpen={openOpportunity} />
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+   AI Summary — كرت هيرو أعلى الصفحة. يترجم marketStatus/snapshot/radarItems
+   لفقرة قصيرة مفهومة بلمحة، بدل ما يضطر المستخدم يقرأ كل قسم لحاله.
+   ============================================================================ */
+function AiSummaryCard({ summary }) {
+  const { lines, confidence, biasLbl } = summary;
+  const biasColor = biasLbl === "Bullish" ? GREEN : biasLbl === "Bearish" ? RED : "#888";
+  const confColor = confidence == null ? "#888" : confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : AMBER;
+
+  return (
+    <div
+      className="qmi-anim qmi-summary-card"
+      style={{
+        ...glass,
+        padding: "1.1rem 1.3rem",
+        position: "relative",
+        overflow: "hidden",
+        border: `1px solid ${GOLD}3d`,
+        background: `linear-gradient(135deg, rgba(212,175,55,0.09), rgba(20,22,26,0.94) 55%)`,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flex: "1 1 320px", minWidth: 260 }}>
+          <span style={{ fontSize: 22, lineHeight: 1 }}>🧠</span>
+          <div>
+            <div style={{ fontSize: 14.5, fontWeight: 900, color: "#f5f5f5", letterSpacing: 0.2 }}>Today&apos;s AI Summary</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
+              {lines.map((l, i) => (
+                <div key={i} style={{ fontSize: 12.5, color: "#d8d8d8", lineHeight: 1.75 }}>
+                  {l}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <div style={{ background: "#14161a", border: `1px solid ${biasColor}40`, borderRadius: 12, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
+            <div style={{ fontSize: 9, color: "#888", letterSpacing: 0.4, textTransform: "uppercase" }}>Market Bias</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: biasColor, marginTop: 3 }}>{biasLbl}</div>
+          </div>
+          <div style={{ background: "#14161a", border: `1px solid ${confColor}40`, borderRadius: 12, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
+            <div style={{ fontSize: 9, color: "#888", letterSpacing: 0.4, textTransform: "uppercase" }}>Overall Confidence</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: confColor, marginTop: 3 }}>{confidence != null ? `${confidence}%` : "—"}</div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1771,13 +1905,17 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
         {sorted.length === 0 ? (
           <EmptyNote text="بانتظار أول دورة تحليل من المحرك" />
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={{ display: "flex", fontSize: 10, color: "#666", padding: "0 12px" }}>
-              <span style={{ flex: 1.3 }}>Symbol</span>
-              <span style={{ flex: 1.3 }}>Liquidity</span>
-              <span style={{ flex: 1.3 }}>Order Block</span>
-              <span style={{ flex: 1.1 }}>Fair Value Gap</span>
-              <span style={{ flex: 0.8, textAlign: "left" }}>Score</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            <div className="qmi-liq-row qmi-liq-head">
+              <span>Symbol</span>
+              <span>Direction</span>
+              <span>Score</span>
+              <span>Liquidity Status</span>
+              <span>Order Block</span>
+              <span>Fair Value Gap</span>
+              <span>Confidence</span>
+              <span>Timeframe</span>
+              <span>Status</span>
             </div>
             {sorted.map((it) => {
               const d = it.decision;
@@ -1786,33 +1924,48 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
               const liqColor = swept ? (it.direction === "up" ? GREEN : RED) : "#666";
               const obLabel = d?.ob?.eligible ? `${it.direction === "up" ? "Bullish" : "Bearish"} OB` : "—";
               const fvgLabel = d?.fvgStatus || "—";
+              const score = it.score ?? 0;
+              const confLabel = score >= 80 ? "High" : score >= 50 ? "Medium" : "Low";
+              const confColor = score >= 80 ? GREEN : score >= 50 ? GOLD_LIGHT : "#888";
+              const dirLabel = it.direction === "up" ? "BUY" : it.direction === "down" ? "SELL" : "—";
+              const dirColor = it.direction === "up" ? GREEN : it.direction === "down" ? RED : "#888";
+              const meta = radarStatusMeta(it);
               const isSelected = active?.symbol === it.symbol;
               return (
                 <button
                   key={it.symbol}
                   onClick={() => onSelect(it.symbol)}
+                  className="qmi-liq-row qmi-liq-body"
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    width: "100%",
-                    textAlign: "right",
-                    cursor: "pointer",
                     background: isSelected ? `${GOLD}18` : "#14161a",
                     border: `1px solid ${isSelected ? `${GOLD}80` : "transparent"}`,
-                    borderRadius: 10,
-                    padding: "9px 12px",
-                    fontSize: 11.5,
-                    transition: "all .2s ease",
+                    boxShadow: isSelected ? `0 6px 18px ${GOLD}22` : "0 2px 8px rgba(0,0,0,0.18)",
                   }}
                 >
-                  <span style={{ flex: 1.3, fontWeight: 800, color: "#e5e5e5", display: "flex", alignItems: "center", gap: 6 }}>
-                    {isSelected && <span style={{ width: 5, height: 5, borderRadius: "50%", background: GOLD }} />}
+                  <span data-label="Symbol" style={{ fontWeight: 800, color: "#e5e5e5", display: "flex", alignItems: "center", gap: 6 }}>
+                    {isSelected && <span style={{ width: 5, height: 5, borderRadius: "50%", background: GOLD, flexShrink: 0 }} />}
                     {it.symbol}
                   </span>
-                  <span style={{ flex: 1.3, color: liqColor, fontWeight: 700 }}>{liqLabel}</span>
-                  <span style={{ flex: 1.3, color: d?.ob?.eligible ? GOLD_LIGHT : "#666" }}>{obLabel}</span>
-                  <span style={{ flex: 1.1, color: fvgLabel === "Present" ? BLUE : "#666" }}>{fvgLabel}</span>
-                  <span style={{ flex: 0.8, textAlign: "left", fontWeight: 800, color: (it.score ?? 0) >= 85 ? GREEN : "#ccc" }}>{it.score ?? 0}%</span>
+                  <span data-label="Direction">
+                    <span style={{ fontSize: 10, fontWeight: 800, color: dirColor, background: `${dirColor}20`, borderRadius: 6, padding: "3px 8px" }}>{dirLabel}</span>
+                  </span>
+                  <span data-label="Score" style={{ fontWeight: 800, color: score >= 85 ? GREEN : "#ccc" }}>{score}%</span>
+                  <span data-label="Liquidity Status" style={{ color: liqColor, fontWeight: 700 }}>{liqLabel}</span>
+                  <span data-label="Order Block" style={{ color: d?.ob?.eligible ? GOLD_LIGHT : "#666" }}>{obLabel}</span>
+                  <span data-label="Fair Value Gap" style={{ color: fvgLabel === "Present" ? BLUE : "#666" }}>{fvgLabel}</span>
+                  <span data-label="Confidence" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 34, height: 5, borderRadius: 4, background: "#0e1013", overflow: "hidden", flexShrink: 0 }}>
+                      <span style={{ display: "block", height: "100%", width: `${score}%`, background: confColor, borderRadius: 4 }} />
+                    </span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: confColor }}>{confLabel}</span>
+                  </span>
+                  <span data-label="Timeframe" style={{ color: "#999", fontWeight: 700 }}>{it.timeframe || "—"}</span>
+                  <span data-label="Status">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 800, color: meta.color, background: `${meta.color}1f`, borderRadius: 6, padding: "3px 8px" }}>
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: meta.color }} />
+                      {it.entry_status || meta.label}
+                    </span>
+                  </span>
                 </button>
               );
             })}
@@ -1933,7 +2086,39 @@ function buildAiBriefing(item, d) {
   else if (!bosOk) recommendation = { text: "Wait for BOS confirmation before entering.", tone: "wait" };
   else recommendation = { text: "Wait for confirmation — avoid entering early.", tone: "wait" };
 
-  return { situation, waitingFor, bullish, bearish, confidence: { score, label: confidenceLabel, reasons: confidenceReasons }, recommendation };
+  /* ---------- 7) Risk Factors ---------- */
+  const riskFactors = [];
+  if (htfLabel && dir && htfLabel !== dirLabel) {
+    riskFactors.push(`Trading against the higher-timeframe trend (${htfLabel}) — counter-trend moves reverse faster and can invalidate quickly.`);
+  }
+  if (obReady && obQuality != null && obQuality < 60) {
+    riskFactors.push(`Order Block quality is only ${obQuality}% — a lower-quality zone increases the chance of a false reaction.`);
+  }
+  if (!swept && approaching) {
+    riskFactors.push("Liquidity hasn't been swept yet — entering before the sweep raises the risk of getting caught on the wrong side.");
+  }
+  if (!bosOk) {
+    riskFactors.push("No confirmed Break of Structure yet — the current move could still be corrective rather than a real trend change.");
+  }
+  if (zone && ((dir === "up" && zone === "Premium Zone") || (dir === "down" && zone === "Discount Zone"))) {
+    riskFactors.push(`Price is trading in the ${zone.toLowerCase()}, which is a less favorable area for a ${dirLabel} continuation.`);
+  }
+  if (score < 50) {
+    riskFactors.push("Overall confidence is low — treat this symbol as a watch-list item, not an active setup.");
+  }
+  if (riskFactors.length === 0) {
+    riskFactors.push("No major conflicting signals detected right now — risk is limited to normal market volatility and news events.");
+  }
+
+  return {
+    situation,
+    waitingFor,
+    bullish,
+    bearish,
+    riskFactors,
+    confidence: { score, label: confidenceLabel, reasons: confidenceReasons },
+    recommendation,
+  };
 }
 
 const BRIEFING_TONE = {
@@ -1943,7 +2128,8 @@ const BRIEFING_TONE = {
   range: { color: AMBER, bg: "rgba(245,158,11,0.08)" },
 };
 
-function BriefingCard({ icon: Icon, emoji, title, color, delay, children }) {
+function BriefingCard({ emoji, title, color, delay, confidence, children }) {
+  const confColor = confidence == null ? "#888" : confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : AMBER;
   return (
     <div
       className="qmi-anim qmi-briefing-card"
@@ -1953,12 +2139,30 @@ function BriefingCard({ icon: Icon, emoji, title, color, delay, children }) {
         border: `1px solid ${color}33`,
         borderLeft: `3px solid ${color}`,
         borderRadius: 12,
-        padding: "12px 14px",
+        padding: "13px 15px",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
-        {Icon ? <Icon size={14} color={color} /> : <span style={{ fontSize: 14 }}>{emoji}</span>}
-        <span style={{ fontSize: 11.5, fontWeight: 800, color, letterSpacing: 0.3, textTransform: "uppercase" }}>{title}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 9 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <span style={{ fontSize: 15 }}>{emoji}</span>
+          <span style={{ fontSize: 11.5, fontWeight: 800, color, letterSpacing: 0.4, textTransform: "uppercase" }}>{title}</span>
+        </div>
+        {confidence != null && (
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 800,
+              color: confColor,
+              background: `${confColor}1f`,
+              border: `1px solid ${confColor}40`,
+              borderRadius: 20,
+              padding: "2px 9px",
+              flexShrink: 0,
+            }}
+          >
+            {confidence}% conf.
+          </span>
+        )}
       </div>
       {children}
     </div>
@@ -1991,13 +2195,13 @@ function AiBriefing({ item, d }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {/* 1. Current Market Situation — Blue / Information */}
-        <BriefingCard icon={Brain} title="Current Market Situation" color={BLUE} delay={0}>
+        {/* 1. Current Market Situation */}
+        <BriefingCard emoji="🧠" title="Current Market Situation" color={BLUE} delay={0} confidence={briefing.confidence.score}>
           <div style={{ fontSize: 12, color: "#dcdcdc", lineHeight: 1.8 }}>{briefing.situation}</div>
         </BriefingCard>
 
-        {/* 2. What Are We Waiting For — Blue / Information */}
-        <BriefingCard icon={Eye} title="What Are We Waiting For?" color={BLUE} delay={60}>
+        {/* 2. What Are We Waiting For */}
+        <BriefingCard emoji="👀" title="What Are We Waiting For" color={BLUE} delay={60} confidence={briefing.confidence.score}>
           {briefing.waitingFor.length === 0 ? (
             <div style={{ fontSize: 12, color: GREEN, lineHeight: 1.8, display: "flex", alignItems: "center", gap: 6 }}>
               <CheckCircle2 size={13} color={GREEN} /> All entry confirmations are complete — nothing left to wait for.
@@ -2013,39 +2217,53 @@ function AiBriefing({ item, d }) {
           )}
         </BriefingCard>
 
-        {/* 3. Bullish Scenario — Green */}
-        <BriefingCard icon={TrendingUp} title="Bullish Scenario" color={GREEN} delay={120}>
+        {/* 3. Bullish Scenario */}
+        <BriefingCard emoji="📈" title="Bullish Scenario" color={GREEN} delay={120} confidence={briefing.confidence.score}>
           <div style={{ fontSize: 12, color: "#dcdcdc", lineHeight: 1.8 }}>{briefing.bullish}</div>
         </BriefingCard>
 
-        {/* 4. Bearish Scenario — Red */}
-        <BriefingCard icon={TrendingDown} title="Bearish Scenario" color={RED} delay={180}>
+        {/* 4. Bearish Scenario */}
+        <BriefingCard emoji="📉" title="Bearish Scenario" color={RED} delay={180} confidence={briefing.confidence.score}>
           <div style={{ fontSize: 12, color: "#dcdcdc", lineHeight: 1.8 }}>{briefing.bearish}</div>
         </BriefingCard>
 
-        {/* 5. AI Confidence — Blue */}
-        <BriefingCard icon={Target} title="AI Confidence" color={BLUE} delay={240}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 20, fontWeight: 900, color: GOLD_LIGHT }}>{briefing.confidence.score}%</span>
-            <span style={{ fontSize: 11.5, fontWeight: 800, color: BLUE }}>{briefing.confidence.label} confidence</span>
-          </div>
+        {/* 5. Risk Factors */}
+        <BriefingCard emoji="⚠️" title="Risk Factors" color={AMBER} delay={240} confidence={briefing.confidence.score}>
+          <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 5 }}>
+            {briefing.riskFactors.map((r, i) => (
+              <li key={i} style={{ fontSize: 12, color: "#dcdcdc", lineHeight: 1.7 }}>
+                {r}
+              </li>
+            ))}
+          </ul>
+        </BriefingCard>
+
+        {/* 6. AI Recommendation */}
+        <BriefingCard emoji="🎯" title="AI Recommendation" color={tone.color} delay={300} confidence={briefing.confidence.score}>
           <div
             style={{
-              height: 6,
-              borderRadius: 4,
-              background: "#0e1013",
-              overflow: "hidden",
-              marginBottom: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: tone.bg,
+              border: `1px solid ${tone.color}44`,
+              borderRadius: 8,
+              padding: "9px 11px",
+              marginBottom: 10,
             }}
           >
+            <RecIcon size={15} color={tone.color} />
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: tone.color }}>{briefing.recommendation.text}</span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 18, fontWeight: 900, color: GOLD_LIGHT }}>{briefing.confidence.score}%</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: BLUE }}>{briefing.confidence.label} confidence</span>
+          </div>
+          <div style={{ height: 6, borderRadius: 4, background: "#0e1013", overflow: "hidden", marginBottom: 8 }}>
             <div
               className="qmi-conf-bar"
-              style={{
-                height: "100%",
-                width: `${briefing.confidence.score}%`,
-                background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`,
-                borderRadius: 4,
-              }}
+              style={{ height: "100%", width: `${briefing.confidence.score}%`, background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`, borderRadius: 4 }}
             />
           </div>
           <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -2055,24 +2273,6 @@ function AiBriefing({ item, d }) {
               </li>
             ))}
           </ul>
-        </BriefingCard>
-
-        {/* 6. Recommendation — Yellow */}
-        <BriefingCard icon={Lightbulb} title="Recommendation" color={AMBER} delay={300}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              background: tone.bg,
-              border: `1px solid ${tone.color}44`,
-              borderRadius: 8,
-              padding: "8px 10px",
-            }}
-          >
-            <RecIcon size={15} color={tone.color} />
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: tone.color }}>{briefing.recommendation.text}</span>
-          </div>
         </BriefingCard>
       </div>
     </div>
@@ -2105,19 +2305,50 @@ function AnalysisWorkspace({ item }) {
   const lastTarget = d?.targets?.[d.targets.length - 1];
   const expectedMove = d?.entry != null && lastTarget ? `${fmt(d.entry)} → ${fmt(lastTarget.price)}` : "—";
   const score = d?.score ?? 0;
+  const structureLabel = d?.marketStructure || (d?.bosStatus === "Detected" ? "Break of Structure" : "Ranging");
+
+  /* -------- Smart Explanations — كل قيمة بتفسّر حالها بجملة بسيطة، مبنية من
+     نفس القيم المحسوبة فوق فقط (لا نص عشوائي، ولا رقم جديد) -------- */
+  const explain = {
+    trend:
+      item.direction === "up"
+        ? "The market continues making higher lows, keeping buyers in control."
+        : item.direction === "down"
+        ? "The market continues making lower highs, keeping sellers in control."
+        : "Price hasn't committed to a clear direction yet.",
+    htf:
+      d?.htfTrend == null
+        ? "No clear higher-timeframe bias to compare against yet."
+        : d.htfTrend === item.direction
+        ? "The bigger picture agrees with this move, adding weight behind it."
+        : "The bigger picture disagrees — this move is against the broader trend.",
+    structure:
+      d?.bosStatus === "Detected"
+        ? "A new swing has broken the previous structure, confirming the current direction."
+        : "Price hasn't broken a clear structural level yet — still building the next move.",
+    liqType: swept
+      ? item.direction === "up"
+        ? "Sell-side liquidity has already been taken, reducing downside probability."
+        : "Buy-side liquidity has already been taken, reducing upside probability."
+      : "This liquidity pool hasn't been taken yet — price may still reach for it first.",
+    ob: d?.ob?.eligible
+      ? "Institutional supply/demand zone — price could react strongly if it retests this area."
+      : "No institutional zone has formed yet on this timeframe.",
+    fvg: d?.fvgStatus === "Present" ? "Price may revisit this imbalance before continuing." : "No unfilled imbalance nearby for price to react to.",
+  };
 
   return (
     <div key={item.symbol} className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
       <SectionHeader icon="🧠" title="Analysis Workspace" subtitle={`Full breakdown for ${item.symbol} — always visible, refreshes automatically when you pick another asset above.`} />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))", gap: 10, marginTop: 14 }}>
-        <WorkspaceStat label="Liquidity Status" value={d?.liquidityStatus || "—"} />
-        <WorkspaceStat label="Market Structure" value={d?.marketStructure || (d?.bosStatus === "Detected" ? "Break of Structure" : "Ranging")} />
-        <WorkspaceStat label="Trend" value={dirLabel} color={dirColor} />
-        <WorkspaceStat label="HTF Trend" value={htfLabel} color={htfColor} />
-        <WorkspaceStat label="Liquidity Type" value={liqTypeLabel} color={swept ? (item.direction === "up" ? GREEN : RED) : "#888"} />
-        <WorkspaceStat label="Order Block" value={obLabel} color={d?.ob?.eligible ? GOLD_LIGHT : "#888"} />
-        <WorkspaceStat label="Fair Value Gap" value={d?.fvgStatus || "—"} color={d?.fvgStatus === "Present" ? BLUE : "#888"} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10, marginTop: 14 }}>
+        <WorkspaceStat label="Liquidity Status" value={d?.liquidityStatus || "—"} explain={explain.liqType} />
+        <WorkspaceStat label="Market Structure" value={structureLabel} explain={explain.structure} />
+        <WorkspaceStat label="Trend" value={dirLabel} color={dirColor} explain={explain.trend} />
+        <WorkspaceStat label="HTF Trend" value={htfLabel} color={htfColor} explain={explain.htf} />
+        <WorkspaceStat label="Liquidity Type" value={liqTypeLabel} color={swept ? (item.direction === "up" ? GREEN : RED) : "#888"} explain={explain.liqType} />
+        <WorkspaceStat label="Order Block" value={obLabel} color={d?.ob?.eligible ? GOLD_LIGHT : "#888"} explain={explain.ob} />
+        <WorkspaceStat label="Fair Value Gap" value={d?.fvgStatus || "—"} color={d?.fvgStatus === "Present" ? BLUE : "#888"} explain={explain.fvg} />
         <WorkspaceStat label="Expected Move" value={expectedMove} color={GOLD_LIGHT} />
         <WorkspaceStat label="Entry Zone" value={fmt(d?.entry)} color={GOLD_LIGHT} />
         <WorkspaceStat label="Stop Loss" value={fmt(d?.stopLoss)} color={RED} />
@@ -2130,11 +2361,12 @@ function AnalysisWorkspace({ item }) {
   );
 }
 
-function WorkspaceStat({ label, value, color }) {
+function WorkspaceStat({ label, value, color, explain }) {
   return (
-    <div style={{ background: "#14161a", borderRadius: 10, padding: "10px 12px" }}>
+    <div className="qmi-wstat" style={{ background: "#14161a", borderRadius: 10, padding: "10px 12px" }}>
       <div style={{ fontSize: 10, color: "#777", marginBottom: 3 }}>{label}</div>
       <div style={{ fontSize: 12.5, fontWeight: 800, color: color || "#e5e5e5", lineHeight: 1.4 }}>{value}</div>
+      {explain && <div style={{ fontSize: 10.5, color: "#767b85", lineHeight: 1.55, marginTop: 4 }}>{explain}</div>}
     </div>
   );
 }
