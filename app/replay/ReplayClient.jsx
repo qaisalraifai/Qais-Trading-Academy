@@ -302,20 +302,67 @@ function saveDrawingTemplates(list) {
     window.localStorage.setItem(DRAWING_TEMPLATES_KEY, JSON.stringify(list));
   } catch {}
 }
-/* الأنماط الافتراضية لأي رسمة جديدة: بترجع النمط العادي defaultStyleFor، إلا
-   إذا كان في قالب معلّم "افتراضي" لهاد النوع (بالضغط على ⭐ بقائمة القوالب)،
-   وهيك أي رسمة جديدة من نفس النوع بتطلع مباشرة بشكل القالب المفضّل */
+/* ===================== آخر إعدادات مستخدمة لكل أداة رسم (Last Used Tool State) =====================
+   هاي الميزة مختلفة تمامًا عن "قوالب الرسم" (Templates) اللي فوق:
+   - Template: إعداد يحفظه المستخدم يدويًا بإسم، ويطبّقه يدويًا وقتما بده.
+   - Last Used Tool State: بتتحدّث تلقائيًا مع كل تعديل مباشر يعمله المستخدم على أي
+     خاصية (لون، تعبئة، شفافية، سماكة، نوع خط، حجم نص، امتداد، إلخ)، ولكل أداة رسم
+     "ذاكرتها" الخاصة فيها بشكل مستقل عن باقي الأدوات (Rectangle لا يؤثر على Circle، وهكذا).
+   - محفوظة محليًا بحساب/متصفح المستخدم (localStorage) فبتضل موجودة حتى لو سكّر
+     الموقع وفتحه بعدين، وبتُستخدم تلقائيًا كنقطة بداية لأي رسمة جديدة من نفس النوع،
+     إلا إذا كان مضبوط قالب "افتراضي" مثبّت (⭐) لهاد النوع وقتها بياخد الأولوية. */
+const DRAWING_LAST_USED_KEY = "qta_drawing_last_used_style_v1";
+function loadLastUsedStyles() {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(DRAWING_LAST_USED_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function getLastUsedStyle(type) {
+  const all = loadLastUsedStyles();
+  return all[type] || null;
+}
+/* بتدمج التعديل الجديد فوق آخر حالة محفوظة لهاد النوع بالذات وبتحفظه، من غير ما
+   تأثر على أي أداة تانية */
+function rememberLastUsedStyle(type, patch) {
+  if (!type || !patch || typeof window === "undefined") return;
+  try {
+    const all = loadLastUsedStyles();
+    all[type] = { ...(all[type] || {}), ...patch };
+    window.localStorage.setItem(DRAWING_LAST_USED_KEY, JSON.stringify(all));
+  } catch {}
+}
+function clearLastUsedStyle(type) {
+  if (typeof window === "undefined") return;
+  try {
+    const all = loadLastUsedStyles();
+    delete all[type];
+    window.localStorage.setItem(DRAWING_LAST_USED_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+/* الأنماط الافتراضية لأي رسمة جديدة: بترجع النمط العادي defaultStyleFor مدموج فوقه
+   آخر إعدادات استخدمها المستخدم لهاد النوع (Last Used Tool State)، إلا إذا كان في
+   قالب معلّم "افتراضي" لهاد النوع (بالضغط على ⭐ بقائمة القوالب)، وهيك القالب
+   المثبّت بياخد الأولوية القصوى فوق آخر الإعدادات */
 function styleForNewDrawing(type) {
   const base = defaultStyleFor(type);
   if (typeof window === "undefined") return base;
+  const lastUsed = getLastUsedStyle(type);
+  let style = lastUsed ? { ...base, ...lastUsed } : base;
   try {
     const defName = window.localStorage.getItem(`qta_default_drawing_template_${type}`);
     if (defName) {
       const t = loadDrawingTemplates().find((tt) => tt.type === type && tt.name === defName);
-      if (t) return { ...base, ...t.style };
+      if (t) style = { ...style, ...t.style };
     }
   } catch {}
-  return base;
+  return style;
 }
 
 /* ===================== إعدادات لوحة المقارنة (نوع الشارت + ألوان)، تنحفظ محلياً بالمتصفح ===================== */
@@ -2257,10 +2304,16 @@ export default function ReplayClient({ userId }) {
     if (selectedIdRef.current == null) return null;
     return drawingsRef.current.find((d) => d.id === selectedIdRef.current) || null;
   }
-  function updateSelectedStyle(patch) {
+  /* remember = true يعني هاد تعديل مباشر من المستخدم على خاصية (لون/سماكة/تعبئة..)
+     فبنحدّث "آخر إعدادات الأداة" (Last Used Tool State) لهاد النوع تلقائيًا.
+     remember = false بتنستخدم لما التحديث جاي من تطبيق Template جاهز (مش تعديل
+     مباشر)، عشان القوالب تضل منفصلة عن ذاكرة "آخر استخدام" حسب المطلوب */
+  function updateSelectedStyle(patch, { remember = true } = {}) {
     const idx = drawingsRef.current.findIndex((d) => d.id === selectedIdRef.current);
     if (idx === -1) return;
+    const type = drawingsRef.current[idx].type;
     drawingsRef.current[idx] = { ...drawingsRef.current[idx], style: { ...drawingsRef.current[idx].style, ...patch } };
+    if (remember) rememberLastUsedStyle(type, patch);
     drawOverlay();
     setSelectionRenderTick((t) => t + 1);
   }
@@ -2383,6 +2436,9 @@ export default function ReplayClient({ userId }) {
     pushHistory();
     const idx = drawingsRef.current.findIndex((d) => d.id === editDraft.id);
     if (idx !== -1) drawingsRef.current[idx] = editDraft;
+    // تعديل مباشر من لوحة "كل الإعدادات" لازم يتحفظ كـ"آخر إعدادات" لهاد نوع
+    // الأداة تلقائيًا (نفس منطق الشريط العائم السريع)
+    if (editDraft.style) rememberLastUsedStyle(editDraft.type, editDraft.style);
     setEditingId(null);
     setEditDraft(null);
     drawOverlay();
@@ -5037,7 +5093,7 @@ export default function ReplayClient({ userId }) {
       const t = defaultName ? templates.find((tt) => tt.name === defaultName) : null;
       const patch = t ? { ...t.style } : defaultStyleFor(type);
       pushHistory();
-      updateSelectedStyle(patch);
+      updateSelectedStyle(patch, { remember: false });
       if (t && t.text != null) {
         const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
         if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: t.text };
@@ -5046,7 +5102,7 @@ export default function ReplayClient({ userId }) {
     }
     function applyTemplate(t) {
       pushHistory();
-      updateSelectedStyle({ ...t.style });
+      updateSelectedStyle({ ...t.style }, { remember: false });
       const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
       if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: t.text ?? drawingsRef.current[idx].text };
       setDrawingTemplatesMenuOpen(false);
