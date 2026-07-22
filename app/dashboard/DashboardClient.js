@@ -6,7 +6,7 @@ import AppShell from "../components/layout/AppShell";
 
 /* ============================================================================
    DashboardClient — صارت "Overview" فقط (نظرة عامة سريعة)، مو داشبورد فيها كل
-   الأدوات. كل أداة (Trading Radar, Market Intelligence, Replay, التقويم
+   الأدوات. كل أداة (Trading Radar, Replay, التقويم
    الاقتصادي, الكورسات...) أصبحت Workspace مستقلة بمسارها الخاص (راجع الروابط
    بقسم "الاختصارات" تحت). ما تغيّر أي منطق حسابي أو استعلام قاعدة بيانات هون —
    فقط أعيد تنظيم نفس البيانات المحسوبة أصلاً داخل كروت أوضح.
@@ -28,7 +28,6 @@ const MARKETS = [
 /* اختصارات لكل الـ Workspaces المستقلة — نفس الأدوات اللي كانت تبويبات قبل هيك */
 const SHORTCUTS = [
   { href: "/trading-radar", icon: "📡", label: "Trading Radar", desc: "Heat Map, Liquidity, Session Map والفرص اللحظية" },
-  { href: "/market-intelligence", icon: "🧠", label: "Market Intelligence", desc: "شارت مباشر + تحليل QAIS SK Engine الكامل" },
   { href: "/replay", icon: "🎯", label: "Replay التدريب", desc: "تدرّب على بيانات سابقة مع AI Coach" },
   { href: "/economic-calendar", icon: "📅", label: "التقويم الاقتصادي", desc: "الأخبار المؤثرة على السوق أول بأول" },
   { href: "/courses", icon: "🎓", label: "المحاضرات", desc: "أكمل رحلتك التعليمية بالأكاديمية" },
@@ -348,9 +347,9 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                   ? "لسا ما سجّلت صفقات — افتح Trading Radar لمتابعة الفرص اللحظية وابدأ ببناء سجلّك."
                   : `أداؤك هالشهر ${monthPnL >= 0 ? "إيجابي" : "سلبي"} بمقدار ${monthPnL >= 0 ? "$" : "-$"}${fmt(
                       Math.abs(monthPnL)
-                    )}، ونسبة نجاحك الحالية ${winRate}% على ${total} صفقة. افتح Market Intelligence لمتابعة تحليل QAIS SK Engine اللحظي قبل أي دخول جديد.`}
+                    )}، ونسبة نجاحك الحالية ${winRate}% على ${total} صفقة. افتح Trading Radar لمتابعة تحليل QAIS SK Engine اللحظي قبل أي دخول جديد.`}
               </p>
-              <OpenWorkspaceLink href="/market-intelligence" label="Open Workspace" />
+              <OpenWorkspaceLink href="/trading-radar" label="Open Workspace" />
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem", marginBottom: "1.4rem" }}>
