@@ -302,67 +302,20 @@ function saveDrawingTemplates(list) {
     window.localStorage.setItem(DRAWING_TEMPLATES_KEY, JSON.stringify(list));
   } catch {}
 }
-/* ===================== آخر إعدادات مستخدمة لكل أداة رسم (Last Used Tool State) =====================
-   هاي الميزة مختلفة تمامًا عن "قوالب الرسم" (Templates) اللي فوق:
-   - Template: إعداد يحفظه المستخدم يدويًا بإسم، ويطبّقه يدويًا وقتما بده.
-   - Last Used Tool State: بتتحدّث تلقائيًا مع كل تعديل مباشر يعمله المستخدم على أي
-     خاصية (لون، تعبئة، شفافية، سماكة، نوع خط، حجم نص، امتداد، إلخ)، ولكل أداة رسم
-     "ذاكرتها" الخاصة فيها بشكل مستقل عن باقي الأدوات (Rectangle لا يؤثر على Circle، وهكذا).
-   - محفوظة محليًا بحساب/متصفح المستخدم (localStorage) فبتضل موجودة حتى لو سكّر
-     الموقع وفتحه بعدين، وبتُستخدم تلقائيًا كنقطة بداية لأي رسمة جديدة من نفس النوع،
-     إلا إذا كان مضبوط قالب "افتراضي" مثبّت (⭐) لهاد النوع وقتها بياخد الأولوية. */
-const DRAWING_LAST_USED_KEY = "qta_drawing_last_used_style_v1";
-function loadLastUsedStyles() {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(DRAWING_LAST_USED_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-function getLastUsedStyle(type) {
-  const all = loadLastUsedStyles();
-  return all[type] || null;
-}
-/* بتدمج التعديل الجديد فوق آخر حالة محفوظة لهاد النوع بالذات وبتحفظه، من غير ما
-   تأثر على أي أداة تانية */
-function rememberLastUsedStyle(type, patch) {
-  if (!type || !patch || typeof window === "undefined") return;
-  try {
-    const all = loadLastUsedStyles();
-    all[type] = { ...(all[type] || {}), ...patch };
-    window.localStorage.setItem(DRAWING_LAST_USED_KEY, JSON.stringify(all));
-  } catch {}
-}
-function clearLastUsedStyle(type) {
-  if (typeof window === "undefined") return;
-  try {
-    const all = loadLastUsedStyles();
-    delete all[type];
-    window.localStorage.setItem(DRAWING_LAST_USED_KEY, JSON.stringify(all));
-  } catch {}
-}
-
-/* الأنماط الافتراضية لأي رسمة جديدة: بترجع النمط العادي defaultStyleFor مدموج فوقه
-   آخر إعدادات استخدمها المستخدم لهاد النوع (Last Used Tool State)، إلا إذا كان في
-   قالب معلّم "افتراضي" لهاد النوع (بالضغط على ⭐ بقائمة القوالب)، وهيك القالب
-   المثبّت بياخد الأولوية القصوى فوق آخر الإعدادات */
+/* الأنماط الافتراضية لأي رسمة جديدة: بترجع النمط العادي defaultStyleFor، إلا
+   إذا كان في قالب معلّم "افتراضي" لهاد النوع (بالضغط على ⭐ بقائمة القوالب)،
+   وهيك أي رسمة جديدة من نفس النوع بتطلع مباشرة بشكل القالب المفضّل */
 function styleForNewDrawing(type) {
   const base = defaultStyleFor(type);
   if (typeof window === "undefined") return base;
-  const lastUsed = getLastUsedStyle(type);
-  let style = lastUsed ? { ...base, ...lastUsed } : base;
   try {
     const defName = window.localStorage.getItem(`qta_default_drawing_template_${type}`);
     if (defName) {
       const t = loadDrawingTemplates().find((tt) => tt.type === type && tt.name === defName);
-      if (t) style = { ...style, ...t.style };
+      if (t) return { ...base, ...t.style };
     }
   } catch {}
-  return style;
+  return base;
 }
 
 /* ===================== إعدادات لوحة المقارنة (نوع الشارت + ألوان)، تنحفظ محلياً بالمتصفح ===================== */
@@ -1071,20 +1024,6 @@ export default function ReplayClient({ userId }) {
   const [savingTrade, setSavingTrade] = useState(false);
   const [tradeToast, setTradeToast] = useState("");
   const [dragTick, setDragTick] = useState(0);
-  /* لوحة الصفقة المفتوحة (TP/SL) بتحتاج re-render فعلي وهي عم تنسحب عشان
-     الأرقام بالبانل تتحدث حية، بس استدعاء setState مباشرة بكل mousemove خام
-     (يلي ممكن يصير أسرع من 60 مرة بالثانية بفئران عالية الدقة) كان يفرض
-     re-render إضافي زايد عن رسمة الكانفس نفسها = تقطيع محسوس. هلق منجمّعها
-     لتحديث وحيد بالحد الأقصى لكل فريم شاشة، بنفس فلسفة scheduleDraw فوق. */
-  const dragTickPendingRef = useRef(false);
-  function scheduleDragTickBump() {
-    if (dragTickPendingRef.current) return;
-    dragTickPendingRef.current = true;
-    requestAnimationFrame(() => {
-      dragTickPendingRef.current = false;
-      setDragTick((t) => t + 1);
-    });
-  }
   const openPositionsRef = useRef([]); // [{dbId, direction, entry, sl, tp, lot, riskAmount, rewardAmount, asset}]
   const [openPositionsList, setOpenPositionsList] = useState([]); // نسخة "تفاعلية" من openPositionsRef عشان نقدر نعرضها ونعدلها بلوحة
   const checkOpenPositionsRef = useRef(null);
@@ -1192,7 +1131,7 @@ export default function ReplayClient({ userId }) {
     }
     saveChartSettings(chartSettings);
     applyIndicatorPaneMargins();
-    scheduleDraw();
+    drawOverlay();
   }, [chartSettings]);
 
   /* ===================== منطق أداة المؤشرات الفنية ===================== */
@@ -1369,7 +1308,7 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
   useEffect(() => { magnetRef.current = magnetOn; }, [magnetOn]);
   useEffect(() => { intervalRef.current = interval; }, [interval]);
-  useEffect(() => { drawingsVisibleRef.current = drawingsVisible; scheduleDraw(); }, [drawingsVisible]);
+  useEffect(() => { drawingsVisibleRef.current = drawingsVisible; drawOverlay(); }, [drawingsVisible]);
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
   useEffect(() => { setDrawingTemplatesMenuOpen(false); setTextPopoverOpen(false); }, [selectedDrawingId]);
   useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
@@ -2037,26 +1976,6 @@ export default function ReplayClient({ userId }) {
     ctx.restore();
   }
 
-  /* ===== جدولة الرسم عبر requestAnimationFrame =====
-     قبل هيك، كل حدث (سحب، زوم، حركة ماوس، تحريك مؤشر التقاطع...) كان بينادي
-     drawOverlay() مباشرة وبشكل متزامن - فإذا صار أكتر من حدث بنفس الفريم
-     (مثلاً بان بيطلق subscribeVisibleLogicalRangeChange وكمان mousemove بنفس
-     اللحظة)، كنا فعلياً منعيد رسم الكانفس كامل أكتر من مرة بنفس الفريم =
-     شغل زائد عالمعالج بيسبب تقطيع (jank) خصوصاً مع مئات الرسومات وآلاف
-     الشموع. هلق كل الاستدعاءات بتمر من هون فبتنجمع لرسمة وحدة فعلية لكل
-     فريم شاشة (يعني حد أقصى مضمون قريب من 60FPS)، بدون ما نأخر أي حدث فعلي
-     (الحالة نفسها بتتحدث فوراً بالـ ref، بس الرسم المرئي بينتظر الفريم
-     الجاي فقط - أقل من 16ms، غير محسوس إطلاقاً). */
-  const rafPendingRef = useRef(false);
-  function scheduleDraw() {
-    if (rafPendingRef.current) return;
-    rafPendingRef.current = true;
-    requestAnimationFrame(() => {
-      rafPendingRef.current = false;
-      drawOverlay();
-    });
-  }
-
   /* ===================== اختيار وتعديل رسمة موجودة ===================== */
   function logicalPriceToXY(p) {
     const chart = chartRef.current, series = seriesRef.current;
@@ -2193,20 +2112,11 @@ export default function ReplayClient({ userId }) {
       return Infinity;
     }
   }
-  /* نصف قطر التحديد الأساسي رفعناه من 8 لـ 9 بكسل (تقارب حسية أقرب لتريدنغ
-     فيو)، وبيتوسع أكتر تلقائياً إذا كان سماكة الخط نفسه أعرض من الافتراضي -
-     خط سماكة 4 أو 5 بكسل لازم منطقة النقر فوقه تكون أعرض من خط سماكة 1،
-     وإلا بيحس المستخدم إنه "بينقر عالخط تماماً" بس ما بينتحدد = محاولات متكررة. */
-  function hitToleranceFor(d) {
-    const w = d?.style?.width || 1.5;
-    return Math.max(9, w / 2 + 7);
-  }
   function findDrawingAt(x, y) {
-    let best = null, bestDist = Infinity;
+    let best = null, bestDist = 8;
     for (const d of drawingsRef.current) {
-      const tol = hitToleranceFor(d);
       const dist = distanceToDrawingPx(d, x, y);
-      if (dist <= tol && dist < bestDist) { bestDist = dist; best = d; }
+      if (dist <= bestDist) { bestDist = dist; best = d; }
     }
     return best;
   }
@@ -2239,11 +2149,8 @@ export default function ReplayClient({ userId }) {
     }
     return out;
   }
-  /* نصف قطر مسك المقابض رفعناه من 8 لـ 10 بكسل - نقطة تحكم صغيرة أصعب
-     تصويب من خط، فمنطقتها لازم تكون أوسع شوي منه، وهاي بالضبط فلسفة
-     تريدنغ فيو (Handles أسهل مسكة من جسم الرسمة نفسه). */
   function findHandleAt(x, y) {
-    const HANDLE_R = 10;
+    const HANDLE_R = 8;
     let best = null, bestDist = HANDLE_R;
     for (const d of drawingsRef.current) {
       for (const h of getHandlePoints(d)) {
@@ -2321,7 +2228,7 @@ export default function ReplayClient({ userId }) {
     clearSelection();
     setEditingId(null);
     setEditDraft(null);
-    scheduleDraw();
+    drawOverlay();
   }
   function performRedo() {
     if (redoStackRef.current.length === 0) return;
@@ -2331,7 +2238,7 @@ export default function ReplayClient({ userId }) {
     clearSelection();
     setEditingId(null);
     setEditDraft(null);
-    scheduleDraw();
+    drawOverlay();
   }
 
   /* ===== اختيار رسمة بكبسة وحدة: يطلع شريط أدوات سريع فوقها مباشرة ===== */
@@ -2350,24 +2257,18 @@ export default function ReplayClient({ userId }) {
     if (selectedIdRef.current == null) return null;
     return drawingsRef.current.find((d) => d.id === selectedIdRef.current) || null;
   }
-  /* remember = true يعني هاد تعديل مباشر من المستخدم على خاصية (لون/سماكة/تعبئة..)
-     فبنحدّث "آخر إعدادات الأداة" (Last Used Tool State) لهاد النوع تلقائيًا.
-     remember = false بتنستخدم لما التحديث جاي من تطبيق Template جاهز (مش تعديل
-     مباشر)، عشان القوالب تضل منفصلة عن ذاكرة "آخر استخدام" حسب المطلوب */
-  function updateSelectedStyle(patch, { remember = true } = {}) {
+  function updateSelectedStyle(patch) {
     const idx = drawingsRef.current.findIndex((d) => d.id === selectedIdRef.current);
     if (idx === -1) return;
-    const type = drawingsRef.current[idx].type;
     drawingsRef.current[idx] = { ...drawingsRef.current[idx], style: { ...drawingsRef.current[idx].style, ...patch } };
-    if (remember) rememberLastUsedStyle(type, patch);
-    scheduleDraw();
+    drawOverlay();
     setSelectionRenderTick((t) => t + 1);
   }
   function toggleSelectedLock() {
     const idx = drawingsRef.current.findIndex((d) => d.id === selectedIdRef.current);
     if (idx === -1) return;
     drawingsRef.current[idx] = { ...drawingsRef.current[idx], locked: !drawingsRef.current[idx].locked };
-    scheduleDraw();
+    drawOverlay();
     setSelectionRenderTick((t) => t + 1);
   }
   // إخفاء/إظهار هاي الرسمة لحالها بس (بدون التأثير على باقي الرسومات)
@@ -2375,7 +2276,7 @@ export default function ReplayClient({ userId }) {
     const idx = drawingsRef.current.findIndex((d) => d.id === selectedIdRef.current);
     if (idx === -1) return;
     drawingsRef.current[idx] = { ...drawingsRef.current[idx], hidden: !drawingsRef.current[idx].hidden };
-    scheduleDraw();
+    drawOverlay();
     setSelectionRenderTick((t) => t + 1);
   }
   // قفل/فك قفل كل الرسومات دفعة وحدة (زر "قفل" بالشريط الجانبي)
@@ -2386,14 +2287,14 @@ export default function ReplayClient({ userId }) {
     drawingsRef.current = drawingsRef.current.map((d) => (d.tradeTag ? d : { ...d, locked: nextLocked }));
     allDrawingsLockedRef.current = nextLocked;
     setAllDrawingsLocked(nextLocked);
-    scheduleDraw();
+    drawOverlay();
   }
   function deleteSelectedDrawing() {
     if (selectedIdRef.current == null) return;
     pushHistory();
     drawingsRef.current = drawingsRef.current.filter((d) => d.id !== selectedIdRef.current);
     clearSelection();
-    scheduleDraw();
+    drawOverlay();
   }
   function duplicateSelectedDrawing() {
     const d = getSelectedDrawing();
@@ -2407,7 +2308,7 @@ export default function ReplayClient({ userId }) {
     if (clone.points) clone.points = clone.points.map((p) => ({ ...p, logical: p.logical + offset }));
     drawingsRef.current.push(clone);
     selectDrawing(clone.id);
-    scheduleDraw();
+    drawOverlay();
   }
   /* إضافة/تعديل نص على الرسمة المختارة مباشرة من الشريط العائم، من غير ما نفوّت
      على لوحة "كل الإعدادات" الكاملة */
@@ -2422,7 +2323,7 @@ export default function ReplayClient({ userId }) {
     if (idx !== -1) {
       pushHistory();
       drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: textPopoverValue };
-      scheduleDraw();
+      drawOverlay();
     }
     setTextPopoverOpen(false);
   }
@@ -2482,12 +2383,9 @@ export default function ReplayClient({ userId }) {
     pushHistory();
     const idx = drawingsRef.current.findIndex((d) => d.id === editDraft.id);
     if (idx !== -1) drawingsRef.current[idx] = editDraft;
-    // تعديل مباشر من لوحة "كل الإعدادات" لازم يتحفظ كـ"آخر إعدادات" لهاد نوع
-    // الأداة تلقائيًا (نفس منطق الشريط العائم السريع)
-    if (editDraft.style) rememberLastUsedStyle(editDraft.type, editDraft.style);
     setEditingId(null);
     setEditDraft(null);
-    scheduleDraw();
+    drawOverlay();
   }
   function deleteEditingDrawing() {
     if (!editDraft) return;
@@ -2495,7 +2393,7 @@ export default function ReplayClient({ userId }) {
     drawingsRef.current = drawingsRef.current.filter((d) => d.id !== editDraft.id);
     setEditingId(null);
     setEditDraft(null);
-    scheduleDraw();
+    drawOverlay();
   }
   function finishMultiPoint() {
     const pts = pathPointsRef.current;
@@ -2509,7 +2407,7 @@ export default function ReplayClient({ userId }) {
     pathPointsRef.current = [];
     liveCursorRef.current = null;
     setActiveTool("cursor");
-    scheduleDraw();
+    drawOverlay();
   }
 
   function handleClearDrawings() {
@@ -2518,7 +2416,7 @@ export default function ReplayClient({ userId }) {
     if (!window.confirm("مسح كل الرسومات من الشارت؟ (خطوط الهدف/الإيقاف لصفقة مفتوحة ما بتتأثر)")) return;
     pushHistory();
     drawingsRef.current = drawingsRef.current.filter((d) => !!d.tradeTag);
-    scheduleDraw();
+    drawOverlay();
   }
   // تراجع عن آخر رسمة (بيتجاهل خطوط الهدف/الإيقاف الخاصة بصفقة مفتوحة)
   function handleUndoLastDrawing() {
@@ -2526,7 +2424,7 @@ export default function ReplayClient({ userId }) {
     for (let i = list.length - 1; i >= 0; i--) {
       if (!list[i].tradeTag) {
         drawingsRef.current = list.filter((_, idx) => idx !== i);
-        scheduleDraw();
+        drawOverlay();
         return;
       }
     }
@@ -2581,7 +2479,7 @@ export default function ReplayClient({ userId }) {
       pathPointsRef.current = [];
       liveCursorRef.current = null;
       setActiveTool("cursor");
-      scheduleDraw();
+      drawOverlay();
       setContextMenu(null);
       return;
     }
@@ -2644,7 +2542,7 @@ export default function ReplayClient({ userId }) {
       id: Date.now() + 2, type: "hline", p1: { logical, price: sl },
       style: { color: chartSettings.tradeSlColor || RED, width: 1.5, dash: "dashed" }, tradeTag: tag, tradeRole: "sl",
     });
-    scheduleDraw();
+    drawOverlay();
     setTradeLot("0.01");
     setTradeReason("");
     setPendingTrade({ tag, direction, entry: price, asset: assetValue, entryTime });
@@ -2676,7 +2574,7 @@ export default function ReplayClient({ userId }) {
       const idx = drawingsRef.current.findIndex((d) => d.tradeTag === pt.tag && d.tradeRole === role);
       if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], p1: { ...drawingsRef.current[idx].p1, price: num } };
     }
-    scheduleDraw();
+    drawOverlay();
     setDragTick((t) => t + 1);
   }
   function handleEntryTextChange(v) {
@@ -2715,7 +2613,7 @@ export default function ReplayClient({ userId }) {
   function cancelQuickTrade() {
     if (pendingTradeRef.current) {
       drawingsRef.current = drawingsRef.current.filter((d) => d.tradeTag !== pendingTradeRef.current.tag);
-      scheduleDraw();
+      drawOverlay();
     }
     setTradeReason("");
     setPendingTrade(null);
@@ -2863,7 +2761,7 @@ export default function ReplayClient({ userId }) {
     openPositionsRef.current = openPositionsRef.current.filter((p) => p.dbId !== pos.dbId);
     setOpenPositionsList([...openPositionsRef.current]);
     drawingsRef.current = drawingsRef.current.filter((d) => d.tradeTag !== pos.tag);
-    scheduleDraw();
+    drawOverlay();
     setTradeToast(
       result === "win"
         ? `🎯 توصلت للهدف — الصفقة اتقفلت ربح`
@@ -2924,7 +2822,7 @@ export default function ReplayClient({ userId }) {
 
     const dIdx = drawingsRef.current.findIndex((d) => d.tradeTag === pos.tag && d.tradeRole === role);
     if (dIdx !== -1) drawingsRef.current[dIdx] = { ...drawingsRef.current[dIdx], p1: { ...drawingsRef.current[dIdx].p1, price: num } };
-    scheduleDraw();
+    drawOverlay();
 
     if (supabase && userId) {
       const rr = updated.riskAmount > 0 ? updated.rewardAmount / updated.riskAmount : 0;
@@ -3105,7 +3003,7 @@ export default function ReplayClient({ userId }) {
             height: compareHeight,
           });
         }
-        scheduleDraw();
+        drawOverlay();
       };
       window.addEventListener("resize", handleResize);
       const handleFsChange = () => {
@@ -3143,7 +3041,7 @@ export default function ReplayClient({ userId }) {
             drawingsRef.current.push({ id: Date.now(), type: "text", p1: { logical, price: snapped }, text: content, style: styleForNewDrawing("text") });
           }
           setActiveTool("cursor");
-          scheduleDraw();
+          drawOverlay();
           return;
         }
         if (tool === "hline" || tool === "hray" || tool === "vline" || tool === "crossline") {
@@ -3152,7 +3050,7 @@ export default function ReplayClient({ userId }) {
           drawingsRef.current.push({ id: newId, type: tool, p1: { logical, price: snapped }, style: styleForNewDrawing(tool) });
           setActiveTool("cursor");
           selectDrawing(newId); // نقاط التحكم تظهر تلقائياً فوراً بعد إنشاء الأداة
-          scheduleDraw();
+          drawOverlay();
           return;
         }
         if (tool === "path" || tool === "wave" || tool === "fibext" || tool === "parallelchannel" || tool === "fibchannel" || tool === "pitchfork" || tool === "triangle") {
@@ -3161,7 +3059,7 @@ export default function ReplayClient({ userId }) {
           if (need && pathPointsRef.current.length >= need) {
             finishMultiPoint(); // finishMultiPoint نفسها بتعمل pushHistory قبل الإضافة
           }
-          scheduleDraw();
+          drawOverlay();
           return;
         }
         // نظام النقرات: نقرة أولى تثبّت نقطة البداية وتبلّش معاينة حيّة تتبع الماوس
@@ -3183,12 +3081,12 @@ export default function ReplayClient({ userId }) {
           } else {
             setActiveTool("cursor");
           }
-          scheduleDraw();
+          drawOverlay();
           return;
         }
         drawStateRef.current = { type: tool, p1: { logical, price: snapped }, p2: { logical, price: snapped }, style: styleForNewDrawing(tool) };
         isDrawingRef.current = true;
-        scheduleDraw();
+        drawOverlay();
       }
       function onMouseMove(e) {
         // وضع المؤشر: تلوين مؤشر الفأرة لما يكون فوق رسمة (يد) عشان يبين إنها قابلة للسحب،
@@ -3210,8 +3108,8 @@ export default function ReplayClient({ userId }) {
               const snapped = snapPrice(logical, price, y);
               setHandlePoint(d, st.key, logical, snapped);
             }
-            if (d.tradeTag) scheduleDragTickBump();
-            scheduleDraw();
+            if (d.tradeTag) setDragTick((t) => t + 1);
+            drawOverlay();
             return;
           }
           const { x, y } = getLogicalPrice(e.clientX, e.clientY);
@@ -3247,7 +3145,7 @@ export default function ReplayClient({ userId }) {
         if (activePath) {
           liveCursorRef.current = { logical, price: snapped };
         }
-        scheduleDraw();
+        drawOverlay();
       }
       function onMouseUp() {
         // ما عاد في تثبيت بالسحب/الإفلات — الرسم صار بنظام نقرة ثم نقرة (كليك ثم كليك)،
@@ -3263,7 +3161,7 @@ export default function ReplayClient({ userId }) {
             const pos = openPositionsRef.current.find((p) => p.tag === d.tradeTag);
             if (pos) updateOpenPositionLevel(pos, d.tradeRole, d.p1.price);
           }
-          scheduleDraw();
+          drawOverlay();
         }
       }
       /* سحب رسمة موجودة بوضع المؤشر: نمسك الحدث بمرحلة الـ capture قبل ما يوصل لمكتبة
@@ -3278,7 +3176,7 @@ export default function ReplayClient({ userId }) {
           e.preventDefault();
           e.stopPropagation();
           selectDrawing(handleHit.drawing.id);
-          if (handleHit.drawing.locked) { scheduleDraw(); return; }
+          if (handleHit.drawing.locked) { drawOverlay(); return; }
           if (!handleHit.drawing.tradeTag) pushHistory();
           dragStateRef.current = { mode: "handle", id: handleHit.drawing.id, key: handleHit.key };
           chart.applyOptions({ handleScroll: false, handleScale: false });
@@ -3289,7 +3187,7 @@ export default function ReplayClient({ userId }) {
           e.preventDefault();
           e.stopPropagation();
           selectDrawing(hit.id);
-          if (hit.locked) { scheduleDraw(); return; }
+          if (hit.locked) { drawOverlay(); return; }
           if (!hit.tradeTag) pushHistory();
           dragStateRef.current = { mode: "move", id: hit.id, lastLogical: logical, lastPrice: price };
           chart.applyOptions({ handleScroll: false, handleScale: false });
@@ -3313,7 +3211,7 @@ export default function ReplayClient({ userId }) {
           clearSelection();
           closeTransientMenus();
           setActiveTool("cursor");
-          scheduleDraw();
+          drawOverlay();
           return;
         }
         if (e.key === "Enter" && activeToolRef.current === "path" && pathPointsRef.current.length >= 2) {
@@ -3396,7 +3294,7 @@ export default function ReplayClient({ userId }) {
           const newTo = center + (vr.to - center) * factor;
           if (newTo - newFrom >= 2) ts.setVisibleLogicalRange({ from: newFrom, to: newTo });
         }
-        scheduleDraw();
+        drawOverlay();
       }
       let panDrag = null;
       function onOverlayAuxDown(e) {
@@ -3413,7 +3311,7 @@ export default function ReplayClient({ userId }) {
         const dxPx = e.clientX - panDrag.startX;
         const shift = -dxPx / (barSpacing || 6);
         ts.setVisibleLogicalRange({ from: panDrag.vr0.from + shift, to: panDrag.vr0.to + shift });
-        scheduleDraw();
+        drawOverlay();
       }
       function onWindowMouseUpForPan() { panDrag = null; }
 
@@ -3434,8 +3332,8 @@ export default function ReplayClient({ userId }) {
       window.addEventListener("keydown", onKeyDown);
       window.addEventListener("keyup", onKeyUp);
       window.addEventListener("blur", onWindowBlurResetShift);
-      chart.timeScale().subscribeVisibleLogicalRangeChange(scheduleDraw);
-      chart.subscribeCrosshairMove(scheduleDraw);
+      chart.timeScale().subscribeVisibleLogicalRangeChange(drawOverlay);
+      chart.subscribeCrosshairMove(drawOverlay);
       // أي بان أو زوم عالشارت (تغيير المدى المرئي) بيسكّر القوائم المؤقتة المفتوحة،
       // زي أي حدث تاني "بيقفل القوائم عادة" (شوفي closeTransientMenus)
       function onVisibleRangeChangeCloseMenus() { closeTransientMenus(); }
@@ -3609,9 +3507,9 @@ export default function ReplayClient({ userId }) {
         window.removeEventListener("keydown", onKeyDown);
         window.removeEventListener("keyup", onKeyUp);
         window.removeEventListener("blur", onWindowBlurResetShift);
-        chart.timeScale().unsubscribeVisibleLogicalRangeChange(scheduleDraw);
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(drawOverlay);
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChangeCloseMenus);
-        chart.unsubscribeCrosshairMove(scheduleDraw);
+        chart.unsubscribeCrosshairMove(drawOverlay);
         chart.unsubscribeCrosshairMove(onCrosshairMagnet);
         chart.unsubscribeCrosshairMove(onMainCrosshairSync);
 
@@ -4137,7 +4035,7 @@ export default function ReplayClient({ userId }) {
     recalcAllIndicatorData(allCandles.slice(0, revealCount));
     prevRevealRef.current = revealCount;
     prevCandlesRef.current = allCandles;
-    scheduleDraw();
+    drawOverlay();
   }, [revealCount, allCandles, mode]);
 
   /* بتحدّث "الوقت الحالي" لحالة الـ Replay مع كل تقدّم فعلي بالبيانات المكشوفة
@@ -4343,10 +4241,10 @@ export default function ReplayClient({ userId }) {
        موقع المؤشر ومنرسم شعاع + تغبيش خفيف للجزء يلي لسا ما تحدد (بدالة drawOverlay
        تحت)، وهاي المعاينة ما بتغيّر أي بيانات فعلياً إلا لما يصير كليك تأكيد فعلي */
     const hoverHandler = (param) => {
-      if (!param?.point || !chartRef.current) { cutHoverLogicalRef.current = null; scheduleDraw(); return; }
+      if (!param?.point || !chartRef.current) { cutHoverLogicalRef.current = null; drawOverlay(); return; }
       const logical = chartRef.current.timeScale().coordinateToLogical(param.point.x);
       cutHoverLogicalRef.current = logical;
-      scheduleDraw();
+      drawOverlay();
     };
     chartRef.current.subscribeClick(handler);
     chartRef.current.subscribeCrosshairMove(hoverHandler);
@@ -5139,7 +5037,7 @@ export default function ReplayClient({ userId }) {
       const t = defaultName ? templates.find((tt) => tt.name === defaultName) : null;
       const patch = t ? { ...t.style } : defaultStyleFor(type);
       pushHistory();
-      updateSelectedStyle(patch, { remember: false });
+      updateSelectedStyle(patch);
       if (t && t.text != null) {
         const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
         if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: t.text };
@@ -5148,7 +5046,7 @@ export default function ReplayClient({ userId }) {
     }
     function applyTemplate(t) {
       pushHistory();
-      updateSelectedStyle({ ...t.style }, { remember: false });
+      updateSelectedStyle({ ...t.style });
       const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
       if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: t.text ?? drawingsRef.current[idx].text };
       setDrawingTemplatesMenuOpen(false);
