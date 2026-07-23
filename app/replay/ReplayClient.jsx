@@ -60,7 +60,7 @@ const INTERVALS = [
    (بدل استيراد ملف سيرفر-فقط جوا كومبوننت كلاينت) عشان نقدر نعطّل بالواجهة
    أي فريم ما بيقدر يوصل لنقطة القص الحالية بالـ Replay، بدل ما نخلّي المستخدم
    يبدّل وبعدين يفاجأ بتوست "أقرب نقطة متاحة" وبيانات غلط الموقع. */
-const RANGE_DAYS_BY_INTERVAL = { "1m": 7, "5m": 58, "15m": 58, "1h": 725, "4h": 725, "1d": 3650 };
+const RANGE_DAYS_BY_INTERVAL = { "1m": 29, "5m": 58, "15m": 58, "1h": 725, "4h": 725, "1d": 3650 };
 
 /* سرعات الـ Replay: القيمة هي عدد الشموع بالثانية (1x = شمعة/ثانية ... 10x = 10 شموع/ثانية)
    وبنحولها لـ ms فاصل بين كل شمعة وتالية بمعادلة 1000/السرعة وقت التشغيل الفعلي */
@@ -302,20 +302,67 @@ function saveDrawingTemplates(list) {
     window.localStorage.setItem(DRAWING_TEMPLATES_KEY, JSON.stringify(list));
   } catch {}
 }
-/* الأنماط الافتراضية لأي رسمة جديدة: بترجع النمط العادي defaultStyleFor، إلا
-   إذا كان في قالب معلّم "افتراضي" لهاد النوع (بالضغط على ⭐ بقائمة القوالب)،
-   وهيك أي رسمة جديدة من نفس النوع بتطلع مباشرة بشكل القالب المفضّل */
+/* ===================== آخر إعدادات مستخدمة لكل أداة رسم (Last Used Tool State) =====================
+   هاي الميزة مختلفة تمامًا عن "قوالب الرسم" (Templates) اللي فوق:
+   - Template: إعداد يحفظه المستخدم يدويًا بإسم، ويطبّقه يدويًا وقتما بده.
+   - Last Used Tool State: بتتحدّث تلقائيًا مع كل تعديل مباشر يعمله المستخدم على أي
+     خاصية (لون، تعبئة، شفافية، سماكة، نوع خط، حجم نص، امتداد، إلخ)، ولكل أداة رسم
+     "ذاكرتها" الخاصة فيها بشكل مستقل عن باقي الأدوات (Rectangle لا يؤثر على Circle، وهكذا).
+   - محفوظة محليًا بحساب/متصفح المستخدم (localStorage) فبتضل موجودة حتى لو سكّر
+     الموقع وفتحه بعدين، وبتُستخدم تلقائيًا كنقطة بداية لأي رسمة جديدة من نفس النوع،
+     إلا إذا كان مضبوط قالب "افتراضي" مثبّت (⭐) لهاد النوع وقتها بياخد الأولوية. */
+const DRAWING_LAST_USED_KEY = "qta_drawing_last_used_style_v1";
+function loadLastUsedStyles() {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(DRAWING_LAST_USED_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function getLastUsedStyle(type) {
+  const all = loadLastUsedStyles();
+  return all[type] || null;
+}
+/* بتدمج التعديل الجديد فوق آخر حالة محفوظة لهاد النوع بالذات وبتحفظه، من غير ما
+   تأثر على أي أداة تانية */
+function rememberLastUsedStyle(type, patch) {
+  if (!type || !patch || typeof window === "undefined") return;
+  try {
+    const all = loadLastUsedStyles();
+    all[type] = { ...(all[type] || {}), ...patch };
+    window.localStorage.setItem(DRAWING_LAST_USED_KEY, JSON.stringify(all));
+  } catch {}
+}
+function clearLastUsedStyle(type) {
+  if (typeof window === "undefined") return;
+  try {
+    const all = loadLastUsedStyles();
+    delete all[type];
+    window.localStorage.setItem(DRAWING_LAST_USED_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+/* الأنماط الافتراضية لأي رسمة جديدة: بترجع النمط العادي defaultStyleFor مدموج فوقه
+   آخر إعدادات استخدمها المستخدم لهاد النوع (Last Used Tool State)، إلا إذا كان في
+   قالب معلّم "افتراضي" لهاد النوع (بالضغط على ⭐ بقائمة القوالب)، وهيك القالب
+   المثبّت بياخد الأولوية القصوى فوق آخر الإعدادات */
 function styleForNewDrawing(type) {
   const base = defaultStyleFor(type);
   if (typeof window === "undefined") return base;
+  const lastUsed = getLastUsedStyle(type);
+  let style = lastUsed ? { ...base, ...lastUsed } : base;
   try {
     const defName = window.localStorage.getItem(`qta_default_drawing_template_${type}`);
     if (defName) {
       const t = loadDrawingTemplates().find((tt) => tt.type === type && tt.name === defName);
-      if (t) return { ...base, ...t.style };
+      if (t) style = { ...style, ...t.style };
     }
   } catch {}
-  return base;
+  return style;
 }
 
 /* ===================== إعدادات لوحة المقارنة (نوع الشارت + ألوان)، تنحفظ محلياً بالمتصفح ===================== */
@@ -523,6 +570,12 @@ function ToolIcon({ id }) {
       return (<svg {...common}><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" /><circle cx="16" cy="8" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="8" cy="16" r="1" fill="currentColor" stroke="none" /><circle cx="16" cy="16" r="1" fill="currentColor" stroke="none" /></svg>);
     case "scissors2":
       return (<svg {...common}><circle cx="6" cy="6" r="2.2" /><circle cx="6" cy="18" r="2.2" /><line x1="7.8" y1="7.5" x2="20" y2="19" /><line x1="20" y1="5" x2="7.8" y2="16.5" /></svg>);
+    case "checkmark":
+      return (<svg {...common}><polyline points="4,13 9,18 20,6" /></svg>);
+    case "xmark":
+      return (<svg {...common}><line x1="5" y1="5" x2="19" y2="19" /><line x1="19" y1="5" x2="5" y2="19" /></svg>);
+    case "marquee":
+      return (<svg {...common}><rect x="4" y="6" width="16" height="12" rx="1" strokeDasharray="3,2.5" /><line x1="4" y1="4" x2="4" y2="8" strokeDasharray="0" /><line x1="20" y1="4" x2="20" y2="8" strokeDasharray="0" /></svg>);
     case "person":
       return (<svg {...common}><circle cx="12" cy="8" r="3.3" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>);
     case "lock":
@@ -868,6 +921,39 @@ export default function ReplayClient({ userId }) {
   }
 
   const [cutMode, setCutMode] = useState(false);
+  const cutModeRef = useRef(false);
+  useEffect(() => { cutModeRef.current = cutMode; }, [cutMode]);
+  /* ===== أداة القص الجديدة (تجربة سحب كاملة زي تريدنغ فيو) =====
+     cutSubMode: أي وضع فرعي فعّال حالياً جوا وضع القص:
+       - "select": سحب لتحديد منطقة جديدة من الصفر
+       - "move": سحب المنطقة كلها (تحريك الحافتين معاً بنفس المسافة)
+       - "edit-edges": سحب حافة وحدة (يمين أو يسار) لحالها
+     cutRegion: المنطقة "قيد التعديل" حالياً (لسا ما انطبقت) - بإحداثيات
+       logical (نسبةً لمصفوفة الشموع الحالية، متل نقاط الرسومات بالظبط).
+     appliedCutRegion: آخر منطقة انطبقت فعلياً - محفوظة بالوقت الحقيقي
+       (fromTime/toTime) مش logical، عشان تضل صحيحة تلقائياً حتى لو تغيّر
+       الفريم أو تحدّثت مصفوفة الشموع (بدون أي حاجة لإعادة إسقاط يدوية،
+       بعكس الرسومات، لأننا منحسب مكانها من وقتها الحقيقي مباشرة بكل رسمة). */
+  const [cutSubMode, setCutSubMode] = useState("select");
+  const cutSubModeRef = useRef("select");
+  useEffect(() => { cutSubModeRef.current = cutSubMode; }, [cutSubMode]);
+  const [cutRegion, setCutRegion] = useState(null); // {fromLogical, toLogical} | null
+  const cutRegionRef = useRef(null);
+  useEffect(() => { cutRegionRef.current = cutRegion; }, [cutRegion]);
+  const [appliedCutRegion, setAppliedCutRegion] = useState(null); // {fromTime, toTime} | null
+  const appliedCutRegionRef = useRef(null);
+  useEffect(() => { appliedCutRegionRef.current = appliedCutRegion; }, [appliedCutRegion]);
+  const cutDragRef = useRef(null); // {mode:"select"|"move"|"edge", edge?, startLogical, origFrom, origTo}
+  // إعدادات أداة القص (لوحة الإعدادات بالصورة المرجعية)
+  const [cutSettingsOpen, setCutSettingsOpen] = useState(false);
+  const [cutShowRegion, setCutShowRegion] = useState(true);
+  const cutShowRegionRef = useRef(true);
+  useEffect(() => { cutShowRegionRef.current = cutShowRegion; }, [cutShowRegion]);
+  const [cutDimOutside, setCutDimOutside] = useState(true);
+  const cutDimOutsideRef = useRef(true);
+  useEffect(() => { cutDimOutsideRef.current = cutDimOutside; }, [cutDimOutside]);
+  const [cutAutoSave, setCutAutoSave] = useState(false);
+  const [cutPrecision, setCutPrecision] = useState("pixel"); // "pixel" (محاذاة لكامل الشمعة) | "free" (موضع حر)
   // نسخة State من نقطة قص الـ Replay الحالية (currentTimestamp بالـ ref تحت) —
   // بس عشان نقدر نستخدمها بالـ render (تعطيل خيارات الفريم بالـ select)،
   // لأن الـ ref لحاله ما بيعمل re-render.
@@ -1024,6 +1110,20 @@ export default function ReplayClient({ userId }) {
   const [savingTrade, setSavingTrade] = useState(false);
   const [tradeToast, setTradeToast] = useState("");
   const [dragTick, setDragTick] = useState(0);
+  /* لوحة الصفقة المفتوحة (TP/SL) بتحتاج re-render فعلي وهي عم تنسحب عشان
+     الأرقام بالبانل تتحدث حية، بس استدعاء setState مباشرة بكل mousemove خام
+     (يلي ممكن يصير أسرع من 60 مرة بالثانية بفئران عالية الدقة) كان يفرض
+     re-render إضافي زايد عن رسمة الكانفس نفسها = تقطيع محسوس. هلق منجمّعها
+     لتحديث وحيد بالحد الأقصى لكل فريم شاشة، بنفس فلسفة scheduleDraw فوق. */
+  const dragTickPendingRef = useRef(false);
+  function scheduleDragTickBump() {
+    if (dragTickPendingRef.current) return;
+    dragTickPendingRef.current = true;
+    requestAnimationFrame(() => {
+      dragTickPendingRef.current = false;
+      setDragTick((t) => t + 1);
+    });
+  }
   const openPositionsRef = useRef([]); // [{dbId, direction, entry, sl, tp, lot, riskAmount, rewardAmount, asset}]
   const [openPositionsList, setOpenPositionsList] = useState([]); // نسخة "تفاعلية" من openPositionsRef عشان نقدر نعرضها ونعدلها بلوحة
   const checkOpenPositionsRef = useRef(null);
@@ -1131,7 +1231,7 @@ export default function ReplayClient({ userId }) {
     }
     saveChartSettings(chartSettings);
     applyIndicatorPaneMargins();
-    drawOverlay();
+    scheduleDraw();
   }, [chartSettings]);
 
   /* ===================== منطق أداة المؤشرات الفنية ===================== */
@@ -1308,7 +1408,7 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
   useEffect(() => { magnetRef.current = magnetOn; }, [magnetOn]);
   useEffect(() => { intervalRef.current = interval; }, [interval]);
-  useEffect(() => { drawingsVisibleRef.current = drawingsVisible; drawOverlay(); }, [drawingsVisible]);
+  useEffect(() => { drawingsVisibleRef.current = drawingsVisible; scheduleDraw(); }, [drawingsVisible]);
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
   useEffect(() => { setDrawingTemplatesMenuOpen(false); setTextPopoverOpen(false); }, [selectedDrawingId]);
   useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
@@ -1399,26 +1499,129 @@ export default function ReplayClient({ userId }) {
     ctx.direction = "ltr";
     ctx.textAlign = "left";
 
-    /* معاينة "أداة القص" (اختيار نقطة بداية الـ Replay): شعاع رأسي عند موضع
-       المؤشر، والجزء يلي بعده (المستقبل غير المحدد بعد) يترسم بتغبيش خفيف
-       (Overlay شفاف غامق) بدل ما يكون واضح متل باقي الشارت - خفيف واحترافي
-       مش Blur قوي يخلي القراءة صعبة. بيتحدث حي مع كل حركة ماوس، وما بيثبّت
-       شي فعلياً إلا لما يصير كليك تأكيد */
-    if (cutMode && cutHoverLogicalRef.current != null) {
-      const hoverX = chart.timeScale().logicalToCoordinate(cutHoverLogicalRef.current);
-      if (hoverX != null) {
+    /* أداة القص الجديدة (سحب لتحديد منطقة كاملة): 3 حالات محتملة بالرسم -
+       1) منطقة "قيد التعديل" حالياً (لسا ما انطبقت): حدود متقطعة + تعتيم خارجها
+          (اختياري حسب cutDimOutside) + تعبئة خفيفة جوّاها + مقابض حافة واضحة
+          بوضعي "تحريك المنطقة"/"تعديل الحواف".
+       2) لسا ما في منطقة (وضع "select" أول مرة): خط معاينة خفيف تحت الماوس،
+          نفس المعاينة القديمة البسيطة.
+       3) منطقة مطبّقة فعلياً وشغالة بالـ Replay (appliedCutRegion): حدود خفيفة
+          بدون تعتيم ولا مقابض، مجرد تذكير بصري بحدود الجلسة الحالية، ما بتحذف
+          ولا شمعة - إظهارها قابل للتعطيل من إعدادات القص (إظهار منطقة القص). */
+    {
+      const cm = cutModeRef.current;
+      const region = cutRegionRef.current;
+      const applied = appliedCutRegionRef.current;
+      const showRegion = cutShowRegionRef.current;
+      const dimOutside = cutDimOutsideRef.current;
+      const sub = cutSubModeRef.current;
+      const ts0 = chart.timeScale();
+
+      const paintRegion = (fromLogical, toLogical, opts = {}) => {
+        const x1 = ts0.logicalToCoordinate(fromLogical);
+        const x2 = ts0.logicalToCoordinate(toLogical);
+        if (x1 == null || x2 == null) return;
+        const left = Math.min(x1, x2), right = Math.max(x1, x2);
         ctx.save();
-        ctx.fillStyle = "rgba(8,9,12,0.4)";
-        ctx.fillRect(hoverX, 0, Math.max(0, w - hoverX), h);
-        ctx.strokeStyle = GOLD_LIGHT;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 4]);
+        if (opts.dim) {
+          ctx.fillStyle = "rgba(8,9,12,0.45)";
+          ctx.fillRect(0, 0, left, h);
+          ctx.fillRect(right, 0, Math.max(0, w - right), h);
+        }
+        if (opts.fill) {
+          ctx.fillStyle = "rgba(212,175,55,0.06)";
+          ctx.fillRect(left, 0, right - left, h);
+        }
+        ctx.strokeStyle = opts.color || GOLD_LIGHT;
+        ctx.lineWidth = opts.lineWidth || 1.5;
+        ctx.setLineDash(opts.dash || []);
         ctx.beginPath();
-        ctx.moveTo(hoverX, 0);
-        ctx.lineTo(hoverX, h);
+        ctx.moveTo(left, 0); ctx.lineTo(left, h);
+        ctx.moveTo(right, 0); ctx.lineTo(right, h);
         ctx.stroke();
         ctx.setLineDash([]);
+        if (opts.handles) {
+          const gripY = h / 2;
+          [left, right].forEach((gx) => {
+            ctx.fillStyle = opts.color || GOLD_LIGHT;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(gx - 4, gripY - 14, 8, 28, 4);
+            else ctx.rect(gx - 4, gripY - 14, 8, 28);
+            ctx.fill();
+            ctx.strokeStyle = "#0f1117";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          });
+        }
         ctx.restore();
+      };
+
+      if (cm && region) {
+        paintRegion(region.fromLogical, region.toLogical, {
+          dim: dimOutside, fill: true, color: GOLD_LIGHT,
+          dash: sub === "select" ? [5, 4] : [],
+          handles: sub === "edit-edges" || sub === "move",
+        });
+        /* تنبيه حي: من هاي النقطة بالضبط، شو أدق فريم بعده ممكن أنزله؟ (عمق
+           بيانات يوهو محدود لكل فريم - شوفي RANGE_DAYS_BY_INTERVAL فوق). هيك
+           بتعرفي قبل ما تطبّقي القص أصلاً، مش بعد ما تكتشفي إنه الفريم يلي
+           بدك ياه معطّل بالقائمة المنسدلة. */
+        const vcNow = visibleCandlesRef.current || [];
+        const fromCandleNow = vcNow[Math.max(0, Math.min(vcNow.length - 1, Math.round(region.fromLogical)))];
+        if (fromCandleNow) {
+          const ageDays = (Date.now() / 1000 - fromCandleNow.time) / 86400;
+          const deepestOrder = ["1m", "5m", "15m", "1h", "4h", "1d"];
+          const deepest = deepestOrder.find((v) => RANGE_DAYS_BY_INTERVAL[v] >= ageDays);
+          const label = deepest
+            ? `أدق فريم ممكن من هون: ${INTERVALS.find((i) => i.value === deepest)?.label || deepest}`
+            : "بعيدة عن كل الفريمات (بيانات محدودة حتى اليومي)";
+          const x1 = ts0.logicalToCoordinate(region.fromLogical);
+          const x2 = ts0.logicalToCoordinate(region.toLogical);
+          if (x1 != null && x2 != null) {
+            const cx = (Math.min(x1, x2) + Math.max(x1, x2)) / 2;
+            ctx.save();
+            ctx.font = "11px system-ui, sans-serif";
+            const padX = 8;
+            const textW = ctx.measureText(label).width;
+            const boxW = textW + padX * 2;
+            const boxX = Math.max(4, Math.min(w - boxW - 4, cx - boxW / 2));
+            ctx.fillStyle = "rgba(15,17,23,0.92)";
+            ctx.strokeStyle = deepest ? GOLD_LIGHT : "#e05252";
+            ctx.lineWidth = 1;
+            const boxY = 10, boxH = 22;
+            if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 5); ctx.fill(); ctx.stroke(); }
+            else { ctx.fillRect(boxX, boxY, boxW, boxH); ctx.strokeRect(boxX, boxY, boxW, boxH); }
+            ctx.fillStyle = deepest ? "#EAECEF" : "#ff9a9a";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(label, boxX + boxW / 2, boxY + boxH / 2 + 1);
+            ctx.restore();
+          }
+        }
+      } else if (cm && cutHoverLogicalRef.current != null) {
+        const hoverX = ts0.logicalToCoordinate(cutHoverLogicalRef.current);
+        if (hoverX != null) {
+          ctx.save();
+          ctx.fillStyle = "rgba(8,9,12,0.4)";
+          ctx.fillRect(hoverX, 0, Math.max(0, w - hoverX), h);
+          ctx.strokeStyle = GOLD_LIGHT;
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(hoverX, 0);
+          ctx.lineTo(hoverX, h);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+      } else if (!cm && applied && showRegion) {
+        const vc = visibleCandlesRef.current || [];
+        const fromIdx = vc.findIndex((c) => c.time >= applied.fromTime);
+        let toIdx = vc.findIndex((c) => c.time >= applied.toTime);
+        if (toIdx === -1) toIdx = vc.length - 1;
+        if (fromIdx !== -1) {
+          paintRegion(fromIdx, toIdx, { dim: false, fill: false, color: "#5b8dee", lineWidth: 1, dash: [3, 5] });
+        }
       }
     }
 
@@ -1976,6 +2179,26 @@ export default function ReplayClient({ userId }) {
     ctx.restore();
   }
 
+  /* ===== جدولة الرسم عبر requestAnimationFrame =====
+     قبل هيك، كل حدث (سحب، زوم، حركة ماوس، تحريك مؤشر التقاطع...) كان بينادي
+     drawOverlay() مباشرة وبشكل متزامن - فإذا صار أكتر من حدث بنفس الفريم
+     (مثلاً بان بيطلق subscribeVisibleLogicalRangeChange وكمان mousemove بنفس
+     اللحظة)، كنا فعلياً منعيد رسم الكانفس كامل أكتر من مرة بنفس الفريم =
+     شغل زائد عالمعالج بيسبب تقطيع (jank) خصوصاً مع مئات الرسومات وآلاف
+     الشموع. هلق كل الاستدعاءات بتمر من هون فبتنجمع لرسمة وحدة فعلية لكل
+     فريم شاشة (يعني حد أقصى مضمون قريب من 60FPS)، بدون ما نأخر أي حدث فعلي
+     (الحالة نفسها بتتحدث فوراً بالـ ref، بس الرسم المرئي بينتظر الفريم
+     الجاي فقط - أقل من 16ms، غير محسوس إطلاقاً). */
+  const rafPendingRef = useRef(false);
+  function scheduleDraw() {
+    if (rafPendingRef.current) return;
+    rafPendingRef.current = true;
+    requestAnimationFrame(() => {
+      rafPendingRef.current = false;
+      drawOverlay();
+    });
+  }
+
   /* ===================== اختيار وتعديل رسمة موجودة ===================== */
   function logicalPriceToXY(p) {
     const chart = chartRef.current, series = seriesRef.current;
@@ -2112,11 +2335,20 @@ export default function ReplayClient({ userId }) {
       return Infinity;
     }
   }
+  /* نصف قطر التحديد الأساسي رفعناه من 8 لـ 9 بكسل (تقارب حسية أقرب لتريدنغ
+     فيو)، وبيتوسع أكتر تلقائياً إذا كان سماكة الخط نفسه أعرض من الافتراضي -
+     خط سماكة 4 أو 5 بكسل لازم منطقة النقر فوقه تكون أعرض من خط سماكة 1،
+     وإلا بيحس المستخدم إنه "بينقر عالخط تماماً" بس ما بينتحدد = محاولات متكررة. */
+  function hitToleranceFor(d) {
+    const w = d?.style?.width || 1.5;
+    return Math.max(9, w / 2 + 7);
+  }
   function findDrawingAt(x, y) {
-    let best = null, bestDist = 8;
+    let best = null, bestDist = Infinity;
     for (const d of drawingsRef.current) {
+      const tol = hitToleranceFor(d);
       const dist = distanceToDrawingPx(d, x, y);
-      if (dist <= bestDist) { bestDist = dist; best = d; }
+      if (dist <= tol && dist < bestDist) { bestDist = dist; best = d; }
     }
     return best;
   }
@@ -2149,8 +2381,11 @@ export default function ReplayClient({ userId }) {
     }
     return out;
   }
+  /* نصف قطر مسك المقابض رفعناه من 8 لـ 10 بكسل - نقطة تحكم صغيرة أصعب
+     تصويب من خط، فمنطقتها لازم تكون أوسع شوي منه، وهاي بالضبط فلسفة
+     تريدنغ فيو (Handles أسهل مسكة من جسم الرسمة نفسه). */
   function findHandleAt(x, y) {
-    const HANDLE_R = 8;
+    const HANDLE_R = 10;
     let best = null, bestDist = HANDLE_R;
     for (const d of drawingsRef.current) {
       for (const h of getHandlePoints(d)) {
@@ -2228,7 +2463,7 @@ export default function ReplayClient({ userId }) {
     clearSelection();
     setEditingId(null);
     setEditDraft(null);
-    drawOverlay();
+    scheduleDraw();
   }
   function performRedo() {
     if (redoStackRef.current.length === 0) return;
@@ -2238,7 +2473,7 @@ export default function ReplayClient({ userId }) {
     clearSelection();
     setEditingId(null);
     setEditDraft(null);
-    drawOverlay();
+    scheduleDraw();
   }
 
   /* ===== اختيار رسمة بكبسة وحدة: يطلع شريط أدوات سريع فوقها مباشرة ===== */
@@ -2257,18 +2492,24 @@ export default function ReplayClient({ userId }) {
     if (selectedIdRef.current == null) return null;
     return drawingsRef.current.find((d) => d.id === selectedIdRef.current) || null;
   }
-  function updateSelectedStyle(patch) {
+  /* remember = true يعني هاد تعديل مباشر من المستخدم على خاصية (لون/سماكة/تعبئة..)
+     فبنحدّث "آخر إعدادات الأداة" (Last Used Tool State) لهاد النوع تلقائيًا.
+     remember = false بتنستخدم لما التحديث جاي من تطبيق Template جاهز (مش تعديل
+     مباشر)، عشان القوالب تضل منفصلة عن ذاكرة "آخر استخدام" حسب المطلوب */
+  function updateSelectedStyle(patch, { remember = true } = {}) {
     const idx = drawingsRef.current.findIndex((d) => d.id === selectedIdRef.current);
     if (idx === -1) return;
+    const type = drawingsRef.current[idx].type;
     drawingsRef.current[idx] = { ...drawingsRef.current[idx], style: { ...drawingsRef.current[idx].style, ...patch } };
-    drawOverlay();
+    if (remember) rememberLastUsedStyle(type, patch);
+    scheduleDraw();
     setSelectionRenderTick((t) => t + 1);
   }
   function toggleSelectedLock() {
     const idx = drawingsRef.current.findIndex((d) => d.id === selectedIdRef.current);
     if (idx === -1) return;
     drawingsRef.current[idx] = { ...drawingsRef.current[idx], locked: !drawingsRef.current[idx].locked };
-    drawOverlay();
+    scheduleDraw();
     setSelectionRenderTick((t) => t + 1);
   }
   // إخفاء/إظهار هاي الرسمة لحالها بس (بدون التأثير على باقي الرسومات)
@@ -2276,7 +2517,7 @@ export default function ReplayClient({ userId }) {
     const idx = drawingsRef.current.findIndex((d) => d.id === selectedIdRef.current);
     if (idx === -1) return;
     drawingsRef.current[idx] = { ...drawingsRef.current[idx], hidden: !drawingsRef.current[idx].hidden };
-    drawOverlay();
+    scheduleDraw();
     setSelectionRenderTick((t) => t + 1);
   }
   // قفل/فك قفل كل الرسومات دفعة وحدة (زر "قفل" بالشريط الجانبي)
@@ -2287,14 +2528,14 @@ export default function ReplayClient({ userId }) {
     drawingsRef.current = drawingsRef.current.map((d) => (d.tradeTag ? d : { ...d, locked: nextLocked }));
     allDrawingsLockedRef.current = nextLocked;
     setAllDrawingsLocked(nextLocked);
-    drawOverlay();
+    scheduleDraw();
   }
   function deleteSelectedDrawing() {
     if (selectedIdRef.current == null) return;
     pushHistory();
     drawingsRef.current = drawingsRef.current.filter((d) => d.id !== selectedIdRef.current);
     clearSelection();
-    drawOverlay();
+    scheduleDraw();
   }
   function duplicateSelectedDrawing() {
     const d = getSelectedDrawing();
@@ -2308,7 +2549,7 @@ export default function ReplayClient({ userId }) {
     if (clone.points) clone.points = clone.points.map((p) => ({ ...p, logical: p.logical + offset }));
     drawingsRef.current.push(clone);
     selectDrawing(clone.id);
-    drawOverlay();
+    scheduleDraw();
   }
   /* إضافة/تعديل نص على الرسمة المختارة مباشرة من الشريط العائم، من غير ما نفوّت
      على لوحة "كل الإعدادات" الكاملة */
@@ -2323,7 +2564,7 @@ export default function ReplayClient({ userId }) {
     if (idx !== -1) {
       pushHistory();
       drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: textPopoverValue };
-      drawOverlay();
+      scheduleDraw();
     }
     setTextPopoverOpen(false);
   }
@@ -2383,9 +2624,12 @@ export default function ReplayClient({ userId }) {
     pushHistory();
     const idx = drawingsRef.current.findIndex((d) => d.id === editDraft.id);
     if (idx !== -1) drawingsRef.current[idx] = editDraft;
+    // تعديل مباشر من لوحة "كل الإعدادات" لازم يتحفظ كـ"آخر إعدادات" لهاد نوع
+    // الأداة تلقائيًا (نفس منطق الشريط العائم السريع)
+    if (editDraft.style) rememberLastUsedStyle(editDraft.type, editDraft.style);
     setEditingId(null);
     setEditDraft(null);
-    drawOverlay();
+    scheduleDraw();
   }
   function deleteEditingDrawing() {
     if (!editDraft) return;
@@ -2393,7 +2637,7 @@ export default function ReplayClient({ userId }) {
     drawingsRef.current = drawingsRef.current.filter((d) => d.id !== editDraft.id);
     setEditingId(null);
     setEditDraft(null);
-    drawOverlay();
+    scheduleDraw();
   }
   function finishMultiPoint() {
     const pts = pathPointsRef.current;
@@ -2407,7 +2651,7 @@ export default function ReplayClient({ userId }) {
     pathPointsRef.current = [];
     liveCursorRef.current = null;
     setActiveTool("cursor");
-    drawOverlay();
+    scheduleDraw();
   }
 
   function handleClearDrawings() {
@@ -2416,7 +2660,7 @@ export default function ReplayClient({ userId }) {
     if (!window.confirm("مسح كل الرسومات من الشارت؟ (خطوط الهدف/الإيقاف لصفقة مفتوحة ما بتتأثر)")) return;
     pushHistory();
     drawingsRef.current = drawingsRef.current.filter((d) => !!d.tradeTag);
-    drawOverlay();
+    scheduleDraw();
   }
   // تراجع عن آخر رسمة (بيتجاهل خطوط الهدف/الإيقاف الخاصة بصفقة مفتوحة)
   function handleUndoLastDrawing() {
@@ -2424,7 +2668,7 @@ export default function ReplayClient({ userId }) {
     for (let i = list.length - 1; i >= 0; i--) {
       if (!list[i].tradeTag) {
         drawingsRef.current = list.filter((_, idx) => idx !== i);
-        drawOverlay();
+        scheduleDraw();
         return;
       }
     }
@@ -2479,7 +2723,7 @@ export default function ReplayClient({ userId }) {
       pathPointsRef.current = [];
       liveCursorRef.current = null;
       setActiveTool("cursor");
-      drawOverlay();
+      scheduleDraw();
       setContextMenu(null);
       return;
     }
@@ -2542,7 +2786,7 @@ export default function ReplayClient({ userId }) {
       id: Date.now() + 2, type: "hline", p1: { logical, price: sl },
       style: { color: chartSettings.tradeSlColor || RED, width: 1.5, dash: "dashed" }, tradeTag: tag, tradeRole: "sl",
     });
-    drawOverlay();
+    scheduleDraw();
     setTradeLot("0.01");
     setTradeReason("");
     setPendingTrade({ tag, direction, entry: price, asset: assetValue, entryTime });
@@ -2574,7 +2818,7 @@ export default function ReplayClient({ userId }) {
       const idx = drawingsRef.current.findIndex((d) => d.tradeTag === pt.tag && d.tradeRole === role);
       if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], p1: { ...drawingsRef.current[idx].p1, price: num } };
     }
-    drawOverlay();
+    scheduleDraw();
     setDragTick((t) => t + 1);
   }
   function handleEntryTextChange(v) {
@@ -2613,7 +2857,7 @@ export default function ReplayClient({ userId }) {
   function cancelQuickTrade() {
     if (pendingTradeRef.current) {
       drawingsRef.current = drawingsRef.current.filter((d) => d.tradeTag !== pendingTradeRef.current.tag);
-      drawOverlay();
+      scheduleDraw();
     }
     setTradeReason("");
     setPendingTrade(null);
@@ -2761,7 +3005,7 @@ export default function ReplayClient({ userId }) {
     openPositionsRef.current = openPositionsRef.current.filter((p) => p.dbId !== pos.dbId);
     setOpenPositionsList([...openPositionsRef.current]);
     drawingsRef.current = drawingsRef.current.filter((d) => d.tradeTag !== pos.tag);
-    drawOverlay();
+    scheduleDraw();
     setTradeToast(
       result === "win"
         ? `🎯 توصلت للهدف — الصفقة اتقفلت ربح`
@@ -2822,7 +3066,7 @@ export default function ReplayClient({ userId }) {
 
     const dIdx = drawingsRef.current.findIndex((d) => d.tradeTag === pos.tag && d.tradeRole === role);
     if (dIdx !== -1) drawingsRef.current[dIdx] = { ...drawingsRef.current[dIdx], p1: { ...drawingsRef.current[dIdx].p1, price: num } };
-    drawOverlay();
+    scheduleDraw();
 
     if (supabase && userId) {
       const rr = updated.riskAmount > 0 ? updated.rewardAmount / updated.riskAmount : 0;
@@ -3003,7 +3247,7 @@ export default function ReplayClient({ userId }) {
             height: compareHeight,
           });
         }
-        drawOverlay();
+        scheduleDraw();
       };
       window.addEventListener("resize", handleResize);
       const handleFsChange = () => {
@@ -3041,7 +3285,7 @@ export default function ReplayClient({ userId }) {
             drawingsRef.current.push({ id: Date.now(), type: "text", p1: { logical, price: snapped }, text: content, style: styleForNewDrawing("text") });
           }
           setActiveTool("cursor");
-          drawOverlay();
+          scheduleDraw();
           return;
         }
         if (tool === "hline" || tool === "hray" || tool === "vline" || tool === "crossline") {
@@ -3050,7 +3294,7 @@ export default function ReplayClient({ userId }) {
           drawingsRef.current.push({ id: newId, type: tool, p1: { logical, price: snapped }, style: styleForNewDrawing(tool) });
           setActiveTool("cursor");
           selectDrawing(newId); // نقاط التحكم تظهر تلقائياً فوراً بعد إنشاء الأداة
-          drawOverlay();
+          scheduleDraw();
           return;
         }
         if (tool === "path" || tool === "wave" || tool === "fibext" || tool === "parallelchannel" || tool === "fibchannel" || tool === "pitchfork" || tool === "triangle") {
@@ -3059,7 +3303,7 @@ export default function ReplayClient({ userId }) {
           if (need && pathPointsRef.current.length >= need) {
             finishMultiPoint(); // finishMultiPoint نفسها بتعمل pushHistory قبل الإضافة
           }
-          drawOverlay();
+          scheduleDraw();
           return;
         }
         // نظام النقرات: نقرة أولى تثبّت نقطة البداية وتبلّش معاينة حيّة تتبع الماوس
@@ -3081,17 +3325,18 @@ export default function ReplayClient({ userId }) {
           } else {
             setActiveTool("cursor");
           }
-          drawOverlay();
+          scheduleDraw();
           return;
         }
         drawStateRef.current = { type: tool, p1: { logical, price: snapped }, p2: { logical, price: snapped }, style: styleForNewDrawing(tool) };
         isDrawingRef.current = true;
-        drawOverlay();
+        scheduleDraw();
       }
       function onMouseMove(e) {
         // وضع المؤشر: تلوين مؤشر الفأرة لما يكون فوق رسمة (يد) عشان يبين إنها قابلة للسحب،
         // وتحديث موقع الرسمة إذا كان في سحب جاري حالياً
         if (activeToolRef.current === "cursor") {
+          if (cutMode) return; // أداة القص عم تتحكم بمؤشر الفأرة والتفاعل بنفسها (شوفي useEffect الخاص فيها تحت)
           if (dragStateRef.current) {
             const st = dragStateRef.current;
             const { logical, price, y } = getLogicalPrice(e.clientX, e.clientY);
@@ -3108,8 +3353,8 @@ export default function ReplayClient({ userId }) {
               const snapped = snapPrice(logical, price, y);
               setHandlePoint(d, st.key, logical, snapped);
             }
-            if (d.tradeTag) setDragTick((t) => t + 1);
-            drawOverlay();
+            if (d.tradeTag) scheduleDragTickBump();
+            scheduleDraw();
             return;
           }
           const { x, y } = getLogicalPrice(e.clientX, e.clientY);
@@ -3145,7 +3390,7 @@ export default function ReplayClient({ userId }) {
         if (activePath) {
           liveCursorRef.current = { logical, price: snapped };
         }
-        drawOverlay();
+        scheduleDraw();
       }
       function onMouseUp() {
         // ما عاد في تثبيت بالسحب/الإفلات — الرسم صار بنظام نقرة ثم نقرة (كليك ثم كليك)،
@@ -3161,7 +3406,7 @@ export default function ReplayClient({ userId }) {
             const pos = openPositionsRef.current.find((p) => p.tag === d.tradeTag);
             if (pos) updateOpenPositionLevel(pos, d.tradeRole, d.p1.price);
           }
-          drawOverlay();
+          scheduleDraw();
         }
       }
       /* سحب رسمة موجودة بوضع المؤشر: نمسك الحدث بمرحلة الـ capture قبل ما يوصل لمكتبة
@@ -3176,7 +3421,7 @@ export default function ReplayClient({ userId }) {
           e.preventDefault();
           e.stopPropagation();
           selectDrawing(handleHit.drawing.id);
-          if (handleHit.drawing.locked) { drawOverlay(); return; }
+          if (handleHit.drawing.locked) { scheduleDraw(); return; }
           if (!handleHit.drawing.tradeTag) pushHistory();
           dragStateRef.current = { mode: "handle", id: handleHit.drawing.id, key: handleHit.key };
           chart.applyOptions({ handleScroll: false, handleScale: false });
@@ -3187,7 +3432,7 @@ export default function ReplayClient({ userId }) {
           e.preventDefault();
           e.stopPropagation();
           selectDrawing(hit.id);
-          if (hit.locked) { drawOverlay(); return; }
+          if (hit.locked) { scheduleDraw(); return; }
           if (!hit.tradeTag) pushHistory();
           dragStateRef.current = { mode: "move", id: hit.id, lastLogical: logical, lastPrice: price };
           chart.applyOptions({ handleScroll: false, handleScale: false });
@@ -3211,7 +3456,7 @@ export default function ReplayClient({ userId }) {
           clearSelection();
           closeTransientMenus();
           setActiveTool("cursor");
-          drawOverlay();
+          scheduleDraw();
           return;
         }
         if (e.key === "Enter" && activeToolRef.current === "path" && pathPointsRef.current.length >= 2) {
@@ -3294,7 +3539,7 @@ export default function ReplayClient({ userId }) {
           const newTo = center + (vr.to - center) * factor;
           if (newTo - newFrom >= 2) ts.setVisibleLogicalRange({ from: newFrom, to: newTo });
         }
-        drawOverlay();
+        scheduleDraw();
       }
       let panDrag = null;
       function onOverlayAuxDown(e) {
@@ -3311,7 +3556,7 @@ export default function ReplayClient({ userId }) {
         const dxPx = e.clientX - panDrag.startX;
         const shift = -dxPx / (barSpacing || 6);
         ts.setVisibleLogicalRange({ from: panDrag.vr0.from + shift, to: panDrag.vr0.to + shift });
-        drawOverlay();
+        scheduleDraw();
       }
       function onWindowMouseUpForPan() { panDrag = null; }
 
@@ -3332,8 +3577,8 @@ export default function ReplayClient({ userId }) {
       window.addEventListener("keydown", onKeyDown);
       window.addEventListener("keyup", onKeyUp);
       window.addEventListener("blur", onWindowBlurResetShift);
-      chart.timeScale().subscribeVisibleLogicalRangeChange(drawOverlay);
-      chart.subscribeCrosshairMove(drawOverlay);
+      chart.timeScale().subscribeVisibleLogicalRangeChange(scheduleDraw);
+      chart.subscribeCrosshairMove(scheduleDraw);
       // أي بان أو زوم عالشارت (تغيير المدى المرئي) بيسكّر القوائم المؤقتة المفتوحة،
       // زي أي حدث تاني "بيقفل القوائم عادة" (شوفي closeTransientMenus)
       function onVisibleRangeChangeCloseMenus() { closeTransientMenus(); }
@@ -3507,9 +3752,9 @@ export default function ReplayClient({ userId }) {
         window.removeEventListener("keydown", onKeyDown);
         window.removeEventListener("keyup", onKeyUp);
         window.removeEventListener("blur", onWindowBlurResetShift);
-        chart.timeScale().unsubscribeVisibleLogicalRangeChange(drawOverlay);
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(scheduleDraw);
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChangeCloseMenus);
-        chart.unsubscribeCrosshairMove(drawOverlay);
+        chart.unsubscribeCrosshairMove(scheduleDraw);
         chart.unsubscribeCrosshairMove(onCrosshairMagnet);
         chart.unsubscribeCrosshairMove(onMainCrosshairSync);
 
@@ -4035,7 +4280,7 @@ export default function ReplayClient({ userId }) {
     recalcAllIndicatorData(allCandles.slice(0, revealCount));
     prevRevealRef.current = revealCount;
     prevCandlesRef.current = allCandles;
-    drawOverlay();
+    scheduleDraw();
   }, [revealCount, allCandles, mode]);
 
   /* بتحدّث "الوقت الحالي" لحالة الـ Replay مع كل تقدّم فعلي بالبيانات المكشوفة
@@ -4181,14 +4426,37 @@ export default function ReplayClient({ userId }) {
     livePollRef.current = setInterval(pollLiveOnce, 5000);
   }
 
+  /* أعلى قيمة revealCount مسموح نوصلها بهاد الجلسة - إذا في منطقة قص مطبّقة
+     (appliedCutRegion)، منوقف عندها بدل ما نكمل لآخر البيانات، بدون ما نحذف
+     أي شمعة فعلياً من allCandles (الحد هون بس "أعلى سقف عرض" مؤقت). محسوبة
+     من الوقت الحقيقي toTime مباشرة، فتضل صحيحة تلقائياً حتى لو تغيّر الفريم. */
+  function cutRegionEndIndex() {
+    const ap = appliedCutRegionRef.current;
+    if (!ap || !allCandles.length) return allCandles.length;
+    let idx = allCandles.findIndex((c) => c.time >= ap.toTime);
+    if (idx === -1) idx = allCandles.length - 1;
+    return idx + 1;
+  }
+
   /* ===================== وضع تدريب (خطوة خطوة) ===================== */
   function handleNext() {
-    setRevealCount((c) => Math.min(c + 1, allCandles.length));
+    const cap = cutRegionEndIndex();
+    setRevealCount((c) => Math.min(c + 1, allCandles.length, cap));
   }
   function handleRandomStart() {
     loadData();
   }
   function handleReset() {
+    // لو في منطقة قص مطبّقة، "إعادة من البداية" لازم ترجع لبداية المنطقة
+    // نفسها (fromTime)، مش لسلوك CONTEXT_BARS الافتراضي القديم
+    const ap = appliedCutRegionRef.current;
+    if (ap && allCandles.length) {
+      let idx = allCandles.findIndex((c) => c.time >= ap.fromTime);
+      if (idx === -1) idx = 0;
+      setRevealCount(idx + 1);
+      setIsPlaying(false);
+      return;
+    }
     const maxStart = Math.max(CONTEXT_BARS, allCandles.length - 100);
     setRevealCount(Math.min(CONTEXT_BARS, maxStart));
     setIsPlaying(false);
@@ -4202,7 +4470,8 @@ export default function ReplayClient({ userId }) {
     const stepMs = Math.max(30, Math.round(1000 / (speed || 1)));
     playTimerRef.current = setInterval(() => {
       setRevealCount((c) => {
-        if (c >= allCandles.length) { setIsPlaying(false); return c; }
+        const limit = Math.min(allCandles.length, cutRegionEndIndex());
+        if (c >= limit) { setIsPlaying(false); return c; }
         return c + 1;
       });
     }, stepMs);
@@ -4213,50 +4482,202 @@ export default function ReplayClient({ userId }) {
     setMode(m);
   }
 
-  /* ===================== أداة القص: اختيار نقطة بداية الاستعراض بالضغط على الشارت ===================== */
+  /* ===================== أداة القص الجديدة: سحب لتحديد منطقة كاملة =====================
+     3 أوضاع فرعية (cutSubMode) بتتحكم بمعنى السحب على الشارت وإحنا بوضع القص:
+       - select: سحب من الصفر بيرسم منطقة جديدة (فوق أي منطقة قديمة قيد التعديل)
+       - move: سحب من جوا المنطقة بيحرّكها كلها (نفس الاتساع، بس مكان مختلف)
+       - edit-edges: سحب قريب من حافة يمين أو شمال بيمدد/يقصر تلك الحافة لحالها
+     المنطقة بتترسم بإحداثيات logical (نسبة لمصفوفة الشموع الحالية) طول ما هي
+     "قيد التعديل" بس، ولما تنطبق (تطبيق القص) منحوّلها فوراً لوقت حقيقي
+     (fromTime/toTime) عشان تضل صحيحة تلقائياً عبر أي تغيير فريم/زوم/بان. */
   useEffect(() => {
-    if (!chartRef.current || !cutMode) {
+    const canvas = overlayCanvasRef.current;
+    const chart = chartRef.current;
+    if (!canvas || !chart || !cutMode) {
       cutHoverLogicalRef.current = null;
+      cutDragRef.current = null;
       return;
     }
-    const handler = (param) => {
-      if (!param?.time || allCandles.length === 0) return;
-      let idx = allCandles.findIndex((c) => c.time === param.time);
-      if (idx === -1) {
-        for (let i = 0; i < allCandles.length; i++) {
-          if (allCandles[i].time <= param.time) idx = i; else break;
+    function logicalFromClientX(clientX) {
+      const rect = canvas.getBoundingClientRect();
+      return chart.timeScale().coordinateToLogical(clientX - rect.left);
+    }
+    const EDGE_HIT_PX = 10;
+    function edgeAtClientX(clientX) {
+      const region = cutRegionRef.current;
+      if (!region) return null;
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const fromX = chart.timeScale().logicalToCoordinate(region.fromLogical);
+      const toX = chart.timeScale().logicalToCoordinate(region.toLogical);
+      if (fromX != null && Math.abs(x - fromX) <= EDGE_HIT_PX) return "from";
+      if (toX != null && Math.abs(x - toX) <= EDGE_HIT_PX) return "to";
+      return null;
+    }
+    function insideRegion(clientX) {
+      const region = cutRegionRef.current;
+      if (!region) return false;
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const fromX = chart.timeScale().logicalToCoordinate(region.fromLogical);
+      const toX = chart.timeScale().logicalToCoordinate(region.toLogical);
+      if (fromX == null || toX == null) return false;
+      return x >= Math.min(fromX, toX) && x <= Math.max(fromX, toX);
+    }
+    function clampLogical(logical) {
+      if (!allCandles.length) return logical;
+      const v = Math.max(0, Math.min(allCandles.length - 1, logical));
+      return cutPrecision === "pixel" ? Math.round(v) : v;
+    }
+    function onDown(e) {
+      if (e.button !== 0) return;
+      const logical = logicalFromClientX(e.clientX);
+      if (logical == null) return;
+      const sub = cutSubModeRef.current;
+      const edge = sub === "edit-edges" ? edgeAtClientX(e.clientX) : null;
+      if (edge) {
+        cutDragRef.current = { mode: "edge", edge, region: { ...cutRegionRef.current } };
+        return;
+      }
+      if (sub === "move" && insideRegion(e.clientX)) {
+        cutDragRef.current = { mode: "move", startLogical: logical, region: { ...cutRegionRef.current } };
+        return;
+      }
+      if (sub === "select") {
+        cutDragRef.current = { mode: "select", startLogical: logical, moved: false };
+        setCutRegion({ fromLogical: logical, toLogical: logical });
+      }
+    }
+    function onMove(e) {
+      const drag = cutDragRef.current;
+      const logical = logicalFromClientX(e.clientX);
+      if (!drag) {
+        cutHoverLogicalRef.current = logical;
+        scheduleDraw();
+        return;
+      }
+      if (logical == null) return;
+      if (drag.mode === "select") {
+        drag.moved = true;
+        setCutRegion({ fromLogical: Math.min(drag.startLogical, logical), toLogical: Math.max(drag.startLogical, logical) });
+      } else if (drag.mode === "move") {
+        const delta = logical - drag.startLogical;
+        const span = drag.region.toLogical - drag.region.fromLogical;
+        const maxLogical = allCandles.length - 1;
+        let from = drag.region.fromLogical + delta;
+        let to = drag.region.toLogical + delta;
+        if (from < 0) { from = 0; to = span; }
+        if (to > maxLogical) { to = maxLogical; from = maxLogical - span; }
+        setCutRegion({ fromLogical: from, toLogical: to });
+      } else if (drag.mode === "edge") {
+        const region = drag.region;
+        if (drag.edge === "from") {
+          setCutRegion({ fromLogical: Math.max(0, Math.min(logical, region.toLogical - 1)), toLogical: region.toLogical });
+        } else {
+          setCutRegion({ fromLogical: region.fromLogical, toLogical: Math.min(allCandles.length - 1, Math.max(logical, region.fromLogical + 1)) });
         }
       }
-      if (idx === -1) return;
-      stopLivePoll();
-      setMode("training");
-      setIsPlaying(false);
-      // قص جديد ومقصود من المستخدم = إعادة تثبيت نقطة الـ Replay (anchor) بشكل
-      // صريح على الوقت الحقيقي المختار، بغض النظر عن أي حالة سابقة
-      replayStateRef.current = { isActive: true, anchorTimestamp: allCandles[idx].time, currentTimestamp: allCandles[idx].time, originalTimeframe: intervalRef.current };
-      setRevealCount(idx + 1);
-      setCutMode(false);
-    };
-    /* معاينة حيّة (Preview): وإحنا عم نحوّم بالماوس فوق الشارت بوضع "القص"، منتتبع
-       موقع المؤشر ومنرسم شعاع + تغبيش خفيف للجزء يلي لسا ما تحدد (بدالة drawOverlay
-       تحت)، وهاي المعاينة ما بتغيّر أي بيانات فعلياً إلا لما يصير كليك تأكيد فعلي */
-    const hoverHandler = (param) => {
-      if (!param?.point || !chartRef.current) { cutHoverLogicalRef.current = null; drawOverlay(); return; }
-      const logical = chartRef.current.timeScale().coordinateToLogical(param.point.x);
-      cutHoverLogicalRef.current = logical;
-      drawOverlay();
-    };
-    chartRef.current.subscribeClick(handler);
-    chartRef.current.subscribeCrosshairMove(hoverHandler);
+      scheduleDraw();
+    }
+    function onUp() {
+      const drag = cutDragRef.current;
+      if (drag && drag.mode === "select" && !drag.moved) {
+        // كليك بسيط بدون سحب فعلي = منطقة افتراضية معقولة (30 شمعة) تبلّش من هون،
+        // بدل ما يضطر المستخدم يسحب دايماً لأي منطقة ولو صغيرة
+        const start = drag.startLogical;
+        const end = Math.min(allCandles.length - 1, start + 30);
+        setCutRegion({ fromLogical: clampLogical(start), toLogical: clampLogical(end) });
+      } else if (drag && cutRegionRef.current) {
+        const r = cutRegionRef.current;
+        setCutRegion({ fromLogical: clampLogical(r.fromLogical), toLogical: clampLogical(r.toLogical) });
+      }
+      cutDragRef.current = null;
+    }
+    canvas.addEventListener("mousedown", onDown);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
     return () => {
-      chartRef.current?.unsubscribeClick?.(handler);
-      chartRef.current?.unsubscribeCrosshairMove?.(hoverHandler);
+      canvas.removeEventListener("mousedown", onDown);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
       cutHoverLogicalRef.current = null;
+      cutDragRef.current = null;
     };
-  }, [cutMode, allCandles]);
+  }, [cutMode, allCandles, cutPrecision]);
 
+  function cutIndexForLogical(logical) {
+    if (!allCandles.length) return 0;
+    return Math.max(0, Math.min(allCandles.length - 1, Math.round(logical)));
+  }
+  /* تطبيق القص: منحوّل المنطقة (logical) لوقت حقيقي ومنثبّتها - بدون ما نحذف
+     ولا شمعة وحدة من allCandles، بس منعيّن من وين يبلّش الاستعراض (fromTime)
+     ومتى ما بعد نكمل نكشف شموع جديدة تلقائياً/يدوياً (toTime، شوفي
+     cutRegionEndIndex فوق) - بالضبط "قص بدون حذف بيانات". */
+  function applyCutRegion() {
+    const region = cutRegionRef.current;
+    if (!region || !allCandles.length) { setCutMode(false); return; }
+    const fromIdx = cutIndexForLogical(region.fromLogical);
+    const toIdx = cutIndexForLogical(region.toLogical);
+    const fromCandle = allCandles[fromIdx];
+    const toCandle = allCandles[toIdx] || fromCandle;
+    if (!fromCandle) { setCutMode(false); return; }
+    stopLivePoll();
+    setMode("training");
+    setIsPlaying(false);
+    replayStateRef.current = { isActive: true, anchorTimestamp: fromCandle.time, currentTimestamp: fromCandle.time, originalTimeframe: intervalRef.current };
+    setRevealCount(fromIdx + 1);
+    setAppliedCutRegion({ fromTime: fromCandle.time, toTime: toCandle.time });
+    if (cutAutoSave) {
+      try {
+        localStorage.setItem(
+          `qta_cut_region_${assetValue}_${interval}`,
+          JSON.stringify({ fromTime: fromCandle.time, toTime: toCandle.time })
+        );
+      } catch {}
+    }
+    setCutMode(false);
+    setCutRegion(null);
+  }
+  /* إلغاء القص: يسكّر وضع التعديل ويرمي المنطقة "قيد التعديل" (غير المطبّقة) -
+     أي منطقة مطبّقة سابقاً (appliedCutRegion) بتضل شغالة متل ما هي */
+  function cancelCutMode() {
+    setCutMode(false);
+    setCutRegion(null);
+    cutDragRef.current = null;
+  }
+  /* إعادة ضبط القص: بترمي بس المنطقة "قيد التعديل" الحالية وترجع لوضع "سحب
+     لتحديد منطقة" من الصفر، بدون ما تسكّر وضع القص نفسه */
+  function resetCutRegion() {
+    setCutRegion(null);
+    setCutSubMode("select");
+  }
   function toggleCutMode() {
-    setCutMode((c) => !c);
+    setCutMode((c) => {
+      const next = !c;
+      if (next) {
+        setCutSubMode("select");
+        // "حفظ القص تلقائياً" مفعّل: نحاول نجيب آخر منطقة قص محفوظة لنفس
+        // الأصل/الفريم ونعبّي فيها الاختيار تلقائياً بدل ما تبلّشي من الصفر
+        if (cutAutoSave) {
+          try {
+            const raw = localStorage.getItem(`qta_cut_region_${assetValue}_${interval}`);
+            const saved = raw ? JSON.parse(raw) : null;
+            if (saved && Number.isFinite(saved.fromTime) && Number.isFinite(saved.toTime) && allCandles.length) {
+              const fromIdx = allCandles.findIndex((c2) => c2.time >= saved.fromTime);
+              const toIdx = allCandles.findIndex((c2) => c2.time >= saved.toTime);
+              setCutRegion(
+                fromIdx !== -1
+                  ? { fromLogical: fromIdx, toLogical: toIdx !== -1 ? toIdx : allCandles.length - 1 }
+                  : null
+              );
+            } else setCutRegion(null);
+          } catch { setCutRegion(null); }
+        } else {
+          setCutRegion(null);
+        }
+      }
+      return next;
+    });
   }
 
   /* ===================== قص/تصدير الشارت كصورة ===================== */
@@ -4333,11 +4754,84 @@ export default function ReplayClient({ userId }) {
         <button
           onClick={toggleCutMode}
           style={iconBtn(cutMode, !supported || allCandles.length === 0)}
-          title="اضغطي الزر، وبعدين دوسي على أي شمعة بالشارت لتبلّشي الاستعراض منها"
+          title="فعّلي القص، بعدين اسحبي عالشارت لتحديد منطقة بداية الاستعراض"
           disabled={!supported || allCandles.length === 0}
         >
           <ToolIcon id="scissors2" />
         </button>
+        {cutMode && (
+          <>
+            <button onClick={() => setCutSubMode("select")} style={iconBtn(cutSubMode === "select")} title="سحب لتحديد المنطقة">
+              <ToolIcon id="marquee" />
+            </button>
+            <button onClick={() => setCutSubMode("move")} style={iconBtn(cutSubMode === "move", !cutRegion)} disabled={!cutRegion} title="تحريك المنطقة">
+              <ToolIcon id="dragDots" />
+            </button>
+            <button onClick={() => setCutSubMode("edit-edges")} style={iconBtn(cutSubMode === "edit-edges", !cutRegion)} disabled={!cutRegion} title="تعديل الحواف">
+              <ToolIcon id="pencilLine" />
+            </button>
+            <button onClick={resetCutRegion} style={iconBtn(false, !cutRegion)} disabled={!cutRegion} title="إعادة ضبط القص">
+              <ToolIcon id="refresh" />
+            </button>
+            <button
+              onClick={() => setCutSettingsOpen((v) => !v)}
+              style={{ ...iconBtn(cutSettingsOpen), position: "relative" }}
+              title="إعدادات القص"
+            >
+              <ToolIcon id="gear" />
+              {cutSettingsOpen && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    position: "absolute", top: 38, insetInlineStart: 0, zIndex: 30,
+                    background: "#131722", border: "1px solid #242832", borderRadius: 10,
+                    padding: "0.6rem 0.75rem", minWidth: 210, boxShadow: "0 10px 28px rgba(0,0,0,0.5)",
+                    display: "flex", flexDirection: "column", gap: 8, direction: "rtl", cursor: "default",
+                  }}
+                >
+                  {[
+                    ["إظهار منطقة القص", cutShowRegion, setCutShowRegion],
+                    ["تعتيم خارج المنطقة", cutDimOutside, setCutDimOutside],
+                    ["حفظ القص تلقائياً", cutAutoSave, setCutAutoSave],
+                  ].map(([label, val, setter]) => (
+                    <label key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12, color: "#c7cad1", cursor: "pointer" }}>
+                      <span>{label}</span>
+                      <span
+                        onClick={() => setter((v) => !v)}
+                        style={{
+                          width: 32, height: 18, borderRadius: 9, position: "relative", flexShrink: 0,
+                          background: val ? GOLD : "#2a2e38", transition: "background 0.15s",
+                        }}
+                      >
+                        <span style={{
+                          position: "absolute", top: 2, insetInlineStart: val ? 16 : 2, width: 14, height: 14,
+                          borderRadius: 7, background: val ? "#1a1608" : "#8b8f99", transition: "inset-inline-start 0.15s",
+                        }} />
+                      </span>
+                    </label>
+                  ))}
+                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12, color: "#c7cad1" }}>
+                    <span>دقة القص</span>
+                    <select
+                      value={cutPrecision}
+                      onChange={(e) => setCutPrecision(e.target.value)}
+                      style={{ background: "#1a1e28", color: "#EAECEF", border: "1px solid #2a2e38", borderRadius: 6, fontSize: 11, padding: "2px 6px" }}
+                    >
+                      <option value="pixel">Pixel Perfect</option>
+                      <option value="free">حرة (Free)</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+            </button>
+            <button onClick={applyCutRegion} disabled={!cutRegion} style={iconBtn(false, !cutRegion)} title="تطبيق القص">
+              <ToolIcon id="checkmark" />
+            </button>
+            <button onClick={cancelCutMode} style={iconBtn(false)} title="إلغاء القص">
+              <ToolIcon id="xmark" />
+            </button>
+          </>
+        )}
         {mode === "training" && (
           <>
             <div style={{ width: 1, height: 22, background: "#242832" }} />
@@ -5037,7 +5531,7 @@ export default function ReplayClient({ userId }) {
       const t = defaultName ? templates.find((tt) => tt.name === defaultName) : null;
       const patch = t ? { ...t.style } : defaultStyleFor(type);
       pushHistory();
-      updateSelectedStyle(patch);
+      updateSelectedStyle(patch, { remember: false });
       if (t && t.text != null) {
         const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
         if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: t.text };
@@ -5046,7 +5540,7 @@ export default function ReplayClient({ userId }) {
     }
     function applyTemplate(t) {
       pushHistory();
-      updateSelectedStyle({ ...t.style });
+      updateSelectedStyle({ ...t.style }, { remember: false });
       const idx = drawingsRef.current.findIndex((dr) => dr.id === selectedIdRef.current);
       if (idx !== -1) drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: t.text ?? drawingsRef.current[idx].text };
       setDrawingTemplatesMenuOpen(false);
@@ -6342,7 +6836,7 @@ export default function ReplayClient({ userId }) {
                   ref={overlayCanvasRef}
                   style={{
                     position: "absolute", inset: 0, zIndex: 3,
-                    pointerEvents: activeTool === "cursor" ? "none" : "auto",
+                    pointerEvents: (activeTool === "cursor" && !cutMode) ? "none" : "auto",
                   }}
                 />
                 <div

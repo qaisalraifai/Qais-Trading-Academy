@@ -1,21 +1,9 @@
 import "./globals.css";
-import { Cairo, Plus_Jakarta_Sans, JetBrains_Mono, Inter } from "next/font/google";
-import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
-import { getServerLocale } from "@/lib/i18n/get-server-locale";
-import { dirFor } from "@/lib/i18n/config";
+import { Cairo, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
   variable: "--font-arabic",
-  display: "swap",
-});
-
-// خط احترافي مخصص للإنجليزية — بيحل محل Cairo تلقائياً وقت locale = "en"
-// (عبر قاعدة html.lang-en بملف globals.css)، بدون أي تعديل على Tailwind أو
-// أي كلاس موجود بأي صفحة.
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-en",
   display: "swap",
 });
 
@@ -59,17 +47,9 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
-  const locale = getServerLocale();
-
   return (
-    <html
-      lang={locale}
-      dir={dirFor(locale)}
-      className={`${locale === "ar" ? "lang-ar" : "lang-en"} ${cairo.variable} ${inter.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
-    >
-      <body style={{ margin: 0 }}>
-        <LocaleProvider initialLocale={locale}>{children}</LocaleProvider>
-      </body>
+    <html lang="ar" dir="rtl" className={`${cairo.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}>
+      <body style={{ margin: 0 }}>{children}</body>
     </html>
   );
 }

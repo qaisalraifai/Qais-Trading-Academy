@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase-client";
-import { useLocale } from "@/lib/i18n/LocaleProvider";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
@@ -23,7 +22,6 @@ export default function AppShell({
   children,
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { dir } = useLocale();
 
   const handleLogout = useCallback(async () => {
     const supabase = createClient();
@@ -38,7 +36,7 @@ export default function AppShell({
       : null;
 
   return (
-    <div className="flex min-h-screen flex-col font-sans" dir={dir}>
+    <div className="flex min-h-screen flex-col font-sans" dir="rtl">
       <Header
         username={username}
         initials={initials}

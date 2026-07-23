@@ -6,10 +6,8 @@ import { usePathname } from "next/navigation";
 import { ChevronsLeft, ChevronsRight, Home, Menu } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase-client";
-import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { NAV_ITEMS, HOME_NAV, LOGOUT_ITEM } from "./navigation";
 import MobileNav from "./MobileNav";
-import LanguageSwitcher from "./LanguageSwitcher";
 
 /* ============================================================================
    WorkspaceShell — الغلاف الخفيف لكل "Workspace" مستقلة (كل أداة ماعدا
@@ -27,13 +25,12 @@ function isPathActive(pathname, href) {
 
 export default function WorkspaceShell({ username, initials, isAdmin = false, daysLeft = null, children }) {
   const pathname = usePathname();
-  const { t, dir } = useLocale();
   const [collapsed, setCollapsed] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const visibleNavItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
   const activeItem = visibleNavItems.find((item) => isPathActive(pathname, item.href));
-  const title = activeItem ? t(activeItem.labelKey) : "Workspace";
+  const title = activeItem?.label || "Workspace";
   const LogoutIcon = LOGOUT_ITEM.icon;
 
   const handleLogout = async () => {
@@ -43,7 +40,7 @@ export default function WorkspaceShell({ username, initials, isAdmin = false, da
   };
 
   return (
-    <div className="flex h-screen flex-col bg-surface-0" dir={dir}>
+    <div className="flex h-screen flex-col bg-surface-0" dir="rtl">
       {/* Top Bar رفيع */}
       <header className="flex h-[52px] shrink-0 items-center justify-between gap-3 border-b border-gold-400/10 bg-gradient-to-b from-surface-3/95 to-surface-0/95 px-3 shadow-header backdrop-blur-glass">
         <div className="flex min-w-0 items-center gap-2">
@@ -51,7 +48,7 @@ export default function WorkspaceShell({ username, initials, isAdmin = false, da
             type="button"
             onClick={() => setMobileNavOpen(true)}
             className="flex h-8 w-8 items-center justify-center rounded-md border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 ease-premium hover:border-gold-400/40 hover:text-gold-200 lg:hidden"
-            aria-label={t("header.openMenu")}
+            aria-label="فتح القائمة"
           >
             <Menu className="h-4 w-4" />
           </button>
@@ -59,8 +56,8 @@ export default function WorkspaceShell({ username, initials, isAdmin = false, da
           <Link
             href={HOME_NAV.href}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gold-400/15 bg-surface-1 text-gold-200 transition-all duration-300 ease-premium hover:scale-105 hover:border-gold-400/40"
-            aria-label={t(HOME_NAV.labelKey)}
-            title={t(HOME_NAV.labelKey)}
+            aria-label="لوحة التحكم"
+            title="لوحة التحكم"
           >
             <Home className="h-4 w-4" />
           </Link>
@@ -69,8 +66,8 @@ export default function WorkspaceShell({ username, initials, isAdmin = false, da
             type="button"
             onClick={() => setCollapsed((c) => !c)}
             className="hidden h-8 w-8 items-center justify-center rounded-md border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 ease-premium hover:border-gold-400/40 hover:text-gold-200 lg:flex"
-            aria-label={collapsed ? t("header.expandMenu") : t("header.collapseMenu")}
-            title={collapsed ? t("header.expandMenu") : t("header.collapseMenu")}
+            aria-label={collapsed ? "توسيع القائمة" : "طي القائمة"}
+            title={collapsed ? "توسيع القائمة" : "طي القائمة"}
           >
             {collapsed ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
           </button>
@@ -80,7 +77,6 @@ export default function WorkspaceShell({ username, initials, isAdmin = false, da
         </div>
 
         <div className="flex shrink-0 items-center gap-2.5">
-          <LanguageSwitcher />
           <span className="hidden max-w-[8rem] truncate text-xs font-bold text-text-secondary sm:block">{username}</span>
           <div className="flex h-8 w-8 items-center justify-center rounded-full border border-gold-400/40 bg-surface-1 text-xs font-bold text-gold-200">
             {initials}
@@ -100,12 +96,11 @@ export default function WorkspaceShell({ username, initials, isAdmin = false, da
             {visibleNavItems.map((item) => {
               const Icon = item.icon;
               const active = isPathActive(pathname, item.href);
-              const label = t(item.labelKey);
               return (
                 <Link
                   key={item.key}
                   href={item.href}
-                  title={label}
+                  title={item.label}
                   className={cn(
                     "flex items-center gap-2.5 rounded-md p-2.5 text-text-muted transition-all duration-300 ease-premium hover:bg-white/5 hover:text-gold-200",
                     active && "border border-gold-400/30 bg-gold-400/10 font-bold text-gold-200",
@@ -113,7 +108,7 @@ export default function WorkspaceShell({ username, initials, isAdmin = false, da
                   )}
                 >
                   <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
-                  {!collapsed && <span className="truncate text-xs">{label}</span>}
+                  {!collapsed && <span className="truncate text-xs">{item.label}</span>}
                 </Link>
               );
             })}
@@ -122,14 +117,14 @@ export default function WorkspaceShell({ username, initials, isAdmin = false, da
           <button
             type="button"
             onClick={handleLogout}
-            title={t(LOGOUT_ITEM.labelKey)}
+            title={LOGOUT_ITEM.label}
             className={cn(
               "mt-2 flex items-center gap-2.5 rounded-md p-2.5 text-text-muted transition-all duration-300 ease-premium hover:text-loss",
               collapsed && "justify-center"
             )}
           >
             <LogoutIcon className="h-[18px] w-[18px] shrink-0" aria-hidden />
-            {!collapsed && <span className="truncate text-xs">{t(LOGOUT_ITEM.labelKey)}</span>}
+            {!collapsed && <span className="truncate text-xs">{LOGOUT_ITEM.label}</span>}
           </button>
         </aside>
 
