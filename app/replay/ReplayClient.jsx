@@ -4006,10 +4006,9 @@ export default function ReplayClient({ userId }) {
         const info = getAssetByValue(compareSymbol);
         if (!info?.yahoo) throw new Error("هذا الرمز غير مدعوم للمقارنة حالياً");
         const tdInterval = INTERVAL_MAP[interval];
-        const fallbackParam = info.yahooSpot ? `&fallback=${encodeURIComponent(info.yahoo)}` : "";
         const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${fallbackParam}${tdParam}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${tdParam}`
         );
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -4032,10 +4031,9 @@ export default function ReplayClient({ userId }) {
         const info = getAssetByValue(compareSymbol);
         if (!info?.yahoo) return;
         const tdInterval = INTERVAL_MAP[interval];
-        const fallbackParam = info.yahooSpot ? `&fallback=${encodeURIComponent(info.yahoo)}` : "";
         const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${fallbackParam}${tdParam}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${tdParam}`
         );
         const data = await res.json();
         if (data.error || !data.candles?.length) return;
@@ -4194,10 +4192,9 @@ export default function ReplayClient({ userId }) {
         sameMarketContext && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null
           ? `&anchor=${replayStateRef.current.currentTimestamp}`
           : "";
-      const fallbackParam = assetInfo.yahooSpot ? `&fallback=${encodeURIComponent(assetInfo.yahoo)}` : "";
       const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${fallbackParam}${tdParam}`
+        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${tdParam}`
       );
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -4205,13 +4202,13 @@ export default function ReplayClient({ userId }) {
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
       dataSourceRef.current = {
         symbol: data.sourceSymbol || assetInfo.yahoo,
-        usedFallback: !!data.usedFallback,
+        usedFallback: false,
         provider: data.provider || "yahoo",
       };
-      // "تقريب: عقود آجلة" لازم يظهر بس لما فعلياً نزلنا لآخر مستوى (Yahoo
-      // عقد آجل GC=F) - يعني ماشي سبوت حقيقي (Twelve Data) وما ماشي حتى
-      // Yahoo سبوت (XAU=)، مش كل مرة بيصير فيها usedFallback بمعناه القديم.
-      setUsedFuturesApprox(data.provider === "yahoo" && !!data.usedFallback && !!assetInfo.yahooSpot);
+      // ما في عقود آجلة نهائياً بعد اليوم (Yahoo سبوت أو Twelve Data بس) -
+      // فهاي العلامة صارت دايماً false، تركناها بالكود بدل حذفها بالكامل
+      // عشان لو حابين نرجّعها اختيارياً بالمستقبل ما نعيد بناء المنطق من الصفر.
+      setUsedFuturesApprox(false);
 
       setAllCandles(candles);
 
@@ -4381,17 +4378,28 @@ export default function ReplayClient({ userId }) {
     if (!assetInfo?.yahoo) return;
     try {
       const tdInterval = INTERVAL_MAP[interval];
-      // ملاحظة: لو أول تحميل نجح عبر Twelve Data، dataSourceRef.current.symbol
-      // بيصير "XAU/USD" (رمز Twelve Data نفسه) - مش رمز Yahoo. فلازم باراميتر
-      // symbol هون يضل دايماً مبني على assetInfo.yahoo* (مش على dataSourceRef)
-      // وإلا بنبعت رمز Twelve Data لسلسلة Yahoo وبينكسر الطلب. رمز Twelve Data
-      // نفسه منبعته دايماً بباراميتر td المنفصل زي أول تحميل بالضبط - السيرفر
-      // هو يلي بيقرر الترتيب (td أولاً)، مش لازم نمنعه هون.
-      const pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo;
-      const fallbackParam = assetInfo.yahooSpot ? `&fallback=${encodeURIComponent(assetInfo.yahoo)}` : "";
-      const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
+      // مهم جداً: البولينغ لازم يضل على *نفس* المصدر يلي نجح فيه التحميل
+      // الأول بالضبط (dataSourceRef.current.provider) - مش يعيد تجربة
+      // Twelve Data من الصفر كل مرة بشكل مستقل. لو خلطنا بين مصدرين (مثلاً
+      // التحميل الأول نجح بيوهو، والبولينغ التالي نجح بـ Twelve Data) ممكن
+      // تختلف محاذاة/تاريخ الشمعة اليومية شوي بين المزودين، فيوصل للشارت
+      // "شمعة أقدم" من يلي عنده أصلاً - وهاد بالضبط سبب
+      // "Cannot update oldest data" اللي كان عم يكسر الشارت. فبنقفل تماماً
+      // على نفس المزود المؤكد ناجح، وما منجرب المزود التاني إلا لو المزود
+      // الحالي نفسه فشل هالمرة (fallback عادي، مش تبديل قصدي).
+      const activeProvider = dataSourceRef.current.provider || "yahoo";
+      let pollSymbol, tdParam;
+      if (activeProvider === "twelvedata" && assetInfo.twelveData) {
+        pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo; // باراميتر symbol إجباري بالراوت حتى لو مش رح يُستخدم فعلياً
+        tdParam = `&td=${encodeURIComponent(assetInfo.twelveData)}`;
+      } else {
+        // المصدر الفعلي الناجح Yahoo سبوت - نضل عليه بدون أي محاولة td هون
+        // عشان ما نخلط مصدرين.
+        pollSymbol = dataSourceRef.current.symbol || assetInfo.yahooSpot || assetInfo.yahoo;
+        tdParam = "";
+      }
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(pollSymbol)}&interval=${tdInterval}&count=3${fallbackParam}${tdParam}`
+        `/api/replay-candles?symbol=${encodeURIComponent(pollSymbol)}&interval=${tdInterval}&count=3${tdParam}`
       );
       const data = await res.json();
       if (data.error || !data.candles?.length) {
