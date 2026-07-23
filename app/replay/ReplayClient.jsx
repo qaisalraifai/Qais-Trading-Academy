@@ -879,6 +879,10 @@ export default function ReplayClient({ userId }) {
   const [randomChart, setRandomChart] = useState(false);
 
   const [assetValue, setAssetValue] = useState("XAUUSD");
+  // بتتحدث كل ما نجيب شموع جديدة: بتقول فعلياً أي رمز يوهو استُخدم (سبوت أو
+  // عقد آجل احتياطي) - شوفي التعليق بأول lib/assets.js لسبب وجود هالمنطق.
+  const dataSourceRef = useRef({ symbol: null, usedFallback: false });
+  const [usedFuturesApprox, setUsedFuturesApprox] = useState(false);
   const [interval, setIntervalValue] = useState("15m");
   const [speed, setSpeed] = useState(3); // 3x = 3 شموع/ثانية (قيمة افتراضية معقولة)
   // مرفوع لـ 20000 (متزامن مع الحد الأقصى الجديد بـ lib/yahoo-candles.js) عشان
@@ -1420,8 +1424,11 @@ export default function ReplayClient({ userId }) {
   }, [allCandles, revealCount, mode]);
   useEffect(() => { countdownRef.current = countdown; }, [countdown]);
   useEffect(() => {
-    symbolLabelRef.current = getAssetByValue(assetValue)?.label || assetValue;
-  }, [assetValue]);
+    const baseLabel = getAssetByValue(assetValue)?.label || assetValue;
+    symbolLabelRef.current = usedFuturesApprox ? `${baseLabel} (تقريب: عقود آجلة)` : baseLabel;
+    scheduleDraw();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetValue, usedFuturesApprox]);
 
   /* حساسية المغناطيس: يلتصق فقط لما المؤشر قريب فعلاً (بالبكسل) من قيمة أوبن/هاي/لو/كلوز
      الشمعة تحت المؤشر - مش فرض أقرب سعر دايماً. رفعنا نصف قطر الالتصاق (من 34 إلى 46
@@ -3999,8 +4006,9 @@ export default function ReplayClient({ userId }) {
         const info = getAssetByValue(compareSymbol);
         if (!info?.yahoo) throw new Error("هذا الرمز غير مدعوم للمقارنة حالياً");
         const tdInterval = INTERVAL_MAP[interval];
+        const fallbackParam = info.yahooSpot ? `&fallback=${encodeURIComponent(info.yahoo)}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahoo)}&interval=${tdInterval}&count=${maxBars}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${fallbackParam}`
         );
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -4023,8 +4031,9 @@ export default function ReplayClient({ userId }) {
         const info = getAssetByValue(compareSymbol);
         if (!info?.yahoo) return;
         const tdInterval = INTERVAL_MAP[interval];
+        const fallbackParam = info.yahooSpot ? `&fallback=${encodeURIComponent(info.yahoo)}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahoo)}&interval=${tdInterval}&count=3`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${fallbackParam}`
         );
         const data = await res.json();
         if (data.error || !data.candles?.length) return;
@@ -4090,6 +4099,7 @@ export default function ReplayClient({ userId }) {
     stopLivePoll();
     setLoading(true);
     setError("");
+    setUsedFuturesApprox(false);
     setIsPlaying(false);
 
     // نمسح الرسومات/الصفقات بس لما يتغيّر "السوق" فعلياً (الأصل، أو الوضع مباشر/تدريب،
@@ -4182,13 +4192,16 @@ export default function ReplayClient({ userId }) {
         sameMarketContext && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null
           ? `&anchor=${replayStateRef.current.currentTimestamp}`
           : "";
+      const fallbackParam = assetInfo.yahooSpot ? `&fallback=${encodeURIComponent(assetInfo.yahoo)}` : "";
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}`
+        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${fallbackParam}`
       );
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       const candles = sanitizeCandles(data.candles || []);
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
+      dataSourceRef.current = { symbol: data.sourceSymbol || assetInfo.yahoo, usedFallback: !!data.usedFallback };
+      setUsedFuturesApprox(!!data.usedFallback && !!assetInfo.yahooSpot);
 
       setAllCandles(candles);
 
@@ -4266,7 +4279,19 @@ export default function ReplayClient({ userId }) {
       } else {
         // تحميل بيانات جديدة أو قفزة كبيرة (تبديل وضع/أصل/فريم/بداية عشوائية/قص نقطة/إعادة من البداية)
         seriesRef.current.setData(allCandles.slice(0, revealCount));
-        chartRef.current?.timeScale().fitContent();
+        // ملاحظة مهمة: هون كان في fitContent() بيحشر *كل* الشموع المحمّلة
+        // (ممكن تكون مئات الشموع اليومية) بعرض الشارت كامل دفعة وحدة - يعني
+        // كل شمعة بتاخد أقل من بكسل واحد عرض، فجسم الشمعة (الملوّن) بيختفي
+        // عملياً ومابيضل ظاهر غير الفتيل (الخط الرفيع)، فتبان الشموع وكأنها
+        // "بارات OHLC" عادية مش شموع يابانية حقيقية - رغم إنها فعلياً
+        // candlestick series بالكود (شوفي addCandlestickSeries فوق). حذفنا
+        // fitContent() من هون: بدونها، lightweight-charts بيرجع لسلوكها
+        // الافتراضي الطبيعي - تعرض آخر عدد شموع يتناسب مع عرض الشارت الحالي
+        // بنفس تباعد barSpacing المضبوط (7px)، يعني جسم كل شمعة يبقى ظاهر
+        // وواضح بلونه (أخضر/أحمر) بدل ما ينضغط لخط رفيع. المستخدمة لسا فيها
+        // خيار "Reset View" (فوق، handleResetView) لو حبّت فعلاً تشوف كل
+        // التاريخ مضغوط بشارة واحدة - بس هيك اختيار واعي منها مش افتراضي.
+        chartRef.current?.timeScale().applyOptions({ barSpacing: 7 });
       }
     } catch (err) {
       // بيانات فاسدة وصلت رغم التصفية (مصدر خارجي غير متوقع) - نعرض رسالة بدل ما نكسر الصفحة
@@ -4346,8 +4371,13 @@ export default function ReplayClient({ userId }) {
     if (!assetInfo?.yahoo) return;
     try {
       const tdInterval = INTERVAL_MAP[interval];
+      // منستخدم نفس الرمز يلي فعلياً نجح بالتحميل الأول (dataSourceRef) - عشان
+      // ما نخلط شموع مصدرين مختلفين (سبوت + عقد آجل) ببعض بنفس السلسلة لو
+      // الرمز الأساسي كان نجح أول مرة بس فشل هالمرة أو العكس.
+      const pollSymbol = dataSourceRef.current.symbol || assetInfo.yahooSpot || assetInfo.yahoo;
+      const fallbackParam = assetInfo.yahooSpot ? `&fallback=${encodeURIComponent(assetInfo.yahoo)}` : "";
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahoo)}&interval=${tdInterval}&count=3`
+        `/api/replay-candles?symbol=${encodeURIComponent(pollSymbol)}&interval=${tdInterval}&count=3${fallbackParam}`
       );
       const data = await res.json();
       if (data.error || !data.candles?.length) {
@@ -4355,6 +4385,7 @@ export default function ReplayClient({ userId }) {
         handleLivePollFailure();
         return;
       }
+      if (data.sourceSymbol) dataSourceRef.current = { symbol: data.sourceSymbol, usedFallback: !!data.usedFallback };
       const fresh = sanitizeCandles(data.candles);
       if (fresh.length === 0) { handleLivePollFailure(); return; }
       const lastFresh = fresh[fresh.length - 1];
