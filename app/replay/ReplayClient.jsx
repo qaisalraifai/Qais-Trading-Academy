@@ -881,7 +881,7 @@ export default function ReplayClient({ userId }) {
   const [assetValue, setAssetValue] = useState("XAUUSD");
   // بتتحدث كل ما نجيب شموع جديدة: بتقول فعلياً أي رمز يوهو استُخدم (سبوت أو
   // عقد آجل احتياطي) - شوفي التعليق بأول lib/assets.js لسبب وجود هالمنطق.
-  const dataSourceRef = useRef({ symbol: null, usedFallback: false });
+  const dataSourceRef = useRef({ symbol: null, usedFallback: false, provider: "yahoo" });
   const [usedFuturesApprox, setUsedFuturesApprox] = useState(false);
   const [interval, setIntervalValue] = useState("15m");
   const [speed, setSpeed] = useState(3); // 3x = 3 شموع/ثانية (قيمة افتراضية معقولة)
@@ -4007,8 +4007,9 @@ export default function ReplayClient({ userId }) {
         if (!info?.yahoo) throw new Error("هذا الرمز غير مدعوم للمقارنة حالياً");
         const tdInterval = INTERVAL_MAP[interval];
         const fallbackParam = info.yahooSpot ? `&fallback=${encodeURIComponent(info.yahoo)}` : "";
+        const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${fallbackParam}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${fallbackParam}${tdParam}`
         );
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -4032,8 +4033,9 @@ export default function ReplayClient({ userId }) {
         if (!info?.yahoo) return;
         const tdInterval = INTERVAL_MAP[interval];
         const fallbackParam = info.yahooSpot ? `&fallback=${encodeURIComponent(info.yahoo)}` : "";
+        const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${fallbackParam}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${fallbackParam}${tdParam}`
         );
         const data = await res.json();
         if (data.error || !data.candles?.length) return;
@@ -4193,15 +4195,23 @@ export default function ReplayClient({ userId }) {
           ? `&anchor=${replayStateRef.current.currentTimestamp}`
           : "";
       const fallbackParam = assetInfo.yahooSpot ? `&fallback=${encodeURIComponent(assetInfo.yahoo)}` : "";
+      const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${fallbackParam}`
+        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${fallbackParam}${tdParam}`
       );
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       const candles = sanitizeCandles(data.candles || []);
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
-      dataSourceRef.current = { symbol: data.sourceSymbol || assetInfo.yahoo, usedFallback: !!data.usedFallback };
-      setUsedFuturesApprox(!!data.usedFallback && !!assetInfo.yahooSpot);
+      dataSourceRef.current = {
+        symbol: data.sourceSymbol || assetInfo.yahoo,
+        usedFallback: !!data.usedFallback,
+        provider: data.provider || "yahoo",
+      };
+      // "تقريب: عقود آجلة" لازم يظهر بس لما فعلياً نزلنا لآخر مستوى (Yahoo
+      // عقد آجل GC=F) - يعني ماشي سبوت حقيقي (Twelve Data) وما ماشي حتى
+      // Yahoo سبوت (XAU=)، مش كل مرة بيصير فيها usedFallback بمعناه القديم.
+      setUsedFuturesApprox(data.provider === "yahoo" && !!data.usedFallback && !!assetInfo.yahooSpot);
 
       setAllCandles(candles);
 
@@ -4371,13 +4381,17 @@ export default function ReplayClient({ userId }) {
     if (!assetInfo?.yahoo) return;
     try {
       const tdInterval = INTERVAL_MAP[interval];
-      // منستخدم نفس الرمز يلي فعلياً نجح بالتحميل الأول (dataSourceRef) - عشان
-      // ما نخلط شموع مصدرين مختلفين (سبوت + عقد آجل) ببعض بنفس السلسلة لو
-      // الرمز الأساسي كان نجح أول مرة بس فشل هالمرة أو العكس.
-      const pollSymbol = dataSourceRef.current.symbol || assetInfo.yahooSpot || assetInfo.yahoo;
+      // ملاحظة: لو أول تحميل نجح عبر Twelve Data، dataSourceRef.current.symbol
+      // بيصير "XAU/USD" (رمز Twelve Data نفسه) - مش رمز Yahoo. فلازم باراميتر
+      // symbol هون يضل دايماً مبني على assetInfo.yahoo* (مش على dataSourceRef)
+      // وإلا بنبعت رمز Twelve Data لسلسلة Yahoo وبينكسر الطلب. رمز Twelve Data
+      // نفسه منبعته دايماً بباراميتر td المنفصل زي أول تحميل بالضبط - السيرفر
+      // هو يلي بيقرر الترتيب (td أولاً)، مش لازم نمنعه هون.
+      const pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo;
       const fallbackParam = assetInfo.yahooSpot ? `&fallback=${encodeURIComponent(assetInfo.yahoo)}` : "";
+      const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(pollSymbol)}&interval=${tdInterval}&count=3${fallbackParam}`
+        `/api/replay-candles?symbol=${encodeURIComponent(pollSymbol)}&interval=${tdInterval}&count=3${fallbackParam}${tdParam}`
       );
       const data = await res.json();
       if (data.error || !data.candles?.length) {
@@ -4385,7 +4399,12 @@ export default function ReplayClient({ userId }) {
         handleLivePollFailure();
         return;
       }
-      if (data.sourceSymbol) dataSourceRef.current = { symbol: data.sourceSymbol, usedFallback: !!data.usedFallback };
+      if (data.sourceSymbol)
+        dataSourceRef.current = {
+          symbol: data.sourceSymbol,
+          usedFallback: !!data.usedFallback,
+          provider: data.provider || "yahoo",
+        };
       const fresh = sanitizeCandles(data.candles);
       if (fresh.length === 0) { handleLivePollFailure(); return; }
       const lastFresh = fresh[fresh.length - 1];
