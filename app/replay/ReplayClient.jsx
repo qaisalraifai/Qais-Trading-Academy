@@ -97,6 +97,31 @@ function getCurrentBarWindow(interval) {
 /* تصفية أي شمعة فاسدة (وقت/سعر مش رقمي أو تكرار بنفس الوقت) قبل ما توصل لمكتبة الشارت -
    مكتبة lightweight-charts بترفض هيك بيانات وبتعمل throw exception يكسر الصفحة كلها،
    فهاي طبقة حماية إضافية جوا الواجهة نفسها (فوق التصفية اللي صارت بالسيرفر) */
+/* تنسيق تاريخ مؤشر الزمن (أسفل الشارت عند تحريك الفأرة) مع إضافة اسم يوم
+   الأسبوع بالعربي قبل التاريخ - lightweight-charts افتراضياً بيعرض التاريخ/الوقت
+   بس بدون اسم اليوم، وطلبته المستخدمة صراحة. */
+const AR_WEEKDAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function formatCrosshairTime(time) {
+  // time ممكن يوصل كـ UTCTimestamp (رقم ثواني) أو BusinessDay {year,month,day}
+  // حسب إعدادات الشارت - منغطي الحالتين.
+  let d;
+  if (typeof time === "number") {
+    d = new Date(time * 1000);
+  } else if (time && typeof time === "object" && "year" in time) {
+    d = new Date(Date.UTC(time.year, time.month - 1, time.day));
+  } else {
+    return String(time);
+  }
+  const dayName = AR_WEEKDAYS[d.getUTCDay()];
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = SHORT_MONTHS[d.getUTCMonth()];
+  const year = String(d.getUTCFullYear()).slice(-2);
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${dayName} ${day} ${month} '${year}  ${hh}:${mm}`;
+}
+
 function sanitizeCandles(list) {
   if (!Array.isArray(list)) return [];
   const clean = list.filter(
@@ -3147,6 +3172,9 @@ export default function ReplayClient({ userId }) {
           rightOffset: 6,
           barSpacing: 7,
           minBarSpacing: 1.5,
+        },
+        localization: {
+          timeFormatter: formatCrosshairTime,
         },
         rightPriceScale: {
           borderColor: "#3a3a3a",
