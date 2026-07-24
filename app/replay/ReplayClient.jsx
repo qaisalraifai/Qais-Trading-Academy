@@ -4044,9 +4044,12 @@ export default function ReplayClient({ userId }) {
         setCompareCandles((prev) => {
           if (prev.length === 0) return prev;
           const merged = [...prev];
-          if (merged[merged.length - 1].time === lastFresh.time) {
+          const last = merged[merged.length - 1];
+          const bucketSec = (INTERVAL_MS[interval] || 60000) / 1000;
+          const sameBar = Math.floor(last.time / bucketSec) === Math.floor(lastFresh.time / bucketSec);
+          if (sameBar) {
             merged[merged.length - 1] = lastFresh;
-          } else if (lastFresh.time > merged[merged.length - 1].time) {
+          } else if (lastFresh.time > last.time) {
             merged.push(lastFresh);
           } else {
             return prev;
@@ -4427,12 +4430,15 @@ export default function ReplayClient({ userId }) {
         if (prev.length === 0) return prev;
         const merged = [...prev];
         const last = merged[merged.length - 1];
-        // لو نفس وقت آخر شمعة عندنا - بندمج (مش نستبدل بالكامل): منحافظ على
-        // الافتتاح الحقيقي تبع الشمعة، ومنوسّع الأعلى/الأدنى بدل ما نفقدهم،
-        // ومنحدث الإغلاق للسعر الأحدث. هيك الشمعة الأخيرة بتكبر/تتحرك بشكل
-        // طبيعي متزامن مع السوق بدل ما "تقفز" بين قيم لحظية منفصلة كل استعلام
-        // (وهاد كان سبب ظهورها كشحطة رفيعة بدل شمعة طبيعية).
-        if (last.time === lastFresh.time) {
+        // مهم: منقارن "هل هاي نفس فترة الفريم الحالية (بار)" مش "هل الثانية
+        // مطابقة تماماً". Twelve Data برجّع الشمعة الحية (لسا عم تتكوّن) أحياناً
+        // بتوقيت "لحظة الاستعلام" بدل بداية الفترة ثابتة، فكل بولينغ ممكن يرجع
+        // فارق كام ثانية بسيط عن المرة اللي قبلها. لو اعتمدنا التطابق التام،
+        // كل فرق بسيط هيك كان عم يتفسّر غلط كـ"شمعة جديدة" فتتكوّن سلسلة شموع
+        // رفيعة متلاصقة بدل شمعة وحدة طبيعية بتكبر مع الوقت.
+        const bucketSec = (INTERVAL_MS[interval] || 60000) / 1000;
+        const sameBar = Math.floor(last.time / bucketSec) === Math.floor(lastFresh.time / bucketSec);
+        if (sameBar) {
           merged[merged.length - 1] = {
             time: last.time,
             open: last.open,
