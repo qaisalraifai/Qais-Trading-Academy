@@ -4059,7 +4059,13 @@ export default function ReplayClient({ userId }) {
     }
     loadCompare();
     if (mode === "live") {
-      comparePollTimer = setInterval(pollCompareOnce, 5000);
+      // نفس منطق التبطيء بالشارت الرئيسي: لو أصل المقارنة عنده رمز Twelve
+      // Data، منبطّئ لـ10 ثواني (بدل 5) حتى لو ضاف على استهلاك الشارت
+      // الرئيسي بنفس الوقت (الحد 8 طلبات/دقيقة مشترك لكل مفتاح، مش لكل
+      // لوحة) ما يوصلوا سوا لأكتر من الحد بسرعة.
+      const compareInfo = getAssetByValue(compareSymbol);
+      const compareMs = compareInfo?.twelveData ? 10000 : 5000;
+      comparePollTimer = setInterval(pollCompareOnce, compareMs);
     }
     return () => { cancelled = true; if (comparePollTimer) clearInterval(comparePollTimer); };
   }, [compareOpen, compareSymbol, interval, maxBars, mode]);
@@ -4481,7 +4487,13 @@ export default function ReplayClient({ userId }) {
     // lightweight-charts بترفض هيك تحديث وبتعمل throw exception يكسر الصفحة كلها
     // (هاي كانت سبب مشكلة "شارت عشوائي" اللي بتطلع وقت التبديل بوضع السوق الحي).
     setTimeout(pollLiveOnce, 0);
-    livePollRef.current = setInterval(pollLiveOnce, 5000);
+    // Twelve Data (الخطة المجانية) محدودة بـ8 طلبات/دقيقة بس لكل مفتاح -
+    // بولينغ كل 5 ثواني (12 طلب/دقيقة) بيتخطاه لحاله حتى بدون أي طلب تاني.
+    // فلما يكون المصدر الفعلي twelvedata منبطّئ لـ10 ثواني (6 طلبات/دقيقة)
+    // تارِكين هامش لطلبات تانية (لوحة المقارنة، تبديل فريم/أصل...). باقي
+    // الأصول (Yahoo) تضل على 5 ثواني العادية لأنه ما عندها حد صارم مشابه.
+    const pollMs = dataSourceRef.current.provider === "twelvedata" ? 10000 : 5000;
+    livePollRef.current = setInterval(pollLiveOnce, pollMs);
   }
 
   /* أعلى قيمة revealCount مسموح نوصلها بهاد الجلسة - إذا في منطقة قص مطبّقة
