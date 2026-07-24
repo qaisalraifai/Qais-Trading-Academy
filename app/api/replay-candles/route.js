@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { fetchYahooCandles } from "@/lib/yahoo-candles";
 import { fetchTwelveDataCandles } from "@/lib/twelvedata-candles";
+import { fetchDukascopyCandles } from "@/lib/dukascopy-candles";
 
 export const dynamic = "force-dynamic";
+// دوكاسكوبي بتنزّل وتفكّ ملفات أرشيف حقيقية (مش JSON فوري)، فأول طلب لمدى
+// طويل ممكن ياخد كذا ثانية - منمدد وقت تنفيذ الدالة عشان ما تنقطع على
+// Vercel قبل ما تخلص (عدّليه حسب الخطة عندك لو احتجتي).
+export const maxDuration = 30;
 
 /* هاد الراوت غلاف رقيق فوق lib/yahoo-candles.js وlib/twelvedata-candles.js
    (نفس المنطق القديم بالضبط، بس تم نقله لملف مشترك عشان كرون Trading Radar
@@ -25,6 +30,7 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const symbol = searchParams.get("symbol");
   const tdSymbol = searchParams.get("td") || null;
+  const dukSymbol = searchParams.get("duk") || null;
   const interval = searchParams.get("interval") || "15min";
   const wanted = Math.min(Number(searchParams.get("count") || 1000), 20000);
   const anchorRaw = searchParams.get("anchor");
@@ -34,7 +40,25 @@ export async function GET(req) {
     return NextResponse.json({ error: "الرجاء تحديد symbol" }, { status: 400 });
   }
 
+  let dukError = null;
   let tdError = null;
+
+  // المستوى 0: Dukascopy - بس لما يكون في anchor فعلي (وضع ريبلاي حقيقي
+  // بيرجع لتاريخ ممكن يكون أقدم من حد يوهو ~29-58 يوم للفريمات الصغيرة).
+  // ما منستخدمه بوضع اللايف العادي (بدون anchor) لأنه مصمم كأرشيف تاريخي
+  // مش بث لحظي، ويوهو/Twelve Data أسرع وأنسب لهيك حالة أصلاً.
+  if (dukSymbol && anchor != null) {
+    const dukResult = await fetchDukascopyCandles(dukSymbol, interval, wanted, anchor);
+    if (!dukResult.error && (dukResult.candles?.length || 0) >= 2) {
+      return NextResponse.json({
+        candles: dukResult.candles,
+        sourceSymbol: dukSymbol,
+        provider: "dukascopy",
+        usedFallback: false,
+      });
+    }
+    dukError = dukResult.error || "استجابة فارغة من Dukascopy";
+  }
 
   // المستوى 1: Twelve Data (سبوت حقيقي).
   if (tdSymbol) {
@@ -65,6 +89,7 @@ export async function GET(req) {
   // الخطأين الحقيقيين (مو رسالة عامة) عشان يسهل تشخيص أي مشكلة مستقبلية
   // (مفتاح API غلط، حصة يومية خلصت، رمز مش مدعوم...) من تبويب Network مباشرة.
   const parts = [];
+  if (dukSymbol && anchor != null) parts.push(`Dukascopy (${dukSymbol}): ${dukError}`);
   if (tdSymbol) parts.push(`Twelve Data (${tdSymbol}): ${tdError}`);
   parts.push(`Yahoo (${symbol}): ${yahooResult.error || "بيانات غير كافية"}`);
 

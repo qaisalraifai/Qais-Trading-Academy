@@ -4230,8 +4230,9 @@ export default function ReplayClient({ userId }) {
           ? `&anchor=${replayStateRef.current.currentTimestamp}`
           : "";
       const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
+      const dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${tdParam}`
+        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${tdParam}${dukParam}`
       );
       const data = await res.json();
       if (data.error) throw new Error(data.error);
