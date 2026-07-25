@@ -4135,7 +4135,15 @@ export default function ReplayClient({ userId }) {
   }
 
   /* ===================== جلب البيانات ===================== */
+  // رقم تسلسلي لكل استدعاء لـ loadData - عشان لو صار كذا طلب بيانات (fetch) شغال
+  // بنفس الوقت (تبديل فريم بسرعة، أو طلب قديم لسا "طاير" ما وصل جوابه بعد)،
+  // منتجاهل أي جواب "قديم" يوصل متأخر بعد ما طلب أحدث منه صار وخلص. بدون هيك
+  // الحماية، جواب قديم متأخر ممكن يستدعي setAllCandles/pendingReprojectRef
+  // ببيانات فريم مختلف تماماً عن الفريم الحالي فعلياً، فتنحسب إعادة إسقاط
+  // الرسومات غلط تماماً (نقطة بتاخد وقتها من فريم مش الفريم يلي فعلاً تحول له).
+  const loadRequestIdRef = useRef(0);
   const loadData = useCallback(async () => {
+    const myRequestId = ++loadRequestIdRef.current;
     stopLivePoll();
     setLoading(true);
     setError("");
@@ -4255,6 +4263,10 @@ export default function ReplayClient({ userId }) {
         `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${tdParam}${dukParam}`
       );
       const data = await res.json();
+      // طلب أحدث صار وخلص قبل ما هاد يوصل جوابه - نتجاهل هاد الجواب "القديم"
+      // نهائياً (ما منكمل ولا حتى ما بعد try/catch/finally) عشان ما يفسد
+      // allCandles/pendingReprojectRef يلي أصلاً محدَّثين بالطلب الأحدث.
+      if (myRequestId !== loadRequestIdRef.current) return;
       if (data.error) throw new Error(data.error);
       const candles = sanitizeCandles(data.candles || []);
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
@@ -4277,9 +4289,10 @@ export default function ReplayClient({ userId }) {
         startLivePoll(candles);
       }
     } catch (e) {
+      if (myRequestId !== loadRequestIdRef.current) return; // طلب قديم فشل بعد ما تجاوزه طلب أحدث - نتجاهله بصمت
       setError(e.message || "صار خطأ، حاولي مرة تانية");
     } finally {
-      setLoading(false);
+      if (myRequestId === loadRequestIdRef.current) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetValue, interval, mode, maxBars, randomChart]);
@@ -4341,29 +4354,7 @@ export default function ReplayClient({ userId }) {
             : fromCandles;
         const toVisible = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
         if (fromVisible.length && toVisible.length) {
-          // === QTA-DEBUG: لوغ مؤقت لتشخيص باغ إعادة الإسقاط - احذفيه بعد ما نحل المشكلة ===
-          console.log("[QTA-DEBUG] reproject start", {
-            fromLen: fromVisible.length,
-            fromFirst: fromVisible[0]?.time,
-            fromLast: fromVisible[fromVisible.length - 1]?.time,
-            toLen: toVisible.length,
-            toFirst: toVisible[0]?.time,
-            toLast: toVisible[toVisible.length - 1]?.time,
-          });
-          drawingsRef.current = drawingsRef.current.map((d) => {
-            const before = JSON.parse(JSON.stringify(d));
-            const next = reprojectDrawing(d, fromVisible, toVisible);
-            console.log("[QTA-DEBUG] drawing", d.type, d.id, {
-              beforeP1: before.p1,
-              beforeP2: before.p2,
-              beforePoints: before.points,
-              afterP1: next.p1,
-              afterP2: next.p2,
-              afterPoints: next.points,
-            });
-            return next;
-          });
-          // === نهاية اللوغ المؤقت ===
+          drawingsRef.current = drawingsRef.current.map((d) => reprojectDrawing(d, fromVisible, toVisible));
         }
       }
     }
