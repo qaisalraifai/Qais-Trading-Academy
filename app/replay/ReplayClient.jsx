@@ -136,15 +136,26 @@ function formatCrosshairTime(time) {
 
 function sanitizeCandles(list) {
   if (!Array.isArray(list)) return [];
-  const clean = list.filter(
-    (c) =>
-      c &&
-      Number.isFinite(c.time) &&
-      Number.isFinite(c.open) &&
-      Number.isFinite(c.high) &&
-      Number.isFinite(c.low) &&
-      Number.isFinite(c.close)
-  );
+  // Do not pass malformed OHLC to lightweight-charts.  Some providers can
+  // occasionally return a high/low that does not include the open or close;
+  // that produces a visually broken candle (often mistaken for a cross).
+  const clean = list.reduce((result, c) => {
+    if (!c || !Number.isFinite(c.time)) return result;
+    const open = Number(c.open);
+    const high = Number(c.high);
+    const low = Number(c.low);
+    const close = Number(c.close);
+    if (![open, high, low, close].every(Number.isFinite)) return result;
+
+    result.push({
+      ...c,
+      open,
+      close,
+      high: Math.max(high, open, close),
+      low: Math.min(low, open, close),
+    });
+    return result;
+  }, []);
   clean.sort((a, b) => a.time - b.time);
   const deduped = clean.filter((c, i) => i === 0 || c.time !== clean[i - 1].time);
   return clampOutlierWicks(deduped);
@@ -3517,7 +3528,9 @@ export default function ReplayClient({ userId }) {
           secondsVisible: false,
           rightOffset: 6,
           barSpacing: 7,
-          minBarSpacing: 0.05,
+          // Keep enough horizontal room for the candle body.  At sub-pixel
+          // spacing, even valid candlesticks look like OHLC crosses.
+          minBarSpacing: 2,
         },
         localization: {
           timeFormatter: formatCrosshairTime,
@@ -3542,7 +3555,8 @@ export default function ReplayClient({ userId }) {
       });
 
       const series = chart.addCandlestickSeries({
-        upColor: savedSettings.up, downColor: savedSettings.down, borderVisible: false,
+        upColor: savedSettings.up, downColor: savedSettings.down, borderVisible: true,
+        borderUpColor: savedSettings.up, borderDownColor: savedSettings.down,
         wickUpColor: savedSettings.up, wickDownColor: savedSettings.down,
         // إخفاء خانة آخر سعر (الصندوق + الخط المتقطع) على محور السعر يمين الشارت
         lastValueVisible: false,
@@ -7510,7 +7524,7 @@ export default function ReplayClient({ userId }) {
           </div>
         )}
 
-        {loading && (
+        {loading && allCandles.length === 0 && (
           <div style={{
             position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
             color: "#777", fontSize: 14, zIndex: 2, background: "#181A20cc", borderRadius: 14,
@@ -7533,16 +7547,16 @@ export default function ReplayClient({ userId }) {
               style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
             >
               <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
-                {!loading && allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
-                {!loading && allCandles.length > 0 && renderZoomControl()}
-                {!loading && allCandles.length > 0 && !editDraft && renderFavoritesBar()}
-                {!loading && allCandles.length > 0 && !editDraft && renderQuickTradeWidget()}
-                {!loading && allCandles.length > 0 && renderPropertiesDialog()}
-                {!loading && allCandles.length > 0 && renderSelectionToolbar()}
-                {!loading && renderTradePanel()}
-                {!loading && renderOpenPositionsPanel()}
-                {!loading && renderTradeToast()}
-                {!loading && renderContextMenu()}
+                {allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
+                {allCandles.length > 0 && renderZoomControl()}
+                {allCandles.length > 0 && !editDraft && renderFavoritesBar()}
+                {allCandles.length > 0 && !editDraft && renderQuickTradeWidget()}
+                {allCandles.length > 0 && renderPropertiesDialog()}
+                {allCandles.length > 0 && renderSelectionToolbar()}
+                {allCandles.length > 0 && renderTradePanel()}
+                {allCandles.length > 0 && renderOpenPositionsPanel()}
+                {allCandles.length > 0 && renderTradeToast()}
+                {allCandles.length > 0 && renderContextMenu()}
                 {renderInlineTextEditor()}
                 {compareOpen && (
                   <div style={paneCornerBadgeStyle("right")}>
@@ -7551,7 +7565,7 @@ export default function ReplayClient({ userId }) {
                     </button>
                   </div>
                 )}
-                {!loading && allCandles.length > 0 && activeIndicators.length > 0 && renderActiveIndicatorsBar()}
+                {allCandles.length > 0 && activeIndicators.length > 0 && renderActiveIndicatorsBar()}
                 {indicatorPanelOpen && renderIndicatorPanel()}
                 {indicatorSettingsFor && renderIndicatorSettingsDialog()}
                 {templatesPanelOpen && renderTemplatesPanel()}
@@ -7632,7 +7646,7 @@ export default function ReplayClient({ userId }) {
               </div>
             )}
           </div>
-          {!loading && allCandles.length > 0 && renderDrawToolbar()}
+          {allCandles.length > 0 && renderDrawToolbar()}
         </div>
         {renderSettingsDialog()}
 

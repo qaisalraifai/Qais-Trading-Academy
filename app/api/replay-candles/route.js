@@ -28,6 +28,30 @@ function withTimeout(promise, ms, timeoutResult) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+// Keep the API contract valid for every client, not only the replay chart.
+// A candle's wick must always contain its body: low <= open/close <= high.
+function normalizeOhlc(candles) {
+  if (!Array.isArray(candles)) return [];
+  const byTime = new Map();
+  for (const candle of candles) {
+    const time = Number(candle?.time);
+    const open = Number(candle?.open);
+    const high = Number(candle?.high);
+    const low = Number(candle?.low);
+    const close = Number(candle?.close);
+    if (![time, open, high, low, close].every(Number.isFinite)) continue;
+    byTime.set(time, {
+      ...candle,
+      time,
+      open,
+      close,
+      high: Math.max(high, open, close),
+      low: Math.min(low, open, close),
+    });
+  }
+  return [...byTime.values()].sort((a, b) => a.time - b.time);
+}
+
 /* هاد الراوت غلاف رقيق فوق lib/yahoo-candles.js وlib/twelvedata-candles.js
    (نفس المنطق القديم بالضبط، بس تم نقله لملف مشترك عشان كرون Trading Radar
    يقدر يستخدمه من السيرفر مباشرة). السلوك من زاوية الواجهة القديمة ما تغيّر.
@@ -89,7 +113,7 @@ export async function GET(req) {
     );
     if (!dukResult.error && (dukResult.candles?.length || 0) >= 2) {
       return NextResponse.json({
-        candles: dukResult.candles,
+        candles: normalizeOhlc(dukResult.candles),
         sourceSymbol: dukSymbol,
         provider: "dukascopy",
         usedFallback: false,
@@ -103,7 +127,7 @@ export async function GET(req) {
     const tdResult = await fetchTwelveDataCandles(tdSymbol, interval, wanted, anchor);
     if (!tdResult.error && (tdResult.candles?.length || 0) >= 2) {
       return NextResponse.json({
-        candles: tdResult.candles,
+        candles: normalizeOhlc(tdResult.candles),
         sourceSymbol: tdSymbol,
         provider: "twelvedata",
         usedFallback: false,
@@ -116,7 +140,7 @@ export async function GET(req) {
   const yahooResult = await fetchYahooCandles(symbol, interval, wanted, anchor);
   if (!yahooResult.error && (yahooResult.candles?.length || 0) >= 2) {
     return NextResponse.json({
-      candles: yahooResult.candles,
+      candles: normalizeOhlc(yahooResult.candles),
       sourceSymbol: symbol,
       provider: "yahoo",
       usedFallback: false,
