@@ -2294,6 +2294,7 @@ export default function ReplayClient({ userId }) {
      فريم شاشة (يعني حد أقصى مضمون قريب من 60FPS)، بدون ما نأخر أي حدث فعلي
      (الحالة نفسها بتتحدث فوراً بالـ ref، بس الرسم المرئي بينتظر الفريم
      الجاي فقط - أقل من 16ms، غير محسوس إطلاقاً). */
+  const drawOverlayRef = useRef(null);
   const rafPendingRef = useRef(false);
   // بس وقت تبديل فريم/سوق كامل (setData جديد): منمنع اشتراك
   // subscribeVisibleLogicalRangeChange (سطر ~3748) من فرض رسمة overlay بإحداثيات
@@ -2307,9 +2308,16 @@ export default function ReplayClient({ userId }) {
     rafPendingRef.current = true;
     requestAnimationFrame(() => {
       rafPendingRef.current = false;
-      drawOverlay();
+      drawOverlayRef.current?.();
     });
   }
+
+  // Event subscriptions survive state changes; point their redraw work at the
+  // latest committed renderer instead of the closure from chart creation.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    drawOverlayRef.current = drawOverlay;
+  });
 
   /* بتُستخدم بس بعد setData()+setVisibleLogicalRange() لتبديل فريم/سوق كامل
      (شوفي loadData أسفل). مشكلة كانت موجودة: مكتبة lightweight-charts مش
@@ -3763,10 +3771,11 @@ export default function ReplayClient({ userId }) {
       window.addEventListener("keydown", onKeyDown);
       window.addEventListener("keyup", onKeyUp);
       window.addEventListener("blur", onWindowBlurResetShift);
-      chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      const onVisibleRangeChange = () => {
         if (suppressRangeChangeDrawRef.current) return; // شوفي waitForChartSettleAndRedraw
         scheduleDraw();
-      });
+      };
+      chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChange);
       chart.subscribeCrosshairMove(scheduleDraw);
       // أي بان أو زوم عالشارت (تغيير المدى المرئي) بيسكّر القوائم المؤقتة المفتوحة،
       // زي أي حدث تاني "بيقفل القوائم عادة" (شوفي closeTransientMenus)
@@ -3941,7 +3950,7 @@ export default function ReplayClient({ userId }) {
         window.removeEventListener("keydown", onKeyDown);
         window.removeEventListener("keyup", onKeyUp);
         window.removeEventListener("blur", onWindowBlurResetShift);
-        chart.timeScale().unsubscribeVisibleLogicalRangeChange(scheduleDraw);
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange);
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChangeCloseMenus);
         chart.unsubscribeCrosshairMove(scheduleDraw);
         chart.unsubscribeCrosshairMove(onCrosshairMagnet);
@@ -4132,11 +4141,13 @@ export default function ReplayClient({ userId }) {
         } catch {}
         crosshairSyncingRef.current = false;
       }
-      chart.subscribeCrosshairMove((param) => syncCrosshairToMain(param.time ?? null));
+      const onCompareCrosshairSync = (param) => syncCrosshairToMain(param.time ?? null);
+      chart.subscribeCrosshairMove(onCompareCrosshairSync);
 
       chart.__unsyncMain = () => {
         mainChart?.timeScale().unsubscribeVisibleLogicalRangeChange(onMainRangeChange);
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(onCompareRangeChange);
+        chart.unsubscribeCrosshairMove(onCompareCrosshairSync);
       };
 
       chartRef.current?.__resize?.();
