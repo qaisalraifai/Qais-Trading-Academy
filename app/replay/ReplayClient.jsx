@@ -62,6 +62,18 @@ const INTERVALS = [
    يبدّل وبعدين يفاجأ بتوست "أقرب نقطة متاحة" وبيانات غلط الموقع. */
 const RANGE_DAYS_BY_INTERVAL = { "1m": 29, "5m": 58, "15m": 58, "1h": 725, "4h": 725, "1d": 3650 };
 
+/* لما يكون عند الأصل رمز Dukascopy (assetInfo.dukascopy)، العمق التاريخي
+   الحقيقي المتاح أعمق بكتير من حد يوهو فوق - Dukascopy بترجع تيك-باي-تيك
+   من أول ~2003-2010 حسب الأداة، فمنستخدم رقم كبير (~22 سنة) بدل الأرقام
+   الضيقة تبع يوهو لأي فريم عند الأصول يلي عندها dukascopy. لو الأداة
+   نفسها ما بتوصل لهاد العمق فعلياً، الطلب رح يفشل من lib/dukascopy-candles.js
+   وبيرجع تلقائياً لـ Twelve Data/يوهو (نفس السلوك القديم بالضبط) - هون منتحكم
+   بس بتعطيل/تفعيل الخيار بالقائمة، مش بمصدر البيانات نفسه. */
+const DUKASCOPY_RANGE_DAYS = 8000;
+function rangeDaysFor(intervalValue, hasDukascopy) {
+  return hasDukascopy ? Math.max(RANGE_DAYS_BY_INTERVAL[intervalValue], DUKASCOPY_RANGE_DAYS) : RANGE_DAYS_BY_INTERVAL[intervalValue];
+}
+
 /* سرعات الـ Replay: القيمة هي عدد الشموع بالثانية (1x = شمعة/ثانية ... 10x = 10 شموع/ثانية)
    وبنحولها لـ ms فاصل بين كل شمعة وتالية بمعادلة 1000/السرعة وقت التشغيل الفعلي */
 const SPEEDS = Array.from({ length: 10 }, (_, i) => ({ value: i + 1, label: `${i + 1}x` }));
@@ -1603,7 +1615,8 @@ export default function ReplayClient({ userId }) {
         if (fromCandleNow) {
           const ageDays = (Date.now() / 1000 - fromCandleNow.time) / 86400;
           const deepestOrder = ["1m", "5m", "15m", "1h", "4h", "1d"];
-          const deepest = deepestOrder.find((v) => RANGE_DAYS_BY_INTERVAL[v] >= ageDays);
+          const hasDuk = !!getAssetByValue(assetValue)?.dukascopy;
+          const deepest = deepestOrder.find((v) => rangeDaysFor(v, hasDuk) >= ageDays);
           const label = deepest
             ? `أدق فريم ممكن من هون: ${INTERVALS.find((i) => i.value === deepest)?.label || deepest}`
             : "بعيدة عن كل الفريمات (بيانات محدودة حتى اليومي)";
@@ -4984,11 +4997,14 @@ export default function ReplayClient({ userId }) {
           {INTERVALS.map((o) => {
             // لو في نقطة قص Replay فعّالة، منحسب عمرها بالأيام ومنعطّل أي فريم
             // عمق بياناته الحقيقي (rangeDays) أقصر من هيك عمر — بدل ما نخلّي
-            // المستخدم يبدّل وبعدين يوصله توست "أقرب نقطة متاحة".
+            // المستخدم يبدّل وبعدين يوصله توست "أقرب نقطة متاحة". لو الأصل
+            // الحالي عنده رمز Dukascopy، منستخدم عمق موسّع (rangeDaysFor) بدل
+            // حد يوهو الضيق، لأنه أداة الريبلاي رح تجرب Dukascopy أول شي.
             const cutAgeDays = replayStateRef.current.isActive && replayCutTs
               ? (Date.now() / 1000 - replayCutTs) / 86400
               : null;
-            const unreachable = cutAgeDays != null && cutAgeDays > RANGE_DAYS_BY_INTERVAL[o.value];
+            const hasDuk = !!getAssetByValue(assetValue)?.dukascopy;
+            const unreachable = cutAgeDays != null && cutAgeDays > rangeDaysFor(o.value, hasDuk);
             return (
               <option
                 key={o.value}
