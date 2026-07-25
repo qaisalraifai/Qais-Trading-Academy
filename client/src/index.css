@@ -1,0 +1,310 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* QTA Custom Colors */
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-dim: var(--gold-dim);
+  --color-gold-muted: var(--gold-muted);
+  --color-ink: var(--ink);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-profit: var(--profit);
+  --color-loss: var(--loss);
+}
+
+:root {
+  /* QTA Brand Colors */
+  --gold: #D4AF37;
+  --gold-light: #F2D57E;
+  --gold-dim: #C9A227;
+  --gold-muted: #9C7A22;
+  --ink: #060809;
+  --surface-1: #0D1117;
+  --surface-2: #161B22;
+  --surface-3: #21262D;
+  --profit: #00D4AA;
+  --loss: #FF4D6A;
+
+  /* Tailwind theme tokens */
+  --radius: 0.5rem;
+  --primary: oklch(0.78 0.12 85);
+  --primary-foreground: oklch(0.1 0.02 85);
+  --background: oklch(0.08 0.005 240);
+  --foreground: oklch(0.92 0.005 65);
+  --card: oklch(0.1 0.005 240);
+  --card-foreground: oklch(0.92 0.005 65);
+  --popover: oklch(0.1 0.005 240);
+  --popover-foreground: oklch(0.92 0.005 65);
+  --secondary: oklch(0.15 0.005 240);
+  --secondary-foreground: oklch(0.7 0.005 65);
+  --muted: oklch(0.15 0.005 240);
+  --muted-foreground: oklch(0.55 0.01 65);
+  --accent: oklch(0.78 0.12 85);
+  --accent-foreground: oklch(0.1 0.02 85);
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.2 0.005 240);
+  --input: oklch(0.15 0.005 240);
+  --ring: oklch(0.78 0.12 85);
+  --chart-1: oklch(0.78 0.12 85);
+  --chart-2: oklch(0.65 0.15 160);
+  --chart-3: oklch(0.7 0.15 25);
+  --chart-4: oklch(0.6 0.15 200);
+  --chart-5: oklch(0.75 0.12 300);
+  --sidebar: oklch(0.1 0.005 240);
+  --sidebar-foreground: oklch(0.92 0.005 65);
+  --sidebar-primary: oklch(0.78 0.12 85);
+  --sidebar-primary-foreground: oklch(0.1 0.02 85);
+  --sidebar-accent: oklch(0.15 0.005 240);
+  --sidebar-accent-foreground: oklch(0.92 0.005 65);
+  --sidebar-border: oklch(0.2 0.005 240);
+  --sidebar-ring: oklch(0.78 0.12 85);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Cairo', system-ui, sans-serif;
+    direction: rtl;
+    background-color: #060809;
+    color: #EAECEF;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  ::selection {
+    background: rgba(212, 175, 55, 0.3);
+    color: #EAECEF;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #060809;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.25);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 175, 55, 0.45);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  /* ── QTA Design System ── */
+
+  /* Gold gradient text */
+  .gold-text {
+    background: linear-gradient(135deg, #F2D57E 0%, #D4AF37 50%, #9C7A22 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Gold gradient background */
+  .gold-bg {
+    background: linear-gradient(135deg, #D4AF37 0%, #C9A227 100%);
+  }
+
+  /* Glass card */
+  .glass-card {
+    background: rgba(13, 17, 23, 0.8);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Gold glow effect */
+  .gold-glow {
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.2), 0 0 60px rgba(212, 175, 55, 0.08);
+  }
+
+  /* Section eyebrow label */
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #D4AF37;
+  }
+
+  /* Animated ticker */
+  @keyframes ticker {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  .ticker-track {
+    animation: ticker 30s linear infinite;
+  }
+
+  /* Fade up animation */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-up {
+    animation: fadeUp 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  }
+
+  /* Glow pulse */
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+
+  /* Float animation */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+  }
+
+  /* Shimmer */
+  @keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* Number font */
+  .font-num {
+    font-family: 'Plus Jakarta Sans', 'JetBrains Mono', monospace;
+  }
+
+  .font-mono-custom {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /**
+   * Custom container utility that centers content and adds responsive padding.
+   */
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem; /* 16px - mobile padding */
+    padding-right: 1rem;
+  }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem; /* 24px - tablet padding */
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem; /* 32px - desktop padding */
+      padding-right: 2rem;
+      max-width: 1280px; /* Standard content width */
+    }
+  }
+
+  /* Ticker scroll animation */
+  .ticker-track {
+    animation: ticker-scroll 40s linear infinite;
+  }
+  .ticker-track:hover {
+    animation-play-state: paused;
+  }
+  @keyframes ticker-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* Eyebrow label */
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    color: #D4AF37;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  /* Hero grid responsive */
+  @media (max-width: 900px) {
+    .hero-grid {
+      grid-template-columns: 1fr !important;
+      gap: 3rem !important;
+    }
+    .hero-visual {
+      display: none !important;
+    }
+  }
+}
