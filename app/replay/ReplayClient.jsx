@@ -5044,7 +5044,14 @@ export default function ReplayClient({ userId }) {
     const idx = cutIndexForLogical(logical);
     const candle = allCandles[idx];
     if (!candle) { setCutMode(false); return; }
-    finalizeCut(candle, candle, idx);
+    // مهم: قص بكليك واحد بيحدّد بس "منين تبلّش" - مش "توقفي عند نفس الشمعة".
+    // كنا عم نبعت نفس الشمعة كـ from و to، فـ cutRegionEndIndex() كانت بترجع
+    // بالضبط نفس revealCount اللحظة يلي بيبلّش فيها التمرين - فزر "تشغيل" و"الشمعة
+    // التالية" ما كانوا قادرين يتقدّموا ولا شمعة وحدة (السقف = الموقع الحالي
+    // بالضبط). لازم "النهاية" تكون آخر شمعة محمّلة (بدون سقف فعلي)، مش نفس
+    // شمعة البداية.
+    const lastCandle = allCandles[allCandles.length - 1];
+    finalizeCut(candle, lastCandle, idx);
   }
   function applyCutRegion() {
     const region = cutRegionRef.current;
