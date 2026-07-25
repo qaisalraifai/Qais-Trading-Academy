@@ -4147,7 +4147,18 @@ export default function ReplayClient({ userId }) {
     // فمنحافظ عليها، ومنجهّز لاحقاً إعادة إسقاطها حسب وقتها الحقيقي بعد ما توصل
     // بيانات الفريم الجديد (شوفي reprojectDrawing فوق + استخدامها تحت بعد setData).
     const prevCtx = lastLoadContextRef.current;
-    const sameMarketContext = prevCtx.hasLoaded && prevCtx.asset === assetValue && prevCtx.mode === mode && prevCtx.randomChart === randomChart;
+    // انتقال لوضع "تدريب" بسبب قص حديث (finalizeCut عيّنت replayStateRef
+    // ومباشرة بعدها setMode("training")) ما لازم يتعامل معاملة "سوق مختلف
+    // كلياً" ويمسح نقطة القص - هاد بالضبط كان سبب اختيار نقطة بداية عشوائية
+    // بدل نقطة المستخدم يلي قصّت عليها بالضبط (شوفي pickTrainingRevealCount
+    // تحت - فرعها "مش نفس السياق" بيختار بداية عشوائية).
+    const justCutIntoTraining =
+      mode === "training" && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null;
+    const sameMarketContext =
+      prevCtx.hasLoaded &&
+      prevCtx.asset === assetValue &&
+      prevCtx.randomChart === randomChart &&
+      (prevCtx.mode === mode || justCutIntoTraining);
     lastLoadContextRef.current = { asset: assetValue, mode, randomChart, hasLoaded: true };
     if (sameMarketContext) {
       pendingReprojectRef.current = { fromCandles: allCandles };
