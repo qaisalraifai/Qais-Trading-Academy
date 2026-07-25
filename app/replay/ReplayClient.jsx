@@ -2295,6 +2295,13 @@ export default function ReplayClient({ userId }) {
      (الحالة نفسها بتتحدث فوراً بالـ ref، بس الرسم المرئي بينتظر الفريم
      الجاي فقط - أقل من 16ms، غير محسوس إطلاقاً). */
   const rafPendingRef = useRef(false);
+  // بس وقت تبديل فريم/سوق كامل (setData جديد): منمنع اشتراك
+  // subscribeVisibleLogicalRangeChange (سطر ~3748) من فرض رسمة overlay بإحداثيات
+  // لسا ما استقرت (logicalToCoordinate بترجع 0) كل ما يتغيّر المدى المرئي أثناء
+  // انتقال المكتبة الداخلي بعد setData - شوفي waitForChartSettleAndRedraw تحت،
+  // يلي هي المسؤولة الوحيدة عن الرسمة الصح النهائية بهاد المسار، وبتلغي هاد
+  // المنع بنفسها أول ما تستقر فعلياً أو توصل الحد الأقصى من المحاولات.
+  const suppressRangeChangeDrawRef = useRef(false);
   function scheduleDraw() {
     if (rafPendingRef.current) return;
     rafPendingRef.current = true;
@@ -2315,21 +2322,32 @@ export default function ReplayClient({ userId }) {
      قيم مختلفة منطقية مش صفر/متطابقة لطرفي مدى معروفين) بدل ما نخمّن رقم -
      ومنعيد المحاولة لحد ما تستقر أو نوصل حد أقصى أمان (يمنع لوب لا نهائي لو
      صار خطأ تاني غير متوقع). */
-  function waitForChartSettleAndRedraw(targetRange, attemptsLeft = 20) {
+  function waitForChartSettleAndRedraw(targetRange, attemptsLeft = 30) {
     const ts = chartRef.current?.timeScale();
     if (!ts) { scheduleDraw(); return; }
     requestAnimationFrame(() => {
       let settled = false;
-      const range =
-        targetRange && Number.isFinite(targetRange.from) && Number.isFinite(targetRange.to)
-          ? targetRange
-          : ts.getVisibleLogicalRange();
-      if (range && Number.isFinite(range.from) && Number.isFinite(range.to)) {
+      const current = ts.getVisibleLogicalRange();
+      const hasTarget = targetRange && Number.isFinite(targetRange.from) && Number.isFinite(targetRange.to);
+      // 1) لو عنا هدف محدد (restoreVisibleRange): لازم المدى المرئي الفعلي
+      //    يكون فعلاً وصل لهداك الهدف (مش بس أي قيمة مؤقتة أثناء انتقال
+      //    المكتبة الداخلي)، وإلا أي فحص إحداثيات لوحده ممكن ينجح غلط
+      //    (false positive) على قيمة وسيطة لسا عم تتزحلق.
+      const reachedTarget =
+        !hasTarget ||
+        (current &&
+          Number.isFinite(current.from) &&
+          Number.isFinite(current.to) &&
+          Math.abs(current.from - targetRange.from) < 0.5 &&
+          Math.abs(current.to - targetRange.to) < 0.5);
+      const range = hasTarget ? targetRange : current;
+      if (reachedTarget && range && Number.isFinite(range.from) && Number.isFinite(range.to)) {
         const xFrom = ts.logicalToCoordinate(range.from);
         const xTo = ts.logicalToCoordinate(range.to);
         settled = xFrom != null && xTo != null && Math.abs(xTo - xFrom) > 1;
       }
       if (settled || attemptsLeft <= 0) {
+        suppressRangeChangeDrawRef.current = false;
         scheduleDraw();
       } else {
         waitForChartSettleAndRedraw(targetRange, attemptsLeft - 1);
@@ -3745,7 +3763,10 @@ export default function ReplayClient({ userId }) {
       window.addEventListener("keydown", onKeyDown);
       window.addEventListener("keyup", onKeyUp);
       window.addEventListener("blur", onWindowBlurResetShift);
-      chart.timeScale().subscribeVisibleLogicalRangeChange(scheduleDraw);
+      chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+        if (suppressRangeChangeDrawRef.current) return; // شوفي waitForChartSettleAndRedraw
+        scheduleDraw();
+      });
       chart.subscribeCrosshairMove(scheduleDraw);
       // أي بان أو زوم عالشارت (تغيير المدى المرئي) بيسكّر القوائم المؤقتة المفتوحة،
       // زي أي حدث تاني "بيقفل القوائم عادة" (شوفي closeTransientMenus)
@@ -4577,8 +4598,10 @@ export default function ReplayClient({ userId }) {
           chartRef.current?.timeScale().applyOptions({ barSpacing: 7 });
         }
         /* بدل التخمين بعدد فريمات ثابت (double rAF ما كان كافي بوضع القص) -
-           منستنى فعلياً لحد ما تستقر مساحة الإحداثيات (شوفي تعريف الدالة
-           فوق جنب scheduleDraw) وبعدين نرسم الأوفرلاي. */
+           منمنع اشتراك subscribeVisibleLogicalRangeChange من الرسم المبكر
+           (شوفي suppressRangeChangeDrawRef فوق جنب scheduleDraw)، ومنستنى
+           فعلياً لحد ما تستقر مساحة الإحداثيات وبعدين نرسم الأوفرلاي. */
+        suppressRangeChangeDrawRef.current = true;
         waitForChartSettleAndRedraw(restoreVisibleRange);
       }
     } catch (err) {
