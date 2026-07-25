@@ -224,7 +224,13 @@ function timeToDrawingLogicalForCandles(time, candles, stepSecondsOverride) {
   if (!candles || candles.length === 0 || !Number.isFinite(time)) return null;
   const n = candles.length;
   if (n === 1) return 0;
-  if (time <= candles[0].time) return timeToLogicalForCandles(time, candles, stepSecondsOverride);
+  // مهم: لازم نقرّب لأقرب رقم صحيح (bar index) - مكتبة lightweight-charts
+  // (logicalToCoordinate) بترجع 0 بصمت (مش null) لأي logical مش رقم صحيح
+  // (كسري)، فأي نقطة برا نطاق الشموع المحمّلة كانت بتنلزق على أقصى يسار
+  // الشارت (x=0) بدل موقعها الحقيقي المُستقرأ - وهاد بالضبط سبب انكسار شكل
+  // المثلث (أو أي رسمة) لما نبدّل الفريم ونصير النقطة أبعد من شمعة وحدة عن
+  // آخر/أول شمعة محمّلة.
+  if (time <= candles[0].time) return Math.round(timeToLogicalForCandles(time, candles, stepSecondsOverride));
 
   let lo = 0, hi = n - 1;
   while (hi - lo > 1) {
@@ -248,7 +254,7 @@ function timeToDrawingLogicalForCandles(time, candles, stepSecondsOverride) {
   const lastSpan = Math.max(1, stepSecondsOverride || inferredLastSpan);
   if (time < lastTime + lastSpan) return n - 1;
 
-  return timeToLogicalForCandles(time, candles, stepSecondsOverride);
+  return Math.round(timeToLogicalForCandles(time, candles, stepSecondsOverride));
 }
 /* ===================== إعدادات ألوان الشارت (تنحفظ محلياً بالمتصفح) ===================== */
 // رفعنا رقم النسخة v1 -> v2 قصداً: عشان أي متصفح عنده إعدادات محفوظة قديمة
@@ -2188,36 +2194,6 @@ export default function ReplayClient({ userId }) {
 
       } else if (d.type === "path" || d.type === "wave" || d.type === "triangle") {
         if (!d.points || d.points.length < 1) continue;
-        // TEMP DEBUG - احذفيها بعد ما نحل المشكلة
-        if (d.type === "triangle") {
-          let seriesDataLen = null;
-          try { seriesDataLen = series.data ? series.data().length : null; } catch { seriesDataLen = "err"; }
-          let visRange = null;
-          try { visRange = ts.getVisibleLogicalRange ? ts.getVisibleLogicalRange() : null; } catch { visRange = null; }
-          const dbgPayload = JSON.stringify({
-            id: d.id,
-            mode,
-            revealCount,
-            allCandlesLen: allCandles.length,
-            visibleCandlesRefLen: visibleCandlesRef.current.length,
-            seriesDataLen,
-            visibleLogicalRange: visRange,
-            storedPts: d.points.map((p) => ({ time: p.time, iso: p.time ? new Date(p.time * 1000).toISOString() : null, price: p.price })),
-            logicals: d.points.map((p) => ptToLogical(p)),
-            xy: d.points.map((p) => toXY(p)),
-            candlesRange: visibleCandlesRef.current.length
-              ? {
-                  first: new Date(visibleCandlesRef.current[0].time * 1000).toISOString(),
-                  last: new Date(visibleCandlesRef.current[visibleCandlesRef.current.length - 1].time * 1000).toISOString(),
-                  count: visibleCandlesRef.current.length,
-                }
-              : null,
-          });
-          if (window.__lastTriangleDbg !== dbgPayload) {
-            window.__lastTriangleDbg = dbgPayload;
-            console.log("[DEBUG render] " + dbgPayload);
-          }
-        }
         const pts = d.points.map(toXY).filter((p) => p.x != null && p.y != null);
         if (pts.length < 1) continue;
         setLineStyle(style);
@@ -2868,24 +2844,6 @@ export default function ReplayClient({ userId }) {
       pushHistory();
       const newId = Date.now();
       const storedPts = pts.map((p) => ptFromLogical(p.logical, p.price));
-      // TEMP DEBUG - احذفيها بعد ما نحل المشكلة: نطبع وقت/سعر كل نقطة مخزّنة +
-      // أول وآخر شمعة بمصفوفة الشموع يلي استخدمناها للتحويل، عشان نتأكد التخزين صح.
-      console.log(
-        "[DEBUG create] " +
-          JSON.stringify({
-            tool,
-            newId,
-            rawClicks: pts.map((p) => ({ logical: p.logical, price: p.price })),
-            storedPts: storedPts.map((p) => ({ time: p.time, iso: p.time ? new Date(p.time * 1000).toISOString() : null, price: p.price })),
-            candlesRange: visibleCandlesRef.current.length
-              ? {
-                  first: new Date(visibleCandlesRef.current[0].time * 1000).toISOString(),
-                  last: new Date(visibleCandlesRef.current[visibleCandlesRef.current.length - 1].time * 1000).toISOString(),
-                  count: visibleCandlesRef.current.length,
-                }
-              : null,
-          })
-      );
       drawingsRef.current.push({ id: newId, type: tool, points: storedPts, style: styleForNewDrawing(tool) });
       selectDrawing(newId); // نقاط التحكم تظهر تلقائياً فوراً بعد إنشاء الأداة متعددة النقاط
     }
