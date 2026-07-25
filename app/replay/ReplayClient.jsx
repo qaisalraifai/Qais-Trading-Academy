@@ -4341,7 +4341,29 @@ export default function ReplayClient({ userId }) {
             : fromCandles;
         const toVisible = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
         if (fromVisible.length && toVisible.length) {
-          drawingsRef.current = drawingsRef.current.map((d) => reprojectDrawing(d, fromVisible, toVisible));
+          // === QTA-DEBUG: لوغ مؤقت لتشخيص باغ إعادة الإسقاط - احذفيه بعد ما نحل المشكلة ===
+          console.log("[QTA-DEBUG] reproject start", {
+            fromLen: fromVisible.length,
+            fromFirst: fromVisible[0]?.time,
+            fromLast: fromVisible[fromVisible.length - 1]?.time,
+            toLen: toVisible.length,
+            toFirst: toVisible[0]?.time,
+            toLast: toVisible[toVisible.length - 1]?.time,
+          });
+          drawingsRef.current = drawingsRef.current.map((d) => {
+            const before = JSON.parse(JSON.stringify(d));
+            const next = reprojectDrawing(d, fromVisible, toVisible);
+            console.log("[QTA-DEBUG] drawing", d.type, d.id, {
+              beforeP1: before.p1,
+              beforeP2: before.p2,
+              beforePoints: before.points,
+              afterP1: next.p1,
+              afterP2: next.p2,
+              afterPoints: next.points,
+            });
+            return next;
+          });
+          // === نهاية اللوغ المؤقت ===
         }
       }
     }
