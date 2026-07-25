@@ -2304,6 +2304,39 @@ export default function ReplayClient({ userId }) {
     });
   }
 
+  /* بتُستخدم بس بعد setData()+setVisibleLogicalRange() لتبديل فريم/سوق كامل
+     (شوفي loadData أسفل). مشكلة كانت موجودة: مكتبة lightweight-charts مش
+     دايماً بتخلّص تعيد بناء مساحة الإحداثيات الداخلية (اللي عليها بيعتمد
+     ts.logicalToCoordinate) بنفس فريم الشاشة يلي فيه setData - فترجع 0 لكل
+     قيمة لحد ما تستقر. جربنا نخمّن عدد فريمات ثابت (فريمين) وما كان كافي
+     دايماً - خصوصاً بوضع القص/التدريب لما قفزة الزوم القديم->الجديد كبيرة
+     (fromCandles مقصوصة، مش كل التاريخ)، المكتبة بتاخد فريمات أكتر لتستقر.
+     الحل الصح: منفحص فعلياً بكل فريم إذا استقرت (logicalToCoordinate بترجع
+     قيم مختلفة منطقية مش صفر/متطابقة لطرفي مدى معروفين) بدل ما نخمّن رقم -
+     ومنعيد المحاولة لحد ما تستقر أو نوصل حد أقصى أمان (يمنع لوب لا نهائي لو
+     صار خطأ تاني غير متوقع). */
+  function waitForChartSettleAndRedraw(targetRange, attemptsLeft = 20) {
+    const ts = chartRef.current?.timeScale();
+    if (!ts) { scheduleDraw(); return; }
+    requestAnimationFrame(() => {
+      let settled = false;
+      const range =
+        targetRange && Number.isFinite(targetRange.from) && Number.isFinite(targetRange.to)
+          ? targetRange
+          : ts.getVisibleLogicalRange();
+      if (range && Number.isFinite(range.from) && Number.isFinite(range.to)) {
+        const xFrom = ts.logicalToCoordinate(range.from);
+        const xTo = ts.logicalToCoordinate(range.to);
+        settled = xFrom != null && xTo != null && Math.abs(xTo - xFrom) > 1;
+      }
+      if (settled || attemptsLeft <= 0) {
+        scheduleDraw();
+      } else {
+        waitForChartSettleAndRedraw(targetRange, attemptsLeft - 1);
+      }
+    });
+  }
+
   /* ===================== اختيار وتعديل رسمة موجودة ===================== */
   function logicalPriceToXY(p) {
     const chart = chartRef.current, series = seriesRef.current;
@@ -4519,18 +4552,10 @@ export default function ReplayClient({ userId }) {
         } else {
           chartRef.current?.timeScale().applyOptions({ barSpacing: 7 });
         }
-        /* فريم شاشة احتياطي إضافي (double rAF) بس هون - مسار setData/تبديل
-           فريم كامل، مش مسار trainingStep/liveTick العادي. سبب وجوده: مكتبة
-           lightweight-charts مش دايماً بتخلّص تعيد بناء مساحة الإحداثيات
-           الداخلية (اللي عليها بيعتمد ts.logicalToCoordinate) بنفس فريم
-           الشاشة يلي فيه setData()+setVisibleLogicalRange() - أحياناً
-           محتاجة فريم إضافي لحالها لتستقر. الـ scheduleDraw() العادي تحت
-           (نهاية هاد الـ effect) بيرسم بأول rAF جاي، يلي ممكن يسبق استقرار
-           المكتبة فترجع logicalToCoordinate() قيمة 0 (مش null) لكل نقاط
-           الرسومات (مثلاً المثلث)، فترتسم كلها فوق بعض بمكان غلط. هاد الـ
-           rAF المتداخل (فريمين) بيضمن نعيد رسم الأوفرلاي *بعد* ما تستقر
-           المكتبة فعلياً، فوق الرسمة العادية يلي أصلاً رح تصير. */
-        requestAnimationFrame(() => requestAnimationFrame(() => scheduleDraw()));
+        /* بدل التخمين بعدد فريمات ثابت (double rAF ما كان كافي بوضع القص) -
+           منستنى فعلياً لحد ما تستقر مساحة الإحداثيات (شوفي تعريف الدالة
+           فوق جنب scheduleDraw) وبعدين نرسم الأوفرلاي. */
+        waitForChartSettleAndRedraw(restoreVisibleRange);
       }
     } catch (err) {
       // بيانات فاسدة وصلت رغم التصفية (مصدر خارجي غير متوقع) - نعرض رسالة بدل ما نكسر الصفحة
