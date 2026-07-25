@@ -146,7 +146,71 @@ function sanitizeCandles(list) {
       Number.isFinite(c.close)
   );
   clean.sort((a, b) => a.time - b.time);
-  return clean.filter((c, i) => i === 0 || c.time !== clean[i - 1].time);
+  const deduped = clean.filter((c, i) => i === 0 || c.time !== clean[i - 1].time);
+  return clampOutlierWicks(deduped);
+}
+
+/* ============================================================================
+   حماية من "تِك فاسد" وحيد بمصدر البيانات (Dukascopy أو يوهو أو Twelve Data -
+   أي مصدر ممكن يصير عنده هيك خطأ نادر بأرشيفه، مش مرتبط بمزوّد معيّن).
+   المثال الحقيقي يلي كشفته المستخدمة: شمعة EUR/USD منتصف يناير 2020 طالعة
+   عندنا لغاية ~1.15 (قفزة ~400-500 نقطة بيوم واحد) بينما TradingView/OANDA
+   لنفس اليوم بيوري السعر متحرك بهدوء بمدى ~30-50 نقطة بس - يعني نقطة بيانات
+   فاسدة (خطأ بالمصدر الخام نفسه)، مش خلل بمنطق بناء الشموع عندنا.
+
+   الفرق بين هاد وبين شمعة دوجي حقيقية (فتح≈إغلاق بفتيل كبير بعد يوم تقلب
+   حقيقي، زي 11 نوفمبر 2024): الدوجي الحقيقي بيكون مداه كبير *نسبةً لمحيطه*
+   (أيام متقلبة حواليه كمان)، أما التِك الفاسد بيكون شاذ *لحاله* وسط محيط هادئ
+   تماماً، وبالأغلب "ما بيتأكد" - يعني السعر بيرجع فوراً لمستواه الطبيعي
+   بالشموع اللي بعده بدل ما تستمر الحركة (لأنه ما في خبر/حدث حقيقي يبررها).
+
+   المنطق: لكل شمعة، منقارن مداها (high-low) بالمدى الوسطي (median) لعدد من
+   الشموع المجاورة (نافذة ±10). لو طلعت أوسع بأضعاف (6x+) من محيطها *و* السعر
+   رجع لمستوى قريب من قبلها خلال كام شمعة (يعني الحركة ما استمرت = دليل قوي
+   إنها تِك فاسد)، منقصّ الفتيل الزائد بس - منحافظ على open/close الأصليين
+   زي ما هم (عادة أوثق من نقطة الفتيل الشاذة الوحيدة) بدل حذف الشمعة بالكامل
+   وعمل فجوة بالتايم لاين. شمعة حقيقية بمدى كبير بس بمحيط متقلب أصلاً (زي
+   الدوجي المذكور) ما بتنلمس إطلاقاً لأنها ما بتعدي حد الـ6x عن محيطها.
+   ============================================================================ */
+const OUTLIER_WINDOW = 10;
+const OUTLIER_RANGE_MULT = 6;
+
+function clampOutlierWicks(candles) {
+  const n = candles.length;
+  if (n < OUTLIER_WINDOW * 2 + 1) return candles;
+
+  const ranges = candles.map((c) => c.high - c.low);
+  const out = candles.map((c) => ({ ...c }));
+
+  for (let i = OUTLIER_WINDOW; i < n - OUTLIER_WINDOW; i++) {
+    const windowRanges = [];
+    for (let j = i - OUTLIER_WINDOW; j <= i + OUTLIER_WINDOW; j++) {
+      if (j !== i) windowRanges.push(ranges[j]);
+    }
+    windowRanges.sort((a, b) => a - b);
+    const median = windowRanges[Math.floor(windowRanges.length / 2)] || 0;
+    if (median <= 0) continue;
+
+    const c = out[i];
+    const range = c.high - c.low;
+    if (range <= median * OUTLIER_RANGE_MULT) continue;
+
+    const before = out[i - 1].close;
+    const afterIdx = Math.min(i + 3, n - 1);
+    const after = out[afterIdx].close;
+    const reverted = Math.abs(after - before) < median * 2;
+    if (!reverted) continue; // حركة استمرت فعلاً بعدها = على الأغلب حقيقية، منسيبها
+
+    const bodyHigh = Math.max(c.open, c.close);
+    const bodyLow = Math.min(c.open, c.close);
+    const cap = median * OUTLIER_RANGE_MULT;
+    out[i] = {
+      ...c,
+      high: Math.min(c.high, bodyHigh + cap),
+      low: Math.max(c.low, bodyLow - cap),
+    };
+  }
+  return out;
 }
 
 /* ===================== تحويل logical <-> timestamp =====================
