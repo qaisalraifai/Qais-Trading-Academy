@@ -21,11 +21,14 @@ export const maxDuration = 30;
    تحديث مهم (بطلب صريح من المستخدمة): ما في ولا رجعة تلقائية لعقد آجل
    (futures) بعد اليوم. قبل هيك كان في مستوى ثالث صامت (fallback=GC=F) بيصير
    لو فشل السبوت من الاثنين - وهاد بالضبط اللي كانت بتظهر بسببه علامة
-   "تقريب: عقود آجلة" اللي المستخدمة رفضتها صراحة. هلق الترتيب بس:
-   Twelve Data سبوت → Yahoo سبوت → خطأ واضح (بدل بيانات غلط بصمت). لو
-   المستخدمة بدها ترجّع خيار العقد الآجل كملاذ أخير مستقبلاً، الدالة
-   fetchYahooCandlesWithFallback لسا موجودة بـ lib/yahoo-candles.js وجاهزة -
-   بس محدا عم يستدعيها من هون قصداً الآن. */
+   "تقريب: عقود آجلة" اللي المستخدمة رفضتها صراحة. لو المستخدمة بدها ترجّع
+   خيار العقد الآجل كملاذ أخير مستقبلاً، الدالة fetchYahooCandlesWithFallback
+   لسا موجودة بـ lib/yahoo-candles.js وجاهزة - بس محدا عم يستدعيها من هون
+   قصداً الآن.
+
+   تحديث لاحق: الترتيب الحالي صار Dukascopy (مجاني، أعمق تاريخياً، وبدون
+   شموع عطلة أسبوع مسطّحة) → Twelve Data سبوت → Yahoo سبوت → خطأ واضح
+   (بدل بيانات غلط بصمت). شوفي تعليق "المستوى 0" تحت لتفاصيل السبب. */
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const symbol = searchParams.get("symbol");
@@ -43,11 +46,22 @@ export async function GET(req) {
   let dukError = null;
   let tdError = null;
 
-  // المستوى 0: Dukascopy - بس لما يكون في anchor فعلي (وضع ريبلاي حقيقي
-  // بيرجع لتاريخ ممكن يكون أقدم من حد يوهو ~29-58 يوم للفريمات الصغيرة).
-  // ما منستخدمه بوضع اللايف العادي (بدون anchor) لأنه مصمم كأرشيف تاريخي
-  // مش بث لحظي، ويوهو/Twelve Data أسرع وأنسب لهيك حالة أصلاً.
-  if (dukSymbol && anchor != null) {
+  // المستوى 0: Dukascopy - هلق هو المصدر الافتراضي الأساسي (مو بس لما يكون
+  // في anchor فعلي). قبل هيك كان محصور بوضع الريبلاي العميق بس، بس تبيّن
+  // إنه أفضل خيار افتراضي أصلاً لثلاث أسباب مع بعض:
+  //   1) مجاني بالكامل وبدون مفتاح API أو حد طلبات يومي (بعكس Twelve Data).
+  //   2) عمق تاريخي حقيقي أكبر بكثير من يوهو لفريمات زي 15 دقيقة/ساعة/4
+  //      ساعات (يوهو محدودة عملياً بحوالي 58 يوم لـ15 دقيقة، وDukascopy
+  //      بيوصل لسنين للخلف) - هاد كان سبب "عدد الشموع قليل" المذكور.
+  //   3) ignoreFlats:true بمكتبة dukascopy-node بتشيل تلقائياً شموع عطلة
+  //      الأسبوع "المسطّحة" (شكل صليب/شحطة رفيعة) لكل الأصول وكل الفريمات
+  //      دفعة وحدة، بدل الفلتر اليدوي يلي كان مقتصر بس على فريم اليوم
+  //      ولأزواج الفوركس (=X) بـ lib/yahoo-candles.js - فهلق أي أصل/فريم
+  //      بيستفيد من نفس الحل، وأول ما يفتح السوق (الإثنين مثلاً) بتطلع أول
+  //      شمعة حقيقية طبيعية مباشرة بدل ما تسبقها شمعة فارغة/مسطّحة.
+  // لو Dukascopy فشل لأي سبب (رمز غير مدعوم، تعطّل مؤقت بالأرشيف...) منكمل
+  // تلقائياً لـTwelve Data ثم يوهو زي ما كان بالضبط - صفر خطر كسر أي أصل.
+  if (dukSymbol) {
     const dukResult = await fetchDukascopyCandles(dukSymbol, interval, wanted, anchor);
     if (!dukResult.error && (dukResult.candles?.length || 0) >= 2) {
       return NextResponse.json({
@@ -89,7 +103,7 @@ export async function GET(req) {
   // الخطأين الحقيقيين (مو رسالة عامة) عشان يسهل تشخيص أي مشكلة مستقبلية
   // (مفتاح API غلط، حصة يومية خلصت، رمز مش مدعوم...) من تبويب Network مباشرة.
   const parts = [];
-  if (dukSymbol && anchor != null) parts.push(`Dukascopy (${dukSymbol}): ${dukError}`);
+  if (dukSymbol) parts.push(`Dukascopy (${dukSymbol}): ${dukError}`);
   if (tdSymbol) parts.push(`Twelve Data (${tdSymbol}): ${tdError}`);
   parts.push(`Yahoo (${symbol}): ${yahooResult.error || "بيانات غير كافية"}`);
 
