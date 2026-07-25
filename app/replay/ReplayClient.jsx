@@ -2125,13 +2125,22 @@ export default function ReplayClient({ userId }) {
         if (!d.points || d.points.length < 1) continue;
         // TEMP DEBUG - احذفيها بعد ما نحل المشكلة
         if (d.type === "triangle") {
-          console.log("[DEBUG render]", d.id, {
+          const dbgPayload = JSON.stringify({
+            id: d.id,
             storedPts: d.points.map((p) => ({ time: p.time, iso: p.time ? new Date(p.time * 1000).toISOString() : null, price: p.price })),
             logicals: d.points.map((p) => ptToLogical(p)),
             candlesRange: visibleCandlesRef.current.length
-              ? { first: new Date(visibleCandlesRef.current[0].time * 1000).toISOString(), last: new Date(visibleCandlesRef.current[visibleCandlesRef.current.length - 1].time * 1000).toISOString(), count: visibleCandlesRef.current.length }
+              ? {
+                  first: new Date(visibleCandlesRef.current[0].time * 1000).toISOString(),
+                  last: new Date(visibleCandlesRef.current[visibleCandlesRef.current.length - 1].time * 1000).toISOString(),
+                  count: visibleCandlesRef.current.length,
+                }
               : null,
           });
+          if (window.__lastTriangleDbg !== dbgPayload) {
+            window.__lastTriangleDbg = dbgPayload;
+            console.log("[DEBUG render] " + dbgPayload);
+          }
         }
         const pts = d.points.map(toXY).filter((p) => p.x != null && p.y != null);
         if (pts.length < 1) continue;
@@ -2734,12 +2743,22 @@ export default function ReplayClient({ userId }) {
       const storedPts = pts.map((p) => ptFromLogical(p.logical, p.price));
       // TEMP DEBUG - احذفيها بعد ما نحل المشكلة: نطبع وقت/سعر كل نقطة مخزّنة +
       // أول وآخر شمعة بمصفوفة الشموع يلي استخدمناها للتحويل، عشان نتأكد التخزين صح.
-      console.log("[DEBUG create]", tool, {
-        storedPts: storedPts.map((p) => ({ time: p.time, iso: p.time ? new Date(p.time * 1000).toISOString() : null, price: p.price })),
-        candlesRange: visibleCandlesRef.current.length
-          ? { first: new Date(visibleCandlesRef.current[0].time * 1000).toISOString(), last: new Date(visibleCandlesRef.current[visibleCandlesRef.current.length - 1].time * 1000).toISOString(), count: visibleCandlesRef.current.length }
-          : null,
-      });
+      console.log(
+        "[DEBUG create] " +
+          JSON.stringify({
+            tool,
+            newId,
+            rawClicks: pts.map((p) => ({ logical: p.logical, price: p.price })),
+            storedPts: storedPts.map((p) => ({ time: p.time, iso: p.time ? new Date(p.time * 1000).toISOString() : null, price: p.price })),
+            candlesRange: visibleCandlesRef.current.length
+              ? {
+                  first: new Date(visibleCandlesRef.current[0].time * 1000).toISOString(),
+                  last: new Date(visibleCandlesRef.current[visibleCandlesRef.current.length - 1].time * 1000).toISOString(),
+                  count: visibleCandlesRef.current.length,
+                }
+              : null,
+          })
+      );
       drawingsRef.current.push({ id: newId, type: tool, points: storedPts, style: styleForNewDrawing(tool) });
       selectDrawing(newId); // نقاط التحكم تظهر تلقائياً فوراً بعد إنشاء الأداة متعددة النقاط
     }
