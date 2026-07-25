@@ -1606,43 +1606,6 @@ export default function ReplayClient({ userId }) {
           dash: sub === "select" ? [5, 4] : [],
           handles: sub === "edit-edges" || sub === "move",
         });
-        /* تنبيه حي: من هاي النقطة بالضبط، شو أدق فريم بعده ممكن أنزله؟ (عمق
-           بيانات يوهو محدود لكل فريم - شوفي RANGE_DAYS_BY_INTERVAL فوق). هيك
-           بتعرفي قبل ما تطبّقي القص أصلاً، مش بعد ما تكتشفي إنه الفريم يلي
-           بدك ياه معطّل بالقائمة المنسدلة. */
-        const vcNow = visibleCandlesRef.current || [];
-        const fromCandleNow = vcNow[Math.max(0, Math.min(vcNow.length - 1, Math.round(region.fromLogical)))];
-        if (fromCandleNow) {
-          const ageDays = (Date.now() / 1000 - fromCandleNow.time) / 86400;
-          const deepestOrder = ["1m", "5m", "15m", "1h", "4h", "1d"];
-          const hasDuk = !!getAssetByValue(assetValue)?.dukascopy;
-          const deepest = deepestOrder.find((v) => rangeDaysFor(v, hasDuk) >= ageDays);
-          const label = deepest
-            ? `أدق فريم ممكن من هون: ${INTERVALS.find((i) => i.value === deepest)?.label || deepest}`
-            : "بعيدة عن كل الفريمات (بيانات محدودة حتى اليومي)";
-          const x1 = ts0.logicalToCoordinate(region.fromLogical);
-          const x2 = ts0.logicalToCoordinate(region.toLogical);
-          if (x1 != null && x2 != null) {
-            const cx = (Math.min(x1, x2) + Math.max(x1, x2)) / 2;
-            ctx.save();
-            ctx.font = "11px system-ui, sans-serif";
-            const padX = 8;
-            const textW = ctx.measureText(label).width;
-            const boxW = textW + padX * 2;
-            const boxX = Math.max(4, Math.min(w - boxW - 4, cx - boxW / 2));
-            ctx.fillStyle = "rgba(15,17,23,0.92)";
-            ctx.strokeStyle = deepest ? GOLD_LIGHT : "#e05252";
-            ctx.lineWidth = 1;
-            const boxY = 10, boxH = 22;
-            if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 5); ctx.fill(); ctx.stroke(); }
-            else { ctx.fillRect(boxX, boxY, boxW, boxH); ctx.strokeRect(boxX, boxY, boxW, boxH); }
-            ctx.fillStyle = deepest ? "#EAECEF" : "#ff9a9a";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(label, boxX + boxW / 2, boxY + boxH / 2 + 1);
-            ctx.restore();
-          }
-        }
       } else if (cm && cutHoverLogicalRef.current != null) {
         const hoverX = ts0.logicalToCoordinate(cutHoverLogicalRef.current);
         if (hoverX != null) {
@@ -4689,8 +4652,11 @@ export default function ReplayClient({ userId }) {
         return;
       }
       if (sub === "select") {
-        cutDragRef.current = { mode: "select", startLogical: logical, moved: false };
-        setCutRegion({ fromLogical: logical, toLogical: logical });
+        // ما منعرض أي منطقة/حواف لسا - بس منسجّل نقطة البداية (بالإحداثيات
+        // الحقيقية بالبكسل كمان، مش بس logical) عشان نميّز كليك حقيقي عن سحب
+        // فعلي بدقة (شوفي onMove تحت). القص الفوري بيصير عند onUp لو ما في
+        // سحب حقيقي تجاوز حد البكسل.
+        cutDragRef.current = { mode: "select", startLogical: logical, startClientX: e.clientX, moved: false };
       }
     }
     function onMove(e) {
@@ -4703,6 +4669,10 @@ export default function ReplayClient({ userId }) {
       }
       if (logical == null) return;
       if (drag.mode === "select") {
+        // حد بكسل حقيقي (5px) قبل ما نعتبرها سحب فعلي - أي كليك عادي فيه
+        // ارتجاف بسيط بالماوس/تراك باد، فما لازم يتحوّل لمنطقة سحب بالغلط
+        // ويمنع القص الفوري (هاد بالضبط كان سبب ظهور الحواف مع كل كليك).
+        if (!drag.moved && Math.abs(e.clientX - drag.startClientX) < 5) return;
         drag.moved = true;
         setCutRegion({ fromLogical: Math.min(drag.startLogical, logical), toLogical: Math.max(drag.startLogical, logical) });
       } else if (drag.mode === "move") {
