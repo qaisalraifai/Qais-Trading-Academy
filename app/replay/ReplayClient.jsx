@@ -4279,8 +4279,13 @@ export default function ReplayClient({ userId }) {
   }, [assetValue, interval, mode, maxBars, randomChart]);
 
   useEffect(() => {
-    loadData();
-    return () => { stopLivePoll(); stopCountdownTick(); };
+    // تأخير بسيط (350ms) قبل التحميل الفعلي - لو صار كذا تغيير سريع متتالي
+    // (كليكات قص، تبديل فريم/أصل/وضع) قبل ما تخلص هاي الفترة، بننفّذ طلب
+    // واحد بس للحالة الأخيرة بدل طلب منفصل لكل تغيير وسيط. هاد يلي كان عم
+    // يقصف Twelve Data (حدها 8 طلبات/دقيقة بالخطة المجانية) وقت الاختبار
+    // المكثّف ويطلع خطأ "run out of API credits".
+    const t = setTimeout(() => { loadData(); }, 350);
+    return () => { clearTimeout(t); stopLivePoll(); stopCountdownTick(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadData]);
 
