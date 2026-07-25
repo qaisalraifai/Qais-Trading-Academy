@@ -4507,6 +4507,30 @@ export default function ReplayClient({ userId }) {
             if (Number.isFinite(newFrom) && Number.isFinite(newTo) && newTo > newFrom) {
               restoreVisibleRange = { from: newFrom, to: newTo };
             }
+            // TEMP DEBUG - احذفيها بعد ما نحل مشكلة انزياح الفيوبورت المُعاد إسقاطه
+            console.log(
+              "[DEBUG reproject] " +
+                JSON.stringify({
+                  fromVisibleLogicalRange,
+                  fromCandlesLen: fromCandles.length,
+                  fromCandlesRange: {
+                    first: new Date(fromCandles[0].time * 1000).toISOString(),
+                    last: new Date(fromCandles[fromCandles.length - 1].time * 1000).toISOString(),
+                  },
+                  tFrom,
+                  tFromIso: new Date(tFrom * 1000).toISOString(),
+                  tTo,
+                  tToIso: new Date(tTo * 1000).toISOString(),
+                  toVisibleLen: toVisible.length,
+                  toVisibleRange: {
+                    first: new Date(toVisible[0].time * 1000).toISOString(),
+                    last: new Date(toVisible[toVisible.length - 1].time * 1000).toISOString(),
+                  },
+                  newFrom,
+                  newTo,
+                  restoreVisibleRange,
+                })
+            );
           }
         }
       }
