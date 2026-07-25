@@ -4175,7 +4175,22 @@ export default function ReplayClient({ userId }) {
       // فعلياً انعرضت بالشارت (seriesRef.current.setData) وقتها، مش بالنسبة
       // لكامل التاريخ - وإلا أي نقطة قريبة من حافة القص (وين بترسم أغلب
       // الأشكال عادة) بتنحسب غلط وتنزاح/تختفي بعد تبديل الفريم.
-      pendingReprojectRef.current = { fromCandles: allCandles, fromRevealCount: revealCount, fromMode: mode };
+      // كمان بنلقط الـ visible logical range الحالي (Zoom + Pan) *هلق* قبل
+      // ما نطلب بيانات الفريم الجديد - لسا الشارت عم يعرض بيانات الفريم
+      // القديم بمكانها الطبيعي، فهاي أدق لحظة لالتقاط "وين بالضبط كانت
+      // عم تتفرجي" (زوم + سكرول) عشان نرجّعها لنفس المكان (بنفس المنطق
+      // يلي عم يستخدمه reprojectDrawing: logical -> timestamp حقيقي بمصفوفة
+      // الشموع القديمة، وبعدين -> logical جديد بمصفوفة الشموع الجديدة لما
+      // توصل - شوفي useLayoutEffect تحت). بدون هيك، setData() الجاي
+      // بيرجّع الشارت افتراضياً لآخر الشموع (يمين الشارت) بدل ما يحافظ على
+      // نفس مكان الزوم/السكرول يلي كانت فيه المستخدمة.
+      const currentVisibleLogicalRange = chartRef.current?.timeScale().getVisibleLogicalRange() || null;
+      pendingReprojectRef.current = {
+        fromCandles: allCandles,
+        fromRevealCount: revealCount,
+        fromMode: mode,
+        fromVisibleLogicalRange: currentVisibleLogicalRange,
+      };
     } else {
       drawingsRef.current = [];
       pendingReprojectRef.current = null;
@@ -4341,8 +4356,13 @@ export default function ReplayClient({ userId }) {
 
     // إعادة إسقاط الرسومات/خطوط الصفقة على الفريم الجديد (حسب الوقت والسعر الحقيقيين)
     // بدل ما تختفي أو تنزاح - هاي بتصير مرة وحدة بس أول ما توصل شموع فريم جديد
+    // كمان منحسب هون (بنفس تقنية إعادة الإسقاط تبعة الرسومات: logical قديم ->
+    // timestamp حقيقي -> logical جديد) الـ visible logical range المكافئ على
+    // مصفوفة الشموع الجديدة، عشان نرجّع نفس الزوم/السكرول بالضبط بعد ما نطبّق
+    // setData تحت (بدل ما يرجع الشارت افتراضياً لآخر الشموع يمين الشارت).
+    let restoreVisibleRange = null;
     if (pendingReprojectRef.current) {
-      const { fromCandles, fromRevealCount, fromMode } = pendingReprojectRef.current;
+      const { fromCandles, fromRevealCount, fromMode, fromVisibleLogicalRange } = pendingReprojectRef.current;
       pendingReprojectRef.current = null;
       if (fromCandles && fromCandles.length && allCandles.length) {
         // نفس المصفوفة يلي فعلياً انعرضت بالشارت وقت الرسم (مقصوصة لو كنا
@@ -4355,6 +4375,21 @@ export default function ReplayClient({ userId }) {
         const toVisible = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
         if (fromVisible.length && toVisible.length) {
           drawingsRef.current = drawingsRef.current.map((d) => reprojectDrawing(d, fromVisible, toVisible));
+          if (
+            fromVisibleLogicalRange &&
+            Number.isFinite(fromVisibleLogicalRange.from) &&
+            Number.isFinite(fromVisibleLogicalRange.to)
+          ) {
+            const tFrom = logicalToTimeForCandles(fromVisibleLogicalRange.from, fromVisible);
+            const tTo = logicalToTimeForCandles(fromVisibleLogicalRange.to, fromVisible);
+            if (tFrom != null && tTo != null) {
+              const newFrom = timeToLogicalForCandles(tFrom, toVisible);
+              const newTo = timeToLogicalForCandles(tTo, toVisible);
+              if (Number.isFinite(newFrom) && Number.isFinite(newTo) && newTo > newFrom) {
+                restoreVisibleRange = { from: newFrom, to: newTo };
+              }
+            }
+          }
         }
       }
     }
@@ -4384,7 +4419,21 @@ export default function ReplayClient({ userId }) {
         // وواضح بلونه (أخضر/أحمر) بدل ما ينضغط لخط رفيع. المستخدمة لسا فيها
         // خيار "Reset View" (فوق، handleResetView) لو حبّت فعلاً تشوف كل
         // التاريخ مضغوط بشارة واحدة - بس هيك اختيار واعي منها مش افتراضي.
-        chartRef.current?.timeScale().applyOptions({ barSpacing: 7 });
+        //
+        // استثناء: لو كان في زوم/سكرول محفوظ من قبل تبديل الفريم (restoreVisibleRange
+        // فوق)، منطبّقه هون *بدل* إعادة الضبط لـ barSpacing ثابت + يمين الشارت.
+        // setVisibleLogicalRange بتحسب barSpacing تلقائياً من عرض الشارت وحجم
+        // المدى المطلوب، فبترجع بالضبط نفس مستوى الزوم والمكان يلي كانت فيه
+        // المستخدمة قبل ما تبدّل الفريم - تماماً زي سلوك TradingView.
+        if (restoreVisibleRange) {
+          try {
+            chartRef.current?.timeScale().setVisibleLogicalRange(restoreVisibleRange);
+          } catch {
+            chartRef.current?.timeScale().applyOptions({ barSpacing: 7 });
+          }
+        } else {
+          chartRef.current?.timeScale().applyOptions({ barSpacing: 7 });
+        }
       }
     } catch (err) {
       // بيانات فاسدة وصلت رغم التصفية (مصدر خارجي غير متوقع) - نعرض رسالة بدل ما نكسر الصفحة
