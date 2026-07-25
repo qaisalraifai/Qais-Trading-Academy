@@ -4161,7 +4161,13 @@ export default function ReplayClient({ userId }) {
       (prevCtx.mode === mode || justCutIntoTraining);
     lastLoadContextRef.current = { asset: assetValue, mode, randomChart, hasLoaded: true };
     if (sameMarketContext) {
-      pendingReprojectRef.current = { fromCandles: allCandles };
+      // نخزّن كمان وضع/عدد الشموع "المكشوفة" وقت هيك الرسمة انعملت - عشان
+      // لو كنا بوضع تدريب مقصوص (revealCount < allCandles.length)، إعادة
+      // الإسقاط تحسب logical كل نقطة بالنسبة لنفس المصفوفة المقصوصة يلي
+      // فعلياً انعرضت بالشارت (seriesRef.current.setData) وقتها، مش بالنسبة
+      // لكامل التاريخ - وإلا أي نقطة قريبة من حافة القص (وين بترسم أغلب
+      // الأشكال عادة) بتنحسب غلط وتنزاح/تختفي بعد تبديل الفريم.
+      pendingReprojectRef.current = { fromCandles: allCandles, fromRevealCount: revealCount, fromMode: mode };
     } else {
       drawingsRef.current = [];
       pendingReprojectRef.current = null;
@@ -4323,10 +4329,20 @@ export default function ReplayClient({ userId }) {
     // إعادة إسقاط الرسومات/خطوط الصفقة على الفريم الجديد (حسب الوقت والسعر الحقيقيين)
     // بدل ما تختفي أو تنزاح - هاي بتصير مرة وحدة بس أول ما توصل شموع فريم جديد
     if (pendingReprojectRef.current) {
-      const { fromCandles } = pendingReprojectRef.current;
+      const { fromCandles, fromRevealCount, fromMode } = pendingReprojectRef.current;
       pendingReprojectRef.current = null;
       if (fromCandles && fromCandles.length && allCandles.length) {
-        drawingsRef.current = drawingsRef.current.map((d) => reprojectDrawing(d, fromCandles, allCandles));
+        // نفس المصفوفة يلي فعلياً انعرضت بالشارت وقت الرسم (مقصوصة لو كنا
+        // بوضع تدريب مع نقطة قص)، مش كامل التاريخ - وهيك أي نقطة عند حافة
+        // القص بتنحسب صح. (شوفي الشرح فوق عند تعيين pendingReprojectRef.)
+        const fromVisible =
+          fromMode === "training" && Number.isFinite(fromRevealCount)
+            ? fromCandles.slice(0, fromRevealCount)
+            : fromCandles;
+        const toVisible = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
+        if (fromVisible.length && toVisible.length) {
+          drawingsRef.current = drawingsRef.current.map((d) => reprojectDrawing(d, fromVisible, toVisible));
+        }
       }
     }
 
