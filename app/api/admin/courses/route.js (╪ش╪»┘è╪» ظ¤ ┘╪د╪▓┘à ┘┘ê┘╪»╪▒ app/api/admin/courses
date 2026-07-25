@@ -1,0 +1,19 @@
+import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-auth";
+import { createAdminClient } from "@/lib/supabase-server";
+
+export async function GET() {
+  const auth = await requireAdmin();
+  if (auth.error) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("courses")
+    .select("*")
+    .order("order_index", { ascending: true });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ courses: data });
+}
