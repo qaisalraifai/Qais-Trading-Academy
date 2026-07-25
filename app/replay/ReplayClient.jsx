@@ -156,38 +156,52 @@ function sanitizeCandles(list) {
    الـ time + مصفوفة الشموع المعروضة *حالياً* (شوفي ptToLogical/ptFromLogical
    جوا الكومبوننت تحت). هيك أي تبديل فريم بينعكس صح تلقائياً بدون أي خطوة
    "إعادة إسقاط" منفصلة - ما في نظام logical قديم ينخزّن أو يحتاج تصحيح لاحقاً. */
-function logicalToTimeForCandles(logical, candles) {
+/* stepSecondsOverride: مدة الشمعة الحقيقية (بالثواني) للفريم الحالي، محسوبة من
+   INTERVAL_MS[interval] - مش مُستنتجة من الفجوة بين آخر/أول شمعتين محمّلتين.
+   لازم نستخدمها فقط للاستقراء (extrapolation) *برا* نطاق الشموع المحمّلة (قبل
+   أول شمعة أو بعد آخر شمعة) - وليس للـ interpolation العادي بين شمعتين
+   حقيقيتين متجاورتين (هونيك المسافة الفعلية بينهم هي الصح، حتى لو فيها فجوة
+   سوق حقيقية زي نهاية أسبوع). سبب الحاجة إلها: لو استنتجنا خطوة الاستقراء من
+   فجوة آخر شمعتين محمّلتين، هاي الفجوة بتختلف كليًا حسب الفريم (15 دقيقة مقابل
+   يوم كامل) وممكن كمان تكون فجوة سوق غير منتظمة (نهاية أسبوع/عطلة) - فأي نقطة
+   رسم مرسومة "برا الإطار المقصوص" (بعد نقطة القص) بيتغيّر مكانها بشكل كبير
+   وغير متوقّع لما نبدّل الفريم. استخدام مدة الشمعة الثابتة والحقيقية للفريم
+   الحالي يضمن استقراء متسق يعتمد فقط على الوقت الحقيقي المطلق، بغض النظر عن
+   فجوات البيانات المحمّلة. */
+function logicalToTimeForCandles(logical, candles, stepSecondsOverride) {
   if (!candles || candles.length === 0 || !Number.isFinite(logical)) return null;
   const n = candles.length;
   const i0 = Math.floor(logical);
   const frac = logical - i0;
   if (i0 < 0) {
     const t0 = candles[0].time;
-    const t1 = candles[1] ? candles[1].time : t0 + 60;
-    return t0 + logical * (t1 - t0);
+    const inferredStep = candles[1] ? candles[1].time - t0 : 60;
+    const step = stepSecondsOverride || inferredStep || 60;
+    return t0 + logical * step;
   }
   if (i0 >= n - 1) {
     const tN1 = candles[n - 1].time;
-    const tN2 = candles[n - 2] ? candles[n - 2].time : tN1 - 60;
-    return tN1 + (logical - (n - 1)) * (tN1 - tN2);
+    const inferredStep = candles[n - 2] ? tN1 - candles[n - 2].time : 60;
+    const step = stepSecondsOverride || inferredStep || 60;
+    return tN1 + (logical - (n - 1)) * step;
   }
   const t0 = candles[i0].time;
   const t1 = candles[i0 + 1].time;
   return t0 + (t1 - t0) * frac;
 }
-function timeToLogicalForCandles(time, candles) {
+function timeToLogicalForCandles(time, candles, stepSecondsOverride) {
   if (!candles || candles.length === 0 || !Number.isFinite(time)) return 0;
   const n = candles.length;
   if (time <= candles[0].time) {
     const t0 = candles[0].time;
-    const t1 = candles[1] ? candles[1].time : t0 + 60;
-    const step = t1 - t0 || 1;
+    const inferredStep = candles[1] ? candles[1].time - t0 : 60;
+    const step = stepSecondsOverride || inferredStep || 1;
     return (time - t0) / step;
   }
   if (time >= candles[n - 1].time) {
     const tN1 = candles[n - 1].time;
-    const tN2 = candles[n - 2] ? candles[n - 2].time : tN1 - 60;
-    const step = tN1 - tN2 || 1;
+    const inferredStep = candles[n - 2] ? tN1 - candles[n - 2].time : 60;
+    const step = stepSecondsOverride || inferredStep || 1;
     return (n - 1) + (time - tN1) / step;
   }
   let lo = 0, hi = n - 1;
@@ -206,11 +220,11 @@ function timeToLogicalForCandles(time, candles) {
    الشريط الجانبي. المطلوب للرسومات هو ربطها بعمود الشمعة التي تحتوي وقتها
    بالكامل، مع الإبقاء على الـ extrapolation فقط إذا كانت النقطة فعلاً خارج
    نطاق البيانات المعروضة قبل البداية أو بعد النهاية. */
-function timeToDrawingLogicalForCandles(time, candles) {
+function timeToDrawingLogicalForCandles(time, candles, stepSecondsOverride) {
   if (!candles || candles.length === 0 || !Number.isFinite(time)) return null;
   const n = candles.length;
   if (n === 1) return 0;
-  if (time <= candles[0].time) return timeToLogicalForCandles(time, candles);
+  if (time <= candles[0].time) return timeToLogicalForCandles(time, candles, stepSecondsOverride);
 
   let lo = 0, hi = n - 1;
   while (hi - lo > 1) {
@@ -223,14 +237,18 @@ function timeToDrawingLogicalForCandles(time, candles) {
   if (time < candles[hi].time) return lo;
 
   // بعد آخر شمعة: لو الوقت ما زال داخل "نفس البار" الأخير (مثل ساعات لاحقة من
-  // نفس اليوم على فريم 1D)، منثبّته على آخر عمود. فقط إذا تعدّى طول البار
-  // المستنتَج فعلاً من آخر فجوة زمنية، منسمح له يطلع كإسقاط خارج النطاق.
+  // نفس اليوم على فريم 1D)، منثبّته على آخر عمود. طول البار هون لازم يكون مدة
+  // الشمعة الحقيقية للفريم الحالي (stepSecondsOverride) لا فجوة آخر شمعتين
+  // المحمّلتين (ممكن تكون غير منتظمة بسبب فجوة سوق) - وإلا بيصير نفس مشكلة
+  // "قفزة الرسمة برا الإطار المقصوص" لما نبدّل الفريم. فقط إذا تعدّى الوقت طول
+  // البار الحقيقي هاد، منسمح له يطلع كإسقاط خارج النطاق (extrapolation).
   const lastTime = candles[n - 1].time;
   const prevTime = candles[n - 2].time;
   const inferredLastSpan = Math.max(1, lastTime - prevTime);
-  if (time < lastTime + inferredLastSpan) return n - 1;
+  const lastSpan = Math.max(1, stepSecondsOverride || inferredLastSpan);
+  if (time < lastTime + lastSpan) return n - 1;
 
-  return timeToLogicalForCandles(time, candles);
+  return timeToLogicalForCandles(time, candles, stepSecondsOverride);
 }
 /* ===================== إعدادات ألوان الشارت (تنحفظ محلياً بالمتصفح) ===================== */
 // رفعنا رقم النسخة v1 -> v2 قصداً: عشان أي متصفح عنده إعدادات محفوظة قديمة
@@ -1512,9 +1530,17 @@ export default function ReplayClient({ userId }) {
      (أو حتى تغيير عمق البيانات المحمّلة بنفس الفريم) بينعكس صح تلقائياً بكل
      رسمة/رندر، بدون أي خطوة "إعادة إسقاط" منفصلة ممكن ننسى نستدعيها بمسار كود
      معيّن. */
+  // مدة الشمعة الحقيقية (بالثواني) للفريم الحالي - مصدرها INTERVAL_MS الثابت
+  // (نفس المصدر يلي بيبني عليه تحميل البيانات فعليًا)، مش مُستنتجة من فجوة آخر
+  // شمعتين محمّلتين. هاي هي خطوة الاستقراء (extrapolation) المستخدمة لأي نقطة
+  // رسم برا نطاق الشموع المحمّلة (قبل الأول أو بعد آخر شمعة/نقطة القص) - شوفي
+  // التعليق فوق timeToDrawingLogicalForCandles لتفصيل السبب.
+  function currentStepSeconds() {
+    return (INTERVAL_MS[intervalRef.current] || INTERVAL_MS["1h"] || 3600000) / 1000;
+  }
   function ptToLogical(p) {
     if (!p) return null;
-    if (Number.isFinite(p.time)) return timeToDrawingLogicalForCandles(p.time, visibleCandlesRef.current);
+    if (Number.isFinite(p.time)) return timeToDrawingLogicalForCandles(p.time, visibleCandlesRef.current, currentStepSeconds());
     // توافق مؤقت: نقطة قديمة (نادراً، من قبل هالتعديل) لسا مخزّنة بصيغة
     // logical خام - منستخدمها كما هي بس مرة وحدة (ما بتنحفظ هيك، أول تحريك
     // أو رسمة جديدة بتحوّلها لـ time تلقائياً عبر setPointFromLogical).
@@ -1522,7 +1548,7 @@ export default function ReplayClient({ userId }) {
     return null;
   }
   function ptFromLogical(logical, price) {
-    return { time: logicalToTimeForCandles(logical, visibleCandlesRef.current), price };
+    return { time: logicalToTimeForCandles(logical, visibleCandlesRef.current, currentStepSeconds()), price };
   }
   function ptShiftLogical(p, dLogical) {
     // إزاحة نقطة بعدد "شمعات" (drag/duplicate) - لازم تصير بفضاء الـ logical
