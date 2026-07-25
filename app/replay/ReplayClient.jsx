@@ -62,18 +62,6 @@ const INTERVALS = [
    يبدّل وبعدين يفاجأ بتوست "أقرب نقطة متاحة" وبيانات غلط الموقع. */
 const RANGE_DAYS_BY_INTERVAL = { "1m": 29, "5m": 58, "15m": 58, "1h": 725, "4h": 725, "1d": 3650 };
 
-/* لما يكون عند الأصل رمز Dukascopy (assetInfo.dukascopy)، العمق التاريخي
-   الحقيقي المتاح أعمق بكتير من حد يوهو فوق - Dukascopy بترجع تيك-باي-تيك
-   من أول ~2003-2010 حسب الأداة، فمنستخدم رقم كبير (~22 سنة) بدل الأرقام
-   الضيقة تبع يوهو لأي فريم عند الأصول يلي عندها dukascopy. لو الأداة
-   نفسها ما بتوصل لهاد العمق فعلياً، الطلب رح يفشل من lib/dukascopy-candles.js
-   وبيرجع تلقائياً لـ Twelve Data/يوهو (نفس السلوك القديم بالضبط) - هون منتحكم
-   بس بتعطيل/تفعيل الخيار بالقائمة، مش بمصدر البيانات نفسه. */
-const DUKASCOPY_RANGE_DAYS = 8000;
-function rangeDaysFor(intervalValue, hasDukascopy) {
-  return hasDukascopy ? Math.max(RANGE_DAYS_BY_INTERVAL[intervalValue], DUKASCOPY_RANGE_DAYS) : RANGE_DAYS_BY_INTERVAL[intervalValue];
-}
-
 /* سرعات الـ Replay: القيمة هي عدد الشموع بالثانية (1x = شمعة/ثانية ... 10x = 10 شموع/ثانية)
    وبنحولها لـ ms فاصل بين كل شمعة وتالية بمعادلة 1000/السرعة وقت التشغيل الفعلي */
 const SPEEDS = Array.from({ length: 10 }, (_, i) => ({ value: i + 1, label: `${i + 1}x` }));
@@ -149,13 +137,15 @@ function sanitizeCandles(list) {
   return clean.filter((c, i) => i === 0 || c.time !== clean[i - 1].time);
 }
 
-/* ===================== تحويل logical <-> timestamp =====================
-   نقاط الرسم (p1/p2/points) مخزّنة بإحداثيات سوق مطلقة: {time (Unix
-   timestamp حقيقي), price} - أبداً مش logical index. الـ logical (رقم الشمعة
-   على مصفوفة معيّنة) قيمة مشتقة/مؤقتة فقط، لازم تُحسب في كل رسمة (render) من
-   الـ time + مصفوفة الشموع المعروضة *حالياً* (شوفي ptToLogical/ptFromLogical
-   جوا الكومبوننت تحت). هيك أي تبديل فريم بينعكس صح تلقائياً بدون أي خطوة
-   "إعادة إسقاط" منفصلة - ما في نظام logical قديم ينخزّن أو يحتاج تصحيح لاحقاً. */
+/* ===================== تحويل logical <-> timestamp عبر الفريمات =====================
+   الرسومات مخزّنة أصلاً بإحداثيات بيانات (logical index + price) مش بكسل شاشة،
+   بس الـ logical هو رقم الشمعة على مصفوفة الشموع الحالية، وهاي المصفوفة بتتغيّر
+   كلياً كل ما تغيّرنا الفريم (عدد/توقيت الشموع مختلف تماماً). عشان نضمن إن كل
+   نقطة رسم أو خط صفقة يضل مثبّت على نفس الوقت والسعر الحقيقيين بعد تغيير الفريم
+   (Data Coordinates = Timestamp + Price، مش Screen/Index)، منحول logical
+   لـ timestamp فعلي بالاعتماد على مصفوفة الشموع "القديمة" (يلي كانت معروضة قبل
+   التغيير)، وبعدين منحول هيك الـ timestamp لـ logical جديد بالاعتماد على مصفوفة
+   الشموع "الجديدة" (بعد ما توصل)، فتترسم بمكانها الصح تلقائياً (Data → Screen). */
 function logicalToTimeForCandles(logical, candles) {
   if (!candles || candles.length === 0 || !Number.isFinite(logical)) return null;
   const n = candles.length;
@@ -199,6 +189,20 @@ function timeToLogicalForCandles(time, candles) {
   const frac = t1 > t0 ? (time - t0) / (t1 - t0) : 0;
   return lo + frac;
 }
+function reprojectPoint(p, fromCandles, toCandles) {
+  if (!p || !Number.isFinite(p.logical)) return p;
+  const t = logicalToTimeForCandles(p.logical, fromCandles);
+  if (t == null) return p;
+  return { ...p, logical: timeToLogicalForCandles(t, toCandles) };
+}
+function reprojectDrawing(d, fromCandles, toCandles) {
+  const next = { ...d };
+  if (next.p1) next.p1 = reprojectPoint(next.p1, fromCandles, toCandles);
+  if (next.p2) next.p2 = reprojectPoint(next.p2, fromCandles, toCandles);
+  if (Array.isArray(next.points)) next.points = next.points.map((p) => reprojectPoint(p, fromCandles, toCandles));
+  return next;
+}
+
 /* ===================== إعدادات ألوان الشارت (تنحفظ محلياً بالمتصفح) ===================== */
 // رفعنا رقم النسخة v1 -> v2 قصداً: عشان أي متصفح عنده إعدادات محفوظة قديمة
 // (فيها مثلاً priceLineVisible: true من قبل) يرجع ياخذ القيم الافتراضية
@@ -1048,18 +1052,7 @@ export default function ReplayClient({ userId }) {
     setFavoriteTools((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
   }
   const drawingsVisibleRef = useRef(true);
-  // [{id, type, p1:{time,price}, p2?, points?, text?, style}]
-  // مهم جداً: p1/p2/points بتخزّن "time" (Unix timestamp حقيقي) + "price" -
-  // إحداثيات سوق مطلقة، مش "logical" (رقم شمعة على مصفوفة معيّنة). الـ logical
-  // بيختلف تماماً بين الفريمات (نفس التاريخ ممكن يكون شمعة رقم 40 بفريم الساعة
-  // وشمعة رقم 3 بفريم اليوم) وحتى بين تحميلتين لنفس الفريم - فتخزينه كمصدر
-  // حقيقة وحيد هو اللي كان يسبب "قفز" نقاط الرسم لما تتبدّلي فريم. الـ logical
-  // لأي نقطة رسم لازم ينحسب "live" وقت كل رسمة (render) من الـ timestamp
-  // المخزّن + مصفوفة الشموع المعروضة حالياً بس (شوفي ptLogical تحت) - أبداً ما
-  // بينخزّن أو يُحسب مرة وحدة بس عند تبديل الفريم زي كان قبل (النظام القديم
-  // reprojectDrawing/pendingReprojectRef انحذف بالكامل: كان "ترقيع" بيشتغل
-  // بس بمسار كود واحد محدد وبينكسر بأي مسار تاني).
-  const drawingsRef = useRef([]);
+  const drawingsRef = useRef([]); // [{id, type, p1:{logical,price}, p2?, points?, text?, style}]
   const drawStateRef = useRef(null); // الرسمة الجارية حالياً (سحب نقطتين)
   const isDrawingRef = useRef(false);
   const visibleCandlesRef = useRef([]);
@@ -1451,74 +1444,10 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
   useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
   useEffect(() => { compareCandlesRef.current = compareCandles; }, [compareCandles]);
-  /* useLayoutEffect لا useEffect: لازم visibleCandlesRef.current يتحدّث *قبل*
-     useLayoutEffect تحديث الشارت تحت (سطر ~4381) يلي بينده scheduleDraw()
-     ويرسم كل الرسومات (drawOverlay -> ptToLogical -> visibleCandlesRef.current).
-     React بينفّذ كل الـ useLayoutEffect (بترتيب تسجيلها بالكومبوننت) *قبل* أي
-     useEffect عادي - فلو خلّينا هاد useEffect عادي، بيصير سباق (race condition):
-     أحياناً بينفّذ قبل رسمة الأوفرلاي (requestAnimationFrame تبع scheduleDraw
-     ممكن يتأخر لبعد ما تفرغ كل الـ useEffect العادية فيضبط)، وأحياناً بينفّذ
-     بعدها (لو المتصفح رسم الفريم التالي قبل ما يفضى React من الـ passive
-     effects) - فبيصير drawOverlay يحسب logical كل نقطة رسم عبر مصفوفة شموع
-     الفريم *القديم* (قبل تبديل الفريم)، فتظهر الرسمة بمكان غلط أو تختفي كلياً
-     (index خارج مدى الشارت). تحويلها لـ useLayoutEffect + خليها *قبل*
-     useLayoutEffect الرسم بترتيب التسجيل = يضمن visibleCandlesRef.current
-     دايماً محدَّث فعلياً وقت ما drawOverlay بيقرأه، بدون أي سباق. */
-  useLayoutEffect(() => {
+  useEffect(() => {
     visibleCandlesRef.current = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
   }, [allCandles, revealCount, mode]);
-
   useEffect(() => { countdownRef.current = countdown; }, [countdown]);
-
-  /* ===================== نقاط الرسم: time <-> logical (المصدر الوحيد) =====================
-     كل نقطة رسم مخزّنة (p1/p2/points) بصيغة {time, price} - مش {logical, price}.
-     أي مكان محتاج "logical" (يعني إحداثي بكسل على الشارت عبر
-     timeScale().logicalToCoordinate) لازم يحسبه هون، live، من الـ time
-     المخزّن + مصفوفة الشموع المعروضة حالياً فعلياً (visibleCandlesRef.current -
-     نفس المصفوفة المضبوطة عبر seriesRef.current.setData()). هيك أي تبديل فريم
-     (أو حتى تغيير عمق البيانات المحمّلة بنفس الفريم) بينعكس صح تلقائياً بكل
-     رسمة/رندر، بدون أي خطوة "إعادة إسقاط" منفصلة ممكن ننسى نستدعيها بمسار كود
-     معيّن. */
-  function ptToLogical(p) {
-    if (!p) return null;
-    if (Number.isFinite(p.time)) return timeToLogicalForCandles(p.time, visibleCandlesRef.current);
-    // توافق مؤقت: نقطة قديمة (نادراً، من قبل هالتعديل) لسا مخزّنة بصيغة
-    // logical خام - منستخدمها كما هي بس مرة وحدة (ما بتنحفظ هيك، أول تحريك
-    // أو رسمة جديدة بتحوّلها لـ time تلقائياً عبر setPointFromLogical).
-    if (Number.isFinite(p.logical)) return p.logical;
-    return null;
-  }
-  function ptFromLogical(logical, price) {
-    return { time: logicalToTimeForCandles(logical, visibleCandlesRef.current), price };
-  }
-
-  // Drawings created by older builds can still contain a raw logical index.
-  // It happens to look correct on the timeframe where it was made, but that
-  // index identifies a different candle after a timeframe switch. Convert it
-  // once while the old candle set is still available, then remove `logical` so
-  // every later render is anchored by market time only.
-  function migrateLegacyDrawingCoordinates(candles) {
-    if (!candles?.length) return;
-    const toTimePoint = (point) => {
-      if (!point || Number.isFinite(point.time) || !Number.isFinite(point.logical)) return point;
-      const time = logicalToTimeForCandles(point.logical, candles);
-      if (!Number.isFinite(time)) return point;
-      const { logical, ...rest } = point;
-      return { ...rest, time };
-    };
-    for (const drawing of drawingsRef.current) {
-      if (drawing.p1) drawing.p1 = toTimePoint(drawing.p1);
-      if (drawing.p2) drawing.p2 = toTimePoint(drawing.p2);
-      if (Array.isArray(drawing.points)) drawing.points = drawing.points.map(toTimePoint);
-    }
-  }
-  function ptShiftLogical(p, dLogical) {
-    // إزاحة نقطة بعدد "شمعات" (drag/duplicate) - لازم تصير بفضاء الـ logical
-    // (نفس المنطق يلي بيحدد شكل السحب بالبكسل) وبعدين ترجع تنخزّن كـ time.
-    const cur = ptToLogical(p);
-    if (cur == null) return p;
-    return ptFromLogical(cur + dLogical, p.price);
-  }
   useEffect(() => {
     const baseLabel = getAssetByValue(assetValue)?.label || assetValue;
     symbolLabelRef.current = usedFuturesApprox ? `${baseLabel} (تقريب: عقود آجلة)` : baseLabel;
@@ -1665,6 +1594,42 @@ export default function ReplayClient({ userId }) {
           dash: sub === "select" ? [5, 4] : [],
           handles: sub === "edit-edges" || sub === "move",
         });
+        /* تنبيه حي: من هاي النقطة بالضبط، شو أدق فريم بعده ممكن أنزله؟ (عمق
+           بيانات يوهو محدود لكل فريم - شوفي RANGE_DAYS_BY_INTERVAL فوق). هيك
+           بتعرفي قبل ما تطبّقي القص أصلاً، مش بعد ما تكتشفي إنه الفريم يلي
+           بدك ياه معطّل بالقائمة المنسدلة. */
+        const vcNow = visibleCandlesRef.current || [];
+        const fromCandleNow = vcNow[Math.max(0, Math.min(vcNow.length - 1, Math.round(region.fromLogical)))];
+        if (fromCandleNow) {
+          const ageDays = (Date.now() / 1000 - fromCandleNow.time) / 86400;
+          const deepestOrder = ["1m", "5m", "15m", "1h", "4h", "1d"];
+          const deepest = deepestOrder.find((v) => RANGE_DAYS_BY_INTERVAL[v] >= ageDays);
+          const label = deepest
+            ? `أدق فريم ممكن من هون: ${INTERVALS.find((i) => i.value === deepest)?.label || deepest}`
+            : "بعيدة عن كل الفريمات (بيانات محدودة حتى اليومي)";
+          const x1 = ts0.logicalToCoordinate(region.fromLogical);
+          const x2 = ts0.logicalToCoordinate(region.toLogical);
+          if (x1 != null && x2 != null) {
+            const cx = (Math.min(x1, x2) + Math.max(x1, x2)) / 2;
+            ctx.save();
+            ctx.font = "11px system-ui, sans-serif";
+            const padX = 8;
+            const textW = ctx.measureText(label).width;
+            const boxW = textW + padX * 2;
+            const boxX = Math.max(4, Math.min(w - boxW - 4, cx - boxW / 2));
+            ctx.fillStyle = "rgba(15,17,23,0.92)";
+            ctx.strokeStyle = deepest ? GOLD_LIGHT : "#e05252";
+            ctx.lineWidth = 1;
+            const boxY = 10, boxH = 22;
+            if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 5); ctx.fill(); ctx.stroke(); }
+            else { ctx.fillRect(boxX, boxY, boxW, boxH); ctx.strokeRect(boxX, boxY, boxW, boxH); }
+            ctx.fillStyle = deepest ? "#EAECEF" : "#ff9a9a";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(label, boxX + boxW / 2, boxY + boxH / 2 + 1);
+            ctx.restore();
+          }
+        }
       } else if (cm && cutHoverLogicalRef.current != null) {
         const hoverX = ts0.logicalToCoordinate(cutHoverLogicalRef.current);
         if (hoverX != null) {
@@ -1680,33 +1645,6 @@ export default function ReplayClient({ userId }) {
           ctx.stroke();
           ctx.setLineDash([]);
           ctx.restore();
-
-          // تلميح التاريخ الكامل (اليوم + الرقم + الشهر + السنة + الوقت) فوق
-          // خط المعاينة - عشان تعرفي بالضبط أي شمعة رح تنقص عليها قبل الكليك
-          const vcHover = visibleCandlesRef.current || [];
-          const hoverIdx = Math.max(0, Math.min(vcHover.length - 1, Math.round(cutHoverLogicalRef.current)));
-          const hoverCandle = vcHover[hoverIdx];
-          if (hoverCandle) {
-            const label = formatCrosshairTime(hoverCandle.time);
-            ctx.save();
-            ctx.font = "bold 12px system-ui, sans-serif";
-            const padX = 10;
-            const textW = ctx.measureText(label).width;
-            const boxW = textW + padX * 2;
-            const boxH = 26;
-            const boxX = Math.max(4, Math.min(w - boxW - 4, hoverX - boxW / 2));
-            const boxY = 10;
-            ctx.fillStyle = "rgba(15,17,23,0.95)";
-            ctx.strokeStyle = GOLD_LIGHT;
-            ctx.lineWidth = 1;
-            if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 5); ctx.fill(); ctx.stroke(); }
-            else { ctx.fillRect(boxX, boxY, boxW, boxH); ctx.strokeRect(boxX, boxY, boxW, boxH); }
-            ctx.fillStyle = GOLD_LIGHT;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(label, boxX + boxW / 2, boxY + boxH / 2 + 1);
-            ctx.restore();
-          }
         }
       } else if (!cm && applied && showRegion) {
         const vc = visibleCandlesRef.current || [];
@@ -1722,7 +1660,7 @@ export default function ReplayClient({ userId }) {
     if (!drawingsVisibleRef.current) { ctx.restore(); return; }
 
     const ts = chart.timeScale();
-    const toXY = (p) => ({ x: ts.logicalToCoordinate(ptToLogical(p)), y: series.priceToCoordinate(p.price) });
+    const toXY = (p) => ({ x: ts.logicalToCoordinate(p.logical), y: series.priceToCoordinate(p.price) });
     const setLineStyle = (style = {}) => {
       ctx.strokeStyle = style.color || GOLD_LIGHT;
       ctx.fillStyle = style.color || GOLD_LIGHT;
@@ -1743,7 +1681,7 @@ export default function ReplayClient({ userId }) {
       const g = tradeGroups[tag];
       if (!g.entry) continue;
       const entryY = series.priceToCoordinate(g.entry.p1.price);
-      const entryXRaw = ts.logicalToCoordinate(ptToLogical(g.entry.p1));
+      const entryXRaw = ts.logicalToCoordinate(g.entry.p1.logical);
       if (entryY == null || entryXRaw == null) continue;
       // نقصّ التظليل عند نقطة الدخول بالضبط (حتى لو جزء من الشمعة نفسها قبلها
       // بصرياً)، وما بنسمح تبدأ قبل حافة الشارت الشمال لو الدخول خارج النطاق الظاهر
@@ -1803,7 +1741,7 @@ export default function ReplayClient({ userId }) {
 
       } else if (d.type === "hray") {
         const y = series.priceToCoordinate(d.p1.price);
-        const x1 = ts.logicalToCoordinate(ptToLogical(d.p1));
+        const x1 = ts.logicalToCoordinate(d.p1.logical);
         if (y == null || x1 == null) continue;
         setLineStyle(style);
         ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(w, y); ctx.stroke();
@@ -1812,7 +1750,7 @@ export default function ReplayClient({ userId }) {
         ctx.fillText(d.p1.price.toFixed(2), x1 + 6, y - 4);
 
       } else if (d.type === "vline") {
-        const x1 = ts.logicalToCoordinate(ptToLogical(d.p1));
+        const x1 = ts.logicalToCoordinate(d.p1.logical);
         if (x1 == null) continue;
         setLineStyle(style);
         ctx.beginPath(); ctx.moveTo(x1, 0); ctx.lineTo(x1, h); ctx.stroke();
@@ -1872,7 +1810,7 @@ export default function ReplayClient({ userId }) {
 
       } else if (d.type === "crossline") {
         const y = series.priceToCoordinate(d.p1.price);
-        const x = ts.logicalToCoordinate(ptToLogical(d.p1));
+        const x = ts.logicalToCoordinate(d.p1.logical);
         if (y == null || x == null) continue;
         setLineStyle(style);
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
@@ -1889,7 +1827,7 @@ export default function ReplayClient({ userId }) {
         [a, b].forEach((p) => { ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill(); });
         const priceDiff = d.p2.price - d.p1.price;
         const pct = d.p1.price ? (priceDiff / d.p1.price) * 100 : 0;
-        const bars = Math.round(ptToLogical(d.p2) - ptToLogical(d.p1));
+        const bars = Math.round(d.p2.logical - d.p1.logical);
         const angleDeg = (Math.atan2(-(b.y - a.y), b.x - a.x) * 180) / Math.PI;
         const midX = (a.x + b.x) / 2, midY = (a.y + b.y) / 2;
         ctx.font = "11px sans-serif";
@@ -2087,12 +2025,11 @@ export default function ReplayClient({ userId }) {
         const a = toXY(d.p1), b = toXY(d.p2);
         if (a.x == null || b.x == null) continue;
         setLineStyle(style);
-        const p1Logical = ptToLogical(d.p1);
-        const barGap = Math.max(1, Math.abs(ptToLogical(d.p2) - p1Logical));
+        const barGap = Math.max(1, Math.abs(d.p2.logical - d.p1.logical));
         const fibSeq = [1, 2, 3, 5, 8, 13, 21, 34, 55];
         ctx.font = "10px sans-serif";
         for (const n of fibSeq) {
-          const logical = p1Logical + barGap * n;
+          const logical = d.p1.logical + barGap * n;
           const x = ts.logicalToCoordinate(logical);
           if (x == null || x > w + 20) break;
           ctx.setLineDash([4, 3]);
@@ -2106,12 +2043,11 @@ export default function ReplayClient({ userId }) {
         if (a.x == null || b.x == null) continue;
         setLineStyle(style);
         const priceUnit = (d.p2.price - d.p1.price) || 1;
-        const p1LogicalGF = ptToLogical(d.p1);
-        const barUnit = (ptToLogical(d.p2) - p1LogicalGF) || 1;
+        const barUnit = (d.p2.logical - d.p1.logical) || 1;
         const ratios = [[1, 8], [1, 4], [1, 2], [1, 1], [2, 1], [4, 1], [8, 1]];
         ctx.font = "10px sans-serif";
         for (const [pMul, tMul] of ratios) {
-          const endLogical = p1LogicalGF + barUnit * tMul * Math.sign(barUnit || 1) * 3;
+          const endLogical = d.p1.logical + barUnit * tMul * Math.sign(barUnit || 1) * 3;
           const endPrice = d.p1.price + priceUnit * pMul * Math.sign(barUnit || 1) * 3;
           const endXY = toXY({ logical: endLogical, price: endPrice });
           if (endXY.x == null) continue;
@@ -2144,36 +2080,6 @@ export default function ReplayClient({ userId }) {
 
       } else if (d.type === "path" || d.type === "wave" || d.type === "triangle") {
         if (!d.points || d.points.length < 1) continue;
-        // TEMP DEBUG - احذفيها بعد ما نحل المشكلة
-        if (d.type === "triangle") {
-          let seriesDataLen = null;
-          try { seriesDataLen = series.data ? series.data().length : null; } catch { seriesDataLen = "err"; }
-          let visRange = null;
-          try { visRange = ts.getVisibleLogicalRange ? ts.getVisibleLogicalRange() : null; } catch { visRange = null; }
-          const dbgPayload = JSON.stringify({
-            id: d.id,
-            mode,
-            revealCount,
-            allCandlesLen: allCandles.length,
-            visibleCandlesRefLen: visibleCandlesRef.current.length,
-            seriesDataLen,
-            visibleLogicalRange: visRange,
-            storedPts: d.points.map((p) => ({ time: p.time, iso: p.time ? new Date(p.time * 1000).toISOString() : null, price: p.price })),
-            logicals: d.points.map((p) => ptToLogical(p)),
-            xy: d.points.map((p) => toXY(p)),
-            candlesRange: visibleCandlesRef.current.length
-              ? {
-                  first: new Date(visibleCandlesRef.current[0].time * 1000).toISOString(),
-                  last: new Date(visibleCandlesRef.current[visibleCandlesRef.current.length - 1].time * 1000).toISOString(),
-                  count: visibleCandlesRef.current.length,
-                }
-              : null,
-          });
-          if (window.__lastTriangleDbg !== dbgPayload) {
-            window.__lastTriangleDbg = dbgPayload;
-            console.log("[DEBUG render] " + dbgPayload);
-          }
-        }
         const pts = d.points.map(toXY).filter((p) => p.x != null && p.y != null);
         if (pts.length < 1) continue;
         setLineStyle(style);
@@ -2207,7 +2113,7 @@ export default function ReplayClient({ userId }) {
         if (a.x == null || b.x == null) continue;
         const priceDiff = d.p2.price - d.p1.price;
         const pct = (priceDiff / d.p1.price) * 100;
-        const bars = Math.round(ptToLogical(d.p2) - ptToLogical(d.p1));
+        const bars = Math.round(d.p2.logical - d.p1.logical);
         const col = priceDiff >= 0 ? GREEN : RED;
         const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
         const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
@@ -2233,7 +2139,7 @@ export default function ReplayClient({ userId }) {
       } else if (d.type === "daterange") {
         const a = toXY(d.p1), b = toXY(d.p2);
         if (a.x == null || b.x == null) continue;
-        const bars = Math.abs(Math.round(ptToLogical(d.p2) - ptToLogical(d.p1)));
+        const bars = Math.abs(Math.round(d.p2.logical - d.p1.logical));
         const stepMs = INTERVAL_MS[intervalRef.current] || 60000;
         const totalH = Math.floor((bars * stepMs) / 3600000);
         const days = Math.floor(totalH / 24);
@@ -2315,72 +2221,13 @@ export default function ReplayClient({ userId }) {
      فريم شاشة (يعني حد أقصى مضمون قريب من 60FPS)، بدون ما نأخر أي حدث فعلي
      (الحالة نفسها بتتحدث فوراً بالـ ref، بس الرسم المرئي بينتظر الفريم
      الجاي فقط - أقل من 16ms، غير محسوس إطلاقاً). */
-  const drawOverlayRef = useRef(null);
   const rafPendingRef = useRef(false);
-  // بس وقت تبديل فريم/سوق كامل (setData جديد): منمنع اشتراك
-  // subscribeVisibleLogicalRangeChange (سطر ~3748) من فرض رسمة overlay بإحداثيات
-  // لسا ما استقرت (logicalToCoordinate بترجع 0) كل ما يتغيّر المدى المرئي أثناء
-  // انتقال المكتبة الداخلي بعد setData - شوفي waitForChartSettleAndRedraw تحت،
-  // يلي هي المسؤولة الوحيدة عن الرسمة الصح النهائية بهاد المسار، وبتلغي هاد
-  // المنع بنفسها أول ما تستقر فعلياً أو توصل الحد الأقصى من المحاولات.
-  const suppressRangeChangeDrawRef = useRef(false);
   function scheduleDraw() {
     if (rafPendingRef.current) return;
     rafPendingRef.current = true;
     requestAnimationFrame(() => {
       rafPendingRef.current = false;
-      drawOverlayRef.current?.();
-    });
-  }
-
-  // Event subscriptions survive state changes; point their redraw work at the
-  // latest committed renderer instead of the closure from chart creation.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useLayoutEffect(() => {
-    drawOverlayRef.current = drawOverlay;
-  });
-
-  /* بتُستخدم بس بعد setData()+setVisibleLogicalRange() لتبديل فريم/سوق كامل
-     (شوفي loadData أسفل). مشكلة كانت موجودة: مكتبة lightweight-charts مش
-     دايماً بتخلّص تعيد بناء مساحة الإحداثيات الداخلية (اللي عليها بيعتمد
-     ts.logicalToCoordinate) بنفس فريم الشاشة يلي فيه setData - فترجع 0 لكل
-     قيمة لحد ما تستقر. جربنا نخمّن عدد فريمات ثابت (فريمين) وما كان كافي
-     دايماً - خصوصاً بوضع القص/التدريب لما قفزة الزوم القديم->الجديد كبيرة
-     (fromCandles مقصوصة، مش كل التاريخ)، المكتبة بتاخد فريمات أكتر لتستقر.
-     الحل الصح: منفحص فعلياً بكل فريم إذا استقرت (logicalToCoordinate بترجع
-     قيم مختلفة منطقية مش صفر/متطابقة لطرفي مدى معروفين) بدل ما نخمّن رقم -
-     ومنعيد المحاولة لحد ما تستقر أو نوصل حد أقصى أمان (يمنع لوب لا نهائي لو
-     صار خطأ تاني غير متوقع). */
-  function waitForChartSettleAndRedraw(targetRange, attemptsLeft = 30) {
-    const ts = chartRef.current?.timeScale();
-    if (!ts) { scheduleDraw(); return; }
-    requestAnimationFrame(() => {
-      let settled = false;
-      const current = ts.getVisibleLogicalRange();
-      const hasTarget = targetRange && Number.isFinite(targetRange.from) && Number.isFinite(targetRange.to);
-      // 1) لو عنا هدف محدد (restoreVisibleRange): لازم المدى المرئي الفعلي
-      //    يكون فعلاً وصل لهداك الهدف (مش بس أي قيمة مؤقتة أثناء انتقال
-      //    المكتبة الداخلي)، وإلا أي فحص إحداثيات لوحده ممكن ينجح غلط
-      //    (false positive) على قيمة وسيطة لسا عم تتزحلق.
-      const reachedTarget =
-        !hasTarget ||
-        (current &&
-          Number.isFinite(current.from) &&
-          Number.isFinite(current.to) &&
-          Math.abs(current.from - targetRange.from) < 0.5 &&
-          Math.abs(current.to - targetRange.to) < 0.5);
-      const range = hasTarget ? targetRange : current;
-      if (reachedTarget && range && Number.isFinite(range.from) && Number.isFinite(range.to)) {
-        const xFrom = ts.logicalToCoordinate(range.from);
-        const xTo = ts.logicalToCoordinate(range.to);
-        settled = xFrom != null && xTo != null && Math.abs(xTo - xFrom) > 1;
-      }
-      if (settled || attemptsLeft <= 0) {
-        suppressRangeChangeDrawRef.current = false;
-        scheduleDraw();
-      } else {
-        waitForChartSettleAndRedraw(targetRange, attemptsLeft - 1);
-      }
+      drawOverlay();
     });
   }
 
@@ -2388,7 +2235,7 @@ export default function ReplayClient({ userId }) {
   function logicalPriceToXY(p) {
     const chart = chartRef.current, series = seriesRef.current;
     if (!chart || !series) return { x: null, y: null };
-    return { x: chart.timeScale().logicalToCoordinate(ptToLogical(p)), y: series.priceToCoordinate(p.price) };
+    return { x: chart.timeScale().logicalToCoordinate(p.logical), y: series.priceToCoordinate(p.price) };
   }
   function distanceToDrawingPx(d, x, y) {
     const chart = chartRef.current, series = seriesRef.current;
@@ -2401,12 +2248,12 @@ export default function ReplayClient({ userId }) {
         }
         case "hray": {
           const py = series.priceToCoordinate(d.p1.price);
-          const px1 = chart.timeScale().logicalToCoordinate(ptToLogical(d.p1));
+          const px1 = chart.timeScale().logicalToCoordinate(d.p1.logical);
           if (py == null || px1 == null || x < px1 - 4) return Infinity;
           return Math.abs(y - py);
         }
         case "vline": {
-          const px1 = chart.timeScale().logicalToCoordinate(ptToLogical(d.p1));
+          const px1 = chart.timeScale().logicalToCoordinate(d.p1.logical);
           return px1 == null ? Infinity : Math.abs(x - px1);
         }
         case "trendline": {
@@ -2437,7 +2284,7 @@ export default function ReplayClient({ userId }) {
         }
         case "crossline": {
           const py = series.priceToCoordinate(d.p1.price);
-          const px = chart.timeScale().logicalToCoordinate(ptToLogical(d.p1));
+          const px = chart.timeScale().logicalToCoordinate(d.p1.logical);
           if (py == null || px == null) return Infinity;
           return Math.min(Math.abs(y - py), Math.abs(x - px));
         }
@@ -2549,7 +2396,7 @@ export default function ReplayClient({ userId }) {
        يتحرك التاني (بدل النسبة الثابتة 1:1 يلي كانت موجودة قبل) */
     if ((d.type === "position_long" || d.type === "position_short") && d.p1 && d.p2) {
       const { targetPrice, stopPrice } = getPositionLevels(d);
-      const midLogical = (ptToLogical(d.p1) + ptToLogical(d.p2)) / 2;
+      const midLogical = (d.p1.logical + d.p2.logical) / 2;
       out.push({ key: "target", p: { logical: midLogical, price: targetPrice } });
       out.push({ key: "stop", p: { logical: midLogical, price: stopPrice } });
     }
@@ -2557,13 +2404,12 @@ export default function ReplayClient({ userId }) {
        بتريدنغ فيو (8 مقابض: 4 زوايا + 4 منتصف أضلاع)، عشان تقدري تمددي عرض أو
        ارتفاع المستطيل لحاله من دون ما تحركي الزاوية المقابلة */
     if (d.type === "rectangle" && d.p1 && d.p2) {
-      const p1Logical = ptToLogical(d.p1), p2Logical = ptToLogical(d.p2);
-      const midLogical = (p1Logical + p2Logical) / 2;
+      const midLogical = (d.p1.logical + d.p2.logical) / 2;
       const midPrice = (d.p1.price + d.p2.price) / 2;
       out.push({ key: "top", p: { logical: midLogical, price: Math.max(d.p1.price, d.p2.price) } });
       out.push({ key: "bottom", p: { logical: midLogical, price: Math.min(d.p1.price, d.p2.price) } });
-      out.push({ key: "left", p: { logical: Math.min(p1Logical, p2Logical), price: midPrice } });
-      out.push({ key: "right", p: { logical: Math.max(p1Logical, p2Logical), price: midPrice } });
+      out.push({ key: "left", p: { logical: Math.min(d.p1.logical, d.p2.logical), price: midPrice } });
+      out.push({ key: "right", p: { logical: Math.max(d.p1.logical, d.p2.logical), price: midPrice } });
     }
     return out;
   }
@@ -2584,15 +2430,15 @@ export default function ReplayClient({ userId }) {
     return best;
   }
   function moveDrawingBy(d, dLogical, dPrice) {
-    if (d.p1) { d.p1 = { ...ptShiftLogical(d.p1, dLogical), price: d.p1.price + dPrice }; }
-    if (d.p2) { d.p2 = { ...ptShiftLogical(d.p2, dLogical), price: d.p2.price + dPrice }; }
-    if (d.points) d.points = d.points.map((p) => ({ ...ptShiftLogical(p, dLogical), price: p.price + dPrice }));
+    if (d.p1) { d.p1 = { logical: d.p1.logical + dLogical, price: d.p1.price + dPrice }; }
+    if (d.p2) { d.p2 = { logical: d.p2.logical + dLogical, price: d.p2.price + dPrice }; }
+    if (d.points) d.points = d.points.map((p) => ({ logical: p.logical + dLogical, price: p.price + dPrice }));
     if (d.targetPrice != null) d.targetPrice += dPrice;
     if (d.stopPrice != null) d.stopPrice += dPrice;
   }
   function setHandlePoint(d, key, logical, price) {
-    if (key === "p1") d.p1 = ptFromLogical(logical, price);
-    else if (key === "p2") d.p2 = ptFromLogical(logical, price);
+    if (key === "p1") d.p1 = { logical, price };
+    else if (key === "p2") d.p2 = { logical, price };
     else if (key === "target") d.targetPrice = price;
     else if (key === "stop") d.stopPrice = price;
     else if (key === "top" || key === "bottom") {
@@ -2604,13 +2450,13 @@ export default function ReplayClient({ userId }) {
       d[corner] = { ...d[corner], price };
     } else if (key === "left" || key === "right") {
       const corner = key === "left"
-        ? (ptToLogical(d.p1) <= ptToLogical(d.p2) ? "p1" : "p2")
-        : (ptToLogical(d.p1) >= ptToLogical(d.p2) ? "p1" : "p2");
-      d[corner] = { ...d[corner], ...ptFromLogical(logical, d[corner].price) };
+        ? (d.p1.logical <= d.p2.logical ? "p1" : "p2")
+        : (d.p1.logical >= d.p2.logical ? "p1" : "p2");
+      d[corner] = { ...d[corner], logical };
     } else if (key.startsWith("points.")) {
       const idx = Number(key.split(".")[1]);
       if (d.points && d.points[idx] != null) {
-        d.points = d.points.map((p, i) => (i === idx ? ptFromLogical(logical, price) : p));
+        d.points = d.points.map((p, i) => (i === idx ? { logical, price } : p));
       }
     }
   }
@@ -2730,9 +2576,9 @@ export default function ReplayClient({ userId }) {
     const offset = 6;
     const clone = JSON.parse(JSON.stringify(d));
     clone.id = Date.now();
-    if (clone.p1) clone.p1 = { ...clone.p1, ...ptShiftLogical(clone.p1, offset) };
-    if (clone.p2) clone.p2 = { ...clone.p2, ...ptShiftLogical(clone.p2, offset) };
-    if (clone.points) clone.points = clone.points.map((p) => ({ ...p, ...ptShiftLogical(p, offset) }));
+    if (clone.p1) clone.p1 = { ...clone.p1, logical: clone.p1.logical + offset };
+    if (clone.p2) clone.p2 = { ...clone.p2, logical: clone.p2.logical + offset };
+    if (clone.points) clone.points = clone.points.map((p) => ({ ...p, logical: p.logical + offset }));
     drawingsRef.current.push(clone);
     selectDrawing(clone.id);
     scheduleDraw();
@@ -2831,26 +2677,7 @@ export default function ReplayClient({ userId }) {
     if (pts && pts.length >= 2) {
       pushHistory();
       const newId = Date.now();
-      const storedPts = pts.map((p) => ptFromLogical(p.logical, p.price));
-      // TEMP DEBUG - احذفيها بعد ما نحل المشكلة: نطبع وقت/سعر كل نقطة مخزّنة +
-      // أول وآخر شمعة بمصفوفة الشموع يلي استخدمناها للتحويل، عشان نتأكد التخزين صح.
-      console.log(
-        "[DEBUG create] " +
-          JSON.stringify({
-            tool,
-            newId,
-            rawClicks: pts.map((p) => ({ logical: p.logical, price: p.price })),
-            storedPts: storedPts.map((p) => ({ time: p.time, iso: p.time ? new Date(p.time * 1000).toISOString() : null, price: p.price })),
-            candlesRange: visibleCandlesRef.current.length
-              ? {
-                  first: new Date(visibleCandlesRef.current[0].time * 1000).toISOString(),
-                  last: new Date(visibleCandlesRef.current[visibleCandlesRef.current.length - 1].time * 1000).toISOString(),
-                  count: visibleCandlesRef.current.length,
-                }
-              : null,
-          })
-      );
-      drawingsRef.current.push({ id: newId, type: tool, points: storedPts, style: styleForNewDrawing(tool) });
+      drawingsRef.current.push({ id: newId, type: tool, points: pts, style: styleForNewDrawing(tool) });
       selectDrawing(newId); // نقاط التحكم تظهر تلقائياً فوراً بعد إنشاء الأداة متعددة النقاط
     }
     pathPointsRef.current = [];
@@ -2980,15 +2807,15 @@ export default function ReplayClient({ userId }) {
     const entryTime = logicalToTimeForCandles(entryLogical, allCandles);
 
     drawingsRef.current.push({
-      id: Date.now(), type: "hline", p1: ptFromLogical(logical, price),
+      id: Date.now(), type: "hline", p1: { logical, price },
       style: { color: chartSettings.tradeEntryColor || GOLD_LIGHT, width: 1, dash: "solid" }, tradeTag: tag, tradeRole: "entry", entryTime,
     });
     drawingsRef.current.push({
-      id: Date.now() + 1, type: "hline", p1: ptFromLogical(logical, tp),
+      id: Date.now() + 1, type: "hline", p1: { logical, price: tp },
       style: { color: chartSettings.tradeTpColor || GREEN, width: 1.5, dash: "dashed" }, tradeTag: tag, tradeRole: "tp",
     });
     drawingsRef.current.push({
-      id: Date.now() + 2, type: "hline", p1: ptFromLogical(logical, sl),
+      id: Date.now() + 2, type: "hline", p1: { logical, price: sl },
       style: { color: chartSettings.tradeSlColor || RED, width: 1.5, dash: "dashed" }, tradeTag: tag, tradeRole: "sl",
     });
     scheduleDraw();
@@ -3138,7 +2965,7 @@ export default function ReplayClient({ userId }) {
 
   function logicalRangeOf(d) {
     const points = [d.p1, d.p2, ...(d.points || [])].filter(Boolean);
-    const logicals = points.map((p) => ptToLogical(p)).filter((v) => v != null);
+    const logicals = points.map((p) => p.logical).filter((v) => v != null);
     if (!logicals.length) return { start: null, end: null };
     return { start: Math.min(...logicals), end: Math.max(...logicals) };
   }
@@ -3490,7 +3317,7 @@ export default function ReplayClient({ userId }) {
           const content = window.prompt("اكتبي النص:");
           if (content) {
             pushHistory();
-            drawingsRef.current.push({ id: Date.now(), type: "text", p1: ptFromLogical(logical, snapped), text: content, style: styleForNewDrawing("text") });
+            drawingsRef.current.push({ id: Date.now(), type: "text", p1: { logical, price: snapped }, text: content, style: styleForNewDrawing("text") });
           }
           setActiveTool("cursor");
           scheduleDraw();
@@ -3499,7 +3326,7 @@ export default function ReplayClient({ userId }) {
         if (tool === "hline" || tool === "hray" || tool === "vline" || tool === "crossline") {
           pushHistory();
           const newId = Date.now();
-          drawingsRef.current.push({ id: newId, type: tool, p1: ptFromLogical(logical, snapped), style: styleForNewDrawing(tool) });
+          drawingsRef.current.push({ id: newId, type: tool, p1: { logical, price: snapped }, style: styleForNewDrawing(tool) });
           setActiveTool("cursor");
           selectDrawing(newId); // نقاط التحكم تظهر تلقائياً فوراً بعد إنشاء الأداة
           scheduleDraw();
@@ -3527,14 +3354,7 @@ export default function ReplayClient({ userId }) {
           if (d.type !== "measure") {
             pushHistory();
             const newId = Date.now();
-            // d.p1/d.p2 لسا بصيغة {logical, price} (فضاء تفاعلي مؤقت أثناء الرسم) -
-            // نحوّلهن لـ {time, price} هون بالضبط، لحظة التثبيت النهائي بالتخزين
-            // الدائم (drawingsRef.current)، عشان تنخزّن كإحداثي سوق مطلق.
-            drawingsRef.current.push({
-              id: newId, ...d,
-              p1: ptFromLogical(d.p1.logical, d.p1.price),
-              p2: ptFromLogical(d.p2.logical, d.p2.price),
-            });
+            drawingsRef.current.push({ id: newId, ...d });
             setActiveTool("cursor");
             selectDrawing(newId); // نقاط التحكم (Anchors) تظهر تلقائياً فوراً بعد إنشاء الرسمة
           } else {
@@ -3792,11 +3612,7 @@ export default function ReplayClient({ userId }) {
       window.addEventListener("keydown", onKeyDown);
       window.addEventListener("keyup", onKeyUp);
       window.addEventListener("blur", onWindowBlurResetShift);
-      const onVisibleRangeChange = () => {
-        if (suppressRangeChangeDrawRef.current) return; // شوفي waitForChartSettleAndRedraw
-        scheduleDraw();
-      };
-      chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChange);
+      chart.timeScale().subscribeVisibleLogicalRangeChange(scheduleDraw);
       chart.subscribeCrosshairMove(scheduleDraw);
       // أي بان أو زوم عالشارت (تغيير المدى المرئي) بيسكّر القوائم المؤقتة المفتوحة،
       // زي أي حدث تاني "بيقفل القوائم عادة" (شوفي closeTransientMenus)
@@ -3971,7 +3787,7 @@ export default function ReplayClient({ userId }) {
         window.removeEventListener("keydown", onKeyDown);
         window.removeEventListener("keyup", onKeyUp);
         window.removeEventListener("blur", onWindowBlurResetShift);
-        chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange);
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(scheduleDraw);
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChangeCloseMenus);
         chart.unsubscribeCrosshairMove(scheduleDraw);
         chart.unsubscribeCrosshairMove(onCrosshairMagnet);
@@ -4162,13 +3978,11 @@ export default function ReplayClient({ userId }) {
         } catch {}
         crosshairSyncingRef.current = false;
       }
-      const onCompareCrosshairSync = (param) => syncCrosshairToMain(param.time ?? null);
-      chart.subscribeCrosshairMove(onCompareCrosshairSync);
+      chart.subscribeCrosshairMove((param) => syncCrosshairToMain(param.time ?? null));
 
       chart.__unsyncMain = () => {
         mainChart?.timeScale().unsubscribeVisibleLogicalRangeChange(onMainRangeChange);
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(onCompareRangeChange);
-        chart.unsubscribeCrosshairMove(onCompareCrosshairSync);
       };
 
       chartRef.current?.__resize?.();
@@ -4318,15 +4132,7 @@ export default function ReplayClient({ userId }) {
   }
 
   /* ===================== جلب البيانات ===================== */
-  // رقم تسلسلي لكل استدعاء لـ loadData - عشان لو صار كذا طلب بيانات (fetch) شغال
-  // بنفس الوقت (تبديل فريم بسرعة، أو طلب قديم لسا "طاير" ما وصل جوابه بعد)،
-  // منتجاهل أي جواب "قديم" يوصل متأخر بعد ما طلب أحدث منه صار وخلص. بدون هيك
-  // الحماية، جواب قديم متأخر ممكن يستدعي setAllCandles/pendingReprojectRef
-  // ببيانات فريم مختلف تماماً عن الفريم الحالي فعلياً، فتنحسب إعادة إسقاط
-  // الرسومات غلط تماماً (نقطة بتاخد وقتها من فريم مش الفريم يلي فعلاً تحول له).
-  const loadRequestIdRef = useRef(0);
   const loadData = useCallback(async () => {
-    const myRequestId = ++loadRequestIdRef.current;
     stopLivePoll();
     setLoading(true);
     setError("");
@@ -4335,44 +4141,13 @@ export default function ReplayClient({ userId }) {
 
     // نمسح الرسومات/الصفقات بس لما يتغيّر "السوق" فعلياً (الأصل، أو الوضع مباشر/تدريب،
     // أو تفعيل/إلغاء الشارت العشوائي). أما لو تغيّر الفريم بس (أو عدد الشموع الأقصى)
-    // فمنحافظ عليها كما هي - مخزّنة بصيغة {time, price} مطلقة أصلاً، فبترتسم
-    // صح تلقائياً بالفريم الجديد وقت الرندر (بدون أي معالجة إضافية هون، شوفي
-    // ptToLogical فوق بالكومبوننت).
+    // فمنحافظ عليها، ومنجهّز لاحقاً إعادة إسقاطها حسب وقتها الحقيقي بعد ما توصل
+    // بيانات الفريم الجديد (شوفي reprojectDrawing فوق + استخدامها تحت بعد setData).
     const prevCtx = lastLoadContextRef.current;
-    // Migrate any pre-timestamp drawings before this request replaces the old
-    // timeframe's candle list. This preserves the point's market time rather
-    // than reusing its old bar number on the new timeframe.
-    const currentVisibleCandles = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
-    migrateLegacyDrawingCoordinates(currentVisibleCandles);
-    // انتقال لوضع "تدريب" بسبب قص حديث (finalizeCut عيّنت replayStateRef
-    // ومباشرة بعدها setMode("training")) ما لازم يتعامل معاملة "سوق مختلف
-    // كلياً" ويمسح نقطة القص - هاد بالضبط كان سبب اختيار نقطة بداية عشوائية
-    // بدل نقطة المستخدم يلي قصّت عليها بالضبط (شوفي pickTrainingRevealCount
-    // تحت - فرعها "مش نفس السياق" بيختار بداية عشوائية).
-    const justCutIntoTraining =
-      mode === "training" && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null;
-    const sameMarketContext =
-      prevCtx.hasLoaded &&
-      prevCtx.asset === assetValue &&
-      prevCtx.randomChart === randomChart &&
-      (prevCtx.mode === mode || justCutIntoTraining);
+    const sameMarketContext = prevCtx.hasLoaded && prevCtx.asset === assetValue && prevCtx.mode === mode && prevCtx.randomChart === randomChart;
     lastLoadContextRef.current = { asset: assetValue, mode, randomChart, hasLoaded: true };
     if (sameMarketContext) {
-      // ملاحظة: نقاط الرسم نفسها ما بتحتاج ولا أي معالجة هون - مخزّنة بصيغة
-      // {time, price} مطلقة أصلاً (مش logical)، فبترتسم صح تلقائياً بأي فريم
-      // جديد وقت الرندر (شوفي ptToLogical فوق بالكومبوننت). الشي الوحيد يلي
-      // فعلاً محتاج "نقل" يدوي هون هو الـ visible logical range (Zoom + Pan) -
-      // هاد مو إحداثي بيانات، هو "أي جزء من الشارت ظاهر عالشاشة حالياً"، فمنلقطه
-      // *هلق* (لسا الشارت عم يعرض بيانات الفريم القديم بمكانها الطبيعي) عشان
-      // نحوّله لاحقاً (logical قديم -> timestamp حقيقي -> logical جديد، نفس
-      // تقنية ptToLogical/ptFromLogical) ونرجّع نفس مستوى الزوم/السكرول بعد
-      // وصول شموع الفريم الجديد. بدون هيك، setData() الجاي بيرجّع الشارت
-      // افتراضياً لآخر الشموع (يمين الشارت) بدل ما يحافظ على نفس المكان.
-      const currentVisibleLogicalRange = chartRef.current?.timeScale().getVisibleLogicalRange() || null;
-      pendingReprojectRef.current = {
-        fromCandles: mode === "training" ? allCandles.slice(0, revealCount) : allCandles,
-        fromVisibleLogicalRange: currentVisibleLogicalRange,
-      };
+      pendingReprojectRef.current = { fromCandles: allCandles };
     } else {
       drawingsRef.current = [];
       pendingReprojectRef.current = null;
@@ -4460,10 +4235,6 @@ export default function ReplayClient({ userId }) {
         `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${tdParam}${dukParam}`
       );
       const data = await res.json();
-      // طلب أحدث صار وخلص قبل ما هاد يوصل جوابه - نتجاهل هاد الجواب "القديم"
-      // نهائياً (ما منكمل ولا حتى ما بعد try/catch/finally) عشان ما يفسد
-      // allCandles/pendingReprojectRef يلي أصلاً محدَّثين بالطلب الأحدث.
-      if (myRequestId !== loadRequestIdRef.current) return;
       if (data.error) throw new Error(data.error);
       const candles = sanitizeCandles(data.candles || []);
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
@@ -4486,22 +4257,16 @@ export default function ReplayClient({ userId }) {
         startLivePoll(candles);
       }
     } catch (e) {
-      if (myRequestId !== loadRequestIdRef.current) return; // طلب قديم فشل بعد ما تجاوزه طلب أحدث - نتجاهله بصمت
       setError(e.message || "صار خطأ، حاولي مرة تانية");
     } finally {
-      if (myRequestId === loadRequestIdRef.current) setLoading(false);
+      setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetValue, interval, mode, maxBars, randomChart]);
 
   useEffect(() => {
-    // تأخير بسيط (350ms) قبل التحميل الفعلي - لو صار كذا تغيير سريع متتالي
-    // (كليكات قص، تبديل فريم/أصل/وضع) قبل ما تخلص هاي الفترة، بننفّذ طلب
-    // واحد بس للحالة الأخيرة بدل طلب منفصل لكل تغيير وسيط. هاد يلي كان عم
-    // يقصف Twelve Data (حدها 8 طلبات/دقيقة بالخطة المجانية) وقت الاختبار
-    // المكثّف ويطلع خطأ "run out of API credits".
-    const t = setTimeout(() => { loadData(); }, 350);
-    return () => { clearTimeout(t); stopLivePoll(); stopCountdownTick(); };
+    loadData();
+    return () => { stopLivePoll(); stopCountdownTick(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadData]);
 
@@ -4518,11 +4283,9 @@ export default function ReplayClient({ userId }) {
   // آخر "سياق سوق" تم التحميل فيه (أصل/وضع/شارت عشوائي) - نقارنه بالسياق الجديد
   // عشان نعرف إذا لازم نمسح الرسومات (سوق مختلف) أو نحافظ عليها (فريم بس تغيّر)
   const lastLoadContextRef = useRef({ asset: null, mode: null, randomChart: null, hasLoaded: false });
-  // لما يتغيّر الفريم بس (نفس السوق)، منخزّن هون مصفوفة الشموع "القديمة" +
-  // الـ visible logical range مؤقتاً، لحد ما توصل بيانات الفريم الجديد، وقتها
-  // منحوّل هاد المدى (Zoom+Pan بس - نقاط الرسم نفسها ما إلها علاقة، شوفي
-  // ptToLogical/ptFromLogical فوق) لـ logical مكافئ عالمصفوفة الجديدة (شوفي
-  // useLayoutEffect تحت).
+  // لما يتغيّر الفريم بس (نفس السوق)، منخزّن هون مصفوفة الشموع "القديمة" مؤقتاً
+  // لحد ما توصل بيانات الفريم الجديد، وقتها منعيد إسقاط كل نقطة رسم/صفقة من
+  // logical القديم -> timestamp -> logical جديد (شوفي useEffect تحت)
   const pendingReprojectRef = useRef(null);
   /* useLayoutEffect لا useEffect: هاي هي نقطة تحديث الشارت الحقيقية (شموع +
      رسومات) رداً على أي تقدّم بالـ Replay (سحب التايم لاين، خطوة تلقائية،
@@ -4538,59 +4301,13 @@ export default function ReplayClient({ userId }) {
     const forceFullReload = forceFullReloadRef.current;
     forceFullReloadRef.current = false;
 
-    // نقاط الرسم/خطوط الصفقة ما بتحتاج ولا أي إعادة إسقاط هون - مخزّنة بصيغة
-    // {time, price} مطلقة، فبترتسم صح تلقائياً بالفريم الجديد وقت الرندر
-    // (drawOverlay بيحسب logical كل نقطة live عبر ptToLogical). الشي الوحيد
-    // يلي محتاج "نقل" يدوي هون هو الـ visible logical range (Zoom+Pan) -
-    // منحوّله (logical قديم -> timestamp حقيقي -> logical جديد) عشان نرجّع
-    // نفس مكان الزوم/السكرول بالضبط بعد ما نطبّق setData تحت (بدل ما يرجع
-    // الشارت افتراضياً لآخر الشموع يمين الشارت).
-    let restoreVisibleRange = null;
+    // إعادة إسقاط الرسومات/خطوط الصفقة على الفريم الجديد (حسب الوقت والسعر الحقيقيين)
+    // بدل ما تختفي أو تنزاح - هاي بتصير مرة وحدة بس أول ما توصل شموع فريم جديد
     if (pendingReprojectRef.current) {
-      const { fromCandles, fromVisibleLogicalRange } = pendingReprojectRef.current;
+      const { fromCandles } = pendingReprojectRef.current;
       pendingReprojectRef.current = null;
       if (fromCandles && fromCandles.length && allCandles.length) {
-        const toVisible = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
-        if (
-          toVisible.length &&
-          fromVisibleLogicalRange &&
-          Number.isFinite(fromVisibleLogicalRange.from) &&
-          Number.isFinite(fromVisibleLogicalRange.to)
-        ) {
-          const tFrom = logicalToTimeForCandles(fromVisibleLogicalRange.from, fromCandles);
-          const tTo = logicalToTimeForCandles(fromVisibleLogicalRange.to, fromCandles);
-          if (tFrom != null && tTo != null) {
-            const newFrom = timeToLogicalForCandles(tFrom, toVisible);
-            const newTo = timeToLogicalForCandles(tTo, toVisible);
-            if (Number.isFinite(newFrom) && Number.isFinite(newTo) && newTo > newFrom) {
-              restoreVisibleRange = { from: newFrom, to: newTo };
-            }
-            // TEMP DEBUG - احذفيها بعد ما نحل مشكلة انزياح الفيوبورت المُعاد إسقاطه
-            console.log(
-              "[DEBUG reproject] " +
-                JSON.stringify({
-                  fromVisibleLogicalRange,
-                  fromCandlesLen: fromCandles.length,
-                  fromCandlesRange: {
-                    first: new Date(fromCandles[0].time * 1000).toISOString(),
-                    last: new Date(fromCandles[fromCandles.length - 1].time * 1000).toISOString(),
-                  },
-                  tFrom,
-                  tFromIso: new Date(tFrom * 1000).toISOString(),
-                  tTo,
-                  tToIso: new Date(tTo * 1000).toISOString(),
-                  toVisibleLen: toVisible.length,
-                  toVisibleRange: {
-                    first: new Date(toVisible[0].time * 1000).toISOString(),
-                    last: new Date(toVisible[toVisible.length - 1].time * 1000).toISOString(),
-                  },
-                  newFrom,
-                  newTo,
-                  restoreVisibleRange,
-                })
-            );
-          }
-        }
+        drawingsRef.current = drawingsRef.current.map((d) => reprojectDrawing(d, fromCandles, allCandles));
       }
     }
 
@@ -4619,27 +4336,7 @@ export default function ReplayClient({ userId }) {
         // وواضح بلونه (أخضر/أحمر) بدل ما ينضغط لخط رفيع. المستخدمة لسا فيها
         // خيار "Reset View" (فوق، handleResetView) لو حبّت فعلاً تشوف كل
         // التاريخ مضغوط بشارة واحدة - بس هيك اختيار واعي منها مش افتراضي.
-        //
-        // استثناء: لو كان في زوم/سكرول محفوظ من قبل تبديل الفريم (restoreVisibleRange
-        // فوق)، منطبّقه هون *بدل* إعادة الضبط لـ barSpacing ثابت + يمين الشارت.
-        // setVisibleLogicalRange بتحسب barSpacing تلقائياً من عرض الشارت وحجم
-        // المدى المطلوب، فبترجع بالضبط نفس مستوى الزوم والمكان يلي كانت فيه
-        // المستخدمة قبل ما تبدّل الفريم - تماماً زي سلوك TradingView.
-        if (restoreVisibleRange) {
-          try {
-            chartRef.current?.timeScale().setVisibleLogicalRange(restoreVisibleRange);
-          } catch {
-            chartRef.current?.timeScale().applyOptions({ barSpacing: 7 });
-          }
-        } else {
-          chartRef.current?.timeScale().applyOptions({ barSpacing: 7 });
-        }
-        /* بدل التخمين بعدد فريمات ثابت (double rAF ما كان كافي بوضع القص) -
-           منمنع اشتراك subscribeVisibleLogicalRangeChange من الرسم المبكر
-           (شوفي suppressRangeChangeDrawRef فوق جنب scheduleDraw)، ومنستنى
-           فعلياً لحد ما تستقر مساحة الإحداثيات وبعدين نرسم الأوفرلاي. */
-        suppressRangeChangeDrawRef.current = true;
-        waitForChartSettleAndRedraw(restoreVisibleRange);
+        chartRef.current?.timeScale().applyOptions({ barSpacing: 7 });
       }
     } catch (err) {
       // بيانات فاسدة وصلت رغم التصفية (مصدر خارجي غير متوقع) - نعرض رسالة بدل ما نكسر الصفحة
@@ -4952,11 +4649,8 @@ export default function ReplayClient({ userId }) {
         return;
       }
       if (sub === "select") {
-        // ما منعرض أي منطقة/حواف لسا - بس منسجّل نقطة البداية (بالإحداثيات
-        // الحقيقية بالبكسل كمان، مش بس logical) عشان نميّز كليك حقيقي عن سحب
-        // فعلي بدقة (شوفي onMove تحت). القص الفوري بيصير عند onUp لو ما في
-        // سحب حقيقي تجاوز حد البكسل.
-        cutDragRef.current = { mode: "select", startLogical: logical, startClientX: e.clientX, moved: false };
+        cutDragRef.current = { mode: "select", startLogical: logical, moved: false };
+        setCutRegion({ fromLogical: logical, toLogical: logical });
       }
     }
     function onMove(e) {
@@ -4969,10 +4663,6 @@ export default function ReplayClient({ userId }) {
       }
       if (logical == null) return;
       if (drag.mode === "select") {
-        // حد بكسل حقيقي (5px) قبل ما نعتبرها سحب فعلي - أي كليك عادي فيه
-        // ارتجاف بسيط بالماوس/تراك باد، فما لازم يتحوّل لمنطقة سحب بالغلط
-        // ويمنع القص الفوري (هاد بالضبط كان سبب ظهور الحواف مع كل كليك).
-        if (!drag.moved && Math.abs(e.clientX - drag.startClientX) < 5) return;
         drag.moved = true;
         setCutRegion({ fromLogical: Math.min(drag.startLogical, logical), toLogical: Math.max(drag.startLogical, logical) });
       } else if (drag.mode === "move") {
@@ -4997,12 +4687,11 @@ export default function ReplayClient({ userId }) {
     function onUp() {
       const drag = cutDragRef.current;
       if (drag && drag.mode === "select" && !drag.moved) {
-        // كليك بسيط بدون سحب فعلي = قص فوري مباشر عند نفس الشمعة يلي كانت
-        // ظاهرة بتلميح التاريخ فوق خط المعاينة (نفس صيغة التقريب بالضبط:
-        // Math.round) - بدون منطقة/حواف وبدون حاجة لزر "تطبيق" منفصل.
-        cutDragRef.current = null;
-        commitCutAt(drag.startLogical);
-        return;
+        // كليك بسيط بدون سحب فعلي = منطقة افتراضية معقولة (30 شمعة) تبلّش من هون،
+        // بدل ما يضطر المستخدم يسحب دايماً لأي منطقة ولو صغيرة
+        const start = drag.startLogical;
+        const end = Math.min(allCandles.length - 1, start + 30);
+        setCutRegion({ fromLogical: clampLogical(start), toLogical: clampLogical(end) });
       } else if (drag && cutRegionRef.current) {
         const r = cutRegionRef.current;
         setCutRegion({ fromLogical: clampLogical(r.fromLogical), toLogical: clampLogical(r.toLogical) });
@@ -5029,10 +4718,14 @@ export default function ReplayClient({ userId }) {
      ولا شمعة وحدة من allCandles، بس منعيّن من وين يبلّش الاستعراض (fromTime)
      ومتى ما بعد نكمل نكشف شموع جديدة تلقائياً/يدوياً (toTime، شوفي
      cutRegionEndIndex فوق) - بالضبط "قص بدون حذف بيانات". */
-  /* الجزء المشترك بين "تطبيق منطقة مسحوبة" و"قص فوري بكليك واحد" تحت -
-     منحوّل شمعة البداية/النهاية لوقت حقيقي ومنثبّتها (بدون حذف ولا شمعة من
-     allCandles، بس منعيّن من وين يبلّش الاستعراض). */
-  function finalizeCut(fromCandle, toCandle, fromIdx) {
+  function applyCutRegion() {
+    const region = cutRegionRef.current;
+    if (!region || !allCandles.length) { setCutMode(false); return; }
+    const fromIdx = cutIndexForLogical(region.fromLogical);
+    const toIdx = cutIndexForLogical(region.toLogical);
+    const fromCandle = allCandles[fromIdx];
+    const toCandle = allCandles[toIdx] || fromCandle;
+    if (!fromCandle) { setCutMode(false); return; }
     stopLivePoll();
     setMode("training");
     setIsPlaying(false);
@@ -5050,27 +4743,6 @@ export default function ReplayClient({ userId }) {
     setCutMode(false);
     setCutRegion(null);
   }
-  /* قص فوري بكليك واحد (بدون سحب منطقة ولا حواف ولا زر "تطبيق" منفصل) -
-     الشمعة المُختارة هي بالضبط نفسها يلي كانت ظاهرة بتلميح التاريخ فوق خط
-     المعاينة (نفس Math.round)، فالتاريخ يلي بتشوفيه هو نفسه يلي رح ينقص عليه. */
-  function commitCutAt(logical) {
-    if (!allCandles.length) { setCutMode(false); return; }
-    const idx = cutIndexForLogical(logical);
-    const candle = allCandles[idx];
-    if (!candle) { setCutMode(false); return; }
-    finalizeCut(candle, candle, idx);
-  }
-  function applyCutRegion() {
-    const region = cutRegionRef.current;
-    if (!region || !allCandles.length) { setCutMode(false); return; }
-    const fromIdx = cutIndexForLogical(region.fromLogical);
-    const toIdx = cutIndexForLogical(region.toLogical);
-    const fromCandle = allCandles[fromIdx];
-    const toCandle = allCandles[toIdx] || fromCandle;
-    if (!fromCandle) { setCutMode(false); return; }
-    finalizeCut(fromCandle, toCandle, fromIdx);
-  }
-
   /* إلغاء القص: يسكّر وضع التعديل ويرمي المنطقة "قيد التعديل" (غير المطبّقة) -
      أي منطقة مطبّقة سابقاً (appliedCutRegion) بتضل شغالة متل ما هي */
   function cancelCutMode() {
@@ -5312,14 +4984,11 @@ export default function ReplayClient({ userId }) {
           {INTERVALS.map((o) => {
             // لو في نقطة قص Replay فعّالة، منحسب عمرها بالأيام ومنعطّل أي فريم
             // عمق بياناته الحقيقي (rangeDays) أقصر من هيك عمر — بدل ما نخلّي
-            // المستخدم يبدّل وبعدين يوصله توست "أقرب نقطة متاحة". لو الأصل
-            // الحالي عنده رمز Dukascopy، منستخدم عمق موسّع (rangeDaysFor) بدل
-            // حد يوهو الضيق، لأنه أداة الريبلاي رح تجرب Dukascopy أول شي.
+            // المستخدم يبدّل وبعدين يوصله توست "أقرب نقطة متاحة".
             const cutAgeDays = replayStateRef.current.isActive && replayCutTs
               ? (Date.now() / 1000 - replayCutTs) / 86400
               : null;
-            const hasDuk = !!getAssetByValue(assetValue)?.dukascopy;
-            const unreachable = cutAgeDays != null && cutAgeDays > rangeDaysFor(o.value, hasDuk);
+            const unreachable = cutAgeDays != null && cutAgeDays > RANGE_DAYS_BY_INTERVAL[o.value];
             return (
               <option
                 key={o.value}

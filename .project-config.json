@@ -1,0 +1,34 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [],
+  "dev_command": "pnpm run dev",
+  "env_vars": {},
+  "experiments": null,
+  "git_remote": {
+    "repo_url": "https://7f0548f6b28a1758d9bf7be630d36cb4.artifacts.cloudflare.net/git/prod/idtunAaGHGK3AesSWpoCby.git",
+    "expiration": "2026-07-25T13:04:01.922Z",
+    "token": "art_v1_d038aadfce2fddecfcbc810d0f79a7654eb34f78?expires=1784984641",
+    "backend": "GIT_BACKEND_ARTIFACTS"
+  },
+  "name": "qta-academy",
+  "path": "/home/ubuntu/qta-academy",
+  "port": 3000,
+  "secrets": {
+    "BUILT_IN_FORGE_API_KEY": "j8QvkkFhSeuVc9XM7Cj7FM",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "JWT_SECRET": "5uzsendeKmBQtLWZHJ4xP8",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "qais alraifai",
+    "OWNER_OPEN_ID": "MVCDzu2AsUNBizXzQCdNbw",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "e5d87a07-c9fd-4e77-80cf-0e0c0c35f816",
+    "VITE_APP_ID": "idtunAaGHGK3AesSWpoCby",
+    "VITE_APP_LOGO": "",
+    "VITE_APP_TITLE": "Qais Trading Academy - Premium",
+    "VITE_FRONTEND_FORGE_API_KEY": "fgUazShDaumXdhSi7nqBHs",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im"
+  },
+  "template_id": "web-static",
+  "test_command": "pnpm test"
+}
