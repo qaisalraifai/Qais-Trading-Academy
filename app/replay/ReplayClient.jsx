@@ -3528,9 +3528,11 @@ export default function ReplayClient({ userId }) {
           secondsVisible: false,
           rightOffset: 6,
           barSpacing: 7,
-          // Keep enough horizontal room for the candle body.  At sub-pixel
-          // spacing, even valid candlesticks look like OHLC crosses.
-          minBarSpacing: 2,
+          // رجّعناها لقيمتها الأصلية: 0.05 هي يلي بتسمح بزوم-أوت واسع (لغاية
+          // 4000 شمعة بمدى واحد حسب ZOOM_MAX_BARS تحت). القيمة 2 كانت تكسر
+          // إمكانية التصغير الكامل بدون ما تحل أي مشكلة فعلية بالشموع نفسها
+          // (شوفي borderVisible/border colors تحت - هاد الحل الفعلي البديل).
+          minBarSpacing: 0.05,
         },
         localization: {
           timeFormatter: formatCrosshairTime,
@@ -4657,7 +4659,14 @@ export default function ReplayClient({ userId }) {
       // allCandles/pendingReprojectRef يلي أصلاً محدَّثين بالطلب الأحدث.
       if (myRequestId !== loadRequestIdRef.current) return;
       if (data.error) throw new Error(data.error);
+      // ============ تشخيص مؤقت (احذفيه بعد ما نحل المشكلة) ============
+      // بيطبع أول 15 شمعة خام (زي ما وصلت من السيرفر تماماً، قبل أي لمسة)
+      // وبعدين بعد sanitizeCandles، عشان نشوف بالضبط وين (لو صار) أي فرق
+      // بين المصدر ونتيجة المعالجة عندنا.
+      console.log("[DEBUG راو من السيرفر]", data.provider, interval, (data.candles || []).slice(0, 15));
+      // ================================================================
       const candles = sanitizeCandles(data.candles || []);
+      console.log("[DEBUG بعد sanitizeCandles]", candles.slice(0, 15));
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
       dataSourceRef.current = {
         symbol: data.sourceSymbol || assetInfo.yahoo,
