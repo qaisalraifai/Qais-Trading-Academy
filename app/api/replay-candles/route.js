@@ -9,6 +9,25 @@ export const dynamic = "force-dynamic";
 // Vercel قبل ما تخلص (عدّليه حسب الخطة عندك لو احتجتي).
 export const maxDuration = 30;
 
+/* مهلة زمنية لـDukascopy (شوفي withTimeout تحت): لو ما رد بهاد الوقت، منكمل
+   فوراً لـTwelve Data/يوهو بدل ما تضل الواجهة عالقة على "جاري تحميل
+   البيانات..." للأبد (هاد بالضبط كان سبب تعليق الشارت اللي لاحظته
+   المستخدمة على فريم الساعة للذهب - أرشيف Dukascopy لمدى طويل ممكن ياخد
+   وقت أطول من المتوقع أو ما يرد أصلاً أحياناً). بوضع الريبلاي (anchor
+   موجود) منعطيه صبر أطول لأنه هناك المستخدمة قاصدة فعلاً تاريخ عميق
+   وعم تتوقع انتظار؛ بوضع اللايف العادي (بدون anchor) منقصّرها كتير عشان
+   الشارت يفتح بسرعة معقولة دايماً حتى لو رجعنا لمصدر أضعف تاريخياً. */
+const DUKASCOPY_TIMEOUT_MS_LIVE = 8000;
+const DUKASCOPY_TIMEOUT_MS_ANCHOR = 22000;
+
+function withTimeout(promise, ms, timeoutResult) {
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(timeoutResult), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 /* هاد الراوت غلاف رقيق فوق lib/yahoo-candles.js وlib/twelvedata-candles.js
    (نفس المنطق القديم بالضبط، بس تم نقله لملف مشترك عشان كرون Trading Radar
    يقدر يستخدمه من السيرفر مباشرة). السلوك من زاوية الواجهة القديمة ما تغيّر.
@@ -62,7 +81,12 @@ export async function GET(req) {
   // لو Dukascopy فشل لأي سبب (رمز غير مدعوم، تعطّل مؤقت بالأرشيف...) منكمل
   // تلقائياً لـTwelve Data ثم يوهو زي ما كان بالضبط - صفر خطر كسر أي أصل.
   if (dukSymbol) {
-    const dukResult = await fetchDukascopyCandles(dukSymbol, interval, wanted, anchor);
+    const dukTimeoutMs = anchor != null ? DUKASCOPY_TIMEOUT_MS_ANCHOR : DUKASCOPY_TIMEOUT_MS_LIVE;
+    const dukResult = await withTimeout(
+      fetchDukascopyCandles(dukSymbol, interval, wanted, anchor),
+      dukTimeoutMs,
+      { error: `انتهت مهلة الانتظار (${dukTimeoutMs / 1000} ثانية) بدون رد من Dukascopy` }
+    );
     if (!dukResult.error && (dukResult.candles?.length || 0) >= 2) {
       return NextResponse.json({
         candles: dukResult.candles,
