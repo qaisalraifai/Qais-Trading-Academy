@@ -1451,9 +1451,23 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
   useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
   useEffect(() => { compareCandlesRef.current = compareCandles; }, [compareCandles]);
-  useEffect(() => {
+  /* useLayoutEffect لا useEffect: لازم visibleCandlesRef.current يتحدّث *قبل*
+     useLayoutEffect تحديث الشارت تحت (سطر ~4381) يلي بينده scheduleDraw()
+     ويرسم كل الرسومات (drawOverlay -> ptToLogical -> visibleCandlesRef.current).
+     React بينفّذ كل الـ useLayoutEffect (بترتيب تسجيلها بالكومبوننت) *قبل* أي
+     useEffect عادي - فلو خلّينا هاد useEffect عادي، بيصير سباق (race condition):
+     أحياناً بينفّذ قبل رسمة الأوفرلاي (requestAnimationFrame تبع scheduleDraw
+     ممكن يتأخر لبعد ما تفرغ كل الـ useEffect العادية فيضبط)، وأحياناً بينفّذ
+     بعدها (لو المتصفح رسم الفريم التالي قبل ما يفضى React من الـ passive
+     effects) - فبيصير drawOverlay يحسب logical كل نقطة رسم عبر مصفوفة شموع
+     الفريم *القديم* (قبل تبديل الفريم)، فتظهر الرسمة بمكان غلط أو تختفي كلياً
+     (index خارج مدى الشارت). تحويلها لـ useLayoutEffect + خليها *قبل*
+     useLayoutEffect الرسم بترتيب التسجيل = يضمن visibleCandlesRef.current
+     دايماً محدَّث فعلياً وقت ما drawOverlay بيقرأه، بدون أي سباق. */
+  useLayoutEffect(() => {
     visibleCandlesRef.current = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
   }, [allCandles, revealCount, mode]);
+
   useEffect(() => { countdownRef.current = countdown; }, [countdown]);
 
   /* ===================== نقاط الرسم: time <-> logical (المصدر الوحيد) =====================
