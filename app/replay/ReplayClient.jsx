@@ -1658,6 +1658,33 @@ export default function ReplayClient({ userId }) {
           ctx.stroke();
           ctx.setLineDash([]);
           ctx.restore();
+
+          // تلميح التاريخ الكامل (اليوم + الرقم + الشهر + السنة + الوقت) فوق
+          // خط المعاينة - عشان تعرفي بالضبط أي شمعة رح تنقص عليها قبل الكليك
+          const vcHover = visibleCandlesRef.current || [];
+          const hoverIdx = Math.max(0, Math.min(vcHover.length - 1, Math.round(cutHoverLogicalRef.current)));
+          const hoverCandle = vcHover[hoverIdx];
+          if (hoverCandle) {
+            const label = formatCrosshairTime(hoverCandle.time);
+            ctx.save();
+            ctx.font = "bold 12px system-ui, sans-serif";
+            const padX = 10;
+            const textW = ctx.measureText(label).width;
+            const boxW = textW + padX * 2;
+            const boxH = 26;
+            const boxX = Math.max(4, Math.min(w - boxW - 4, hoverX - boxW / 2));
+            const boxY = 10;
+            ctx.fillStyle = "rgba(15,17,23,0.95)";
+            ctx.strokeStyle = GOLD_LIGHT;
+            ctx.lineWidth = 1;
+            if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 5); ctx.fill(); ctx.stroke(); }
+            else { ctx.fillRect(boxX, boxY, boxW, boxH); ctx.strokeRect(boxX, boxY, boxW, boxH); }
+            ctx.fillStyle = GOLD_LIGHT;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(label, boxX + boxW / 2, boxY + boxH / 2 + 1);
+            ctx.restore();
+          }
         }
       } else if (!cm && applied && showRegion) {
         const vc = visibleCandlesRef.current || [];
@@ -4700,11 +4727,12 @@ export default function ReplayClient({ userId }) {
     function onUp() {
       const drag = cutDragRef.current;
       if (drag && drag.mode === "select" && !drag.moved) {
-        // كليك بسيط بدون سحب فعلي = منطقة افتراضية معقولة (30 شمعة) تبلّش من هون،
-        // بدل ما يضطر المستخدم يسحب دايماً لأي منطقة ولو صغيرة
-        const start = drag.startLogical;
-        const end = Math.min(allCandles.length - 1, start + 30);
-        setCutRegion({ fromLogical: clampLogical(start), toLogical: clampLogical(end) });
+        // كليك بسيط بدون سحب فعلي = قص فوري مباشر عند نفس الشمعة يلي كانت
+        // ظاهرة بتلميح التاريخ فوق خط المعاينة (نفس صيغة التقريب بالضبط:
+        // Math.round) - بدون منطقة/حواف وبدون حاجة لزر "تطبيق" منفصل.
+        cutDragRef.current = null;
+        commitCutAt(drag.startLogical);
+        return;
       } else if (drag && cutRegionRef.current) {
         const r = cutRegionRef.current;
         setCutRegion({ fromLogical: clampLogical(r.fromLogical), toLogical: clampLogical(r.toLogical) });
@@ -4731,14 +4759,10 @@ export default function ReplayClient({ userId }) {
      ولا شمعة وحدة من allCandles، بس منعيّن من وين يبلّش الاستعراض (fromTime)
      ومتى ما بعد نكمل نكشف شموع جديدة تلقائياً/يدوياً (toTime، شوفي
      cutRegionEndIndex فوق) - بالضبط "قص بدون حذف بيانات". */
-  function applyCutRegion() {
-    const region = cutRegionRef.current;
-    if (!region || !allCandles.length) { setCutMode(false); return; }
-    const fromIdx = cutIndexForLogical(region.fromLogical);
-    const toIdx = cutIndexForLogical(region.toLogical);
-    const fromCandle = allCandles[fromIdx];
-    const toCandle = allCandles[toIdx] || fromCandle;
-    if (!fromCandle) { setCutMode(false); return; }
+  /* الجزء المشترك بين "تطبيق منطقة مسحوبة" و"قص فوري بكليك واحد" تحت -
+     منحوّل شمعة البداية/النهاية لوقت حقيقي ومنثبّتها (بدون حذف ولا شمعة من
+     allCandles، بس منعيّن من وين يبلّش الاستعراض). */
+  function finalizeCut(fromCandle, toCandle, fromIdx) {
     stopLivePoll();
     setMode("training");
     setIsPlaying(false);
@@ -4756,6 +4780,27 @@ export default function ReplayClient({ userId }) {
     setCutMode(false);
     setCutRegion(null);
   }
+  /* قص فوري بكليك واحد (بدون سحب منطقة ولا حواف ولا زر "تطبيق" منفصل) -
+     الشمعة المُختارة هي بالضبط نفسها يلي كانت ظاهرة بتلميح التاريخ فوق خط
+     المعاينة (نفس Math.round)، فالتاريخ يلي بتشوفيه هو نفسه يلي رح ينقص عليه. */
+  function commitCutAt(logical) {
+    if (!allCandles.length) { setCutMode(false); return; }
+    const idx = cutIndexForLogical(logical);
+    const candle = allCandles[idx];
+    if (!candle) { setCutMode(false); return; }
+    finalizeCut(candle, candle, idx);
+  }
+  function applyCutRegion() {
+    const region = cutRegionRef.current;
+    if (!region || !allCandles.length) { setCutMode(false); return; }
+    const fromIdx = cutIndexForLogical(region.fromLogical);
+    const toIdx = cutIndexForLogical(region.toLogical);
+    const fromCandle = allCandles[fromIdx];
+    const toCandle = allCandles[toIdx] || fromCandle;
+    if (!fromCandle) { setCutMode(false); return; }
+    finalizeCut(fromCandle, toCandle, fromIdx);
+  }
+
   /* إلغاء القص: يسكّر وضع التعديل ويرمي المنطقة "قيد التعديل" (غير المطبّقة) -
      أي منطقة مطبّقة سابقاً (appliedCutRegion) بتضل شغالة متل ما هي */
   function cancelCutMode() {
