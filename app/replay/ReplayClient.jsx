@@ -4847,6 +4847,15 @@ export default function ReplayClient({ userId }) {
       if (activeProvider === "twelvedata" && assetInfo.twelveData) {
         pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo; // باراميتر symbol إجباري بالراوت حتى لو مش رح يُستخدم فعلياً
         tdParam = `&td=${encodeURIComponent(assetInfo.twelveData)}`;
+      } else if (activeProvider === "dukascopy") {
+        // دوكاسكوبي أرشيف تاريخي (getHistoricalRates) مش بث لحظي - ما بيصلح
+        // للتحديث الحي كل بضع ثواني أصلاً (وحتى لو صلح، رمزه مش بصيغة رمز
+        // يوهو زي ما البولينغ متوقّع - كان عم يبعت "eurusd" كـsymbol ليوهو
+        // فيفشل الطلب). فلما يكون التحميل الأساسي نجح بـDukascopy، البولينغ
+        // اللحظي هون برجع يستخدم رمز يوهو سبوت العادي (بدون td/duk) - نفس
+        // السلوك القديم بالضبط قبل ما يصير Dukascopy مصدر افتراضي.
+        pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo;
+        tdParam = "";
       } else {
         // المصدر الفعلي الناجح Yahoo سبوت - نضل عليه بدون أي محاولة td هون
         // عشان ما نخلط مصدرين.
