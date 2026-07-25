@@ -1069,6 +1069,7 @@ export default function ReplayClient({ userId }) {
 
   /* ===================== أدوات الرسم (تريدنغ فيو ستايل) ===================== */
   const overlayCanvasRef = useRef(null);
+  const zoomSliderRef = useRef(null);
   const chartAreaRef = useRef(null);
   const [activeTool, setActiveTool] = useState("cursor");
   const [magnetOn, setMagnetOn] = useState(false);
@@ -1152,6 +1153,15 @@ export default function ReplayClient({ userId }) {
   const [drawingTemplatesMenuOpen, setDrawingTemplatesMenuOpen] = useState(false);
   const [textPopoverOpen, setTextPopoverOpen] = useState(false);
   const [textPopoverValue, setTextPopoverValue] = useState("");
+  /* محرر النص المضمّن (Inline) لأداة "نص" - بديل window.prompt القديم: بيظهر
+     مباشرة بمكان الكليك وبيصير فيه تركيز (focus) فوراً عشان تقدري تكتبي بلا
+     أي خطوة إضافية، بالظبط متل تريدنغ فيو. null = مقفول. لما editingId يكون
+     رقم (مش null) معناها عم نعدّل رسمة نص موجودة أصلاً (دبل-كليك عليها)،
+     وإلا عم ننشئ رسمة جديدة. x/y إحداثيات بكسل نسبةً لمنطقة الشارت
+     (chartAreaRef) - نفس نظام إحداثيات الشريط العائم تبع التحديد. */
+  const [textEditor, setTextEditor] = useState(null);
+  const textEditorRef = useRef(null);
+  useEffect(() => { textEditorRef.current = textEditor; }, [textEditor]);
   /* ===== تراجع/إعادة (Undo/Redo) على مستوى الرسومات - Ctrl+Z / Ctrl+Y =====
      كل عملية "تُحدث" على الرسومات (إنشاء/حذف/نقل/تعديل خصائص) بتحفظ نسخة
      من الحالة قبلها هون قبل ما تصير، عشان نقدر نرجع لها بالضبط */
@@ -1632,6 +1642,10 @@ export default function ReplayClient({ userId }) {
     const series = seriesRef.current;
     if (!canvas || !chart || !series) return;
     positionSelectionToolbar();
+    if (zoomSliderRef.current) {
+      const v = currentZoomSliderValue();
+      if (zoomSliderRef.current.value !== String(v)) zoomSliderRef.current.value = String(v);
+    }
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.width / dpr;
@@ -2215,6 +2229,7 @@ export default function ReplayClient({ userId }) {
         }
 
       } else if (d.type === "text") {
+        if (textEditorRef.current && textEditorRef.current.editingId === d.id) continue;
         const p = toXY(d.p1);
         if (p.x == null || p.y == null) continue;
         ctx.fillStyle = style.color || GOLD_LIGHT;
@@ -2523,7 +2538,20 @@ export default function ReplayClient({ userId }) {
         case "text": {
           const p = logicalPriceToXY(d.p1);
           if (p.x == null) return Infinity;
-          return Math.hypot(x - p.x, y - p.y);
+          const size = (d.style && d.style.size) || 13;
+          const measureCtx = overlayCanvasRef.current?.getContext("2d");
+          let textW = 60;
+          if (measureCtx) {
+            measureCtx.save();
+            measureCtx.font = `${size}px sans-serif`;
+            textW = measureCtx.measureText(d.text || "").width;
+            measureCtx.restore();
+          }
+          const x0 = p.x + 5, x1e = x0 + textW, y1e = p.y - 5, y0 = y1e - size;
+          if (x >= x0 - 4 && x <= x1e + 4 && y >= y0 - 4 && y <= y1e + 4) return 0;
+          const dx = x < x0 ? x0 - x : x > x1e ? x - x1e : 0;
+          const dy = y < y0 ? y0 - y : y > y1e ? y - y1e : 0;
+          return Math.hypot(dx, dy);
         }
         default:
           return Infinity;
@@ -2766,6 +2794,43 @@ export default function ReplayClient({ userId }) {
     }
     setTextPopoverOpen(false);
   }
+  /* تثبيت محرر النص المضمّن: نص فاضي (بعد trim) بيلغي العملية بالكامل (رسمة
+     جديدة ما بتنخزّن أصلاً، ورسمة موجودة عم نعدّلها بتنحذف - بالظبط زي
+     تريدنغ فيو: مسح كل النص من رسمة نص = حذفها). غير هيك، منحفظ التعديل
+     كخطوة تراجع/إعادة وحدة سواء كانت رسمة جديدة أو تعديل قائمة. */
+  function commitTextEditor() {
+    const ed = textEditorRef.current;
+    if (!ed) return;
+    const value = (ed.value || "").trim();
+    if (ed.editingId != null) {
+      if (!value) {
+        pushHistory();
+        drawingsRef.current = drawingsRef.current.filter((d) => d.id !== ed.editingId);
+        clearSelection();
+      } else {
+        const idx = drawingsRef.current.findIndex((d) => d.id === ed.editingId);
+        if (idx !== -1 && drawingsRef.current[idx].text !== value) {
+          pushHistory();
+          drawingsRef.current[idx] = { ...drawingsRef.current[idx], text: value };
+        }
+      }
+    } else if (value) {
+      pushHistory();
+      const newId = Date.now();
+      drawingsRef.current.push({
+        id: newId, type: "text",
+        p1: ptFromLogical(ed.logical, ed.price),
+        text: value, style: styleForNewDrawing("text"),
+      });
+      selectDrawing(newId);
+    }
+    setTextEditor(null);
+    scheduleDraw();
+  }
+  function cancelTextEditor() {
+    setTextEditor(null);
+    scheduleDraw();
+  }
   /* بتحسب مكان الشريط العائم *مرة وحدة بس* (أول ظهور له)، وبعدها بيضل بمكانه
      بغض النظر عن تغيير الرسمة المختارة أو الزوم/البان - تماماً متل تريدنغ فيو:
      شريط عائم مستقل بيتحرك بس لما المستخدم نفسه يسحبه (شوفي onToolbarDragStart) */
@@ -2878,6 +2943,49 @@ export default function ReplayClient({ userId }) {
     chartRef.current?.priceScale("right").applyOptions({ autoScale: true });
   }
 
+  /* ===================== أداة الزوم (شبيهة بتريدنغ فيو) =====================
+     منطق موحّد لكل أزرار/شريط التحكم بالزوم: بيكبّر/يصغّر حول *مركز* المدى
+     المرئي الحالي (مش حول حافة معيّنة)، بنفس فلسفة onOverlayWheel فوق. الحد
+     الأدنى لعرض المدى (2 شمعة) بيمنع الزوم اللانهائي جوّا، وminBarSpacing
+     0.05 المضبوطة بإعدادات الشارت هي يلي بتسمح بزوم-أوت واسع جداً كمان. */
+  function zoomChartBy(factor) {
+    const ts = chartRef.current?.timeScale();
+    if (!ts) return;
+    const vr = ts.getVisibleLogicalRange();
+    if (!vr) return;
+    const center = (vr.from + vr.to) / 2;
+    const newFrom = center - (center - vr.from) * factor;
+    const newTo = center + (vr.to - center) * factor;
+    if (newTo - newFrom < 2) return;
+    ts.setVisibleLogicalRange({ from: newFrom, to: newTo });
+  }
+  function handleZoomIn() { zoomChartBy(1 / 1.25); }
+  function handleZoomOut() { zoomChartBy(1.25); }
+  /* شريط الزوم (Slider): value من 0 (أبعد زوم-أوت ممكن) لـ 100 (أقرب زوم-إن)،
+     بيتحوّل لعدد شموع مرئية بمقياس لوغاريتمي (زي تريدنغ فيو تماماً - إحساس
+     الزوم لازم يكون متساوي بكل درجة، مش خطي، وإلا نص الشريط بيصير عديم الفايدة) */
+  const ZOOM_MIN_BARS = 6;       // أقصى تكبير: 6 شموع بس ظاهرة
+  const ZOOM_MAX_BARS = 4000;    // أقصى تصغير: 4000 شمعة بمدى واحد
+  function handleZoomSlider(value) {
+    const ts = chartRef.current?.timeScale();
+    if (!ts) return;
+    const vr = ts.getVisibleLogicalRange();
+    const center = vr ? (vr.from + vr.to) / 2 : (visibleCandlesRef.current.length || 1) - 1;
+    const t = Math.min(100, Math.max(0, value)) / 100;
+    // t=1 (يمين الشريط) -> أقرب زوم (أقل شموع)، t=0 (يسار الشريط) -> أبعد زوم (أكتر شموع)
+    const logMin = Math.log(ZOOM_MIN_BARS), logMax = Math.log(ZOOM_MAX_BARS);
+    const bars = Math.exp(logMax - t * (logMax - logMin));
+    ts.setVisibleLogicalRange({ from: center - bars / 2, to: center + bars / 2 });
+  }
+  function currentZoomSliderValue() {
+    const ts = chartRef.current?.timeScale();
+    const vr = ts?.getVisibleLogicalRange();
+    const bars = vr ? Math.max(ZOOM_MIN_BARS, vr.to - vr.from) : 100;
+    const logMin = Math.log(ZOOM_MIN_BARS), logMax = Math.log(ZOOM_MAX_BARS);
+    const t = (logMax - Math.log(Math.min(ZOOM_MAX_BARS, bars))) / (logMax - logMin);
+    return Math.round(Math.min(100, Math.max(0, t * 100)));
+  }
+
   const assetInfo = getAssetByValue(assetValue);
   const supported = randomChart || !!assetInfo?.yahoo;
 
@@ -2926,10 +3034,10 @@ export default function ReplayClient({ userId }) {
       setContextMenu(null);
       return;
     }
-    const { price } = getLogicalPriceGlobal(clientX, clientY);
+    const { price, logical } = getLogicalPriceGlobal(clientX, clientY);
     const x = clientX - areaRect.left;
     const y = clientY - areaRect.top;
-    setContextMenu({ x, y, price: price != null ? price : null });
+    setContextMenu({ x, y, price: price != null ? price : null, logical: logical != null ? logical : null });
   }
   // القائمة لازم تقفل تلقائياً عند تغيير الأداة المفعّلة أو الفريم الحالي
   useEffect(() => { closeTransientMenus(); }, [activeTool]);
@@ -2937,7 +3045,7 @@ export default function ReplayClient({ userId }) {
   // تغيير الرمز (الأصل) بيسكّر القوائم المؤقتة المفتوحة كمان
   useEffect(() => { closeTransientMenus(); }, [assetValue]);
 
-  function openQuickTrade(direction, priceOverride) {
+  function openQuickTrade(direction, priceOverride, logicalOverride) {
     if (!userId) {
       setTradeToast("سجّلي دخول أول عشان تقدري تسجّلي صفقات بالباك تيست");
       return;
@@ -2954,8 +3062,15 @@ export default function ReplayClient({ userId }) {
     const dist = price * 0.003; // مسافة افتراضية 0.3% تبدأ فيها الخطوط، وبعدين تسحبيها لمكان الهدف/وقف الخسارة الصح
     const tp = direction === "buy" ? price + dist : price - dist;
     const sl = direction === "buy" ? price - dist : price + dist;
-    const vr = chartRef.current?.timeScale().getVisibleLogicalRange();
-    const logical = vr ? vr.to - 2 : (visibleCandlesRef.current.length || 1) - 1;
+    // الموضع الأفقي (logical) للصفقة الجديدة: لازم يكون دايماً إما بالضبط مكان
+    // الكليك (لو جاي من قائمة الكليك اليمين "شراء/بيع فوري هون" - logicalOverride)
+    // أو بالضبط عمود آخر شمعة مكشوفة حالياً (السعر الحالي - visibleCandlesRef).
+    // *ممنوع* الاعتماد على حافة المدى المرئي (getVisibleLogicalRange().to) لأنها
+    // بتتضمن فراغ فاضي بعد آخر شمعة حقيقية (auto right-offset/margin بمكتبة
+    // الشارت)، فكانت الصفقة أحياناً بتنرسم بهاد الفراغ - بعيدة بصرياً عن آخر
+    // شمعة/السعر الحالي بدل ما تكون ملزوقة فيه تماماً.
+    const lastRevealedLogical = (visibleCandlesRef.current.length || 1) - 1;
+    const logical = logicalOverride != null ? logicalOverride : lastRevealedLogical;
     // وقت الدخول الحقيقي (timestamp) محسوب من نفس نقطة الـ logical فوق - هاد
     // هو "المرجع الحقيقي" لبداية الصفقة، وبيضل ثابت حتى لو تغيّر الفريم بعدين
     // (تظليل الصفقة وتقييمها التاريخي بيعتمدو عليه، مش على الـ logical نفسه).
@@ -3338,7 +3453,7 @@ export default function ReplayClient({ userId }) {
           secondsVisible: false,
           rightOffset: 6,
           barSpacing: 7,
-          minBarSpacing: 1.5,
+          minBarSpacing: 0.05,
         },
         localization: {
           timeFormatter: formatCrosshairTime,
@@ -3476,16 +3591,12 @@ export default function ReplayClient({ userId }) {
         if (tool === "cursor") return; // بوضع المؤشر السحب بيصير من onContainerMouseDownCapture تحت
         // بدء الرسم (أي نقرة بأي أداة غير المؤشر) بيسكّر كل قائمة/نافذة مؤقتة مفتوحة
         closeTransientMenus();
-        const { logical, price, y } = getLogicalPrice(e.clientX, e.clientY);
+        const { logical, price, x, y } = getLogicalPrice(e.clientX, e.clientY);
         if (logical == null || price == null) return;
         const snapped = snapPrice(logical, price, y);
 
         if (tool === "text") {
-          const content = window.prompt("اكتبي النص:");
-          if (content) {
-            pushHistory();
-            drawingsRef.current.push({ id: Date.now(), type: "text", p1: ptFromLogical(logical, snapped), text: content, style: styleForNewDrawing("text") });
-          }
+          setTextEditor({ x, y, logical, price: snapped, editingId: null, value: "" });
           setActiveTool("cursor");
           scheduleDraw();
           return;
@@ -3571,6 +3682,15 @@ export default function ReplayClient({ userId }) {
             const hit = findHandleAt(x, y) || (findDrawingAt(x, y) ? { key: "body" } : null);
             chartContainerRef.current.style.cursor = hit ? "move" : "default";
           }
+          // منجدول رسمة overlay كمان مع أي حركة فأرة عادية (مش بس مع حدث تغيير
+          // المدى المرئي تبع المكتبة) - أثناء سحب/بان الشارت الأصلي بالماوس
+          // (الزر الشمال مضغوط، بدون سحب رسمة)، هاد بيضمن إن خطوط
+          // الرسومات/الصفقات تتحرك بنفس سلاسة ولحظة تحرك الشموع تماماً، بدل
+          // ما تنحدّث بس عند "استقرار" حدث المكتبة (يلي ممكن يجي بمعدل أبطأ
+          // من حركة الفأرة الفعلية أثناء سحب سريع، فيبين وكأن الرسومات
+          // "بتقفز" لمكانها الصح بعد كل شوي). scheduleDraw أصلاً مجدولة عبر
+          // requestAnimationFrame فما في أي كلفة أداء إضافية من هالنداء الزائد.
+          scheduleDraw();
           return;
         }
         const activePath = (activeToolRef.current === "path" || activeToolRef.current === "wave" || activeToolRef.current === "fibext" || activeToolRef.current === "triangle") && pathPointsRef.current.length;
@@ -3711,7 +3831,15 @@ export default function ReplayClient({ userId }) {
         const { x, y } = getLogicalPrice(e.clientX, e.clientY);
         if (x == null || y == null) return;
         const hit = findDrawingAt(x, y);
-        if (hit && !hit.tradeTag) openProperties(hit);
+        if (!hit || hit.tradeTag) return;
+        if (hit.type === "text") {
+          const p = logicalPriceToXY(hit.p1);
+          if (p.x == null || p.y == null) return;
+          setTextEditor({ x: p.x, y: p.y, logical: ptToLogical(hit.p1), price: hit.p1.price, editingId: hit.id, value: hit.text || "" });
+          scheduleDraw();
+          return;
+        }
+        openProperties(hit);
       }
       /* كليك يمين عالشارت: قائمة سياق (نسخ السعر، شراء/بيع فوري، إعدادات الألوان، إلخ) */
       function onContextMenu(e) {
@@ -5044,7 +5172,14 @@ export default function ReplayClient({ userId }) {
     const idx = cutIndexForLogical(logical);
     const candle = allCandles[idx];
     if (!candle) { setCutMode(false); return; }
-    finalizeCut(candle, candle, idx);
+    // مهم: قص بكليك واحد بيحدّد بس "منين تبلّش" - مش "توقفي عند نفس الشمعة".
+    // كنا عم نبعت نفس الشمعة كـ from و to، فـ cutRegionEndIndex() كانت بترجع
+    // بالضبط نفس revealCount اللحظة يلي بيبلّش فيها التمرين - فزر "تشغيل" و"الشمعة
+    // التالية" ما كانوا قادرين يتقدّموا ولا شمعة وحدة (السقف = الموقع الحالي
+    // بالضبط). لازم "النهاية" تكون آخر شمعة محمّلة (بدون سقف فعلي)، مش نفس
+    // شمعة البداية.
+    const lastCandle = allCandles[allCandles.length - 1];
+    finalizeCut(candle, lastCandle, idx);
   }
   function applyCutRegion() {
     const region = cutRegionRef.current;
@@ -6256,9 +6391,58 @@ export default function ReplayClient({ userId }) {
 
   /* قائمة الكليك يمين عالشارت (ستايل تريدنغ فيو): شراء/بيع فوري بالسعر يلي ضغطتي عليه،
      نسخ السعر، إعادة تعيين الشارت، إعدادات الألوان، حذف الرسومات */
+  /* محرر النص المضمّن (نفس تجربة تريدنغ فيو بالظبط): input شفاف موضوع بدقة
+     فوق مكان الكليك مباشرة على الشارت، بفوكس تلقائي فوري - تقدري تكتبي حرفياً
+     من أول لحظة بدون أي نافذة منبثقة (prompt) أو خطوة إضافية. Enter أو الخروج
+     منه (blur) بيثبّت النص، Escape بيلغي العملية بالكامل. */
+  function renderInlineTextEditor() {
+    if (!textEditor) return null;
+    const size = 13;
+    return (
+      <input
+        key={textEditor.editingId || "new"}
+        autoFocus
+        value={textEditor.value}
+        onChange={(e) => setTextEditor((t) => (t ? { ...t, value: e.target.value } : t))}
+        onFocus={(e) => {
+          // نحطّ المؤشر (caret) بآخر النص تلقائياً وقت الفتح - أسهل إكمال كتابة
+          const v = e.target.value;
+          e.target.setSelectionRange(v.length, v.length);
+        }}
+        onBlur={commitTextEditor}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); commitTextEditor(); }
+          else if (e.key === "Escape") { e.preventDefault(); cancelTextEditor(); }
+          e.stopPropagation();
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        placeholder="اكتبي هون..."
+        style={{
+          position: "absolute",
+          left: textEditor.x + 5,
+          top: textEditor.y - 5 - size - 6,
+          zIndex: 25,
+          minWidth: 90,
+          background: "#161616ee",
+          border: `1.5px solid ${GOLD_LIGHT}`,
+          borderRadius: 4,
+          color: (textEditor.editingId != null
+            ? drawingsRef.current.find((d) => d.id === textEditor.editingId)?.style?.color
+            : styleForNewDrawing("text").color) || GOLD_LIGHT,
+          fontSize: size,
+          fontFamily: "sans-serif",
+          padding: "3px 6px",
+          outline: "none",
+        }}
+      />
+    );
+  }
+
   function renderContextMenu() {
     if (!contextMenu) return null;
     const price = contextMenu.price;
+    const clickedLogical = contextMenu.logical;
     const item = (label, onClick, extra) => (
       <div
         onClick={() => { onClick(); setContextMenu(null); }}
@@ -6284,8 +6468,8 @@ export default function ReplayClient({ userId }) {
       >
         {price != null && (
           <>
-            {item("🟢 شراء فوري هون", () => openQuickTrade("buy", price), price.toFixed(2))}
-            {item("🔴 بيع فوري هون", () => openQuickTrade("sell", price), price.toFixed(2))}
+            {item("🟢 شراء فوري هون", () => openQuickTrade("buy", price, clickedLogical), price.toFixed(2))}
+            {item("🔴 بيع فوري هون", () => openQuickTrade("sell", price, clickedLogical), price.toFixed(2))}
             {item("نسخ السعر", () => navigator.clipboard?.writeText(price.toFixed(2)))}
             {sep}
           </>
@@ -7132,6 +7316,53 @@ export default function ReplayClient({ userId }) {
     );
   }
 
+  /* أداة الزوم العائمة (شبيهة بتريدنغ فيو): زر تصغير + شريط انزلاق + زر تكبير،
+     ثابتة بأسفل يسار الشارت فوق محور الوقت. الشريط بيتحدّث بشكل تصاعدي/تنازلي
+     تلقائياً مع أي بان/زوم عادي (بالماوس أو العجلة) عن طريق drawOverlay فوق
+     (zoomSliderRef) - مش بس لما يُسحب هو نفسه. */
+  function renderZoomControl() {
+    return (
+      <div
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "absolute", bottom: 8, left: 10, zIndex: 8,
+          display: "flex", alignItems: "center", gap: 6,
+          background: "rgba(13,13,10,0.72)", backdropFilter: "blur(2px)",
+          border: `1px solid ${GOLD}22`, borderRadius: 8,
+          padding: "0.3rem 0.5rem",
+        }}
+        title="مستوى الزوم"
+      >
+        <button
+          type="button"
+          onClick={handleZoomOut}
+          style={{ ...paneCornerBtnStyle, fontSize: 15, width: 18, textAlign: "center" }}
+          title="تصغير (Zoom Out)"
+        >
+          −
+        </button>
+        <input
+          ref={zoomSliderRef}
+          type="range"
+          min={0}
+          max={100}
+          defaultValue={currentZoomSliderValue()}
+          onChange={(e) => handleZoomSlider(Number(e.target.value))}
+          style={{ width: 90, accentColor: GOLD_LIGHT, cursor: "pointer" }}
+        />
+        <button
+          type="button"
+          onClick={handleZoomIn}
+          style={{ ...paneCornerBtnStyle, fontSize: 15, width: 18, textAlign: "center" }}
+          title="تكبير (Zoom In)"
+        >
+          +
+        </button>
+      </div>
+    );
+  }
+
   /* لوحة شراء/بيع فوري عائمة فوق الشارت (نفس ستايل تريدنغ فيو تماماً): صندوقين
      صغار جنب بعض (بيع أحمر يمين... بالـRTL بيطلع عالشمال، شراء أزرق) والفرق
      (سبريد) بالنص. هاي بديل أزرار "شراء فوري / بيع فوري" الكبيرة يلي كانت
@@ -7230,6 +7461,7 @@ export default function ReplayClient({ userId }) {
             >
               <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
                 {!loading && allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
+                {!loading && allCandles.length > 0 && renderZoomControl()}
                 {!loading && allCandles.length > 0 && !editDraft && renderFavoritesBar()}
                 {!loading && allCandles.length > 0 && !editDraft && renderQuickTradeWidget()}
                 {!loading && allCandles.length > 0 && renderPropertiesDialog()}
@@ -7238,6 +7470,7 @@ export default function ReplayClient({ userId }) {
                 {!loading && renderOpenPositionsPanel()}
                 {!loading && renderTradeToast()}
                 {!loading && renderContextMenu()}
+                {renderInlineTextEditor()}
                 {compareOpen && (
                   <div style={paneCornerBadgeStyle("right")}>
                     <button onClick={() => toggleMaximizePane("main")} style={paneCornerBtnStyle} title={maximizedPane === "main" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة (أو دبل-كليك على القاسم)"}>
@@ -7252,13 +7485,14 @@ export default function ReplayClient({ userId }) {
                 {practicePanelOpen && renderPracticePanel()}
                 <div
                   ref={chartContainerRef}
-                  style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool !== "cursor" ? "crosshair" : "default" }}
+                  style={{ width: "100%", height: "100%", cursor: cutMode ? "crosshair" : activeTool === "text" ? "text" : activeTool !== "cursor" ? "crosshair" : "default" }}
                 />
                 <canvas
                   ref={overlayCanvasRef}
                   style={{
                     position: "absolute", inset: 0, zIndex: 3,
                     pointerEvents: (activeTool === "cursor" && !cutMode) ? "none" : "auto",
+                    cursor: cutMode ? "crosshair" : activeTool === "text" ? "text" : activeTool !== "cursor" ? "crosshair" : "default",
                   }}
                 />
                 <div
