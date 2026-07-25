@@ -4519,6 +4519,18 @@ export default function ReplayClient({ userId }) {
         } else {
           chartRef.current?.timeScale().applyOptions({ barSpacing: 7 });
         }
+        /* فريم شاشة احتياطي إضافي (double rAF) بس هون - مسار setData/تبديل
+           فريم كامل، مش مسار trainingStep/liveTick العادي. سبب وجوده: مكتبة
+           lightweight-charts مش دايماً بتخلّص تعيد بناء مساحة الإحداثيات
+           الداخلية (اللي عليها بيعتمد ts.logicalToCoordinate) بنفس فريم
+           الشاشة يلي فيه setData()+setVisibleLogicalRange() - أحياناً
+           محتاجة فريم إضافي لحالها لتستقر. الـ scheduleDraw() العادي تحت
+           (نهاية هاد الـ effect) بيرسم بأول rAF جاي، يلي ممكن يسبق استقرار
+           المكتبة فترجع logicalToCoordinate() قيمة 0 (مش null) لكل نقاط
+           الرسومات (مثلاً المثلث)، فترتسم كلها فوق بعض بمكان غلط. هاد الـ
+           rAF المتداخل (فريمين) بيضمن نعيد رسم الأوفرلاي *بعد* ما تستقر
+           المكتبة فعلياً، فوق الرسمة العادية يلي أصلاً رح تصير. */
+        requestAnimationFrame(() => requestAnimationFrame(() => scheduleDraw()));
       }
     } catch (err) {
       // بيانات فاسدة وصلت رغم التصفية (مصدر خارجي غير متوقع) - نعرض رسالة بدل ما نكسر الصفحة
