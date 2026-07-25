@@ -1491,6 +1491,27 @@ export default function ReplayClient({ userId }) {
   function ptFromLogical(logical, price) {
     return { time: logicalToTimeForCandles(logical, visibleCandlesRef.current), price };
   }
+
+  // Drawings created by older builds can still contain a raw logical index.
+  // It happens to look correct on the timeframe where it was made, but that
+  // index identifies a different candle after a timeframe switch. Convert it
+  // once while the old candle set is still available, then remove `logical` so
+  // every later render is anchored by market time only.
+  function migrateLegacyDrawingCoordinates(candles) {
+    if (!candles?.length) return;
+    const toTimePoint = (point) => {
+      if (!point || Number.isFinite(point.time) || !Number.isFinite(point.logical)) return point;
+      const time = logicalToTimeForCandles(point.logical, candles);
+      if (!Number.isFinite(time)) return point;
+      const { logical, ...rest } = point;
+      return { ...rest, time };
+    };
+    for (const drawing of drawingsRef.current) {
+      if (drawing.p1) drawing.p1 = toTimePoint(drawing.p1);
+      if (drawing.p2) drawing.p2 = toTimePoint(drawing.p2);
+      if (Array.isArray(drawing.points)) drawing.points = drawing.points.map(toTimePoint);
+    }
+  }
   function ptShiftLogical(p, dLogical) {
     // إزاحة نقطة بعدد "شمعات" (drag/duplicate) - لازم تصير بفضاء الـ logical
     // (نفس المنطق يلي بيحدد شكل السحب بالبكسل) وبعدين ترجع تنخزّن كـ time.
@@ -4318,6 +4339,11 @@ export default function ReplayClient({ userId }) {
     // صح تلقائياً بالفريم الجديد وقت الرندر (بدون أي معالجة إضافية هون، شوفي
     // ptToLogical فوق بالكومبوننت).
     const prevCtx = lastLoadContextRef.current;
+    // Migrate any pre-timestamp drawings before this request replaces the old
+    // timeframe's candle list. This preserves the point's market time rather
+    // than reusing its old bar number on the new timeframe.
+    const currentVisibleCandles = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
+    migrateLegacyDrawingCoordinates(currentVisibleCandles);
     // انتقال لوضع "تدريب" بسبب قص حديث (finalizeCut عيّنت replayStateRef
     // ومباشرة بعدها setMode("training")) ما لازم يتعامل معاملة "سوق مختلف
     // كلياً" ويمسح نقطة القص - هاد بالضبط كان سبب اختيار نقطة بداية عشوائية
