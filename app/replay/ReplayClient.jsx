@@ -4807,7 +4807,10 @@ export default function ReplayClient({ userId }) {
 
   useEffect(() => {
     if (mode !== "training" || randomChart || !allCandles.length) return;
-    if (appliedCutRegionRef.current) return; // حد قص متعمّد من المستخدمة - ما منمدّه تلقائياً
+    // حد قص متعمّد من المستخدمة (سحب منطقة كاملة) - ما منمدّه تلقائياً. أما
+    // القص المفتوح (كليك واحد، openEnded) فما فيه سقف حقيقي أصلاً، فلازم
+    // يستمر يمدّد عادي زي ما لو ما كان في قص أصلاً.
+    if (appliedCutRegionRef.current && !appliedCutRegionRef.current.openEnded) return;
     if (allCandles.length - revealCount > EXTEND_LOOKAHEAD) return;
     maybeExtendCandles();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5187,7 +5190,10 @@ export default function ReplayClient({ userId }) {
      من الوقت الحقيقي toTime مباشرة، فتضل صحيحة تلقائياً حتى لو تغيّر الفريم. */
   function cutRegionEndIndex() {
     const ap = appliedCutRegionRef.current;
-    if (!ap || !allCandles.length) return allCandles.length;
+    // openEnded (قص بكليك واحد): ما في سقف حقيقي - نرجّع دايماً آخر شمعة
+    // محمّلة *لحد الآن*، فالاستعراض يكمل يلحق أي شموع جديدة توصل عبر
+    // maybeExtendCandles بدل ما يتجمّد عند دفعة قديمة.
+    if (!ap || ap.openEnded || !allCandles.length) return allCandles.length;
     let idx = allCandles.findIndex((c) => c.time >= ap.toTime);
     if (idx === -1) idx = allCandles.length - 1;
     return idx + 1;
@@ -5390,18 +5396,24 @@ export default function ReplayClient({ userId }) {
   /* الجزء المشترك بين "تطبيق منطقة مسحوبة" و"قص فوري بكليك واحد" تحت -
      منحوّل شمعة البداية/النهاية لوقت حقيقي ومنثبّتها (بدون حذف ولا شمعة من
      allCandles، بس منعيّن من وين يبلّش الاستعراض). */
-  function finalizeCut(fromCandle, toCandle, fromIdx) {
+  function finalizeCut(fromCandle, toCandle, fromIdx, openEnded = false) {
     stopLivePoll();
     setMode("training");
     setIsPlaying(false);
     replayStateRef.current = { isActive: true, anchorTimestamp: fromCandle.time, currentTimestamp: fromCandle.time, originalTimeframe: intervalRef.current };
     setRevealCount(fromIdx + 1);
-    setAppliedCutRegion({ fromTime: fromCandle.time, toTime: toCandle.time });
+    // openEnded=true (قص بكليك واحد): ما في نهاية مقصودة فعلياً - toTime هون
+    // بس "آخر شمعة كانت محمّلة وقت الكليك"، مش سقف حقيقي. لازم نعلّمها صراحة
+    // عشان cutRegionEndIndex() ومنطق التمديد التلقائي (maybeExtendCandles)
+    // ما يوقفوا الجلب عندها ظناً إنها حد مقصود من المستخدمة (كانت هاي بالضبط
+    // مشكلة "الشموع بتقف" يلي أبلغت عنها المستخدمة رغم إنها بس ضغطت قص مرة
+    // وحدة بدون تحديد من-إلى).
+    setAppliedCutRegion({ fromTime: fromCandle.time, toTime: toCandle.time, openEnded });
     if (cutAutoSave) {
       try {
         localStorage.setItem(
           `qta_cut_region_${assetValue}_${interval}`,
-          JSON.stringify({ fromTime: fromCandle.time, toTime: toCandle.time })
+          JSON.stringify({ fromTime: fromCandle.time, toTime: toCandle.time, openEnded })
         );
       } catch {}
     }
@@ -5410,20 +5422,17 @@ export default function ReplayClient({ userId }) {
   }
   /* قص فوري بكليك واحد (بدون سحب منطقة ولا حواف ولا زر "تطبيق" منفصل) -
      الشمعة المُختارة هي بالضبط نفسها يلي كانت ظاهرة بتلميح التاريخ فوق خط
-     المعاينة (نفس Math.round)، فالتاريخ يلي بتشوفيه هو نفسه يلي رح ينقص عليه. */
+     المعاينة (نفس Math.round)، فالتاريخ يلي بتشوفيه هو نفسه يلي رح ينقص عليه.
+     هاد النوع "مفتوح النهاية" (openEnded) بطبيعته - المستخدمة حددت بس "منين
+     تبلّش"، فالمفروض الاستعراض يكمل عادي لآخر شمعة حقيقية متوفرة من المصدر
+     (ويستمر بجلب المزيد تلقائياً كل ما اقتربنا من الطرف)، مش يقف عند أي حد. */
   function commitCutAt(logical) {
     if (!allCandles.length) { setCutMode(false); return; }
     const idx = cutIndexForLogical(logical);
     const candle = allCandles[idx];
     if (!candle) { setCutMode(false); return; }
-    // مهم: قص بكليك واحد بيحدّد بس "منين تبلّش" - مش "توقفي عند نفس الشمعة".
-    // كنا عم نبعت نفس الشمعة كـ from و to، فـ cutRegionEndIndex() كانت بترجع
-    // بالضبط نفس revealCount اللحظة يلي بيبلّش فيها التمرين - فزر "تشغيل" و"الشمعة
-    // التالية" ما كانوا قادرين يتقدّموا ولا شمعة وحدة (السقف = الموقع الحالي
-    // بالضبط). لازم "النهاية" تكون آخر شمعة محمّلة (بدون سقف فعلي)، مش نفس
-    // شمعة البداية.
     const lastCandle = allCandles[allCandles.length - 1];
-    finalizeCut(candle, lastCandle, idx);
+    finalizeCut(candle, lastCandle, idx, /* openEnded */ true);
   }
   function applyCutRegion() {
     const region = cutRegionRef.current;
@@ -5433,7 +5442,7 @@ export default function ReplayClient({ userId }) {
     const fromCandle = allCandles[fromIdx];
     const toCandle = allCandles[toIdx] || fromCandle;
     if (!fromCandle) { setCutMode(false); return; }
-    finalizeCut(fromCandle, toCandle, fromIdx);
+    finalizeCut(fromCandle, toCandle, fromIdx, /* openEnded */ false);
   }
 
   /* إلغاء القص: يسكّر وضع التعديل ويرمي المنطقة "قيد التعديل" (غير المطبّقة) -
@@ -5497,7 +5506,9 @@ export default function ReplayClient({ userId }) {
   // (2) وصلنا لآخر شمعة محمّلة *وتأكدنا* (dataExhausted) إنه ما في بيانات
   // أحدث من المصدر. لو بس وصلنا للطرف وطلب التمديد بالخلفية لسا شغال (شوفي
   // maybeExtendCandles فوق)، ما منعتبرها "خلصت" - الزر بضل شغال طبيعي.
-  const effectiveEndCap = appliedCutRegion ? cutRegionEndIndex() : (dataExhausted ? allCandles.length : Infinity);
+  const effectiveEndCap = (appliedCutRegion && !appliedCutRegion.openEnded)
+    ? cutRegionEndIndex()
+    : (dataExhausted ? allCandles.length : Infinity);
   const finished = mode === "training" && allCandles.length > 0 && revealCount >= effectiveEndCap;
 
   /* شريط علوي واحد مضغوط (ستايل تريدنغ فيو): كل شي بصف واحد - الأصل/الفريم/السرعة
