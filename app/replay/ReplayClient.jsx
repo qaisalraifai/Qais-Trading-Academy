@@ -8,6 +8,25 @@ import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } f
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
 const GREEN = "#02C076";
+
+/* بحث ثنائي (binary search) O(log n) لإيجاد index شمعة بوقت مطابق تماماً
+   (الشموع مرتبة زمنياً دايماً). بنستخدمها بدل list.findIndex(x => x.time
+   === t) اللي كانت O(n) - فرق بسيط لمصفوفة صغيرة، بس لما صار عدد الشموع
+   يوصل لآلاف (بعد ما رفعنا العمق التاريخي لـDukascopy)، وهاي الدالة
+   بتنعاد استدعاؤها على *كل حركة ماوس* فوق الشارت (subscribeCrosshairMove
+   بينادي أضعاف بالثانية أثناء السحب/التحريك)، صار الفرق واضح جداً كـ"لاغ"
+   ملموس أثناء التحريك. */
+function findCandleIndexByTime(candles, time) {
+  if (!candles || !candles.length) return -1;
+  let lo = 0, hi = candles.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const t = candles[mid].time;
+    if (t === time) return mid;
+    if (t < time) lo = mid + 1; else hi = mid - 1;
+  }
+  return -1;
+}
 const RED = "#F6465D";
 const DEFAULT_COMPARE_HEIGHT = 200; // ارتفاع لوحة المقارنة الافتراضي بالبكسل (قابل للسحب من المستخدم)
 // عرض ثابت (بالبكسل) لعمود الأسعار باليمين - لازم يكون نفس القيمة بالشارت الرئيسي
@@ -1843,8 +1862,20 @@ export default function ReplayClient({ userId }) {
         }
       } else if (!cm && applied && showRegion) {
         const vc = visibleCandlesRef.current || [];
-        const fromIdx = vc.findIndex((c) => c.time >= applied.fromTime);
-        let toIdx = vc.findIndex((c) => c.time >= applied.toTime);
+        // نفس منطق timeToLogicalForCandles تقريباً بس بحد صحيح (index) بدل
+        // logical كسري: أول index زمنه >= الوقت المطلوب، عبر بحث ثنائي O(log n)
+        // بدل findIndex الخطي O(n) (كانت هاي بتنعاد على كل حركة ماوس عبر
+        // scheduleDraw <- subscribeCrosshairMove، فمع آلاف الشموع صارت تسبب لاغ ملموس).
+        const firstIndexAtOrAfter = (arr, t) => {
+          let lo = 0, hi = arr.length; // hi = arr.length يعني "ما لقيناش" (زي findIndex بترجع -1)
+          while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (arr[mid].time >= t) hi = mid; else lo = mid + 1;
+          }
+          return lo < arr.length ? lo : -1;
+        };
+        const fromIdx = firstIndexAtOrAfter(vc, applied.fromTime);
+        let toIdx = firstIndexAtOrAfter(vc, applied.toTime);
         if (toIdx === -1) toIdx = vc.length - 1;
         if (fromIdx !== -1) {
           paintRegion(fromIdx, toIdx, { dim: false, fill: false, color: "#5b8dee", lineWidth: 1, dash: [3, 5] });
@@ -4040,7 +4071,7 @@ export default function ReplayClient({ userId }) {
         const list = visibleCandlesRef.current;
         const bar = hoverBar || (list && list[list.length - 1]);
         if (!bar || !ohlcORef.current) return;
-        const idx = hoverBar ? list.findIndex((x) => x.time === bar.time) : list.length - 1;
+        const idx = hoverBar ? findCandleIndexByTime(list, bar.time) : list.length - 1;
         const prevBar = idx > 0 ? list[idx - 1] : null;
         const up = prevBar ? bar.close >= prevBar.open : bar.close >= bar.open;
         const fmt = (v) => (v != null ? v.toFixed(v < 10 ? 4 : 2) : "-");
@@ -4134,7 +4165,7 @@ export default function ReplayClient({ userId }) {
             // هو سبب مشكلة "تزامن الوقت" يلي كانت بتبان بالمقارنة. رقم الموضع
             // (idx) هو نفسه المستخدم لمزامنة السكرول/الزوم (logical range) بين
             // اللوحتين، فمطابقته هون بتضمن نفس العمود بالبكسل تماماً بكل الحالات.
-            let idx = mainList.findIndex((c) => c.time === time);
+            let idx = findCandleIndexByTime(mainList, time);
             let bar = idx !== -1 ? candles[idx] : undefined;
             if (!bar && candles.length) {
               let bestDiff = Infinity;
