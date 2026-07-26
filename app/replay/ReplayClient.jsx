@@ -98,6 +98,11 @@ function rangeDaysFor(intervalValue, hasDukascopy) {
 const SPEEDS = Array.from({ length: 10 }, (_, i) => ({ value: i + 1, label: `${i + 1}x` }));
 
 const CONTEXT_BARS = 60;
+/* لما يبقى أقل من هالعدد من الشموع "المكشوفة القادمة" قبل نهاية البيانات المحمّلة
+   حالياً، منبدأ نجيب الدفعة الجاية بالخلفية (بدون ما نوقف التشغيل) - شوفي
+   maybeExtendCandles تحت. رقم كافي يعطي وقت للطلب يخلص قبل ما نلحقه فعلياً
+   حتى على أعلى سرعة (10 شموع/ثانية). */
+const EXTEND_LOOKAHEAD = 50;
 const MAX_BARS_OPTIONS = [
   { value: 1000, label: "1000 شمعة" },
   { value: 3000, label: "3000 شمعة" },
@@ -1098,6 +1103,10 @@ export default function ReplayClient({ userId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
+  // true بس لما نتأكد فعلاً إنه ما في شموع أحدث متوفرة من المصدر (شوفي
+  // maybeExtendCandles تحت) - عكس noMoreForwardDataRef (نفس المعنى بس ref
+  // غير تفاعلي)، هاي بتحدّث الواجهة (زر Play، رسالة "خلصت البيانات"...) فعلياً.
+  const [dataExhausted, setDataExhausted] = useState(false);
 
   const [countdown, setCountdown] = useState("");
   const [countdownProgress, setCountdownProgress] = useState(0);
@@ -1138,6 +1147,17 @@ export default function ReplayClient({ userId }) {
   const [appliedCutRegion, setAppliedCutRegion] = useState(null); // {fromTime, toTime} | null
   const appliedCutRegionRef = useRef(null);
   useEffect(() => { appliedCutRegionRef.current = appliedCutRegion; }, [appliedCutRegion]);
+
+  /* ===== تمديد الشموع تلقائياً للأمام (بدون إيقاف التشغيل) =====
+     قبل هيك، الـ Play كان بيوقف نهائياً أول ما توصل لآخر شمعة محمّلة أصلاً
+     بالمتصفح - حتى لو في بيانات أحدث فعلياً متوفرة عند المصدر (Dukascopy/
+     Twelve Data/Yahoo)، لأنه ببساطة ما حدا كان بيطلبها. extendingCandlesRef
+     قفل بسيط يمنع طلبين متزامنين، وnoMoreForwardDataRef بيصير true بس لما
+     نتأكد فعلاً إنه ما في شموع أحدث (رجعت فاضية/خطأ) - عشان ما نعيد نفس
+     الطلب الفاشل كل "تِك" بلا فايدة. الاثنين بينصفّرو أول ما تتحمّل بيانات
+     جديدة كلياً (loadData). */
+  const extendingCandlesRef = useRef(false);
+  const noMoreForwardDataRef = useRef(false);
   const cutDragRef = useRef(null); // {mode:"select"|"move"|"edge", edge?, startLogical, origFrom, origTo}
   // إعدادات أداة القص (لوحة الإعدادات بالصورة المرجعية)
   const [cutSettingsOpen, setCutSettingsOpen] = useState(false);
@@ -4581,6 +4601,9 @@ export default function ReplayClient({ userId }) {
     setError("");
     setUsedFuturesApprox(false);
     setIsPlaying(false);
+    extendingCandlesRef.current = false;
+    noMoreForwardDataRef.current = false;
+    setDataExhausted(false);
 
     // نمسح الرسومات/الصفقات بس لما يتغيّر "السوق" فعلياً (الأصل، أو الوضع مباشر/تدريب،
     // أو تفعيل/إلغاء الشارت العشوائي). أما لو تغيّر الفريم بس (أو عدد الشموع الأقصى)
@@ -4741,6 +4764,54 @@ export default function ReplayClient({ userId }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetValue, interval, mode, maxBars, randomChart]);
+
+  /* ===== تمديد الشموع للأمام تلقائياً =====
+     بتنجيب دفعة جديدة من نفس المصدر (بنفس منطق loadData بالضبط، بس بـanchor
+     = وقت آخر شمعة عندنا حالياً) ومنلحقها بـ allCandles الموجودة - بدون
+     ما نلمس revealCount أو الزوم/السكرول الحالي للشارت. لو رجعت الدفعة بدون
+     أي شمعة أحدث فعلياً من يلي عندنا (أو صار خطأ)، منعتبرها "وصلنا فعلاً
+     لآخر بيانات متوفرة الآن" ومنوقف نحاول (noMoreForwardDataRef) لحد ما
+     تتحمّل بيانات جديدة كلياً. */
+  async function maybeExtendCandles() {
+    if (extendingCandlesRef.current || noMoreForwardDataRef.current) return;
+    if (!assetInfo?.yahoo || randomChart) return;
+    const knownCandles = allCandles;
+    const lastCandle = knownCandles[knownCandles.length - 1];
+    if (!lastCandle) return;
+    extendingCandlesRef.current = true;
+    try {
+      const tdInterval = INTERVAL_MAP[interval];
+      const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
+      const dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
+      const res = await fetch(
+        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}&anchor=${lastCandle.time}${tdParam}${dukParam}`
+      );
+      const data = await res.json();
+      if (data.error) { noMoreForwardDataRef.current = true; setDataExhausted(true); return; }
+      const fresh = sanitizeCandles(data.candles || []);
+      const newer = fresh.filter((c) => c.time > lastCandle.time);
+      if (!newer.length) { noMoreForwardDataRef.current = true; setDataExhausted(true); return; }
+      setAllCandles((prev) => {
+        // لو تغيّرت allCandles بالأثناء (بدّلت أصل/فريم وهي الطلب طاير)، نتجاهل
+        // النتيجة القديمة هاي بدل ما نلحقها بسياق مختلف كلياً عن غلط.
+        if (!prev.length || prev[prev.length - 1].time !== lastCandle.time) return prev;
+        return [...prev, ...newer];
+      });
+    } catch {
+      // فشل صامت هون بقصد - رح تلقائياً نعيد المحاولة الجولة الجاية لو
+      // لسا قريبين من النهاية (ما ثبّتنا noMoreForwardDataRef)
+    } finally {
+      extendingCandlesRef.current = false;
+    }
+  }
+
+  useEffect(() => {
+    if (mode !== "training" || randomChart || !allCandles.length) return;
+    if (appliedCutRegionRef.current) return; // حد قص متعمّد من المستخدمة - ما منمدّه تلقائياً
+    if (allCandles.length - revealCount > EXTEND_LOOKAHEAD) return;
+    maybeExtendCandles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealCount, allCandles, mode, randomChart]);
 
   useEffect(() => {
     // تأخير بسيط (350ms) قبل التحميل الفعلي - لو صار كذا تغيير سريع متتالي
@@ -5154,8 +5225,19 @@ export default function ReplayClient({ userId }) {
     const stepMs = Math.max(30, Math.round(1000 / (speed || 1)));
     playTimerRef.current = setInterval(() => {
       setRevealCount((c) => {
-        const limit = Math.min(allCandles.length, cutRegionEndIndex());
-        if (c >= limit) { setIsPlaying(false); return c; }
+        const cutCap = cutRegionEndIndex();
+        const limit = Math.min(allCandles.length, cutCap);
+        if (c >= limit) {
+          // إذا في حد قص مطبّق فعلاً (متعمّد من المستخدمة)، أو تأكدنا إنه ما في
+          // بيانات أحدث أصلاً (noMoreForwardDataRef)، منوقف فعلياً زي قبل.
+          // أما لو بس وصلنا لآخر شمعة "معروفة لحد الآن" وطلب التمديد بالخلفية
+          // (maybeExtendCandles) لسا شغال، منستنى بهدوء بدون ما نطفي التشغيل -
+          // أول ما توصل شموع جديدة، allCandles.length بتزيد وهاد الـ effect
+          // بيعيد التشغيل تلقائياً بحد جديد أعلى.
+          const respectingCutBoundary = cutCap < allCandles.length;
+          if (respectingCutBoundary || noMoreForwardDataRef.current) setIsPlaying(false);
+          return c;
+        }
         return c + 1;
       });
     }, stepMs);
@@ -5411,7 +5493,12 @@ export default function ReplayClient({ userId }) {
     }
   }
 
-  const finished = mode === "training" && allCandles.length > 0 && revealCount >= allCandles.length;
+  // "خلصت فعلاً" بتصير true بحالتين بس: (1) في حد قص مطبّق ووصلناه، أو
+  // (2) وصلنا لآخر شمعة محمّلة *وتأكدنا* (dataExhausted) إنه ما في بيانات
+  // أحدث من المصدر. لو بس وصلنا للطرف وطلب التمديد بالخلفية لسا شغال (شوفي
+  // maybeExtendCandles فوق)، ما منعتبرها "خلصت" - الزر بضل شغال طبيعي.
+  const effectiveEndCap = appliedCutRegion ? cutRegionEndIndex() : (dataExhausted ? allCandles.length : Infinity);
+  const finished = mode === "training" && allCandles.length > 0 && revealCount >= effectiveEndCap;
 
   /* شريط علوي واحد مضغوط (ستايل تريدنغ فيو): كل شي بصف واحد - الأصل/الفريم/السرعة
      يمين، وأزرار الإجراءات (عشوائي/قص/مقارنة/تصدير/إعادة تعيين/شاشة كاملة/إعدادات)
