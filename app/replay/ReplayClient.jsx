@@ -4623,6 +4623,10 @@ export default function ReplayClient({ userId }) {
       // سوق مختلف كلياً = ما في داعي نحافظ على حالة Replay قديمة معه
       replayStateRef.current = { isActive: false, anchorTimestamp: null, currentTimestamp: null, originalTimeframe: null };
       setReplayCutTs(null);
+      // مهم: لازم نصفّر منطقة "القص" القديمة (appliedCutRegion) هون كمان - وإلا
+      // بتضل عالقة كسقف قديم (toTime) بيوقف الـ Play فوراً بجلسة/سوق جديد كلياً
+      // ما إله علاقة فيها أصلاً (كانت هاي بالضبط سبب "الزر يشتغل ويوقف بنفس اللحظة").
+      setAppliedCutRegion(null);
     }
     drawStateRef.current = null;
     forceFullReloadRef.current = true;
