@@ -136,92 +136,17 @@ function formatCrosshairTime(time) {
 
 function sanitizeCandles(list) {
   if (!Array.isArray(list)) return [];
-  // Do not pass malformed OHLC to lightweight-charts.  Some providers can
-  // occasionally return a high/low that does not include the open or close;
-  // that produces a visually broken candle (often mistaken for a cross).
-  const clean = list.reduce((result, c) => {
-    if (!c || !Number.isFinite(c.time)) return result;
-    const open = Number(c.open);
-    const high = Number(c.high);
-    const low = Number(c.low);
-    const close = Number(c.close);
-    if (![open, high, low, close].every(Number.isFinite)) return result;
-
-    result.push({
-      ...c,
-      open,
-      close,
-      high: Math.max(high, open, close),
-      low: Math.min(low, open, close),
-    });
-    return result;
-  }, []);
+  const clean = list.filter(
+    (c) =>
+      c &&
+      Number.isFinite(c.time) &&
+      Number.isFinite(c.open) &&
+      Number.isFinite(c.high) &&
+      Number.isFinite(c.low) &&
+      Number.isFinite(c.close)
+  );
   clean.sort((a, b) => a.time - b.time);
-  const deduped = clean.filter((c, i) => i === 0 || c.time !== clean[i - 1].time);
-  return clampOutlierWicks(deduped);
-}
-
-/* ============================================================================
-   حماية من "تِك فاسد" وحيد بمصدر البيانات (Dukascopy أو يوهو أو Twelve Data -
-   أي مصدر ممكن يصير عنده هيك خطأ نادر بأرشيفه، مش مرتبط بمزوّد معيّن).
-   المثال الحقيقي يلي كشفته المستخدمة: شمعة EUR/USD منتصف يناير 2020 طالعة
-   عندنا لغاية ~1.15 (قفزة ~400-500 نقطة بيوم واحد) بينما TradingView/OANDA
-   لنفس اليوم بيوري السعر متحرك بهدوء بمدى ~30-50 نقطة بس - يعني نقطة بيانات
-   فاسدة (خطأ بالمصدر الخام نفسه)، مش خلل بمنطق بناء الشموع عندنا.
-
-   الفرق بين هاد وبين شمعة دوجي حقيقية (فتح≈إغلاق بفتيل كبير بعد يوم تقلب
-   حقيقي، زي 11 نوفمبر 2024): الدوجي الحقيقي بيكون مداه كبير *نسبةً لمحيطه*
-   (أيام متقلبة حواليه كمان)، أما التِك الفاسد بيكون شاذ *لحاله* وسط محيط هادئ
-   تماماً، وبالأغلب "ما بيتأكد" - يعني السعر بيرجع فوراً لمستواه الطبيعي
-   بالشموع اللي بعده بدل ما تستمر الحركة (لأنه ما في خبر/حدث حقيقي يبررها).
-
-   المنطق: لكل شمعة، منقارن مداها (high-low) بالمدى الوسطي (median) لعدد من
-   الشموع المجاورة (نافذة ±10). لو طلعت أوسع بأضعاف (6x+) من محيطها *و* السعر
-   رجع لمستوى قريب من قبلها خلال كام شمعة (يعني الحركة ما استمرت = دليل قوي
-   إنها تِك فاسد)، منقصّ الفتيل الزائد بس - منحافظ على open/close الأصليين
-   زي ما هم (عادة أوثق من نقطة الفتيل الشاذة الوحيدة) بدل حذف الشمعة بالكامل
-   وعمل فجوة بالتايم لاين. شمعة حقيقية بمدى كبير بس بمحيط متقلب أصلاً (زي
-   الدوجي المذكور) ما بتنلمس إطلاقاً لأنها ما بتعدي حد الـ6x عن محيطها.
-   ============================================================================ */
-const OUTLIER_WINDOW = 10;
-const OUTLIER_RANGE_MULT = 6;
-
-function clampOutlierWicks(candles) {
-  const n = candles.length;
-  if (n < OUTLIER_WINDOW * 2 + 1) return candles;
-
-  const ranges = candles.map((c) => c.high - c.low);
-  const out = candles.map((c) => ({ ...c }));
-
-  for (let i = OUTLIER_WINDOW; i < n - OUTLIER_WINDOW; i++) {
-    const windowRanges = [];
-    for (let j = i - OUTLIER_WINDOW; j <= i + OUTLIER_WINDOW; j++) {
-      if (j !== i) windowRanges.push(ranges[j]);
-    }
-    windowRanges.sort((a, b) => a - b);
-    const median = windowRanges[Math.floor(windowRanges.length / 2)] || 0;
-    if (median <= 0) continue;
-
-    const c = out[i];
-    const range = c.high - c.low;
-    if (range <= median * OUTLIER_RANGE_MULT) continue;
-
-    const before = out[i - 1].close;
-    const afterIdx = Math.min(i + 3, n - 1);
-    const after = out[afterIdx].close;
-    const reverted = Math.abs(after - before) < median * 2;
-    if (!reverted) continue; // حركة استمرت فعلاً بعدها = على الأغلب حقيقية، منسيبها
-
-    const bodyHigh = Math.max(c.open, c.close);
-    const bodyLow = Math.min(c.open, c.close);
-    const cap = median * OUTLIER_RANGE_MULT;
-    out[i] = {
-      ...c,
-      high: Math.min(c.high, bodyHigh + cap),
-      low: Math.max(c.low, bodyLow - cap),
-    };
-  }
-  return out;
+  return clean.filter((c, i) => i === 0 || c.time !== clean[i - 1].time);
 }
 
 /* ===================== تحويل logical <-> timestamp =====================
@@ -3528,9 +3453,7 @@ export default function ReplayClient({ userId }) {
           secondsVisible: false,
           rightOffset: 6,
           barSpacing: 7,
-          // Keep enough horizontal room for the candle body.  At sub-pixel
-          // spacing, even valid candlesticks look like OHLC crosses.
-          minBarSpacing: 2,
+          minBarSpacing: 0.05,
         },
         localization: {
           timeFormatter: formatCrosshairTime,
@@ -3555,8 +3478,7 @@ export default function ReplayClient({ userId }) {
       });
 
       const series = chart.addCandlestickSeries({
-        upColor: savedSettings.up, downColor: savedSettings.down, borderVisible: true,
-        borderUpColor: savedSettings.up, borderDownColor: savedSettings.down,
+        upColor: savedSettings.up, downColor: savedSettings.down, borderVisible: false,
         wickUpColor: savedSettings.up, wickDownColor: savedSettings.down,
         // إخفاء خانة آخر سعر (الصندوق + الخط المتقطع) على محور السعر يمين الشارت
         lastValueVisible: false,
@@ -4925,15 +4847,6 @@ export default function ReplayClient({ userId }) {
       if (activeProvider === "twelvedata" && assetInfo.twelveData) {
         pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo; // باراميتر symbol إجباري بالراوت حتى لو مش رح يُستخدم فعلياً
         tdParam = `&td=${encodeURIComponent(assetInfo.twelveData)}`;
-      } else if (activeProvider === "dukascopy") {
-        // دوكاسكوبي أرشيف تاريخي (getHistoricalRates) مش بث لحظي - ما بيصلح
-        // للتحديث الحي كل بضع ثواني أصلاً (وحتى لو صلح، رمزه مش بصيغة رمز
-        // يوهو زي ما البولينغ متوقّع - كان عم يبعت "eurusd" كـsymbol ليوهو
-        // فيفشل الطلب). فلما يكون التحميل الأساسي نجح بـDukascopy، البولينغ
-        // اللحظي هون برجع يستخدم رمز يوهو سبوت العادي (بدون td/duk) - نفس
-        // السلوك القديم بالضبط قبل ما يصير Dukascopy مصدر افتراضي.
-        pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo;
-        tdParam = "";
       } else {
         // المصدر الفعلي الناجح Yahoo سبوت - نضل عليه بدون أي محاولة td هون
         // عشان ما نخلط مصدرين.
@@ -7524,7 +7437,7 @@ export default function ReplayClient({ userId }) {
           </div>
         )}
 
-        {loading && allCandles.length === 0 && (
+        {loading && (
           <div style={{
             position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
             color: "#777", fontSize: 14, zIndex: 2, background: "#181A20cc", borderRadius: 14,
@@ -7547,16 +7460,16 @@ export default function ReplayClient({ userId }) {
               style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
             >
               <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
-                {allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
-                {allCandles.length > 0 && renderZoomControl()}
-                {allCandles.length > 0 && !editDraft && renderFavoritesBar()}
-                {allCandles.length > 0 && !editDraft && renderQuickTradeWidget()}
-                {allCandles.length > 0 && renderPropertiesDialog()}
-                {allCandles.length > 0 && renderSelectionToolbar()}
-                {allCandles.length > 0 && renderTradePanel()}
-                {allCandles.length > 0 && renderOpenPositionsPanel()}
-                {allCandles.length > 0 && renderTradeToast()}
-                {allCandles.length > 0 && renderContextMenu()}
+                {!loading && allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
+                {!loading && allCandles.length > 0 && renderZoomControl()}
+                {!loading && allCandles.length > 0 && !editDraft && renderFavoritesBar()}
+                {!loading && allCandles.length > 0 && !editDraft && renderQuickTradeWidget()}
+                {!loading && allCandles.length > 0 && renderPropertiesDialog()}
+                {!loading && allCandles.length > 0 && renderSelectionToolbar()}
+                {!loading && renderTradePanel()}
+                {!loading && renderOpenPositionsPanel()}
+                {!loading && renderTradeToast()}
+                {!loading && renderContextMenu()}
                 {renderInlineTextEditor()}
                 {compareOpen && (
                   <div style={paneCornerBadgeStyle("right")}>
@@ -7565,7 +7478,7 @@ export default function ReplayClient({ userId }) {
                     </button>
                   </div>
                 )}
-                {allCandles.length > 0 && activeIndicators.length > 0 && renderActiveIndicatorsBar()}
+                {!loading && allCandles.length > 0 && activeIndicators.length > 0 && renderActiveIndicatorsBar()}
                 {indicatorPanelOpen && renderIndicatorPanel()}
                 {indicatorSettingsFor && renderIndicatorSettingsDialog()}
                 {templatesPanelOpen && renderTemplatesPanel()}
@@ -7646,7 +7559,7 @@ export default function ReplayClient({ userId }) {
               </div>
             )}
           </div>
-          {allCandles.length > 0 && renderDrawToolbar()}
+          {!loading && allCandles.length > 0 && renderDrawToolbar()}
         </div>
         {renderSettingsDialog()}
 

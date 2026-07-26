@@ -9,49 +9,6 @@ export const dynamic = "force-dynamic";
 // Vercel قبل ما تخلص (عدّليه حسب الخطة عندك لو احتجتي).
 export const maxDuration = 30;
 
-/* مهلة زمنية لـDukascopy (شوفي withTimeout تحت): لو ما رد بهاد الوقت، منكمل
-   فوراً لـTwelve Data/يوهو بدل ما تضل الواجهة عالقة على "جاري تحميل
-   البيانات..." للأبد (هاد بالضبط كان سبب تعليق الشارت اللي لاحظته
-   المستخدمة على فريم الساعة للذهب - أرشيف Dukascopy لمدى طويل ممكن ياخد
-   وقت أطول من المتوقع أو ما يرد أصلاً أحياناً). بوضع الريبلاي (anchor
-   موجود) منعطيه صبر أطول لأنه هناك المستخدمة قاصدة فعلاً تاريخ عميق
-   وعم تتوقع انتظار؛ بوضع اللايف العادي (بدون anchor) منقصّرها كتير عشان
-   الشارت يفتح بسرعة معقولة دايماً حتى لو رجعنا لمصدر أضعف تاريخياً. */
-const DUKASCOPY_TIMEOUT_MS_LIVE = 8000;
-const DUKASCOPY_TIMEOUT_MS_ANCHOR = 22000;
-
-function withTimeout(promise, ms, timeoutResult) {
-  let timer;
-  const timeout = new Promise((resolve) => {
-    timer = setTimeout(() => resolve(timeoutResult), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
-
-// Keep the API contract valid for every client, not only the replay chart.
-// A candle's wick must always contain its body: low <= open/close <= high.
-function normalizeOhlc(candles) {
-  if (!Array.isArray(candles)) return [];
-  const byTime = new Map();
-  for (const candle of candles) {
-    const time = Number(candle?.time);
-    const open = Number(candle?.open);
-    const high = Number(candle?.high);
-    const low = Number(candle?.low);
-    const close = Number(candle?.close);
-    if (![time, open, high, low, close].every(Number.isFinite)) continue;
-    byTime.set(time, {
-      ...candle,
-      time,
-      open,
-      close,
-      high: Math.max(high, open, close),
-      low: Math.min(low, open, close),
-    });
-  }
-  return [...byTime.values()].sort((a, b) => a.time - b.time);
-}
-
 /* هاد الراوت غلاف رقيق فوق lib/yahoo-candles.js وlib/twelvedata-candles.js
    (نفس المنطق القديم بالضبط، بس تم نقله لملف مشترك عشان كرون Trading Radar
    يقدر يستخدمه من السيرفر مباشرة). السلوك من زاوية الواجهة القديمة ما تغيّر.
@@ -64,14 +21,11 @@ function normalizeOhlc(candles) {
    تحديث مهم (بطلب صريح من المستخدمة): ما في ولا رجعة تلقائية لعقد آجل
    (futures) بعد اليوم. قبل هيك كان في مستوى ثالث صامت (fallback=GC=F) بيصير
    لو فشل السبوت من الاثنين - وهاد بالضبط اللي كانت بتظهر بسببه علامة
-   "تقريب: عقود آجلة" اللي المستخدمة رفضتها صراحة. لو المستخدمة بدها ترجّع
-   خيار العقد الآجل كملاذ أخير مستقبلاً، الدالة fetchYahooCandlesWithFallback
-   لسا موجودة بـ lib/yahoo-candles.js وجاهزة - بس محدا عم يستدعيها من هون
-   قصداً الآن.
-
-   تحديث لاحق: الترتيب الحالي صار Dukascopy (مجاني، أعمق تاريخياً، وبدون
-   شموع عطلة أسبوع مسطّحة) → Twelve Data سبوت → Yahoo سبوت → خطأ واضح
-   (بدل بيانات غلط بصمت). شوفي تعليق "المستوى 0" تحت لتفاصيل السبب. */
+   "تقريب: عقود آجلة" اللي المستخدمة رفضتها صراحة. هلق الترتيب بس:
+   Twelve Data سبوت → Yahoo سبوت → خطأ واضح (بدل بيانات غلط بصمت). لو
+   المستخدمة بدها ترجّع خيار العقد الآجل كملاذ أخير مستقبلاً، الدالة
+   fetchYahooCandlesWithFallback لسا موجودة بـ lib/yahoo-candles.js وجاهزة -
+   بس محدا عم يستدعيها من هون قصداً الآن. */
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const symbol = searchParams.get("symbol");
@@ -89,31 +43,15 @@ export async function GET(req) {
   let dukError = null;
   let tdError = null;
 
-  // المستوى 0: Dukascopy - هلق هو المصدر الافتراضي الأساسي (مو بس لما يكون
-  // في anchor فعلي). قبل هيك كان محصور بوضع الريبلاي العميق بس، بس تبيّن
-  // إنه أفضل خيار افتراضي أصلاً لثلاث أسباب مع بعض:
-  //   1) مجاني بالكامل وبدون مفتاح API أو حد طلبات يومي (بعكس Twelve Data).
-  //   2) عمق تاريخي حقيقي أكبر بكثير من يوهو لفريمات زي 15 دقيقة/ساعة/4
-  //      ساعات (يوهو محدودة عملياً بحوالي 58 يوم لـ15 دقيقة، وDukascopy
-  //      بيوصل لسنين للخلف) - هاد كان سبب "عدد الشموع قليل" المذكور.
-  //   3) ignoreFlats:true بمكتبة dukascopy-node بتشيل تلقائياً شموع عطلة
-  //      الأسبوع "المسطّحة" (شكل صليب/شحطة رفيعة) لكل الأصول وكل الفريمات
-  //      دفعة وحدة، بدل الفلتر اليدوي يلي كان مقتصر بس على فريم اليوم
-  //      ولأزواج الفوركس (=X) بـ lib/yahoo-candles.js - فهلق أي أصل/فريم
-  //      بيستفيد من نفس الحل، وأول ما يفتح السوق (الإثنين مثلاً) بتطلع أول
-  //      شمعة حقيقية طبيعية مباشرة بدل ما تسبقها شمعة فارغة/مسطّحة.
-  // لو Dukascopy فشل لأي سبب (رمز غير مدعوم، تعطّل مؤقت بالأرشيف...) منكمل
-  // تلقائياً لـTwelve Data ثم يوهو زي ما كان بالضبط - صفر خطر كسر أي أصل.
-  if (dukSymbol) {
-    const dukTimeoutMs = anchor != null ? DUKASCOPY_TIMEOUT_MS_ANCHOR : DUKASCOPY_TIMEOUT_MS_LIVE;
-    const dukResult = await withTimeout(
-      fetchDukascopyCandles(dukSymbol, interval, wanted, anchor),
-      dukTimeoutMs,
-      { error: `انتهت مهلة الانتظار (${dukTimeoutMs / 1000} ثانية) بدون رد من Dukascopy` }
-    );
+  // المستوى 0: Dukascopy - بس لما يكون في anchor فعلي (وضع ريبلاي حقيقي
+  // بيرجع لتاريخ ممكن يكون أقدم من حد يوهو ~29-58 يوم للفريمات الصغيرة).
+  // ما منستخدمه بوضع اللايف العادي (بدون anchor) لأنه مصمم كأرشيف تاريخي
+  // مش بث لحظي، ويوهو/Twelve Data أسرع وأنسب لهيك حالة أصلاً.
+  if (dukSymbol && anchor != null) {
+    const dukResult = await fetchDukascopyCandles(dukSymbol, interval, wanted, anchor);
     if (!dukResult.error && (dukResult.candles?.length || 0) >= 2) {
       return NextResponse.json({
-        candles: normalizeOhlc(dukResult.candles),
+        candles: dukResult.candles,
         sourceSymbol: dukSymbol,
         provider: "dukascopy",
         usedFallback: false,
@@ -127,7 +65,7 @@ export async function GET(req) {
     const tdResult = await fetchTwelveDataCandles(tdSymbol, interval, wanted, anchor);
     if (!tdResult.error && (tdResult.candles?.length || 0) >= 2) {
       return NextResponse.json({
-        candles: normalizeOhlc(tdResult.candles),
+        candles: tdResult.candles,
         sourceSymbol: tdSymbol,
         provider: "twelvedata",
         usedFallback: false,
@@ -140,7 +78,7 @@ export async function GET(req) {
   const yahooResult = await fetchYahooCandles(symbol, interval, wanted, anchor);
   if (!yahooResult.error && (yahooResult.candles?.length || 0) >= 2) {
     return NextResponse.json({
-      candles: normalizeOhlc(yahooResult.candles),
+      candles: yahooResult.candles,
       sourceSymbol: symbol,
       provider: "yahoo",
       usedFallback: false,
@@ -151,7 +89,7 @@ export async function GET(req) {
   // الخطأين الحقيقيين (مو رسالة عامة) عشان يسهل تشخيص أي مشكلة مستقبلية
   // (مفتاح API غلط، حصة يومية خلصت، رمز مش مدعوم...) من تبويب Network مباشرة.
   const parts = [];
-  if (dukSymbol) parts.push(`Dukascopy (${dukSymbol}): ${dukError}`);
+  if (dukSymbol && anchor != null) parts.push(`Dukascopy (${dukSymbol}): ${dukError}`);
   if (tdSymbol) parts.push(`Twelve Data (${tdSymbol}): ${tdError}`);
   parts.push(`Yahoo (${symbol}): ${yahooResult.error || "بيانات غير كافية"}`);
 
