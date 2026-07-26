@@ -125,6 +125,25 @@ function getCurrentBarWindow(interval) {
   return { start, end: start + stepMs, stepMs, now };
 }
 
+/* هل السوق مقفول حالياً (عطلة أسبوع) لهاد الأصل؟ نفس قاعدة الاستثناء
+   المستخدمة أصلاً بـlib/yahoo-candles.js (فلتر السبت/الأحد): الكريبتو
+   بيتداول 24/7 (يستثنى)، وكل شي تاني (فوركس/معادن/مؤشرات/أسهم) مقفول
+   كامل يومي السبت والأحد UTC. قبل هاد التعديل، عداد الشمعة (startCountdownTick)
+   وبولينغ اللايف (pollLiveOnce) كانوا يضلوا شغالين بعطلة الأسبوع بدون أي وعي
+   إنه السوق مقفول - فالعداد يضل "يعد تنازلي" لشمعة ما رح تتكوّن أصلاً، والبولينغ
+   يضل يحاول يجيب بيانات كل 5 ثواني من Dukascopy/Twelve Data/Yahoo، وكلهم
+   بيفشلوا (ما في بيانات جديدة أصلاً)، فبعد ~10 محاولات فاشلة متتالية
+   (handleLivePollFailure) كان يعمل إعادة تحميل كاملة (loadData) بتفشل هي
+   كمان لنفس السبب، وتضهر رسالة الخطأ من جديد - وتتكرر هالدورة كل ~50-60
+   ثانية للأبد طول عطلة الأسبوع (هاد بالضبط سبب "الرسالة يلي بتضل تطلع"
+   المتكررة). */
+function isMarketClosedForAsset(assetInfo) {
+  if (!assetInfo?.yahoo) return false;
+  if (/-USD$/.test(assetInfo.yahoo)) return false; // كريبتو: 24/7 دايماً مفتوح
+  const dow = new Date().getUTCDay(); // 0=أحد، 6=سبت
+  return dow === 0 || dow === 6;
+}
+
 /* تصفية أي شمعة فاسدة (وقت/سعر مش رقمي أو تكرار بنفس الوقت) قبل ما توصل لمكتبة الشارت -
    مكتبة lightweight-charts بترفض هيك بيانات وبتعمل throw exception يكسر الصفحة كلها،
    فهاي طبقة حماية إضافية جوا الواجهة نفسها (فوق التصفية اللي صارت بالسيرفر) */
@@ -4891,6 +4910,11 @@ export default function ReplayClient({ userId }) {
   function startCountdownTick() {
     stopCountdownTick();
     const tick = () => {
+      if (isMarketClosedForAsset(assetInfo)) {
+        setCountdown("السوق مغلق");
+        setCountdownProgress(0);
+        return;
+      }
       const { end, stepMs, now } = getCurrentBarWindow(interval);
       const remain = Math.max(0, end - now);
       setCountdown(formatCountdown(remain));
@@ -4918,6 +4942,14 @@ export default function ReplayClient({ userId }) {
       return;
     }
     if (!assetInfo?.yahoo) return;
+    if (isMarketClosedForAsset(assetInfo)) {
+      // السوق مقفول (عطلة أسبوع) - ما في داعي نطلب أي شي، ومهم نصفّر عداد
+      // الفشل عشان ما يوصل لـ10 ويعمل إعادة تحميل كاملة (loadData) كل شوي
+      // بلا فايدة (شوفي تعليق isMarketClosedForAsset فوق لتفاصيل الدورة
+      // المكرّرة يلي كانت تصير قبل هالتعديل).
+      livePollFailCountRef.current = 0;
+      return;
+    }
     try {
       const tdInterval = INTERVAL_MAP[interval];
       // مهم جداً: البولينغ لازم يضل على *نفس* المصدر يلي نجح فيه التحميل
