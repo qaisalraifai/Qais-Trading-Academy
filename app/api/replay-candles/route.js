@@ -9,9 +9,6 @@ export const dynamic = "force-dynamic";
 // Vercel قبل ما تخلص (عدّليه حسب الخطة عندك لو احتجتي).
 export const maxDuration = 30;
 
-<<<<<<< HEAD
-/* هاد الراوت غلاف رقيق فوق lib/yahoo-candles.js وlib/twelvedata-candles.js
-=======
 /* مهلة زمنية لـDukascopy (شوفي withTimeout تحت): لو ما رد بهاد الوقت، منكمل
    فوراً لـTwelve Data/يوهو بدل ما تضل الواجهة عالقة على "جاري تحميل
    البيانات..." للأبد (هاد بالضبط كان سبب تعليق الشارت اللي لاحظته
@@ -19,17 +16,9 @@ export const maxDuration = 30;
    وقت أطول من المتوقع أو ما يرد أصلاً أحياناً). بوضع الريبلاي (anchor
    موجود) منعطيه صبر أطول لأنه هناك المستخدمة قاصدة فعلاً تاريخ عميق
    وعم تتوقع انتظار؛ بوضع اللايف العادي (بدون anchor) منقصّرها كتير عشان
-   الشارت يفتح بسرعة معقولة دايماً حتى لو رجعنا لمصدر أضعف تاريخياً.
-
-   رفعناها من 22 لـ27 ثانية (maxDuration المسموح 30): تبيّن إنه لما تكون
-   نقطة القص قديمة جداً (زي 2016)، Dukascopy كان بيضرب المهلة القديمة (22
-   ثانية) بالضبط قبل ما يخلص تحميل/فك أرشيف السنين البعيدة، فكان يرجع
-   تلقائياً لـYahoo - ويوهو تحديداً لبيانات الفوركس اليومية القديمة بترجع
-   شموع فتحها≈إغلاقها (فرق أقل من نقطة واحدة أحياناً) بينما مداها (أعلى-أدنى)
-   عشرات النقاط - شكل "شحطة رفيعة بفتيل ضخم" مغلوط تماماً، مش انعكاس حقيقي
-   لحركة السوق (شوفي isDailyBatchSuspicious تحت لتفاصيل الفحص والرفض). */
+   الشارت يفتح بسرعة معقولة دايماً حتى لو رجعنا لمصدر أضعف تاريخياً. */
 const DUKASCOPY_TIMEOUT_MS_LIVE = 8000;
-const DUKASCOPY_TIMEOUT_MS_ANCHOR = 27000;
+const DUKASCOPY_TIMEOUT_MS_ANCHOR = 22000;
 
 function withTimeout(promise, ms, timeoutResult) {
   let timer;
@@ -63,33 +52,7 @@ function normalizeOhlc(candles) {
   return [...byTime.values()].sort((a, b) => a.time - b.time);
 }
 
-/* ============================================================================
-   فحص جودة شموع اليومي القادمة من مصدر احتياطي (Twelve Data أو Yahoo) لأزواج
-   الفوركس تحديداً. اكتشفنا (بالتشخيص المباشر مع المستخدمة) إنه أرشيف Yahoo
-   القديم لليومي أحياناً بيرجّع شموع فتحها≈إغلاقها (فرق أقل من نقطة) بينما
-   مداها (أعلى-أدنى) عشرات النقاط - شكل "شحطة رفيعة بفتيل ضخم" مغلوط تماماً،
-   بيتكرر بمعظم شموع الدفعة مش بشمعة واحدة عرضية. الدوجي الحقيقي (فتح≈إغلاق
-   بمدى كبير فعلاً) بيصير أحياناً بس نادراً - مش بمعظم أيام الدفعة كلها. فمنعتبر
-   الدفعة كلها "غير موثوقة" فقط لو نسبة كبيرة منها (40%+) عندها هالنمط سوا،
-   ومنرفضها صراحة بدل ما نعرضها بصمت (نفس فلسفة "خطأ واضح بدل بيانات غلط
-   بصمت" المطبّقة فوق لعقود الآجل). Dukascopy ما بيمرّ من هالفحص أصلاً (مصدر
-   موثوق، شوفي المستوى 0 تحت). */
-function isDailyBatchSuspicious(candles) {
-  if (!Array.isArray(candles) || candles.length < 5) return false;
-  let suspicious = 0;
-  for (const c of candles) {
-    const range = c.high - c.low;
-    if (range <= 0) continue;
-    const body = Math.abs(c.close - c.open);
-    // جسم أقل من 5% من المدى *و* المدى نفسه أوسع من 15 نقطة (0.0015) لزوج
-    // فوركس عادي - دوجي حقيقي نادراً بيوصل هالنسبة على مدى بهالاتساع.
-    if (body / range < 0.05 && range > 0.0015) suspicious++;
-  }
-  return suspicious / candles.length >= 0.4;
-}
-
-
->>>>>>> dc2cc2d76418732e290147244cd9ea9b2eb3dc10
+/* هاد الراوت غلاف رقيق فوق lib/yahoo-candles.js وlib/twelvedata-candles.js
    (نفس المنطق القديم بالضبط، بس تم نقله لملف مشترك عشان كرون Trading Radar
    يقدر يستخدمه من السيرفر مباشرة). السلوك من زاوية الواجهة القديمة ما تغيّر.
 
@@ -101,11 +64,14 @@ function isDailyBatchSuspicious(candles) {
    تحديث مهم (بطلب صريح من المستخدمة): ما في ولا رجعة تلقائية لعقد آجل
    (futures) بعد اليوم. قبل هيك كان في مستوى ثالث صامت (fallback=GC=F) بيصير
    لو فشل السبوت من الاثنين - وهاد بالضبط اللي كانت بتظهر بسببه علامة
-   "تقريب: عقود آجلة" اللي المستخدمة رفضتها صراحة. هلق الترتيب بس:
-   Twelve Data سبوت → Yahoo سبوت → خطأ واضح (بدل بيانات غلط بصمت). لو
-   المستخدمة بدها ترجّع خيار العقد الآجل كملاذ أخير مستقبلاً، الدالة
-   fetchYahooCandlesWithFallback لسا موجودة بـ lib/yahoo-candles.js وجاهزة -
-   بس محدا عم يستدعيها من هون قصداً الآن. */
+   "تقريب: عقود آجلة" اللي المستخدمة رفضتها صراحة. لو المستخدمة بدها ترجّع
+   خيار العقد الآجل كملاذ أخير مستقبلاً، الدالة fetchYahooCandlesWithFallback
+   لسا موجودة بـ lib/yahoo-candles.js وجاهزة - بس محدا عم يستدعيها من هون
+   قصداً الآن.
+
+   تحديث لاحق: الترتيب الحالي صار Dukascopy (مجاني، أعمق تاريخياً، وبدون
+   شموع عطلة أسبوع مسطّحة) → Twelve Data سبوت → Yahoo سبوت → خطأ واضح
+   (بدل بيانات غلط بصمت). شوفي تعليق "المستوى 0" تحت لتفاصيل السبب. */
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const symbol = searchParams.get("symbol");
@@ -123,15 +89,31 @@ export async function GET(req) {
   let dukError = null;
   let tdError = null;
 
-  // المستوى 0: Dukascopy - بس لما يكون في anchor فعلي (وضع ريبلاي حقيقي
-  // بيرجع لتاريخ ممكن يكون أقدم من حد يوهو ~29-58 يوم للفريمات الصغيرة).
-  // ما منستخدمه بوضع اللايف العادي (بدون anchor) لأنه مصمم كأرشيف تاريخي
-  // مش بث لحظي، ويوهو/Twelve Data أسرع وأنسب لهيك حالة أصلاً.
-  if (dukSymbol && anchor != null) {
-    const dukResult = await fetchDukascopyCandles(dukSymbol, interval, wanted, anchor);
+  // المستوى 0: Dukascopy - هلق هو المصدر الافتراضي الأساسي (مو بس لما يكون
+  // في anchor فعلي). قبل هيك كان محصور بوضع الريبلاي العميق بس، بس تبيّن
+  // إنه أفضل خيار افتراضي أصلاً لثلاث أسباب مع بعض:
+  //   1) مجاني بالكامل وبدون مفتاح API أو حد طلبات يومي (بعكس Twelve Data).
+  //   2) عمق تاريخي حقيقي أكبر بكثير من يوهو لفريمات زي 15 دقيقة/ساعة/4
+  //      ساعات (يوهو محدودة عملياً بحوالي 58 يوم لـ15 دقيقة، وDukascopy
+  //      بيوصل لسنين للخلف) - هاد كان سبب "عدد الشموع قليل" المذكور.
+  //   3) ignoreFlats:true بمكتبة dukascopy-node بتشيل تلقائياً شموع عطلة
+  //      الأسبوع "المسطّحة" (شكل صليب/شحطة رفيعة) لكل الأصول وكل الفريمات
+  //      دفعة وحدة، بدل الفلتر اليدوي يلي كان مقتصر بس على فريم اليوم
+  //      ولأزواج الفوركس (=X) بـ lib/yahoo-candles.js - فهلق أي أصل/فريم
+  //      بيستفيد من نفس الحل، وأول ما يفتح السوق (الإثنين مثلاً) بتطلع أول
+  //      شمعة حقيقية طبيعية مباشرة بدل ما تسبقها شمعة فارغة/مسطّحة.
+  // لو Dukascopy فشل لأي سبب (رمز غير مدعوم، تعطّل مؤقت بالأرشيف...) منكمل
+  // تلقائياً لـTwelve Data ثم يوهو زي ما كان بالضبط - صفر خطر كسر أي أصل.
+  if (dukSymbol) {
+    const dukTimeoutMs = anchor != null ? DUKASCOPY_TIMEOUT_MS_ANCHOR : DUKASCOPY_TIMEOUT_MS_LIVE;
+    const dukResult = await withTimeout(
+      fetchDukascopyCandles(dukSymbol, interval, wanted, anchor),
+      dukTimeoutMs,
+      { error: `انتهت مهلة الانتظار (${dukTimeoutMs / 1000} ثانية) بدون رد من Dukascopy` }
+    );
     if (!dukResult.error && (dukResult.candles?.length || 0) >= 2) {
       return NextResponse.json({
-        candles: dukResult.candles,
+        candles: normalizeOhlc(dukResult.candles),
         sourceSymbol: dukSymbol,
         provider: "dukascopy",
         usedFallback: false,
@@ -144,36 +126,21 @@ export async function GET(req) {
   if (tdSymbol) {
     const tdResult = await fetchTwelveDataCandles(tdSymbol, interval, wanted, anchor);
     if (!tdResult.error && (tdResult.candles?.length || 0) >= 2) {
-<<<<<<< HEAD
       return NextResponse.json({
-        candles: tdResult.candles,
+        candles: normalizeOhlc(tdResult.candles),
         sourceSymbol: tdSymbol,
         provider: "twelvedata",
         usedFallback: false,
       });
-=======
-      if (interval === "1day" && isDailyBatchSuspicious(tdResult.candles)) {
-        tdError = "بيانات Twelve Data اليومية لهذا المدى تبدو غير موثوقة (أجسام شموع أصغر بكثير من مداها بمعظم الدفعة)";
-      } else {
-        return NextResponse.json({
-          candles: normalizeOhlc(tdResult.candles),
-          sourceSymbol: tdSymbol,
-          provider: "twelvedata",
-          usedFallback: false,
-        });
-      }
-    } else {
-      tdError = tdResult.error || "استجابة فارغة من Twelve Data";
->>>>>>> dc2cc2d76418732e290147244cd9ea9b2eb3dc10
     }
+    tdError = tdResult.error || "استجابة فارغة من Twelve Data";
   }
 
   // المستوى 2: Yahoo سبوت (لو الرمز نفسه أصلاً رمز سبوت زي XAU=).
   const yahooResult = await fetchYahooCandles(symbol, interval, wanted, anchor);
-  const yahooSuspicious = interval === "1day" && !yahooResult.error && isDailyBatchSuspicious(yahooResult.candles);
-  if (!yahooResult.error && !yahooSuspicious && (yahooResult.candles?.length || 0) >= 2) {
+  if (!yahooResult.error && (yahooResult.candles?.length || 0) >= 2) {
     return NextResponse.json({
-      candles: yahooResult.candles,
+      candles: normalizeOhlc(yahooResult.candles),
       sourceSymbol: symbol,
       provider: "yahoo",
       usedFallback: false,
@@ -184,15 +151,9 @@ export async function GET(req) {
   // الخطأين الحقيقيين (مو رسالة عامة) عشان يسهل تشخيص أي مشكلة مستقبلية
   // (مفتاح API غلط، حصة يومية خلصت، رمز مش مدعوم...) من تبويب Network مباشرة.
   const parts = [];
-  if (dukSymbol && anchor != null) parts.push(`Dukascopy (${dukSymbol}): ${dukError}`);
+  if (dukSymbol) parts.push(`Dukascopy (${dukSymbol}): ${dukError}`);
   if (tdSymbol) parts.push(`Twelve Data (${tdSymbol}): ${tdError}`);
-  parts.push(
-    `Yahoo (${symbol}): ${
-      yahooSuspicious
-        ? "بيانات اليومي لهذا المدى تبدو غير موثوقة (أجسام شموع أصغر بكثير من مداها بمعظم الدفعة) - أرشيف يوهو القديم للفوركس معروف بهالمشكلة"
-        : yahooResult.error || "بيانات غير كافية"
-    }`
-  );
+  parts.push(`Yahoo (${symbol}): ${yahooResult.error || "بيانات غير كافية"}`);
 
   return NextResponse.json(
     { error: `لا توجد بيانات سبوت متاحة حالياً — ${parts.join(" | ")}` },
