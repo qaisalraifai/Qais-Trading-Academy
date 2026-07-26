@@ -3465,6 +3465,15 @@ export default function ReplayClient({ userId }) {
           rightOffset: 6,
           barSpacing: 7,
           minBarSpacing: 0.05,
+          // مهم جداً: افتراضياً مكتبة lightweight-charts بتحرّك/تصفّر نطاق الرؤية
+          // تلقائياً كل ما توصل شمعة *جديدة كاملة* (مش تحديث آخر شمعة موجودة)
+          // عن طريق pollLiveOnce - بغض النظر إنك كنتي زوّمتي أوت وبعيدتي عن
+          // الحافة اليمين قصداً. هاد بالضبط سبب "زوم أوت وفجأة بيرجع يزوم" من
+          // غير ما يظهر أي مؤشر تحميل - لأنه ما إله علاقة بجلب بيانات جديدة
+          // كلياً، بس بوصول شمعة جديدة عادية بالبولينغ الدوري (كل ما يخلص فريم/
+          // يوم/ساعة). تعطيلها هون بيخلي زوم/مكان المستخدمة يضل ثابت تماماً
+          // مهما وصلت شموع جديدة بالخلفية.
+          shiftVisibleRangeOnNewBar: false,
         },
         localization: {
           timeFormatter: formatCrosshairTime,
@@ -4186,7 +4195,7 @@ export default function ReplayClient({ userId }) {
           vertLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
           horzLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
         },
-        timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false },
+        timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false, shiftVisibleRangeOnNewBar: false },
         // عرض ثابت مطابق تماماً لعرض عمود الأسعار بالشارت الرئيسي (PRICE_SCALE_WIDTH)،
         // هاد هو الحل الفعلي لمشكلة "آخر شمعة فوق ما بتطابق آخر شمعة تحت بالضبط":
         // كل شارت (رئيسي/مقارنة) هو نسخة lightweight-charts منفصلة، وبدون تثبيت
