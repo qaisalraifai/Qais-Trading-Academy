@@ -136,17 +136,92 @@ function formatCrosshairTime(time) {
 
 function sanitizeCandles(list) {
   if (!Array.isArray(list)) return [];
-  const clean = list.filter(
-    (c) =>
-      c &&
-      Number.isFinite(c.time) &&
-      Number.isFinite(c.open) &&
-      Number.isFinite(c.high) &&
-      Number.isFinite(c.low) &&
-      Number.isFinite(c.close)
-  );
+  // Do not pass malformed OHLC to lightweight-charts.  Some providers can
+  // occasionally return a high/low that does not include the open or close;
+  // that produces a visually broken candle (often mistaken for a cross).
+  const clean = list.reduce((result, c) => {
+    if (!c || !Number.isFinite(c.time)) return result;
+    const open = Number(c.open);
+    const high = Number(c.high);
+    const low = Number(c.low);
+    const close = Number(c.close);
+    if (![open, high, low, close].every(Number.isFinite)) return result;
+
+    result.push({
+      ...c,
+      open,
+      close,
+      high: Math.max(high, open, close),
+      low: Math.min(low, open, close),
+    });
+    return result;
+  }, []);
   clean.sort((a, b) => a.time - b.time);
-  return clean.filter((c, i) => i === 0 || c.time !== clean[i - 1].time);
+  const deduped = clean.filter((c, i) => i === 0 || c.time !== clean[i - 1].time);
+  return clampOutlierWicks(deduped);
+}
+
+/* ============================================================================
+   حماية من "تِك فاسد" وحيد بمصدر البيانات (Dukascopy أو يوهو أو Twelve Data -
+   أي مصدر ممكن يصير عنده هيك خطأ نادر بأرشيفه، مش مرتبط بمزوّد معيّن).
+   المثال الحقيقي يلي كشفته المستخدمة: شمعة EUR/USD منتصف يناير 2020 طالعة
+   عندنا لغاية ~1.15 (قفزة ~400-500 نقطة بيوم واحد) بينما TradingView/OANDA
+   لنفس اليوم بيوري السعر متحرك بهدوء بمدى ~30-50 نقطة بس - يعني نقطة بيانات
+   فاسدة (خطأ بالمصدر الخام نفسه)، مش خلل بمنطق بناء الشموع عندنا.
+
+   الفرق بين هاد وبين شمعة دوجي حقيقية (فتح≈إغلاق بفتيل كبير بعد يوم تقلب
+   حقيقي، زي 11 نوفمبر 2024): الدوجي الحقيقي بيكون مداه كبير *نسبةً لمحيطه*
+   (أيام متقلبة حواليه كمان)، أما التِك الفاسد بيكون شاذ *لحاله* وسط محيط هادئ
+   تماماً، وبالأغلب "ما بيتأكد" - يعني السعر بيرجع فوراً لمستواه الطبيعي
+   بالشموع اللي بعده بدل ما تستمر الحركة (لأنه ما في خبر/حدث حقيقي يبررها).
+
+   المنطق: لكل شمعة، منقارن مداها (high-low) بالمدى الوسطي (median) لعدد من
+   الشموع المجاورة (نافذة ±10). لو طلعت أوسع بأضعاف (6x+) من محيطها *و* السعر
+   رجع لمستوى قريب من قبلها خلال كام شمعة (يعني الحركة ما استمرت = دليل قوي
+   إنها تِك فاسد)، منقصّ الفتيل الزائد بس - منحافظ على open/close الأصليين
+   زي ما هم (عادة أوثق من نقطة الفتيل الشاذة الوحيدة) بدل حذف الشمعة بالكامل
+   وعمل فجوة بالتايم لاين. شمعة حقيقية بمدى كبير بس بمحيط متقلب أصلاً (زي
+   الدوجي المذكور) ما بتنلمس إطلاقاً لأنها ما بتعدي حد الـ6x عن محيطها.
+   ============================================================================ */
+const OUTLIER_WINDOW = 10;
+const OUTLIER_RANGE_MULT = 6;
+
+function clampOutlierWicks(candles) {
+  const n = candles.length;
+  if (n < OUTLIER_WINDOW * 2 + 1) return candles;
+
+  const ranges = candles.map((c) => c.high - c.low);
+  const out = candles.map((c) => ({ ...c }));
+
+  for (let i = OUTLIER_WINDOW; i < n - OUTLIER_WINDOW; i++) {
+    const windowRanges = [];
+    for (let j = i - OUTLIER_WINDOW; j <= i + OUTLIER_WINDOW; j++) {
+      if (j !== i) windowRanges.push(ranges[j]);
+    }
+    windowRanges.sort((a, b) => a - b);
+    const median = windowRanges[Math.floor(windowRanges.length / 2)] || 0;
+    if (median <= 0) continue;
+
+    const c = out[i];
+    const range = c.high - c.low;
+    if (range <= median * OUTLIER_RANGE_MULT) continue;
+
+    const before = out[i - 1].close;
+    const afterIdx = Math.min(i + 3, n - 1);
+    const after = out[afterIdx].close;
+    const reverted = Math.abs(after - before) < median * 2;
+    if (!reverted) continue; // حركة استمرت فعلاً بعدها = على الأغلب حقيقية، منسيبها
+
+    const bodyHigh = Math.max(c.open, c.close);
+    const bodyLow = Math.min(c.open, c.close);
+    const cap = median * OUTLIER_RANGE_MULT;
+    out[i] = {
+      ...c,
+      high: Math.min(c.high, bodyHigh + cap),
+      low: Math.max(c.low, bodyLow - cap),
+    };
+  }
+  return out;
 }
 
 /* ===================== تحويل logical <-> timestamp =====================
@@ -983,11 +1058,6 @@ export default function ReplayClient({ userId }) {
   const [allCandles, setAllCandles] = useState([]);
   const [revealCount, setRevealCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  // تحديث خلفي صامت (إعادة محاولة بعد فشل بولينغ اللايف): ما بيخفي الشارت
-  // ولا بيعمل setLoading - بس بيظهر شارة صغيرة بزاوية الشارت لحد ما توصل
-  // البيانات الجديدة وتنزل عالشارت دفعة وحدة، بدل شاشة "جاري التحميل" الكبيرة
-  // يلي كانت عم تظهر وتختفي كل شوي وتقطع نظر المستخدمة عن الشارت.
-  const [bgSyncing, setBgSyncing] = useState(false);
   const [error, setError] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -1069,12 +1139,6 @@ export default function ReplayClient({ userId }) {
   // عداد فشل التحديث اللايف المتتالي - لو تكرر الفشل (مثلاً تقييد مؤقت من يوهو)
   // منجبر إعادة تحميل كاملة بدل ما نضل نحاول تحديثات جزئية فاشلة للأبد بصمت
   const livePollFailCountRef = useRef(0);
-  // منع "قصف" إعادة التحميل الخلفي كل شوي لما يكون مزوّد البيانات فعلياً
-  // متعطّل (بدل ما نحاول كل 15-30 ثانية للأبد وتظهر شارة التحديث وتختفي
-  // باستمرار): بعد كل محاولة خلفية فاشلة منضاعف مدة الانتظار قبل التالية
-  // (15 ثانية → 30 → 60 → أقصى حد دقيقتين)، ومنرجعها لـ15 ثانية أول ما ينجح تحديث.
-  const bgReloadCooldownUntilRef = useRef(0);
-  const bgReloadBackoffMsRef = useRef(15000);
   const countdownTickRef = useRef(null);
   const forminCandleStartRef = useRef(null);
 
@@ -3464,16 +3528,11 @@ export default function ReplayClient({ userId }) {
           secondsVisible: false,
           rightOffset: 6,
           barSpacing: 7,
+          // رجّعناها لقيمتها الأصلية: 0.05 هي يلي بتسمح بزوم-أوت واسع (لغاية
+          // 4000 شمعة بمدى واحد حسب ZOOM_MAX_BARS تحت). القيمة 2 كانت تكسر
+          // إمكانية التصغير الكامل بدون ما تحل أي مشكلة فعلية بالشموع نفسها
+          // (شوفي borderVisible/border colors تحت - هاد الحل الفعلي البديل).
           minBarSpacing: 0.05,
-          // مهم جداً: افتراضياً مكتبة lightweight-charts بتحرّك/تصفّر نطاق الرؤية
-          // تلقائياً كل ما توصل شمعة *جديدة كاملة* (مش تحديث آخر شمعة موجودة)
-          // عن طريق pollLiveOnce - بغض النظر إنك كنتي زوّمتي أوت وبعيدتي عن
-          // الحافة اليمين قصداً. هاد بالضبط سبب "زوم أوت وفجأة بيرجع يزوم" من
-          // غير ما يظهر أي مؤشر تحميل - لأنه ما إله علاقة بجلب بيانات جديدة
-          // كلياً، بس بوصول شمعة جديدة عادية بالبولينغ الدوري (كل ما يخلص فريم/
-          // يوم/ساعة). تعطيلها هون بيخلي زوم/مكان المستخدمة يضل ثابت تماماً
-          // مهما وصلت شموع جديدة بالخلفية.
-          shiftVisibleRangeOnNewBar: false,
         },
         localization: {
           timeFormatter: formatCrosshairTime,
@@ -3498,7 +3557,8 @@ export default function ReplayClient({ userId }) {
       });
 
       const series = chart.addCandlestickSeries({
-        upColor: savedSettings.up, downColor: savedSettings.down, borderVisible: false,
+        upColor: savedSettings.up, downColor: savedSettings.down, borderVisible: true,
+        borderUpColor: savedSettings.up, borderDownColor: savedSettings.down,
         wickUpColor: savedSettings.up, wickDownColor: savedSettings.down,
         // إخفاء خانة آخر سعر (الصندوق + الخط المتقطع) على محور السعر يمين الشارت
         lastValueVisible: false,
@@ -4195,7 +4255,7 @@ export default function ReplayClient({ userId }) {
           vertLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
           horzLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
         },
-        timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false, shiftVisibleRangeOnNewBar: false },
+        timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false },
         // عرض ثابت مطابق تماماً لعرض عمود الأسعار بالشارت الرئيسي (PRICE_SCALE_WIDTH)،
         // هاد هو الحل الفعلي لمشكلة "آخر شمعة فوق ما بتطابق آخر شمعة تحت بالضبط":
         // كل شارت (رئيسي/مقارنة) هو نسخة lightweight-charts منفصلة، وبدون تثبيت
@@ -4464,17 +4524,10 @@ export default function ReplayClient({ userId }) {
   // ببيانات فريم مختلف تماماً عن الفريم الحالي فعلياً، فتنحسب إعادة إسقاط
   // الرسومات غلط تماماً (نقطة بتاخد وقتها من فريم مش الفريم يلي فعلاً تحول له).
   const loadRequestIdRef = useRef(0);
-  const loadData = useCallback(async (background = false) => {
+  const loadData = useCallback(async () => {
     const myRequestId = ++loadRequestIdRef.current;
-    // تحديث خلفي صامت: ما منوقف البولينغ ولا منعرض شاشة التحميل الكبيرة -
-    // بس شارة صغيرة (bgSyncing) لحد ما توصل البيانات الجديدة وتنزل عالشارت
-    // دفعة وحدة (نفس آلية useLayoutEffect تحت، بدون أي وميض).
-    if (!background) {
-      stopLivePoll();
-      setLoading(true);
-    } else {
-      setBgSyncing(true);
-    }
+    stopLivePoll();
+    setLoading(true);
     setError("");
     setUsedFuturesApprox(false);
     setIsPlaying(false);
@@ -4572,7 +4625,7 @@ export default function ReplayClient({ userId }) {
       } else {
         setRevealCount(candles.length);
       }
-      if (background) setBgSyncing(false); else setLoading(false);
+      setLoading(false);
       if (mode === "live") startLivePoll(candles);
       return;
     }
@@ -4580,7 +4633,7 @@ export default function ReplayClient({ userId }) {
     if (!assetInfo?.yahoo) {
       setError("هذا الأصل غير مدعوم حالياً لعرض الشموع (لا يوجد مصدر بيانات تاريخية له بعد).");
       setAllCandles([]);
-      if (background) setBgSyncing(false); else setLoading(false);
+      setLoading(false);
       return;
     }
 
@@ -4595,35 +4648,10 @@ export default function ReplayClient({ userId }) {
         sameMarketContext && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null
           ? `&anchor=${replayStateRef.current.currentTimestamp}`
           : "";
-      // بإعادة التحميل الخلفية (بعد فشل بولينغ اللايف) منضل عالمزوّد المؤكد
-      // ناجح من قبل بس (dataSourceRef.current.provider) - نفس فكرة pollLiveOnce
-      // بالضبط. لو تركناها تجرب Twelve Data من جديد كل مرة، ممكن ترجع مرة من
-      // يوهو (عمق تاريخي أطول) ومرة من Twelve Data (عمق أقصر بكتير)، فنقطة
-      // الزوم/السكرول القديمة تصير خارج مدى البيانات الجديدة وتنعاد تصفيرها
-      // فجأة لآخر الشموع - وهاد بالضبط سبب "الزوم بيرجع لحاله".
-      const activeProvider = background ? dataSourceRef.current.provider || "yahoo" : null;
-      let symbolForFetch, tdParam, dukParam;
-      if (activeProvider === "twelvedata" && assetInfo.twelveData) {
-        symbolForFetch = assetInfo.yahooSpot || assetInfo.yahoo; // باراميتر symbol إجباري بالراوت حتى لو مش رح يُستخدم
-        tdParam = `&td=${encodeURIComponent(assetInfo.twelveData)}`;
-        dukParam = "";
-      } else if (activeProvider === "dukascopy" && assetInfo.dukascopy) {
-        symbolForFetch = assetInfo.yahooSpot || assetInfo.yahoo;
-        tdParam = "";
-        dukParam = `&duk=${encodeURIComponent(assetInfo.dukascopy)}`;
-      } else if (activeProvider) {
-        // يوهو، أو أي مزوّد آخر مؤكد ناجح سابقاً - منضل عالرمز نفسه بالضبط
-        symbolForFetch = dataSourceRef.current.symbol || assetInfo.yahooSpot || assetInfo.yahoo;
-        tdParam = "";
-        dukParam = "";
-      } else {
-        // تحميل عادي (مو خلفي) - نفس السلوك القديم تماماً: نجرب كل المصادر
-        symbolForFetch = assetInfo.yahooSpot || assetInfo.yahoo;
-        tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
-        dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
-      }
+      const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
+      const dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(symbolForFetch)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${tdParam}${dukParam}`
+        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${tdParam}${dukParam}`
       );
       const data = await res.json();
       // طلب أحدث صار وخلص قبل ما هاد يوصل جوابه - نتجاهل هاد الجواب "القديم"
@@ -4645,8 +4673,6 @@ export default function ReplayClient({ userId }) {
 
       setAllCandles(candles);
 
-      if (background) bgReloadBackoffMsRef.current = 15000; // نجحت - نرجّع مدة الانتظار لأقل قيمة
-
       if (mode === "training") {
         setRevealCount(pickTrainingRevealCount(candles));
       } else {
@@ -4655,19 +4681,9 @@ export default function ReplayClient({ userId }) {
       }
     } catch (e) {
       if (myRequestId !== loadRequestIdRef.current) return; // طلب قديم فشل بعد ما تجاوزه طلب أحدث - نتجاهله بصمت
-      if (background) {
-        // فشل خلفي: ما منعرض بانر الخطأ الأحمر (كانت هاي محاولة صامتة أصلاً) -
-        // بس منسجّل بالكونسول ومنطوّل مدة الانتظار قبل المحاولة الجاية (backoff)
-        // عشان ما نقصف نفس المزوّد المتعطّل كل شوي.
-        console.error("إعادة تحميل خلفية فشلت:", e.message);
-        bgReloadBackoffMsRef.current = Math.min(bgReloadBackoffMsRef.current * 2, 120000);
-      } else {
-        setError(e.message || "صار خطأ، حاولي مرة تانية");
-      }
+      setError(e.message || "صار خطأ، حاولي مرة تانية");
     } finally {
-      if (myRequestId === loadRequestIdRef.current) {
-        if (background) setBgSyncing(false); else setLoading(false);
-      }
+      if (myRequestId === loadRequestIdRef.current) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetValue, interval, mode, maxBars, randomChart]);
@@ -4911,6 +4927,15 @@ export default function ReplayClient({ userId }) {
       if (activeProvider === "twelvedata" && assetInfo.twelveData) {
         pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo; // باراميتر symbol إجباري بالراوت حتى لو مش رح يُستخدم فعلياً
         tdParam = `&td=${encodeURIComponent(assetInfo.twelveData)}`;
+      } else if (activeProvider === "dukascopy") {
+        // دوكاسكوبي أرشيف تاريخي (getHistoricalRates) مش بث لحظي - ما بيصلح
+        // للتحديث الحي كل بضع ثواني أصلاً (وحتى لو صلح، رمزه مش بصيغة رمز
+        // يوهو زي ما البولينغ متوقّع - كان عم يبعت "eurusd" كـsymbol ليوهو
+        // فيفشل الطلب). فلما يكون التحميل الأساسي نجح بـDukascopy، البولينغ
+        // اللحظي هون برجع يستخدم رمز يوهو سبوت العادي (بدون td/duk) - نفس
+        // السلوك القديم بالضبط قبل ما يصير Dukascopy مصدر افتراضي.
+        pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo;
+        tdParam = "";
       } else {
         // المصدر الفعلي الناجح Yahoo سبوت - نضل عليه بدون أي محاولة td هون
         // عشان ما نخلط مصدرين.
@@ -4986,13 +5011,7 @@ export default function ReplayClient({ userId }) {
     livePollFailCountRef.current += 1;
     if (livePollFailCountRef.current >= 3) {
       livePollFailCountRef.current = 0;
-      const now = Date.now();
-      // لسا داخل فترة "التبريد" (مزوّد البيانات كان فاشل مؤخراً) - ما منحاول
-      // كمان، منستنى البولينغ العادي يستمر يحاول لحد ما تفوت الفترة، عشان ما
-      // تضل شارة "جاري التحديث" تولع وتطفى كل 15-30 ثانية بلا فايدة.
-      if (now < bgReloadCooldownUntilRef.current) return;
-      bgReloadCooldownUntilRef.current = now + bgReloadBackoffMsRef.current;
-      loadData(true);
+      loadData();
     }
   }
 
@@ -7507,30 +7526,12 @@ export default function ReplayClient({ userId }) {
           </div>
         )}
 
-        {loading && (
+        {loading && allCandles.length === 0 && (
           <div style={{
             position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
             color: "#777", fontSize: 14, zIndex: 2, background: "#181A20cc", borderRadius: 14,
           }}>
             ...جاري تحميل البيانات
-          </div>
-        )}
-        {/* شارة صغيرة غير معيقة بزاوية الشارت لإعادة المحاولة الخلفية بس - الشارت
-            نفسه يضل ظاهر وثابت (بدون تجميد الزوم أو تغطيته)، وبيانه الجديدة بتنزل
-            عليه بصمت أول ما توصل (شوفي loadData/handleLivePollFailure فوق). */}
-        {bgSyncing && !loading && (
-          <div style={{
-            position: "absolute", top: 10, insetInlineEnd: 10, zIndex: 3,
-            display: "flex", alignItems: "center", gap: 6,
-            background: "#181A20e6", border: `1px solid ${GOLD}33`, borderRadius: 20,
-            padding: "4px 10px", fontSize: 11, color: "#aaa",
-          }}>
-            <span style={{
-              width: 7, height: 7, borderRadius: "50%", background: GOLD,
-              display: "inline-block", animation: "qtaBgSyncPulse 1s ease-in-out infinite",
-            }} />
-            إعادة الاتصال بمصدر البيانات...
-            <style>{`@keyframes qtaBgSyncPulse { 0%,100%{opacity:1} 50%{opacity:.3} }`}</style>
           </div>
         )}
         {/* صف أفقي خارجي: شريط الأدوات عمود ثابت يمتد على كامل ارتفاع منطقة الشارت
@@ -7548,16 +7549,16 @@ export default function ReplayClient({ userId }) {
               style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
             >
               <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
-                {!loading && allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
-                {!loading && allCandles.length > 0 && renderZoomControl()}
-                {!loading && allCandles.length > 0 && !editDraft && renderFavoritesBar()}
-                {!loading && allCandles.length > 0 && !editDraft && renderQuickTradeWidget()}
-                {!loading && allCandles.length > 0 && renderPropertiesDialog()}
-                {!loading && allCandles.length > 0 && renderSelectionToolbar()}
-                {!loading && renderTradePanel()}
-                {!loading && renderOpenPositionsPanel()}
-                {!loading && renderTradeToast()}
-                {!loading && renderContextMenu()}
+                {allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
+                {allCandles.length > 0 && renderZoomControl()}
+                {allCandles.length > 0 && !editDraft && renderFavoritesBar()}
+                {allCandles.length > 0 && !editDraft && renderQuickTradeWidget()}
+                {allCandles.length > 0 && renderPropertiesDialog()}
+                {allCandles.length > 0 && renderSelectionToolbar()}
+                {allCandles.length > 0 && renderTradePanel()}
+                {allCandles.length > 0 && renderOpenPositionsPanel()}
+                {allCandles.length > 0 && renderTradeToast()}
+                {allCandles.length > 0 && renderContextMenu()}
                 {renderInlineTextEditor()}
                 {compareOpen && (
                   <div style={paneCornerBadgeStyle("right")}>
@@ -7566,7 +7567,7 @@ export default function ReplayClient({ userId }) {
                     </button>
                   </div>
                 )}
-                {!loading && allCandles.length > 0 && activeIndicators.length > 0 && renderActiveIndicatorsBar()}
+                {allCandles.length > 0 && activeIndicators.length > 0 && renderActiveIndicatorsBar()}
                 {indicatorPanelOpen && renderIndicatorPanel()}
                 {indicatorSettingsFor && renderIndicatorSettingsDialog()}
                 {templatesPanelOpen && renderTemplatesPanel()}
@@ -7647,7 +7648,7 @@ export default function ReplayClient({ userId }) {
               </div>
             )}
           </div>
-          {!loading && allCandles.length > 0 && renderDrawToolbar()}
+          {allCandles.length > 0 && renderDrawToolbar()}
         </div>
         {renderSettingsDialog()}
 
