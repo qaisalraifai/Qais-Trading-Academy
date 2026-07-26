@@ -4759,30 +4759,6 @@ export default function ReplayClient({ userId }) {
             if (Number.isFinite(newFrom) && Number.isFinite(newTo) && newTo > newFrom) {
               restoreVisibleRange = { from: newFrom, to: newTo };
             }
-            // TEMP DEBUG - احذفيها بعد ما نحل مشكلة انزياح الفيوبورت المُعاد إسقاطه
-            console.log(
-              "[DEBUG reproject] " +
-                JSON.stringify({
-                  fromVisibleLogicalRange,
-                  fromCandlesLen: fromCandles.length,
-                  fromCandlesRange: {
-                    first: new Date(fromCandles[0].time * 1000).toISOString(),
-                    last: new Date(fromCandles[fromCandles.length - 1].time * 1000).toISOString(),
-                  },
-                  tFrom,
-                  tFromIso: new Date(tFrom * 1000).toISOString(),
-                  tTo,
-                  tToIso: new Date(tTo * 1000).toISOString(),
-                  toVisibleLen: toVisible.length,
-                  toVisibleRange: {
-                    first: new Date(toVisible[0].time * 1000).toISOString(),
-                    last: new Date(toVisible[toVisible.length - 1].time * 1000).toISOString(),
-                  },
-                  newFrom,
-                  newTo,
-                  restoreVisibleRange,
-                })
-            );
           }
         }
       }
@@ -5006,10 +4982,19 @@ export default function ReplayClient({ userId }) {
   /* لو التحديث اللايف الجزئي (pollLiveOnce) فشل عدة مرات متتالية (شبكة/تقييد
      مؤقت من مزوّد البيانات)، منعمل إعادة تحميل كاملة بدل ما نضل نحاول تحديثات
      صغيرة فاشلة للأبد بصمت - هيك الشارت الرئيسي ما يضل "متجمّد" على نقطة قديمة
-     بينما لوحة المقارنة (يلي بتنجلب من جديد بشكل مستقل) عم تعرض بيانات أحدث. */
+     بينما لوحة المقارنة (يلي بتنجلب من جديد بشكل مستقل) عم تعرض بيانات أحدث.
+
+     رفعنا الحد من 3 لـ10 محاولات متتالية (يعني ~50 ثانية بدل ~15 ثانية على
+     بولينغ الـ5 ثواني): 3 كانت قليلة كتير - أي تقطيع شبكة عابر أو رفض مؤقت
+     لحظي من المزوّد كان يكفي لتشغيل loadData() الكامل (setData على الشارت
+     كامل)، وهاد بالضبط سبب "زوم مفاجئ بيصير كل شوي" اللي لاحظته المستخدمة -
+     حتى لو reproject بيرجّع نفس مستوى الزوم تقريباً، في وميض/قفزة بصرية
+     لحظية وقت setData نفسها. رفع الحد بيخلي إعادة التحميل الكامل فعلاً
+     ملاذ أخير نادر (شبكة مقطوعة فعلياً لدقيقة كاملة)، مش رد فعل عادي على
+     أي هفوة عابرة بسيطة بمزوّد البيانات. */
   function handleLivePollFailure() {
     livePollFailCountRef.current += 1;
-    if (livePollFailCountRef.current >= 3) {
+    if (livePollFailCountRef.current >= 10) {
       livePollFailCountRef.current = 0;
       loadData();
     }
