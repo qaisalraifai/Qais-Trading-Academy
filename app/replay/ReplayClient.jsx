@@ -589,6 +589,10 @@ function saveCompareSettings(settings) {
     window.localStorage.setItem(COMPARE_SETTINGS_KEY, JSON.stringify(settings));
   } catch {}
 }
+/* مفتاح تخزين "جلسة القص/التدريب المتوقفة" (نقطة التوقف + الرسومات) وقت
+   الرجوع للمباشر - بادئة "qta_" عشان تنحفظ تلقائياً بحساب الطالب كمان
+   (شوفي lib/user-settings-sync.js)، مش بس محلياً بهاد المتصفح. */
+const PAUSED_SESSION_KEY = "qta_paused_replay_session_v1";
 /* بناء سيريز لوحة المقارنة حسب النوع المختار (منطقة/خط/شموع) وألوانه
    (تحويل اللون لـ rgba بيصير عن طريق hexToRgba المعرّفة تحت بنفس الملف) */
 function buildCompareSeries(chart, settings) {
@@ -1153,6 +1157,33 @@ export default function ReplayClient({ userId }) {
   const [appliedCutRegion, setAppliedCutRegion] = useState(null); // {fromTime, toTime} | null
   const appliedCutRegionRef = useRef(null);
   useEffect(() => { appliedCutRegionRef.current = appliedCutRegion; }, [appliedCutRegion]);
+
+  /* ===== "احفظي مكاني" عند الرجوع للمباشر بعد قص/تدريب =====
+     لمّا الطالبة تقص وتحلل وترجع للمباشر (🔴)، بنلقط "لقطة" كاملة من حالة
+     جلستها (نقطة التوقف، منطقة القص المطبّقة، كل الرسومات) قبل ما يصفّرها
+     loadData (شوفي switchMode تحت). لو بعدين ضغطت زر القص تاني ولسا في
+     لقطة محفوظة لنفس الأصل/الفريم، منعرضلها خيارين بدل ما نبلش قص جديد
+     فوراً: "قص جديد" أو "الرجوع لمكان التوقف" (بيرجّع كل شي زي ما تركته
+     بالضبط، رسومات وكل شي). */
+  const savedSessionRef = useRef(null);
+  const [hasSavedSession, setHasSavedSession] = useState(false);
+  const [cutChoiceOpen, setCutChoiceOpen] = useState(false);
+  // نحمّل أي جلسة قص/تدريب متوقفة كانت محفوظة (من هاد المتصفح، أو من حساب
+  // الطالب لو فتح من جهاز/متصفح تاني - initUserSettingsSync فوق بيكون خلص
+  // جاب النسخة الصحيحة قبل ما هاد الـ effect ينفّذ عادةً، وحتى لو تأخر
+  // وعمل reload لاحقاً، رح ينقرا صح بعد إعادة التحميل هاد).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PAUSED_SESSION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.replayState) {
+          savedSessionRef.current = parsed;
+          setHasSavedSession(true);
+        }
+      }
+    } catch {}
+  }, []);
 
   /* ===== تمديد الشموع تلقائياً للأمام (بدون إيقاف التشغيل) =====
      قبل هيك، الـ Play كان بيوقف نهائياً أول ما توصل لآخر شمعة محمّلة أصلاً
@@ -5257,7 +5288,47 @@ export default function ReplayClient({ userId }) {
   }, [isPlaying, speed, allCandles.length]);
 
   function switchMode(m) {
+    // راجعة للمباشر من جلسة تدريب/قص شغالة فعلياً؟ نحفظ لقطة كاملة منها قبل
+    // ما loadData يصفّر الرسومات ونقطة القص (شوفي "سوق مختلف كلياً" فوق) -
+    // عشان نقدر نعرضلها "ارجعي لمكانك" لو ضغطت قص تاني بعدين.
+    if (m === "live" && mode === "training" && replayStateRef.current.isActive) {
+      const snapshot = {
+        assetValue,
+        interval,
+        replayState: { ...replayStateRef.current },
+        appliedCutRegion,
+        drawings: drawingsRef.current.map((d) => ({ ...d })),
+      };
+      savedSessionRef.current = snapshot;
+      setHasSavedSession(true);
+      try { localStorage.setItem(PAUSED_SESSION_KEY, JSON.stringify(snapshot)); } catch {}
+    }
     setMode(m);
+  }
+
+  /* المستخدمة اختارت "قص جديد" من نافذة الاختيار: نرمي أي لقطة محفوظة
+     ونكمل بالسلوك العادي (فتح وضع القص من الصفر). */
+  function startFreshCut() {
+    savedSessionRef.current = null;
+    setHasSavedSession(false);
+    try { localStorage.removeItem(PAUSED_SESSION_KEY); } catch {}
+    setCutChoiceOpen(false);
+    openCutModeFresh();
+  }
+
+  /* المستخدمة اختارت "الرجوع لمكان التوقف": نرجّع نقطة الإيقاف والرسومات
+     بالضبط زي ما تركتهم. مبني على نفس آلية "إعادة قص لنفس السياق" الموجودة
+     أصلاً بـ loadData (justCutIntoTraining) - بس بنعطيها نقطة زمن قديمة
+     بدل نقطة جديدة، فبترجع تحسب مكان التوقف الصحيح تلقائياً على أي بيانات
+     محدّثة، وما بتلمس الرسومات لأنها "نفس السياق". */
+  function resumeSavedSession() {
+    const s = savedSessionRef.current;
+    setCutChoiceOpen(false);
+    if (!s) return;
+    replayStateRef.current = { ...s.replayState };
+    setAppliedCutRegion(s.appliedCutRegion);
+    drawingsRef.current = s.drawings.map((d) => ({ ...d }));
+    setMode("training");
   }
 
   /* ===================== أداة القص الجديدة: سحب لتحديد منطقة كاملة =====================
@@ -5464,33 +5535,45 @@ export default function ReplayClient({ userId }) {
     setCutRegion(null);
     setCutSubMode("select");
   }
+  /* فتح وضع القص من الصفر (السلوك الأصلي بالضبط - نقل بلا تغيير لدالة
+     منفصلة عشان تنستخدم من مكانين: توجّل عادي، وزر "قص جديد" بنافذة
+     الاختيار). */
+  function openCutModeFresh() {
+    setCutMode(true);
+    setCutSubMode("select");
+    // "حفظ القص تلقائياً" مفعّل: نحاول نجيب آخر منطقة قص محفوظة لنفس
+    // الأصل/الفريم ونعبّي فيها الاختيار تلقائياً بدل ما تبلّشي من الصفر
+    if (cutAutoSave) {
+      try {
+        const raw = localStorage.getItem(`qta_cut_region_${assetValue}_${interval}`);
+        const saved = raw ? JSON.parse(raw) : null;
+        if (saved && Number.isFinite(saved.fromTime) && Number.isFinite(saved.toTime) && allCandles.length) {
+          const fromIdx = allCandles.findIndex((c2) => c2.time >= saved.fromTime);
+          const toIdx = allCandles.findIndex((c2) => c2.time >= saved.toTime);
+          setCutRegion(
+            fromIdx !== -1
+              ? { fromLogical: fromIdx, toLogical: toIdx !== -1 ? toIdx : allCandles.length - 1 }
+              : null
+          );
+        } else setCutRegion(null);
+      } catch { setCutRegion(null); }
+    } else {
+      setCutRegion(null);
+    }
+  }
   function toggleCutMode() {
-    setCutMode((c) => {
-      const next = !c;
-      if (next) {
-        setCutSubMode("select");
-        // "حفظ القص تلقائياً" مفعّل: نحاول نجيب آخر منطقة قص محفوظة لنفس
-        // الأصل/الفريم ونعبّي فيها الاختيار تلقائياً بدل ما تبلّشي من الصفر
-        if (cutAutoSave) {
-          try {
-            const raw = localStorage.getItem(`qta_cut_region_${assetValue}_${interval}`);
-            const saved = raw ? JSON.parse(raw) : null;
-            if (saved && Number.isFinite(saved.fromTime) && Number.isFinite(saved.toTime) && allCandles.length) {
-              const fromIdx = allCandles.findIndex((c2) => c2.time >= saved.fromTime);
-              const toIdx = allCandles.findIndex((c2) => c2.time >= saved.toTime);
-              setCutRegion(
-                fromIdx !== -1
-                  ? { fromLogical: fromIdx, toLogical: toIdx !== -1 ? toIdx : allCandles.length - 1 }
-                  : null
-              );
-            } else setCutRegion(null);
-          } catch { setCutRegion(null); }
-        } else {
-          setCutRegion(null);
-        }
-      }
-      return next;
-    });
+    if (cutMode) { setCutMode(false); return; }
+    // في جلسة قص/تدريب متوقفة محفوظة (رجعت للمباشر منها بدون ما تقص من
+    // جديد)؟ منسألها شو بدها قبل ما نفتح وضع القص: تكمل من مكانها، أو
+    // تبلّش قص جديد كلياً (بلا سؤال لو ما في جلسة محفوظة أصلاً - نفس
+    // السلوك القديم تماماً).
+    if (hasSavedSession && savedSessionRef.current &&
+        savedSessionRef.current.assetValue === assetValue &&
+        savedSessionRef.current.interval === interval) {
+      setCutChoiceOpen(true);
+      return;
+    }
+    openCutModeFresh();
   }
 
   /* ===================== قص/تصدير الشارت كصورة ===================== */
@@ -7259,6 +7342,60 @@ export default function ReplayClient({ userId }) {
     );
   }
 
+  function renderCutChoiceDialog() {
+    if (!cutChoiceOpen) return null;
+    const s = savedSessionRef.current;
+    const pausedAt = s?.replayState?.currentTimestamp != null ? formatCrosshairTime(s.replayState.currentTimestamp) : null;
+    return (
+      <div
+        style={{
+          position: "absolute", inset: 0, zIndex: 31, background: "#0B0E11aa",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+        onClick={() => setCutChoiceOpen(false)}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: 380, maxWidth: "90%", background: "#161616",
+            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.2rem 1.3rem",
+            display: "flex", flexDirection: "column", gap: 12,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, fontSize: 15 }}>✂️ عندك تمرين متوقف</div>
+          <div style={{ fontSize: 12.5, color: "#aaa", lineHeight: 1.7 }}>
+            رجعتِ للمباشر من تمرين قص لسا شغال{pausedAt ? ` (متوقف عند ${pausedAt})` : ""}، ورسوماتك عليه محفوظة.
+            بدك تكملي منه، أو تبلّشي قص جديد؟
+          </div>
+          <button
+            onClick={resumeSavedSession}
+            style={{
+              background: GOLD, color: "#1a1608", border: "none", borderRadius: 8,
+              padding: "10px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer",
+            }}
+          >
+            ↩️ الرجوع لمكان التوقف
+          </button>
+          <button
+            onClick={startFreshCut}
+            style={{
+              background: "transparent", color: "#ccc", border: "1px solid #333", borderRadius: 8,
+              padding: "10px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer",
+            }}
+          >
+            ✂️ قص جديد
+          </button>
+          <button
+            onClick={() => setCutChoiceOpen(false)}
+            style={{ background: "transparent", color: "#777", border: "none", fontSize: 12, cursor: "pointer" }}
+          >
+            إلغاء
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   function renderSettingsDialog() {
     if (!settingsOpen) return null;
     const set = (patch) => setChartSettings((s) => ({ ...s, ...(typeof patch === "function" ? patch(s) : patch) }));
@@ -7828,6 +7965,7 @@ export default function ReplayClient({ userId }) {
           {allCandles.length > 0 && renderDrawToolbar()}
         </div>
         {renderSettingsDialog()}
+        {renderCutChoiceDialog()}
 
         {/* طبقة "اضغط برا لتقفل" لقائمة الكليك اليمين: لازم تكون *جوا* chartWrapperRef
             (مش بعده كأخ منفصل بالشجرة) لأنه لما الشارت يفتح بوضع "شاشة كاملة" عن طريق
