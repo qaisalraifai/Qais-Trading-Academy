@@ -1224,6 +1224,19 @@ export default function ReplayClient({ userId }) {
   // دائم. هاد الفلاغ بيخلي الـ useEffect يتخطى مرة وحدة بس (أول مرة بعد
   // الاحتياطي)، فنقطة القص الأصلية تضل محفوظة وترجع صح لو رجعنا لفريم بيوصلها.
   const suppressAnchorSyncOnceRef = useRef(false);
+  /* شبكة أمان لـ "الرجوع لمكان التوقف" (resumeSavedSession تحت): بيصير أحياناً
+     تعارض تايمنج بين تبديل mode لـ "training" (بيصير فوراً) وبين وصول بيانات
+     التدريب الفعلية من loadData (async، بعد Debounce+fetch) - فبيصير رندر
+     وسيط لسا allCandles/revealCount فيه تبع الوضع المباشر القديم (مثلاً آخر
+     شمعة = "الآن"). الـ useEffect تحت (نفسه اللي بيزامن currentTimestamp)
+     بيشتغل بهاد الرندر الوسيط ويكتب "الآن" فوق نقطة التوقف الصح يلي رجّعناها
+     تواً - وهاد بالضبط سبب "ما بتقص الشموع، ولسا خط قديم ظاهر" بعد الرجوع
+     لمكان التوقف. بدل ما نلعب بمنطق ذاك الـ effect (حساس ومستخدم بسيناريوهات
+     تانية)، منخزّن هون "الهدف الصح" وقت الرجوع، ومنعيد فرضه من جديد (شوفي
+     الـ effect المخصص تحت مباشرة بعد effect المزامنة) كل مرة لحد ما loadData
+     الحقيقي لبيانات التدريب يخلص فعلياً ويصفّر هاد العلم بنفسه - بغض النظر
+     عن كم مرة تكرر التعارض بالأثناء. */
+  const pendingResumeRef = useRef(null);
   const cutHoverLogicalRef = useRef(null); // موقع تحويم الماوس أثناء اختيار نقطة بداية الـ Replay (لمعاينة Blur/شعاع حي)
   const [isFullscreen, setIsFullscreen] = useState(false);
   const chartWrapperRef = useRef(null);
@@ -4682,6 +4695,7 @@ export default function ReplayClient({ userId }) {
       pendingReprojectRef.current = null;
       // سوق مختلف كلياً = ما في داعي نحافظ على حالة Replay قديمة معه
       replayStateRef.current = { isActive: false, anchorTimestamp: null, currentTimestamp: null, originalTimeframe: null };
+      pendingResumeRef.current = null;
       setReplayCutTs(null);
       // مهم: لازم نصفّر منطقة "القص" القديمة (appliedCutRegion) هون كمان - وإلا
       // بتضل عالقة كسقف قديم (toTime) بيوقف الـ Play فوراً بجلسة/سوق جديد كلياً
@@ -4734,6 +4748,7 @@ export default function ReplayClient({ userId }) {
     if (randomChart) {
       const candles = generateRandomCandles(maxBars, interval);
       setAllCandles(candles);
+      pendingResumeRef.current = null;
       if (mode === "training") {
         setRevealCount(pickTrainingRevealCount(candles));
       } else {
@@ -4786,6 +4801,11 @@ export default function ReplayClient({ userId }) {
       setUsedFuturesApprox(false);
 
       setAllCandles(candles);
+      // وصلت بيانات حقيقية (مباشر أو تدريب) - أي "رجوع لمكان توقف" قيد التنفيذ
+      // خلص فعلياً هون (pickTrainingRevealCount تحت رح تستخدم نقطة التوقف
+      // الصح المحفوظة بـ replayStateRef.current)، فما في داعي شبكة الأمان تفرضها
+      // كمان بالرندرات الجايّة - وإلا رح تمنع أي تقدّم طبيعي بالتدريب بعدين.
+      pendingResumeRef.current = null;
 
       if (mode === "training") {
         setRevealCount(pickTrainingRevealCount(candles));
@@ -5009,6 +5029,18 @@ export default function ReplayClient({ userId }) {
     }
     replayStateRef.current.originalTimeframe = interval;
     setReplayCutTs(c.time);
+  }, [revealCount, allCandles, mode, interval]);
+
+  /* شبكة أمان لـ resumeSavedSession (شوفي تعليق pendingResumeRef فوق): لو في
+     رجوع لمكان توقف لسا "قيد التنفيذ" (loadData ما جابت بيانات التدريب
+     الحقيقية بعد)، منفرض نقطة التوقف المحفوظة من جديد بعد أي رندر ممكن يكون
+     effect المزامنة فوق كتب فوقها بالغلط (بيانات مباشر قديمة لسا). هاد الـ
+     effect بيتنفّذ بعد effect المزامنة مباشرة (بنفس الترتيب يلي انكتب فيه)،
+     فبيرجّع الصح كآخر كلمة بكل رندر لحد ما loadData يأكد البيانات الحقيقية
+     ويصفّر pendingResumeRef بنفسه - عندها منسيب المزامنة العادية تشتغل طبيعي. */
+  useEffect(() => {
+    if (!pendingResumeRef.current) return;
+    replayStateRef.current = { ...pendingResumeRef.current };
   }, [revealCount, allCandles, mode, interval]);
 
   /* ===================== وضع سوق حي: متابعة الشمعة الحالية بعداد ===================== */
@@ -5326,6 +5358,10 @@ export default function ReplayClient({ userId }) {
     setCutChoiceOpen(false);
     if (!s) return;
     replayStateRef.current = { ...s.replayState };
+    // منخزّن نفس الهدف هون كمان كـ "شبكة أمان" - شوفي التعليق فوق pendingResumeRef
+    // تعريفه. بيضل يتفرض من جديد لحد ما loadData الحقيقي لبيانات التدريب يخلص
+    // ويصفّره هو بنفسه (بعد pickTrainingRevealCount تحت).
+    pendingResumeRef.current = { ...s.replayState };
     setAppliedCutRegion(s.appliedCutRegion);
     drawingsRef.current = s.drawings.map((d) => ({ ...d }));
     setMode("training");
