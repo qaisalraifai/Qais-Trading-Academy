@@ -3453,6 +3453,13 @@ export default function ReplayClient({ userId }) {
           secondsVisible: false,
           rightOffset: 6,
           barSpacing: 7,
+<<<<<<< HEAD
+=======
+          // رجّعناها لقيمتها الأصلية: 0.05 هي يلي بتسمح بزوم-أوت واسع (لغاية
+          // 4000 شمعة بمدى واحد حسب ZOOM_MAX_BARS تحت). القيمة 2 كانت تكسر
+          // إمكانية التصغير الكامل بدون ما تحل أي مشكلة فعلية بالشموع نفسها
+          // (شوفي borderVisible/border colors تحت - هاد الحل الفعلي البديل).
+>>>>>>> dc2cc2d76418732e290147244cd9ea9b2eb3dc10
           minBarSpacing: 0.05,
         },
         localization: {
