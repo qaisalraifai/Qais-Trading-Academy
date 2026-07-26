@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react
 import { useSearchParams } from "next/navigation";
 import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets";
 import { createClient } from "@/lib/supabase-client";
+import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
 
 const GOLD = "#D4AF37";
@@ -1042,6 +1043,11 @@ export default function ReplayClient({ userId }) {
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
+
+  /* مزامنة كل إعدادات الطالب المحفوظة محلياً (ألوان الشارت، القوالب، الأدوات
+     المفضّلة...) مع حسابه بالسيرفر، عشان ما تضيع لو غيّر جهاز أو مسح الكاش.
+     شفافة تماماً - ما بتلمس أي منطق localStorage موجود بالملف. */
+  useEffect(() => { initUserSettingsSync(); }, []);
 
   /* ===================== أداة المؤشرات الفنية ===================== */
   // activeIndicators: [{ instanceId, id, params }]. بتنحفظ محلياً بالمتصفح

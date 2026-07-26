@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase-client";
+import { initUserSettingsSync } from "@/lib/user-settings-sync";
 
 /* ===================== قائمة الأصول ===================== */
 const ASSETS = [
@@ -177,6 +178,8 @@ function sleep(ms) {
 
 export default function BacktestClient({ userId, username, initialBalance, initialTrades, onExit }) {
   const supabase = useRef(createClient()).current;
+
+  useEffect(() => { initUserSettingsSync(); }, []);
 
   const [trades, setTrades] = useState((initialTrades || []).map(rowToTrade));
   const [balance, setBalance] = useState(initialBalance ?? INITIAL_BALANCE);
