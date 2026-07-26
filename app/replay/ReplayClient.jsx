@@ -983,6 +983,11 @@ export default function ReplayClient({ userId }) {
   const [allCandles, setAllCandles] = useState([]);
   const [revealCount, setRevealCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  // تحديث خلفي صامت (إعادة محاولة بعد فشل بولينغ اللايف): ما بيخفي الشارت
+  // ولا بيعمل setLoading - بس بيظهر شارة صغيرة بزاوية الشارت لحد ما توصل
+  // البيانات الجديدة وتنزل عالشارت دفعة وحدة، بدل شاشة "جاري التحميل" الكبيرة
+  // يلي كانت عم تظهر وتختفي كل شوي وتقطع نظر المستخدمة عن الشارت.
+  const [bgSyncing, setBgSyncing] = useState(false);
   const [error, setError] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -1064,6 +1069,12 @@ export default function ReplayClient({ userId }) {
   // عداد فشل التحديث اللايف المتتالي - لو تكرر الفشل (مثلاً تقييد مؤقت من يوهو)
   // منجبر إعادة تحميل كاملة بدل ما نضل نحاول تحديثات جزئية فاشلة للأبد بصمت
   const livePollFailCountRef = useRef(0);
+  // منع "قصف" إعادة التحميل الخلفي كل شوي لما يكون مزوّد البيانات فعلياً
+  // متعطّل (بدل ما نحاول كل 15-30 ثانية للأبد وتظهر شارة التحديث وتختفي
+  // باستمرار): بعد كل محاولة خلفية فاشلة منضاعف مدة الانتظار قبل التالية
+  // (15 ثانية → 30 → 60 → أقصى حد دقيقتين)، ومنرجعها لـ15 ثانية أول ما ينجح تحديث.
+  const bgReloadCooldownUntilRef = useRef(0);
+  const bgReloadBackoffMsRef = useRef(15000);
   const countdownTickRef = useRef(null);
   const forminCandleStartRef = useRef(null);
 
@@ -4444,10 +4455,17 @@ export default function ReplayClient({ userId }) {
   // ببيانات فريم مختلف تماماً عن الفريم الحالي فعلياً، فتنحسب إعادة إسقاط
   // الرسومات غلط تماماً (نقطة بتاخد وقتها من فريم مش الفريم يلي فعلاً تحول له).
   const loadRequestIdRef = useRef(0);
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (background = false) => {
     const myRequestId = ++loadRequestIdRef.current;
-    stopLivePoll();
-    setLoading(true);
+    // تحديث خلفي صامت: ما منوقف البولينغ ولا منعرض شاشة التحميل الكبيرة -
+    // بس شارة صغيرة (bgSyncing) لحد ما توصل البيانات الجديدة وتنزل عالشارت
+    // دفعة وحدة (نفس آلية useLayoutEffect تحت، بدون أي وميض).
+    if (!background) {
+      stopLivePoll();
+      setLoading(true);
+    } else {
+      setBgSyncing(true);
+    }
     setError("");
     setUsedFuturesApprox(false);
     setIsPlaying(false);
@@ -4545,7 +4563,7 @@ export default function ReplayClient({ userId }) {
       } else {
         setRevealCount(candles.length);
       }
-      setLoading(false);
+      if (background) setBgSyncing(false); else setLoading(false);
       if (mode === "live") startLivePoll(candles);
       return;
     }
@@ -4553,7 +4571,7 @@ export default function ReplayClient({ userId }) {
     if (!assetInfo?.yahoo) {
       setError("هذا الأصل غير مدعوم حالياً لعرض الشموع (لا يوجد مصدر بيانات تاريخية له بعد).");
       setAllCandles([]);
-      setLoading(false);
+      if (background) setBgSyncing(false); else setLoading(false);
       return;
     }
 
@@ -4568,10 +4586,35 @@ export default function ReplayClient({ userId }) {
         sameMarketContext && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null
           ? `&anchor=${replayStateRef.current.currentTimestamp}`
           : "";
-      const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
-      const dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
+      // بإعادة التحميل الخلفية (بعد فشل بولينغ اللايف) منضل عالمزوّد المؤكد
+      // ناجح من قبل بس (dataSourceRef.current.provider) - نفس فكرة pollLiveOnce
+      // بالضبط. لو تركناها تجرب Twelve Data من جديد كل مرة، ممكن ترجع مرة من
+      // يوهو (عمق تاريخي أطول) ومرة من Twelve Data (عمق أقصر بكتير)، فنقطة
+      // الزوم/السكرول القديمة تصير خارج مدى البيانات الجديدة وتنعاد تصفيرها
+      // فجأة لآخر الشموع - وهاد بالضبط سبب "الزوم بيرجع لحاله".
+      const activeProvider = background ? dataSourceRef.current.provider || "yahoo" : null;
+      let symbolForFetch, tdParam, dukParam;
+      if (activeProvider === "twelvedata" && assetInfo.twelveData) {
+        symbolForFetch = assetInfo.yahooSpot || assetInfo.yahoo; // باراميتر symbol إجباري بالراوت حتى لو مش رح يُستخدم
+        tdParam = `&td=${encodeURIComponent(assetInfo.twelveData)}`;
+        dukParam = "";
+      } else if (activeProvider === "dukascopy" && assetInfo.dukascopy) {
+        symbolForFetch = assetInfo.yahooSpot || assetInfo.yahoo;
+        tdParam = "";
+        dukParam = `&duk=${encodeURIComponent(assetInfo.dukascopy)}`;
+      } else if (activeProvider) {
+        // يوهو، أو أي مزوّد آخر مؤكد ناجح سابقاً - منضل عالرمز نفسه بالضبط
+        symbolForFetch = dataSourceRef.current.symbol || assetInfo.yahooSpot || assetInfo.yahoo;
+        tdParam = "";
+        dukParam = "";
+      } else {
+        // تحميل عادي (مو خلفي) - نفس السلوك القديم تماماً: نجرب كل المصادر
+        symbolForFetch = assetInfo.yahooSpot || assetInfo.yahoo;
+        tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
+        dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
+      }
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${tdParam}${dukParam}`
+        `/api/replay-candles?symbol=${encodeURIComponent(symbolForFetch)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${tdParam}${dukParam}`
       );
       const data = await res.json();
       // طلب أحدث صار وخلص قبل ما هاد يوصل جوابه - نتجاهل هاد الجواب "القديم"
@@ -4593,6 +4636,8 @@ export default function ReplayClient({ userId }) {
 
       setAllCandles(candles);
 
+      if (background) bgReloadBackoffMsRef.current = 15000; // نجحت - نرجّع مدة الانتظار لأقل قيمة
+
       if (mode === "training") {
         setRevealCount(pickTrainingRevealCount(candles));
       } else {
@@ -4601,9 +4646,19 @@ export default function ReplayClient({ userId }) {
       }
     } catch (e) {
       if (myRequestId !== loadRequestIdRef.current) return; // طلب قديم فشل بعد ما تجاوزه طلب أحدث - نتجاهله بصمت
-      setError(e.message || "صار خطأ، حاولي مرة تانية");
+      if (background) {
+        // فشل خلفي: ما منعرض بانر الخطأ الأحمر (كانت هاي محاولة صامتة أصلاً) -
+        // بس منسجّل بالكونسول ومنطوّل مدة الانتظار قبل المحاولة الجاية (backoff)
+        // عشان ما نقصف نفس المزوّد المتعطّل كل شوي.
+        console.error("إعادة تحميل خلفية فشلت:", e.message);
+        bgReloadBackoffMsRef.current = Math.min(bgReloadBackoffMsRef.current * 2, 120000);
+      } else {
+        setError(e.message || "صار خطأ، حاولي مرة تانية");
+      }
     } finally {
-      if (myRequestId === loadRequestIdRef.current) setLoading(false);
+      if (myRequestId === loadRequestIdRef.current) {
+        if (background) setBgSyncing(false); else setLoading(false);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetValue, interval, mode, maxBars, randomChart]);
@@ -4922,7 +4977,13 @@ export default function ReplayClient({ userId }) {
     livePollFailCountRef.current += 1;
     if (livePollFailCountRef.current >= 3) {
       livePollFailCountRef.current = 0;
-      loadData();
+      const now = Date.now();
+      // لسا داخل فترة "التبريد" (مزوّد البيانات كان فاشل مؤخراً) - ما منحاول
+      // كمان، منستنى البولينغ العادي يستمر يحاول لحد ما تفوت الفترة، عشان ما
+      // تضل شارة "جاري التحديث" تولع وتطفى كل 15-30 ثانية بلا فايدة.
+      if (now < bgReloadCooldownUntilRef.current) return;
+      bgReloadCooldownUntilRef.current = now + bgReloadBackoffMsRef.current;
+      loadData(true);
     }
   }
 
@@ -7443,6 +7504,24 @@ export default function ReplayClient({ userId }) {
             color: "#777", fontSize: 14, zIndex: 2, background: "#181A20cc", borderRadius: 14,
           }}>
             ...جاري تحميل البيانات
+          </div>
+        )}
+        {/* شارة صغيرة غير معيقة بزاوية الشارت لإعادة المحاولة الخلفية بس - الشارت
+            نفسه يضل ظاهر وثابت (بدون تجميد الزوم أو تغطيته)، وبيانه الجديدة بتنزل
+            عليه بصمت أول ما توصل (شوفي loadData/handleLivePollFailure فوق). */}
+        {bgSyncing && !loading && (
+          <div style={{
+            position: "absolute", top: 10, insetInlineEnd: 10, zIndex: 3,
+            display: "flex", alignItems: "center", gap: 6,
+            background: "#181A20e6", border: `1px solid ${GOLD}33`, borderRadius: 20,
+            padding: "4px 10px", fontSize: 11, color: "#aaa",
+          }}>
+            <span style={{
+              width: 7, height: 7, borderRadius: "50%", background: GOLD,
+              display: "inline-block", animation: "qtaBgSyncPulse 1s ease-in-out infinite",
+            }} />
+            إعادة الاتصال بمصدر البيانات...
+            <style>{`@keyframes qtaBgSyncPulse { 0%,100%{opacity:1} 50%{opacity:.3} }`}</style>
           </div>
         )}
         {/* صف أفقي خارجي: شريط الأدوات عمود ثابت يمتد على كامل ارتفاع منطقة الشارت
