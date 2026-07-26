@@ -4935,8 +4935,17 @@ export default function ReplayClient({ userId }) {
       );
       const data = await res.json();
       if (data.error || !data.candles?.length) {
+        // مهم: *ما* منعتبر هاد "فشل" بمعنى يستاهل إعادة تحميل كامل (زوم).
+        // لو route.js رجّع خطأ صريح، غالباً السبب "السوق مقفول حالياً فمافي
+        // شمعة جديدة أصلاً عند أي مزوّد" (عطلة أسبوع، قبل فتح جلسة المعادن
+        // الأحد مساءً...) - إعادة التحميل الكامل ما رح تجيب بيانات مش موجودة
+        // أصلاً، وبس رح تعمل "زوم" مزعج كل ~50-100 ثانية للأبد لحد ما يفتح
+        // السوق فعلياً. فبنكتفي بتسجيل الخطأ بالكونسول ومحاولة تانية بالتيك
+        // الجاي بهدوء، بدون ما نلمس handleLivePollFailure/عداد الفشل إطلاقاً.
+        // عداد الفشل (وبالتالي إعادة التحميل الكامل كملاذ أخير) صار محصور
+        // فقط بـ catch(e) تحت - يعني عطل شبكة/اتصال حقيقي عند العميل نفسه،
+        // مش "مافي بيانات جديدة" من السيرفر.
         console.error("live poll: empty/error response", data.error);
-        handleLivePollFailure();
         return;
       }
       if (data.sourceSymbol)
@@ -4946,7 +4955,7 @@ export default function ReplayClient({ userId }) {
           provider: data.provider || "yahoo",
         };
       const fresh = sanitizeCandles(data.candles);
-      if (fresh.length === 0) { handleLivePollFailure(); return; }
+      if (fresh.length === 0) return; // نفس المنطق فوق - مش فشل يستاهل إعادة تحميل
       const lastFresh = fresh[fresh.length - 1];
 
       setAllCandles((prev) => {
