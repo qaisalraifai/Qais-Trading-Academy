@@ -4659,14 +4659,7 @@ export default function ReplayClient({ userId }) {
       // allCandles/pendingReprojectRef يلي أصلاً محدَّثين بالطلب الأحدث.
       if (myRequestId !== loadRequestIdRef.current) return;
       if (data.error) throw new Error(data.error);
-      // ============ تشخيص مؤقت (احذفيه بعد ما نحل المشكلة) ============
-      // بيطبع أول 15 شمعة خام (زي ما وصلت من السيرفر تماماً، قبل أي لمسة)
-      // وبعدين بعد sanitizeCandles، عشان نشوف بالضبط وين (لو صار) أي فرق
-      // بين المصدر ونتيجة المعالجة عندنا.
-      console.log("[DEBUG راو من السيرفر]", data.provider, interval, (data.candles || []).slice(0, 15));
-      // ================================================================
       const candles = sanitizeCandles(data.candles || []);
-      console.log("[DEBUG بعد sanitizeCandles]", candles.slice(0, 15));
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
       dataSourceRef.current = {
         symbol: data.sourceSymbol || assetInfo.yahoo,
