@@ -4905,13 +4905,25 @@ export default function ReplayClient({ userId }) {
         tdParam = `&td=${encodeURIComponent(assetInfo.twelveData)}`;
       } else if (activeProvider === "dukascopy") {
         // دوكاسكوبي أرشيف تاريخي (getHistoricalRates) مش بث لحظي - ما بيصلح
-        // للتحديث الحي كل بضع ثواني أصلاً (وحتى لو صلح، رمزه مش بصيغة رمز
-        // يوهو زي ما البولينغ متوقّع - كان عم يبعت "eurusd" كـsymbol ليوهو
-        // فيفشل الطلب). فلما يكون التحميل الأساسي نجح بـDukascopy، البولينغ
-        // اللحظي هون برجع يستخدم رمز يوهو سبوت العادي (بدون td/duk) - نفس
-        // السلوك القديم بالضبط قبل ما يصير Dukascopy مصدر افتراضي.
-        pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo;
-        tdParam = "";
+        // للتحديث الحي كل بضع ثواني أصلاً. كنا هون برجع نستخدم "yahooSpot"
+        // (زي XAU= أو XAUUSD=X للمعادن) كبديل - لكن تبيّن إنه Yahoo أصلاً ما
+        // عنده رمز سبوت حقيقي شغّال للمعادن (XAU مش زوج عملات فعلي عندهم
+        // رغم كود ISO)، فأي صيغة "=X" لهالمعادن بترجع 404 "symbol may be
+        // delisted" دايماً - وهاد كان يفشّل بولينغ الذهب/الفضة/البلاتين/
+        // البلاديوم اللحظي 100% من المرات بشكل دائم (مش عطل عابر)، فيوصل
+        // لحد فشل loadData() الكامل بسرعة ويعمل "زوم" كل ~50 ثانية للأبد.
+        // الحل: لو الأصل عنده رمز Twelve Data (زي XAU/USD - مدعوم فعلياً
+        // وبيرجّع بيانات صحيحة، شوفي lib/twelvedata-candles.js)، منستخدمه
+        // بدل يوهو مباشرة. غير هيك (عملات عادية زي EURUSD ما عندها هالمشكلة
+        // أصلاً لأنه "EURUSD=X" زوج حقيقي على يوهو) منضل على يوهو سبوت العادي
+        // زي ما كان بالضبط.
+        if (assetInfo.twelveData) {
+          pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo; // باراميتر symbol إجباري بالراوت حتى لو مش رح يُستخدم فعلياً
+          tdParam = `&td=${encodeURIComponent(assetInfo.twelveData)}`;
+        } else {
+          pollSymbol = assetInfo.yahooSpot || assetInfo.yahoo;
+          tdParam = "";
+        }
       } else {
         // المصدر الفعلي الناجح Yahoo سبوت - نضل عليه بدون أي محاولة td هون
         // عشان ما نخلط مصدرين.
