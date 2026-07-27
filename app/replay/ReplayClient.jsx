@@ -5,6 +5,7 @@ import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets
 import { createClient } from "@/lib/supabase-client";
 import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
+import WatchlistPanel from "./WatchlistPanel";
 
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
@@ -1088,6 +1089,7 @@ export default function ReplayClient({ userId }) {
   const [indicatorSettingsFor, setIndicatorSettingsFor] = useState(null);
   const [indicatorSettingsTab, setIndicatorSettingsTab] = useState("visibility"); // visibility | style | inputs
   const [templatesPanelOpen, setTemplatesPanelOpen] = useState(false);
+  const [watchlistPanelOpen, setWatchlistPanelOpen] = useState(true);
 
   /* ===== وضع تسجيل تمارين SMC+ICT (Admin Practice Mode) ===== */
   const [isAdmin, setIsAdmin] = useState(false);
@@ -5927,6 +5929,7 @@ export default function ReplayClient({ userId }) {
           )}
         </button>
         <button onClick={() => setTemplatesPanelOpen((v) => !v)} className={iconBtnClass(templatesPanelOpen)} style={iconBtn(templatesPanelOpen)} title="قوالب: احفظي أو حمّلي مجموعة مؤشرات/إعدادات جاهزة"><ToolIcon id="template2" /></button>
+        <button onClick={() => setWatchlistPanelOpen((v) => !v)} className={iconBtnClass(watchlistPanelOpen)} style={iconBtn(watchlistPanelOpen)} title="قائمة المتابعة: أسعار لحظية لكل الأصول">📋</button>
         <button onClick={handleExportImage} className={iconBtnClass(false)} style={iconBtn(false)} title="تصدير كصورة"><ToolIcon id="camera" /></button>
         <button onClick={handleResetView} className={iconBtnClass(false)} style={iconBtn(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي"><ToolIcon id="resetzoom" /></button>
         <button onClick={toggleFullscreen} className={iconBtnClass(isFullscreen)} style={iconBtn(isFullscreen)} title="شاشة كاملة"><ToolIcon id={isFullscreen ? "fullscreenExit" : "fullscreen"} /></button>
@@ -8343,6 +8346,13 @@ export default function ReplayClient({ userId }) {
             بالـ DOM ثم الشريط) مقصود: الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل
             ثابت عالشمال دايماً من غير ما نضطر نقلب اتجاه أي نص عربي جوا الشارت. */}
         <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0, gap: 8 }}>
+          {watchlistPanelOpen && (
+            <WatchlistPanel
+              activeSymbol={assetValue}
+              onSelectSymbol={(v) => { setRandomChart(false); setAssetValue(v); }}
+              onClose={() => setWatchlistPanelOpen(false)}
+            />
+          )}
           <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
             {/* اللوحة الرئيسية - ارتفاعها الفعلي مضبوط مباشرة بالبكسل من JS (mainPaneRef)
                 عشان يضل مطابق تماماً لارتفاع الشارت نفسه (overflow:hidden هون بيمنعه
