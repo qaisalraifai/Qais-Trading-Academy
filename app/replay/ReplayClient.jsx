@@ -1052,6 +1052,18 @@ function pointSegDist(px, py, x1, y1, x2, y2) {
   const cx = x1 + t * dx, cy = y1 + t * dy;
   return Math.hypot(px - cx, py - cy);
 }
+/* زي pointSegDist بالضبط بس بترجع نقطة الإسقاط نفسها (x, y) مش بس المسافة -
+   منستخدمها لتحديد بالضبط وين لازم يوقف "+ إضافة نص" فوق الخط وقت تمرير
+   الفأرة، إذا clamp=true بتتقيد النقطة بحدود القطعة (زي خط الاتجاه/المستطيل)،
+   وإذا false بتحسب الإسقاط على الخط الممتد بلا نهاية (زي الشعاع/الخط الممتد) */
+function pointOnLinePx(px, py, x1, y1, x2, y2, clamp) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len2 = dx * dx + dy * dy;
+  let t = len2 === 0 ? 0 : ((px - x1) * dx + (py - y1) * dy) / len2;
+  if (clamp) t = Math.max(0, Math.min(1, t));
+  else if (clamp === "ray") t = Math.max(0, t);
+  return { x: x1 + t * dx, y: y1 + t * dy };
+}
 
 export default function ReplayClient({ userId }) {
 
@@ -1361,6 +1373,12 @@ export default function ReplayClient({ userId }) {
   const [textEditor, setTextEditor] = useState(null);
   const textEditorRef = useRef(null);
   useEffect(() => { textEditorRef.current = textEditor; }, [textEditor]);
+  /* ===== "+ إضافة نص" بتتبع الفأرة فوق أي خط محدد (تريدنغ فيو): {x, y,
+     drawingId, logical, price} لأقرب نقطة عالخط لموضع الفأرة، أو null لما
+     الفأرة تكون بعيدة عن الخط أو مفيش رسمة محددة أصلاً. */
+  const [lineTextHint, setLineTextHint] = useState(null);
+  const lineTextHintRef = useRef(null);
+  useEffect(() => { lineTextHintRef.current = lineTextHint; }, [lineTextHint]);
   /* ===== تراجع/إعادة (Undo/Redo) على مستوى الرسومات - Ctrl+Z / Ctrl+Y =====
      كل عملية "تُحدث" على الرسومات (إنشاء/حذف/نقل/تعديل خصائص) بتحفظ نسخة
      من الحالة قبلها هون قبل ما تصير، عشان نقدر نرجع لها بالضبط */
@@ -2533,7 +2551,10 @@ export default function ReplayClient({ userId }) {
       const style = d.style || defaultStyleFor(d.type);
       if (LINE_TEXT_TYPES.has(d.type)) {
         let anchor = null, align = "center";
-        if (d.type === "hline") {
+        if (d.textAnchor) {
+          const p = toXY(d.textAnchor);
+          if (p.x != null && p.y != null) anchor = { x: p.x, y: p.y - 8 };
+        } else if (d.type === "hline") {
           const y = series.priceToCoordinate(d.p1.price);
           if (y != null) { anchor = { x: 10, y: y - 8 }; align = "left"; }
         } else if (d.type === "vline") {
@@ -2831,6 +2852,69 @@ export default function ReplayClient({ userId }) {
     const w = d?.style?.width || 1.5;
     return Math.max(9, w / 2 + 7);
   }
+  /* ===== "+ إضافة نص" بتتبع الفأرة فوق أي أداة خطية محددة (بالضبط متل
+     تريدنغ فيو): بترجع أقرب نقطة عالخط نفسه لموضع الفأرة الحالي (إحداثي
+     شاشة + logical/price مقابلين) عشان تقدري تحطي النص بأي نقطة عالخط
+     تختاريها، مش بس بمنتصفه الثابت. بترجع null إذا الفأرة أبعد من نطاق
+     اللمس المسموح أو النوع مش من LINE_TEXT_TYPES أصلاً. */
+  function nearestPointOnLine(d, x, y) {
+    if (!LINE_TEXT_TYPES.has(d.type)) return null;
+    const chart = chartRef.current, series = seriesRef.current;
+    if (!chart || !series) return null;
+    const TOL = 12;
+    try {
+      const ts = chart.timeScale();
+      if (d.type === "hline") {
+        const py = series.priceToCoordinate(d.p1.price);
+        if (py == null || Math.abs(y - py) > TOL) return null;
+        const logical = ts.coordinateToLogical(x);
+        if (logical == null) return null;
+        return { x, y: py, logical, price: d.p1.price };
+      }
+      if (d.type === "vline") {
+        const px = ts.logicalToCoordinate(ptToLogical(d.p1));
+        if (px == null || Math.abs(x - px) > TOL) return null;
+        const price = series.coordinateToPrice(y);
+        if (price == null) return null;
+        return { x: px, y, logical: ptToLogical(d.p1), price };
+      }
+      if (d.type === "hray") {
+        const py = series.priceToCoordinate(d.p1.price);
+        const px1 = ts.logicalToCoordinate(ptToLogical(d.p1));
+        if (py == null || px1 == null || x < px1 - 4 || Math.abs(y - py) > TOL) return null;
+        const logical = ts.coordinateToLogical(x);
+        if (logical == null) return null;
+        return { x, y: py, logical, price: d.p1.price };
+      }
+      if (d.type === "crossline") {
+        const py = series.priceToCoordinate(d.p1.price);
+        const px = ts.logicalToCoordinate(ptToLogical(d.p1));
+        if (py == null || px == null) return null;
+        const distH = Math.abs(y - py), distV = Math.abs(x - px);
+        if (Math.min(distH, distV) > TOL) return null;
+        if (distH <= distV) {
+          const logical = ts.coordinateToLogical(x);
+          if (logical == null) return null;
+          return { x, y: py, logical, price: d.p1.price };
+        }
+        const price = series.coordinateToPrice(y);
+        if (price == null) return null;
+        return { x: px, y, logical: ptToLogical(d.p1), price };
+      }
+      // trendline / ray / extendedline / arrow: إسقاط نقطة الفأرة على الخط
+      const a = logicalPriceToXY(d.p1), b = logicalPriceToXY(d.p2);
+      if (a.x == null || b.x == null) return null;
+      const clamp = d.type === "trendline" || d.type === "arrow" ? true : "ray";
+      const proj = pointOnLinePx(x, y, a.x, a.y, b.x, b.y, clamp);
+      if (Math.hypot(x - proj.x, y - proj.y) > TOL) return null;
+      const logical = ts.coordinateToLogical(proj.x);
+      const price = series.coordinateToPrice(proj.y);
+      if (logical == null || price == null) return null;
+      return { x: proj.x, y: proj.y, logical, price };
+    } catch {
+      return null;
+    }
+  }
   function findDrawingAt(x, y) {
     let best = null, bestDist = Infinity;
     for (const d of drawingsRef.current) {
@@ -2892,6 +2976,7 @@ export default function ReplayClient({ userId }) {
     if (d.points) d.points = d.points.map((p) => ({ ...ptShiftLogical(p, dLogical), price: p.price + dPrice }));
     if (d.targetPrice != null) d.targetPrice += dPrice;
     if (d.stopPrice != null) d.stopPrice += dPrice;
+    if (d.textAnchor) d.textAnchor = { ...ptShiftLogical(d.textAnchor, dLogical), price: d.textAnchor.price + dPrice };
   }
   function setHandlePoint(d, key, logical, price) {
     if (key === "p1") d.p1 = ptFromLogical(logical, price);
@@ -3074,9 +3159,13 @@ export default function ReplayClient({ userId }) {
         pushHistory();
         drawingsRef.current = drawingsRef.current.filter((d) => d.id !== ed.editingId);
         clearSelection();
-      } else if (idx !== -1 && targetDrawing.text !== value) {
+      } else if (idx !== -1 && (targetDrawing.text !== value || ed.anchor)) {
         pushHistory();
-        drawingsRef.current[idx] = { ...targetDrawing, text: value };
+        const patch = { text: value };
+        if (ed.anchor && ed.anchor.logical != null && ed.anchor.price != null) {
+          patch.textAnchor = ptFromLogical(ed.anchor.logical, ed.anchor.price);
+        }
+        drawingsRef.current[idx] = { ...targetDrawing, ...patch };
       }
     } else if (value) {
       pushHistory();
@@ -3978,6 +4067,15 @@ export default function ReplayClient({ userId }) {
             const hoverDrawing = handleHitHover ? handleHitHover.drawing : bodyHitHover;
             hoveredIdRef.current = hoverDrawing ? hoverDrawing.id : null;
             chartContainerRef.current.style.cursor = hoverDrawing ? "move" : "default";
+            // "+ إضافة نص" بتتبع الفأرة بس فوق الرسمة *المحددة* حالياً (مش أي رسمة
+            // تحتها الفأرة عرضياً)، وبس لما ما يكون في سحب/مقبض جاري تحته الفأرة
+            const selD = !handleHitHover ? getSelectedDrawing() : null;
+            const hint = selD ? nearestPointOnLine(selD, x, y) : null;
+            if (hint) {
+              setLineTextHint({ drawingId: selD.id, x: hint.x, y: hint.y, logical: hint.logical, price: hint.price });
+            } else if (lineTextHintRef.current) {
+              setLineTextHint(null);
+            }
           }
           // منجدول رسمة overlay كمان مع أي حركة فأرة عادية (مش بس مع حدث تغيير
           // المدى المرئي تبع المكتبة) - أثناء سحب/بان الشارت الأصلي بالماوس
@@ -4042,10 +4140,29 @@ export default function ReplayClient({ userId }) {
         if (activeToolRef.current !== "cursor" || e.button !== 0) return;
         const { logical, price, x, y } = getLogicalPrice(e.clientX, e.clientY);
         if (x == null || y == null) return;
+        // كليك بالضبط فوق "+ إضافة نص" الظاهرة حالياً: بنفتح محرر النص المضمّن
+        // بهاي النقطة بالذات (مش سحب/تحريك الرسمة) - بالظبط متل تريدنغ فيو
+        const hint = lineTextHintRef.current;
+        if (hint && Math.hypot(x - hint.x, y - hint.y) <= 14) {
+          const target = drawingsRef.current.find((d) => d.id === hint.drawingId);
+          if (target && !target.locked) {
+            e.preventDefault();
+            e.stopPropagation();
+            setLineTextHint(null);
+            selectDrawing(hint.drawingId);
+            setTextEditor({
+              x: hint.x, y: hint.y, editingId: hint.drawingId, value: target.text || "",
+              centered: true, anchor: { logical: hint.logical, price: hint.price },
+            });
+            scheduleDraw();
+            return;
+          }
+        }
         const handleHit = findHandleAt(x, y);
         if (handleHit) {
           e.preventDefault();
           e.stopPropagation();
+          setLineTextHint(null);
           selectDrawing(handleHit.drawing.id);
           if (handleHit.drawing.locked) { scheduleDraw(); return; }
           if (!handleHit.drawing.tradeTag) pushHistory();
@@ -6937,6 +7054,36 @@ export default function ReplayClient({ userId }) {
      فوق مكان الكليك مباشرة على الشارت، بفوكس تلقائي فوري - تقدري تكتبي حرفياً
      من أول لحظة بدون أي نافذة منبثقة (prompt) أو خطوة إضافية. Enter أو الخروج
      منه (blur) بيثبّت النص، Escape بيلغي العملية بالكامل. */
+  /* ===== "+ إضافة نص" عائمة بتتبع الفأرة فوق أي خط محدد (بالضبط متل
+     تريدنغ فيو بالصورة المرفقة): بتبين بس لما تكون الرسمة المحددة من نوع
+     خطي بيقبل نص، ومحرر النص مو مفتوح حالياً، ومكان الفأرة لسا مطابق لآخر
+     رسمة محددة (تفادي أي بقايا قديمة إذا تبدل التحديد بسرعة). كليك عليها
+     (شوفي onContainerMouseDownCapture) بيفتح محرر النص بالظبط بهاي النقطة. */
+  function renderLineTextHint() {
+    if (!lineTextHint || textEditor) return null;
+    if (lineTextHint.drawingId !== selectedDrawingId) return null;
+    const d = drawingsRef.current.find((dr) => dr.id === lineTextHint.drawingId);
+    if (!d || d.locked) return null;
+    const hasText = !!(d.text && d.text.trim());
+    return (
+      <div
+        style={{
+          position: "absolute", left: lineTextHint.x, top: lineTextHint.y,
+          transform: "translate(-50%, -50%)", zIndex: 24, pointerEvents: "none",
+          display: "flex", alignItems: "center", gap: 5,
+          background: "#131722ee", border: "1px solid #363a45", borderRadius: 6,
+          padding: "3px 8px 3px 5px", boxShadow: "0 2px 10px rgba(0,0,0,0.4)",
+        }}
+      >
+        <span style={{
+          width: 16, height: 16, borderRadius: 4, background: "#2962FF",
+          color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 12, fontWeight: 700, lineHeight: 1,
+        }}>{hasText ? "✎" : "+"}</span>
+        <span style={{ color: "#d1d4dc", fontSize: 12 }}>{hasText ? "تعديل النص" : "إضافة نص"}</span>
+      </div>
+    );
+  }
   function renderInlineTextEditor() {
     if (!textEditor) return null;
     const targetDrawing = textEditor.editingId != null
@@ -8090,6 +8237,7 @@ export default function ReplayClient({ userId }) {
                 {allCandles.length > 0 && renderOpenPositionsPanel()}
                 {allCandles.length > 0 && renderTradeToast()}
                 {allCandles.length > 0 && renderContextMenu()}
+                {allCandles.length > 0 && renderLineTextHint()}
                 {renderInlineTextEditor()}
                 {compareOpen && (
                   <div style={paneCornerBadgeStyle("right")}>
