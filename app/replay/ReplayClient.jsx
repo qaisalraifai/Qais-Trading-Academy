@@ -29,6 +29,17 @@ function findCandleIndexByTime(candles, time) {
   return -1;
 }
 const RED = "#F6465D";
+/* ===== أدوات الرسم يلي فعلياً بينفع ينضافلها نص/كابشن (خط واحد فوق منتصف
+   الأدوات الخطية، أو نص متعدد الأسطر جوا صندوق محيط للأشكال يلي إلها مساحة) -
+   بالظبط متل "Add text" بتريدنغ فيو على أي أداة رسم/توضيح تقريباً.
+   عمداً ما ضفنا نص لـ: خط المعلومات (infoline)، Gann Fan، Pitchfork، أدوات
+   فيبوناتشي (fib/fibext/fibchannel/fibtimezone)، أداة الزاوية (angle)،
+   القياس (measure)، مدى التاريخ/السعر (daterange/pricerange)، وموجة إليوت
+   (wave) - هاي كلها أدوات قياس/توضيح إلها منطقها الخاص وتسميتها التلقائية
+   يلي بتتحدّث لحالها، مش نص ثابت بيكتبه المستخدم. */
+const LINE_TEXT_TYPES = new Set(["trendline", "ray", "extendedline", "arrow", "hline", "hray", "vline", "crossline"]);
+const AREA_TEXT_TYPES = new Set(["circle", "triangle", "path", "parallelchannel"]);
+const TEXT_CAPABLE_TYPES = new Set([...LINE_TEXT_TYPES, ...AREA_TEXT_TYPES, "rectangle"]);
 const DEFAULT_COMPARE_HEIGHT = 200; // ارتفاع لوحة المقارنة الافتراضي بالبكسل (قابل للسحب من المستخدم)
 // عرض ثابت (بالبكسل) لعمود الأسعار باليمين - لازم يكون نفس القيمة بالشارت الرئيسي
 // وشارت المقارنة معاً، وإلا كل شارت (نسخة lightweight-charts منفصلة) بيحسب عرض
@@ -2517,8 +2528,6 @@ export default function ReplayClient({ userId }) {
        (خط اتجاه/شعاع/خط ممتد/سهم/خط أفقي.../عمودي/متقاطع)، أو نص متعدد الأسطر
        جوا صندوق محيط للأشكال يلي إلها مساحة (دائرة/مثلث/مسار/قناة متوازية) -
        بالظبط متل "Add text" بتريدنغ فيو على أي أداة رسم تقريباً ===== */
-    const LINE_TEXT_TYPES = new Set(["trendline", "ray", "extendedline", "arrow", "hline", "hray", "vline", "crossline"]);
-    const AREA_TEXT_TYPES = new Set(["circle", "triangle", "path", "parallelchannel"]);
     for (const d of drawingsRef.current) {
       if (!d.text || d.hidden) continue;
       const style = d.style || defaultStyleFor(d.type);
@@ -2962,6 +2971,7 @@ export default function ReplayClient({ userId }) {
     setSelectedDrawingId(id);
     setEditingId(null);
     setEditDraft(null);
+    setTextPopoverOpen(false);
   }
   function clearSelection() {
     if (selectedIdRef.current == null) return;
@@ -6478,6 +6488,7 @@ export default function ReplayClient({ userId }) {
     const hasFill = style.fill !== undefined;
     const locked = !!d.locked;
     const hidden = !!d.hidden;
+    const canHaveText = TEXT_CAPABLE_TYPES.has(d.type);
     return (
       <div
         ref={selectionToolbarRef}
@@ -6529,15 +6540,17 @@ export default function ReplayClient({ userId }) {
             />
           </label>
         )}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); openQuickTextPopover(); }}
-          title="إضافة/تعديل نص على الرسمة مباشرة"
-          style={{ ...selToolBtnStyle, color: textPopoverOpen ? GOLD_LIGHT : "#ccc", fontWeight: 800, fontFamily: "serif" }}
-        >
-          T
-        </button>
-        {textPopoverOpen && renderQuickTextPopover()}
+        {canHaveText && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); openQuickTextPopover(); }}
+            title="إضافة/تعديل نص على الرسمة مباشرة"
+            style={{ ...selToolBtnStyle, color: textPopoverOpen ? GOLD_LIGHT : "#ccc", fontWeight: 800, fontFamily: "serif" }}
+          >
+            T
+          </button>
+        )}
+        {canHaveText && textPopoverOpen && renderQuickTextPopover()}
         <span style={selToolDivider} />
         <button
           type="button"
