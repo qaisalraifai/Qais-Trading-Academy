@@ -32,7 +32,7 @@ export default function TreeAndCommissionsExplainer() {
           <div style={{ color: GOLD, fontSize: "0.75rem", letterSpacing: 1, marginBottom: 4 }}>كيف تكسب فلوسك؟</div>
           <div style={{ fontSize: "1.15rem", fontWeight: 800 }}>🌳 الشجرة الثنائية ونظام العمولات</div>
         </div>
-        <a href="/mlm" style={{ color: GOLD, fontSize: "0.85rem", textDecoration: "none", border: `1px solid ${GOLD}55`, borderRadius: 8, padding: "0.45rem 1rem" }}>
+        <a href="/affiliate?tab=mlm" style={{ color: GOLD, fontSize: "0.85rem", textDecoration: "none", border: `1px solid ${GOLD}55`, borderRadius: 8, padding: "0.45rem 1rem" }}>
           شوف شجرتك ومحافظك الحقيقية ←
         </a>
       </div>

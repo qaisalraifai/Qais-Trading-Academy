@@ -10,7 +10,6 @@ import {
   BarChart3,
   FileText,
   Settings,
-  TreePine,
   Handshake,
   MessageCircle,
   HelpCircle,
@@ -38,8 +37,7 @@ export const NAV_ITEMS = [
   { key: "strategies", label: "الاستراتيجيات", icon: Puzzle, href: "/strategies", comingSoon: true },
   { key: "trades", label: "الصفقات", icon: BarChart3, href: "/backtest" },
   { key: "reports", label: "التقارير", icon: FileText, href: "/reports" },
-  { key: "mlm", label: "الشبكة (Network)", icon: TreePine, href: "/mlm" },
-  { key: "affiliate", label: "برنامج التسويق بالعمولة", icon: Handshake, href: "/affiliate" },
+  { key: "affiliate", label: "العمولة والشبكة (Affiliate)", icon: Handshake, href: "/affiliate" },
   { key: "settings", label: "الإعدادات", icon: Settings, href: "/settings" },
 ];
 

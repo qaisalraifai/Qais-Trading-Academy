@@ -14,10 +14,13 @@ import {
 } from "./navigation";
 
 // عنصر نشط = المسار الحالي يبدأ بنفس href العنصر (يغطي الصفحات الفرعية
-// زي /mlm/tree تحت عنصر "الشبكة" اللي href الأساسي تبعه /mlm).
+// زي /mlm/tree). صفحة /mlm صارت مدمجة داخل /affiliate، فمنعتبر أي مسار
+// يبدأ بـ /mlm فعّال لعنصر "العمولة والشبكة" (href: /affiliate) كمان.
 function isPathActive(pathname, href) {
   if (!pathname || !href) return false;
-  return pathname === href || pathname.startsWith(`${href}/`);
+  if (pathname === href || pathname.startsWith(`${href}/`)) return true;
+  if (href === "/affiliate" && (pathname === "/mlm" || pathname.startsWith("/mlm/"))) return true;
+  return false;
 }
 
 function NavButton({ item, isActive, onNavigate }) {

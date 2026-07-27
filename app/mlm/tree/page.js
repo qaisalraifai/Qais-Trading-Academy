@@ -125,7 +125,7 @@ function MlmTreeInner() {
               ↑ رجوع للأعلى
             </button>
           )}
-          <a href="/mlm" style={{ color: GOLD, textDecoration: "none", fontSize: "0.85rem", alignSelf: "center" }}>← ملخصي</a>
+          <a href="/affiliate?tab=mlm" style={{ color: GOLD, textDecoration: "none", fontSize: "0.85rem", alignSelf: "center" }}>← ملخصي</a>
         </div>
       </div>
 

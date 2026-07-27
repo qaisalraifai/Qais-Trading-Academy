@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import AffiliateClient from "./AffiliateClient";
+import CombinedClient from "./CombinedClient";
 import PageShell from "@/app/components/layout/PageShell";
 import { getShellProfile } from "@/lib/shell-profile";
 
@@ -13,7 +13,7 @@ export default async function AffiliatePage() {
 
   return (
     <PageShell {...shellProfile}>
-      <AffiliateClient />
+      <CombinedClient />
     </PageShell>
   );
 }
