@@ -1,0 +1,151 @@
+"use client";
+import { gold, ink, glass, shadowLuxe, shadowGold, gradientGold, displayStack, monoStack, transition } from "@/app/admin/styles";
+
+export const GOLD = gold;
+export const BG = ink;
+export const BORDER = "rgba(201,162,75,0.14)";
+export const CARD_BG = "rgba(255,255,255,0.02)";
+
+export { glass, shadowLuxe, shadowGold, gradientGold, displayStack, monoStack, transition };
+
+export function fmt(n) {
+  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+export function fmtDate(d) {
+  if (!d) return "—";
+  try {
+    return new Date(d).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return "—";
+  }
+}
+
+export function timeAgo(dateStr) {
+  if (!dateStr) return "—";
+  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+  if (diff < 60) return "الآن";
+  if (diff < 3600) return `منذ ${Math.floor(diff / 60)} دقيقة`;
+  if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`;
+  if (diff < 2592000) return `منذ ${Math.floor(diff / 86400)} يوم`;
+  return fmtDate(dateStr);
+}
+
+export const SUB_STATUS_LABELS = {
+  active: { label: "مشترك نشط", color: "#4CAF50" },
+  trial: { label: "فترة تجريبية", color: "#4FA8E0" },
+  expiring: { label: "قارب على الانتهاء", color: "#FF9800" },
+  expired: { label: "منتهي", color: "#8b8b8b" },
+  suspended: { label: "موقوف", color: "#F6465D" },
+  vip: { label: "VIP", color: "#B26FE0" },
+  none: { label: "بدون اشتراك", color: "#6E7177" },
+};
+
+export const COMMISSION_STATUS_LABELS = {
+  none: { label: "لا يوجد", color: "#6E7177" },
+  pending: { label: "معلّقة", color: "#eab308" },
+  ready: { label: "جاهزة للسحب", color: "#4CAF50" },
+  paid: { label: "مدفوعة", color: GOLD },
+};
+
+// Card / layout primitives shared across affiliate sections
+export const card = { ...glass, boxShadow: shadowLuxe, borderRadius: 18, padding: "1.6rem" };
+export const sectionTitle = { fontSize: "1.05rem", fontWeight: 800, color: "#EAECEF", fontFamily: displayStack, marginBottom: 4 };
+export const sectionEyebrow = { fontFamily: monoStack, color: GOLD, fontSize: "0.68rem", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" };
+export const btnPrimary = { backgroundImage: gradientGold, boxShadow: shadowGold, color: "#16130a", border: "none", padding: "0.75rem 1.4rem", borderRadius: 10, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", transition, whiteSpace: "nowrap" };
+export const btnGhost = { background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, padding: "0.6rem 1.1rem", borderRadius: 10, cursor: "pointer", fontSize: "0.8rem", whiteSpace: "nowrap", transition, fontWeight: 600 };
+
+// Simple inline tooltip: wraps children, shows a small label on hover/focus
+export function Tip({ text, children }) {
+  return (
+    <span style={{ position: "relative", display: "inline-flex" }} className="qta-tip-wrap">
+      {children}
+      <span className="qta-tip-bubble" style={tipStyles.bubble}>{text}</span>
+      <style>{`
+        .qta-tip-wrap .qta-tip-bubble { opacity: 0; visibility: hidden; transform: translateY(4px); transition: all 160ms ease; }
+        .qta-tip-wrap:hover .qta-tip-bubble, .qta-tip-wrap:focus-within .qta-tip-bubble { opacity: 1; visibility: visible; transform: translateY(0); }
+      `}</style>
+    </span>
+  );
+}
+
+const tipStyles = {
+  bubble: {
+    position: "absolute",
+    bottom: "calc(100% + 8px)",
+    right: "50%",
+    transform: "translateX(50%)",
+    background: "#1a1a1a",
+    border: `1px solid ${BORDER}`,
+    color: "#C8C0B0",
+    fontSize: "0.7rem",
+    lineHeight: 1.5,
+    padding: "0.5rem 0.7rem",
+    borderRadius: 8,
+    width: 200,
+    textAlign: "center",
+    zIndex: 20,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+    pointerEvents: "none",
+  },
+};
+
+export function InfoDot({ text }) {
+  return (
+    <Tip text={text}>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 15,
+          height: 15,
+          borderRadius: "50%",
+          border: `1px solid ${BORDER}`,
+          color: "#8a8580",
+          fontSize: "0.62rem",
+          cursor: "help",
+          marginInlineStart: 5,
+        }}
+        tabIndex={0}
+      >
+        ?
+      </span>
+    </Tip>
+  );
+}
+
+export function SkeletonBlock({ h = 16, w = "100%", radius = 6 }) {
+  return (
+    <div
+      style={{
+        height: h,
+        width: w,
+        borderRadius: radius,
+        background: "linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.07) 37%, rgba(255,255,255,0.03) 63%)",
+        backgroundSize: "400% 100%",
+        animation: "qta-shimmer 1.4s ease infinite",
+      }}
+    />
+  );
+}
+
+export function ShimmerStyles() {
+  return (
+    <style>{`
+      @keyframes qta-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+      @keyframes qta-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      .qta-animate-in { animation: qta-fade-up 420ms cubic-bezier(.2,.8,.2,1) both; }
+    `}</style>
+  );
+}
+
+export function EmptyState({ icon = "📭", title, desc }) {
+  return (
+    <div style={{ textAlign: "center", padding: "2.2rem 1rem" }}>
+      <div style={{ fontSize: "2rem", marginBottom: 10, opacity: 0.7 }}>{icon}</div>
+      <p style={{ color: "#C8C0B0", fontWeight: 700, fontSize: "0.9rem", marginBottom: 4 }}>{title}</p>
+      {desc && <p style={{ color: "#6E7177", fontSize: "0.78rem" }}>{desc}</p>}
+    </div>
+  );
+}

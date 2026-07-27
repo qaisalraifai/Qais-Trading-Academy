@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase-server";
 
-// GET /api/affiliate/me — بيانات وإحصائيات المسوّق الحالي (الشبكة + الأرباح + الدفعات)
+// GET /api/affiliate/me — بيانات وإحصائيات المسوّق الحالي (الشبكة + الأرباح + الدفعات + الإحالات + السلاسل الزمنية)
 export async function GET(request) {
   const supabase = createClient();
   const {
@@ -24,19 +24,39 @@ export async function GET(request) {
     return NextResponse.json({ error: "الملف الشخصي غير موجود" }, { status: 400 });
   }
 
+  const { data: settingsRow } = await admin
+    .from("affiliate_settings")
+    .select("level1_percent, level2_percent, level3_percent, min_payout_usd, payout_cycle_days")
+    .eq("id", 1)
+    .maybeSingle();
+
+  const settings = {
+    level1Percent: Number(settingsRow?.level1_percent) || 0,
+    level2Percent: Number(settingsRow?.level2_percent) || 0,
+    level3Percent: Number(settingsRow?.level3_percent) || 0,
+    minPayoutUsd: Number(settingsRow?.min_payout_usd) || 0,
+    payoutCycleDays: Number(settingsRow?.payout_cycle_days) || 14,
+  };
+
   const base = {
     status: profile.affiliate_status || "none",
     affiliateCode: profile.affiliate_code || null,
     payoutMethod: profile.payout_method || null,
     payoutDetails: profile.payout_details || null,
+    joinedAt: profile.affiliate_joined_at || null,
+    settings,
   };
 
   if (profile.affiliate_status !== "approved") {
-    return NextResponse.json({ ...base, network: { level1: 0, level2: 0, level3: 0 }, earnings: {}, payouts: [] });
+    return NextResponse.json({ ...base, network: { level1: 0, level2: 0, level3: 0 }, earnings: {}, payouts: [], referrals: [], series: { daily: [], weekly: [], monthly: [] } });
   }
 
   // نبني الشبكة: مستوى 1 -> 2 -> 3
-  const { data: level1Rows } = await admin.from("profiles").select("id, username, subscription_status, created_at").eq("referred_by", user.id);
+  const { data: level1Rows } = await admin
+    .from("profiles")
+    .select("id, username, subscription_status, created_at")
+    .eq("referred_by", user.id)
+    .order("created_at", { ascending: false });
   const level1Ids = (level1Rows || []).map((r) => r.id);
 
   let level2Rows = [];
@@ -52,10 +72,10 @@ export async function GET(request) {
     level3Rows = data || [];
   }
 
-  // عمولات المسوّق
+  // عمولات المسوّق (كل السجلات، لنبني منها الإجماليات + جدول الإحالات + السلاسل الزمنية)
   const { data: commissions } = await admin
     .from("commissions")
-    .select("level, status, commission_amount, created_at")
+    .select("level, status, commission_amount, created_at, source_user_id")
     .eq("affiliate_id", user.id);
 
   const earnings = { totalEarned: 0, pending: 0, ready: 0, paid: 0, byLevel: { 1: 0, 2: 0, 3: 0 } };
@@ -88,6 +108,100 @@ export async function GET(request) {
     epc: totalClicks > 0 ? earnings.totalEarned / totalClicks : 0,
   };
 
+  // جدول الإحالات المباشرة (مستوى 1) — لكل واحد فيهم نجمع عمولاته الخاصة معك + آخر نشاط
+  const commissionsBySource = {};
+  for (const c of commissions || []) {
+    if (!c.source_user_id) continue;
+    if (!commissionsBySource[c.source_user_id]) {
+      commissionsBySource[c.source_user_id] = { pending: 0, ready: 0, paid: 0, total: 0, lastActivity: null };
+    }
+    const bucket = commissionsBySource[c.source_user_id];
+    const amt = Number(c.commission_amount) || 0;
+    bucket.total += amt;
+    if (c.status === "pending") bucket.pending += amt;
+    if (c.status === "ready") bucket.ready += amt;
+    if (c.status === "paid") bucket.paid += amt;
+    if (!bucket.lastActivity || new Date(c.created_at) > new Date(bucket.lastActivity)) {
+      bucket.lastActivity = c.created_at;
+    }
+  }
+
+  const referrals = (level1Rows || []).map((r) => {
+    const bucket = commissionsBySource[r.id] || { pending: 0, ready: 0, paid: 0, total: 0, lastActivity: null };
+    let commissionStatus = "none";
+    if (bucket.pending > 0) commissionStatus = "pending";
+    else if (bucket.ready > 0) commissionStatus = "ready";
+    else if (bucket.paid > 0) commissionStatus = "paid";
+    return {
+      id: r.id,
+      username: r.username || "مستخدم",
+      joinedAt: r.created_at,
+      subscriptionStatus: r.subscription_status || "none",
+      commissionAmount: Math.round(bucket.total * 100) / 100,
+      commissionStatus,
+      lastActivity: bucket.lastActivity || r.created_at,
+    };
+  });
+
+  // سلاسل زمنية للأرباح (يومي 14 يوم / أسبوعي 8 أسابيع / شهري 6 أشهر)
+  function buildSeries() {
+    const now = new Date();
+    const dayMs = 86400000;
+
+    const daily = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * dayMs);
+      const key = d.toISOString().slice(0, 10);
+      daily.push({ label: key.slice(5), key, total: 0 });
+    }
+    const dailyIndex = Object.fromEntries(daily.map((d, i) => [d.key, i]));
+
+    const weekly = [];
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 7 * dayMs);
+      const key = `${d.getFullYear()}-W${String(getWeekNumber(d)).padStart(2, "0")}`;
+      weekly.push({ label: key, key, total: 0 });
+    }
+    const weeklyIndex = Object.fromEntries(weekly.map((w, i) => [w.key, i]));
+
+    const monthly = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthly.push({ label: key, key, total: 0 });
+    }
+    const monthlyIndex = Object.fromEntries(monthly.map((m, i) => [m.key, i]));
+
+    for (const c of commissions || []) {
+      const amt = Number(c.commission_amount) || 0;
+      const d = new Date(c.created_at);
+      const dayKey = d.toISOString().slice(0, 10);
+      if (dailyIndex[dayKey] !== undefined) daily[dailyIndex[dayKey]].total += amt;
+
+      const weekKey = `${d.getFullYear()}-W${String(getWeekNumber(d)).padStart(2, "0")}`;
+      if (weeklyIndex[weekKey] !== undefined) weekly[weeklyIndex[weekKey]].total += amt;
+
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (monthlyIndex[monthKey] !== undefined) monthly[monthlyIndex[monthKey]].total += amt;
+    }
+
+    for (const arr of [daily, weekly, monthly]) {
+      for (const row of arr) row.total = Math.round(row.total * 100) / 100;
+    }
+
+    return { daily, weekly, monthly };
+  }
+
+  function getWeekNumber(d) {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    return Math.ceil(((date - yearStart) / 86400000 + 1) / 7);
+  }
+
+  const series = buildSeries();
+
   return NextResponse.json({
     ...base,
     network: {
@@ -98,5 +212,7 @@ export async function GET(request) {
     earnings,
     payouts: payouts || [],
     funnel,
+    referrals,
+    series,
   });
 }
