@@ -10,8 +10,17 @@ import { refreshEconomicCalendar } from "@/lib/economic-calendar";
 export const maxDuration = 30;
 
 export async function GET(request) {
+  if (!process.env.CRON_SECRET) {
+    return Response.json(
+      { error: "CRON_SECRET غير معرّف بمتغيرات البيئة على السيرفر — لازم تُضاف بإعدادات Vercel (Project Settings → Environment Variables) ثم يُعاد النشر." },
+      { status: 500 }
+    );
+  }
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const querySecret = new URL(request.url).searchParams.get("secret");
+  const authorized =
+    authHeader === `Bearer ${process.env.CRON_SECRET}` || querySecret === process.env.CRON_SECRET;
+  if (!authorized) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 

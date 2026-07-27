@@ -38,7 +38,7 @@ function AssetBadge({ label }) {
   return (
     <span
       style={{
-        width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+        width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 10, fontWeight: 800, color: "#1a1608",
         background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
@@ -105,7 +105,7 @@ export default function WatchlistPanel({ activeSymbol, onSelectSymbol, onClose }
   return (
     <div
       style={{
-        flex: "0 0 280px", alignSelf: "stretch", display: "flex", flexDirection: "column",
+        flex: "0 0 300px", alignSelf: "stretch", display: "flex", flexDirection: "column",
         background: "#131722", border: "1px solid #2a2e39", borderRadius: 6,
         overflow: "hidden", minWidth: 0,
       }}
@@ -149,11 +149,12 @@ export default function WatchlistPanel({ activeSymbol, onSelectSymbol, onClose }
       )}
 
       <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
-        <div style={{ display: "flex", padding: "4px 10px", fontSize: 10.5, color: "#5d6270", position: "sticky", top: 0, background: "#131722", zIndex: 1 }}>
-          <span style={{ flex: 1 }}>الرمز</span>
-          <span style={{ width: 48, textAlign: "left" }}>%</span>
-          <span style={{ width: 58, textAlign: "left" }}>التغيّر</span>
-          <span style={{ width: 66, textAlign: "left" }}>السعر</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", fontSize: 10.5, color: "#5d6270", position: "sticky", top: 0, background: "#131722", zIndex: 1 }}>
+          <span style={{ width: 18, flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: 60 }}>الرمز</span>
+          <span style={{ width: 40, textAlign: "left", flexShrink: 0 }}>%</span>
+          <span style={{ width: 54, textAlign: "left", flexShrink: 0 }}>التغيّر</span>
+          <span style={{ width: 62, textAlign: "left", flexShrink: 0 }}>السعر</span>
         </div>
 
         {ASSETS.map((group) => {
@@ -187,7 +188,7 @@ export default function WatchlistPanel({ activeSymbol, onSelectSymbol, onClose }
                       onClick={() => !disabled && onSelectSymbol && onSelectSymbol(it.v)}
                       title={it.label}
                       style={{
-                        display: "flex", alignItems: "center", gap: 8, padding: "6px 10px",
+                        display: "flex", alignItems: "center", gap: 6, padding: "6px 8px",
                         cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1,
                         background: isActive ? "#20242f" : "transparent",
                         borderInlineStart: isActive ? `2px solid ${GOLD}` : "2px solid transparent",
@@ -196,16 +197,16 @@ export default function WatchlistPanel({ activeSymbol, onSelectSymbol, onClose }
                       onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
                     >
                       <AssetBadge label={it.v} />
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: isActive ? GOLD_LIGHT : "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ flex: 1, minWidth: 60, fontSize: 12, fontWeight: 600, color: isActive ? GOLD_LIGHT : "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {it.v}
                       </span>
-                      <span style={{ width: 48, textAlign: "left", fontSize: 11, fontWeight: 700, color, flexShrink: 0 }}>
+                      <span style={{ width: 40, textAlign: "left", fontSize: 10.5, fontWeight: 700, color, flexShrink: 0 }}>
                         {q ? `${q.changePercent > 0 ? "+" : ""}${q.changePercent.toFixed(2)}%` : disabled ? "—" : "..."}
                       </span>
-                      <span style={{ width: 58, textAlign: "left", fontSize: 11, color, flexShrink: 0, fontFamily: "monospace" }}>
+                      <span style={{ width: 54, textAlign: "left", fontSize: 10.5, color, flexShrink: 0, fontFamily: "monospace" }}>
                         {q ? fmtChange(q.change, it.mult) : disabled ? "—" : "..."}
                       </span>
-                      <span style={{ width: 66, textAlign: "left", fontSize: 11.5, color: "#c7cad1", flexShrink: 0, fontFamily: "monospace" }}>
+                      <span style={{ width: 62, textAlign: "left", fontSize: 11, color: "#c7cad1", flexShrink: 0, fontFamily: "monospace" }}>
                         {q ? fmtPrice(q.price, it.mult) : disabled ? "—" : "..."}
                       </span>
                     </div>

@@ -4590,7 +4590,16 @@ export default function ReplayClient({ userId }) {
     return () => clearTimeout(t);
   }, [compareOpen, maximizedPane]);
 
-  /* ===================== شارت المقارنة (لوحة سفلية بسيطة للقراءة فقط، بدون أدوات رسم) ===================== */
+  /* فتح/قفل لوحة المتابعة (Watchlist) بيغيّر عرض حاوية الشارت الفعلي، بس هاد
+     التغيير ما بيطلق حدث "resize" على النافذة نفسها (لأنه بس تغيير Flexbox
+     جوا الصفحة) - فلازم نطلب من الشارت يعيد حساب عرضه يدوياً، وإلا بضل
+     فراغ أسود مكان اللوحة المقفولة (نفس فكرة تأثير compareOpen فوق). */
+  useEffect(() => {
+    const t = setTimeout(() => chartRef.current?.__resize?.(), 30);
+    return () => clearTimeout(t);
+  }, [watchlistPanelOpen]);
+
+
   useEffect(() => {
     if (!compareOpen) {
       if (compareChartRef.current) {
