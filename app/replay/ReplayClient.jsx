@@ -5878,18 +5878,22 @@ export default function ReplayClient({ userId }) {
      يمين، وأزرار الإجراءات (عشوائي/قص/مقارنة/تصدير/إعادة تعيين/شاشة كاملة/إعدادات)
      شمال، بدون صناديق كبيرة فوق بعض زي قبل. */
   function renderTopBar() {
+    // مقاسات/ألوان شريط تريدنغ فيو العلوي بالظبط: أزرار 30×30، زوايا دائرية
+    // صغيرة (4px مش 8-10)، وحالة Hover رمادية خفيفة (صف .tv-btn بالـ<style>
+    // المحقون فوق بجذر الكومبوننت) على أي زر مو مفعّل أو معطّل حالياً.
     const iconBtn = (active, disabled) => ({
-      width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center",
-      borderRadius: 8, cursor: disabled ? "not-allowed" : "pointer", border: "1px solid transparent",
+      width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
+      borderRadius: 4, cursor: disabled ? "not-allowed" : "pointer", border: "1px solid transparent",
       background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-      color: active ? "#1a1608" : disabled ? "#4a4e58" : "#c7cad1",
+      color: active ? "#1a1608" : disabled ? "#4a4e58" : "#b2b5be",
       opacity: disabled ? 0.5 : 1, flexShrink: 0,
     });
+    const iconBtnClass = (active, disabled) => `tv-btn${active ? " tv-btn-active" : ""}${disabled ? " tv-btn-disabled" : ""}`;
     return (
       <div style={{
-        display: "flex", flexWrap: "wrap", gap: "0.35rem", alignItems: "center",
+        display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center",
         marginBottom: "0.6rem", background: "#131722",
-        border: "1px solid #242832", borderRadius: 10, padding: "0.35rem 0.5rem",
+        border: "1px solid #2a2e39", borderRadius: 6, padding: "0.3rem 0.4rem",
         // مهم: الصفحة كلها dir="rtl"، وبدون تثبيت الاتجاه هون كان "row" الافتراضي
         // بينقلب تلقائياً (أول عنصر بالـDOM بيطلع أقصى اليمين مش الشمال)، فكانت
         // كل أزرار الأدوات تطلع بعكس المكان المطلوب (يمين بدل شمال) وصندوق
@@ -5899,18 +5903,18 @@ export default function ReplayClient({ userId }) {
         direction: "ltr",
       }}>
         {/* مجموعة أزرار الأدوات (أيقونات فقط، بدون نص) */}
-        <button onClick={() => setSettingsOpen(true)} style={iconBtn(false)} title="إعدادات الشارت"><ToolIcon id="gear" /></button>
-        <button onClick={handleUndoLastDrawing} style={iconBtn(false)} title="تراجع عن آخر رسمة"><ToolIcon id="undo" /></button>
+        <button onClick={() => setSettingsOpen(true)} className={iconBtnClass(false)} style={iconBtn(false)} title="إعدادات الشارت"><ToolIcon id="gear" /></button>
+        <button onClick={handleUndoLastDrawing} className={iconBtnClass(false)} style={iconBtn(false)} title="تراجع عن آخر رسمة"><ToolIcon id="undo" /></button>
         {mode === "training" ? (
-          <button onClick={handleReset} style={iconBtn(false)} title="إعادة من البداية"><ToolIcon id="refresh" /></button>
+          <button onClick={handleReset} className={iconBtnClass(false)} style={iconBtn(false)} title="إعادة من البداية"><ToolIcon id="refresh" /></button>
         ) : (
-          <button onClick={() => loadData()} style={iconBtn(false)} title="تحديث"><ToolIcon id="refresh" /></button>
+          <button onClick={() => loadData()} className={iconBtnClass(false)} style={iconBtn(false)} title="تحديث"><ToolIcon id="refresh" /></button>
         )}
         <div style={{ width: 1, height: 22, background: "#242832" }} />
-        <button onClick={toggleCompare} style={iconBtn(compareOpen)} title="اعرضي رمز ثاني بلوحة منفصلة أسفل الشارت للمقارنة"><ToolIcon id="compare2" /></button>
+        <button onClick={toggleCompare} className={iconBtnClass(compareOpen)} style={iconBtn(compareOpen)} title="اعرضي رمز ثاني بلوحة منفصلة أسفل الشارت للمقارنة"><ToolIcon id="compare2" /></button>
         <button
           onClick={() => setIndicatorPanelOpen((v) => !v)}
-          style={{ ...iconBtn(indicatorPanelOpen), position: "relative" }}
+          className={iconBtnClass(indicatorPanelOpen)} style={{ ...iconBtn(indicatorPanelOpen), position: "relative" }}
           title="المؤشرات الفنية"
         >
           <ToolIcon id="indicators2" />
@@ -5922,15 +5926,15 @@ export default function ReplayClient({ userId }) {
             }}>{activeIndicators.length}</span>
           )}
         </button>
-        <button onClick={() => setTemplatesPanelOpen((v) => !v)} style={iconBtn(templatesPanelOpen)} title="قوالب: احفظي أو حمّلي مجموعة مؤشرات/إعدادات جاهزة"><ToolIcon id="template2" /></button>
-        <button onClick={handleExportImage} style={iconBtn(false)} title="تصدير كصورة"><ToolIcon id="camera" /></button>
-        <button onClick={handleResetView} style={iconBtn(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي"><ToolIcon id="resetzoom" /></button>
-        <button onClick={toggleFullscreen} style={iconBtn(isFullscreen)} title="شاشة كاملة"><ToolIcon id={isFullscreen ? "fullscreenExit" : "fullscreen"} /></button>
+        <button onClick={() => setTemplatesPanelOpen((v) => !v)} className={iconBtnClass(templatesPanelOpen)} style={iconBtn(templatesPanelOpen)} title="قوالب: احفظي أو حمّلي مجموعة مؤشرات/إعدادات جاهزة"><ToolIcon id="template2" /></button>
+        <button onClick={handleExportImage} className={iconBtnClass(false)} style={iconBtn(false)} title="تصدير كصورة"><ToolIcon id="camera" /></button>
+        <button onClick={handleResetView} className={iconBtnClass(false)} style={iconBtn(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي"><ToolIcon id="resetzoom" /></button>
+        <button onClick={toggleFullscreen} className={iconBtnClass(isFullscreen)} style={iconBtn(isFullscreen)} title="شاشة كاملة"><ToolIcon id={isFullscreen ? "fullscreenExit" : "fullscreen"} /></button>
         <div style={{ width: 1, height: 22, background: "#242832" }} />
-        <button onClick={() => setRandomChart((r) => !r)} style={iconBtn(randomChart)} title="حركة سعر مولّدة عشوائياً بدل السوق الحقيقي"><ToolIcon id="dice2" /></button>
+        <button onClick={() => setRandomChart((r) => !r)} className={iconBtnClass(randomChart)} style={iconBtn(randomChart)} title="حركة سعر مولّدة عشوائياً بدل السوق الحقيقي"><ToolIcon id="dice2" /></button>
         <button
           onClick={toggleCutMode}
-          style={iconBtn(cutMode, !supported || allCandles.length === 0)}
+          className={iconBtnClass(cutMode, !supported || allCandles.length === 0)} style={iconBtn(cutMode, !supported || allCandles.length === 0)}
           title="فعّلي القص، بعدين اسحبي عالشارت لتحديد منطقة بداية الاستعراض"
           disabled={!supported || allCandles.length === 0}
         >
@@ -5938,21 +5942,21 @@ export default function ReplayClient({ userId }) {
         </button>
         {cutMode && (
           <>
-            <button onClick={() => setCutSubMode("select")} style={iconBtn(cutSubMode === "select")} title="سحب لتحديد المنطقة">
+            <button onClick={() => setCutSubMode("select")} className={iconBtnClass(cutSubMode === "select")} style={iconBtn(cutSubMode === "select")} title="سحب لتحديد المنطقة">
               <ToolIcon id="marquee" />
             </button>
-            <button onClick={() => setCutSubMode("move")} style={iconBtn(cutSubMode === "move", !cutRegion)} disabled={!cutRegion} title="تحريك المنطقة">
+            <button onClick={() => setCutSubMode("move")} className={iconBtnClass(cutSubMode === "move", !cutRegion)} style={iconBtn(cutSubMode === "move", !cutRegion)} disabled={!cutRegion} title="تحريك المنطقة">
               <ToolIcon id="dragDots" />
             </button>
-            <button onClick={() => setCutSubMode("edit-edges")} style={iconBtn(cutSubMode === "edit-edges", !cutRegion)} disabled={!cutRegion} title="تعديل الحواف">
+            <button onClick={() => setCutSubMode("edit-edges")} className={iconBtnClass(cutSubMode === "edit-edges", !cutRegion)} style={iconBtn(cutSubMode === "edit-edges", !cutRegion)} disabled={!cutRegion} title="تعديل الحواف">
               <ToolIcon id="pencilLine" />
             </button>
-            <button onClick={resetCutRegion} style={iconBtn(false, !cutRegion)} disabled={!cutRegion} title="إعادة ضبط القص">
+            <button onClick={resetCutRegion} className={iconBtnClass(false, !cutRegion)} style={iconBtn(false, !cutRegion)} disabled={!cutRegion} title="إعادة ضبط القص">
               <ToolIcon id="refresh" />
             </button>
             <button
               onClick={() => setCutSettingsOpen((v) => !v)}
-              style={{ ...iconBtn(cutSettingsOpen), position: "relative" }}
+              className={iconBtnClass(cutSettingsOpen)} style={{ ...iconBtn(cutSettingsOpen), position: "relative" }}
               title="إعدادات القص"
             >
               <ToolIcon id="gear" />
@@ -6001,10 +6005,10 @@ export default function ReplayClient({ userId }) {
                 </div>
               )}
             </button>
-            <button onClick={applyCutRegion} disabled={!cutRegion} style={iconBtn(false, !cutRegion)} title="تطبيق القص">
+            <button onClick={applyCutRegion} disabled={!cutRegion} className={iconBtnClass(false, !cutRegion)} style={iconBtn(false, !cutRegion)} title="تطبيق القص">
               <ToolIcon id="checkmark" />
             </button>
-            <button onClick={cancelCutMode} style={iconBtn(false)} title="إلغاء القص">
+            <button onClick={cancelCutMode} className={iconBtnClass(false)} style={iconBtn(false)} title="إلغاء القص">
               <ToolIcon id="xmark" />
             </button>
           </>
@@ -6012,12 +6016,12 @@ export default function ReplayClient({ userId }) {
         {mode === "training" && (
           <>
             <div style={{ width: 1, height: 22, background: "#242832" }} />
-            <button onClick={handleRandomStart} style={iconBtn(false)} title="بداية عشوائية جديدة">🎲</button>
-            <button onClick={togglePlay} disabled={finished || loading} style={iconBtn(isPlaying)} title={isPlaying ? "إيقاف" : "تشغيل تلقائي"}>
+            <button onClick={handleRandomStart} className={iconBtnClass(false)} style={iconBtn(false)} title="بداية عشوائية جديدة">🎲</button>
+            <button onClick={togglePlay} disabled={finished || loading} className={iconBtnClass(isPlaying)} style={iconBtn(isPlaying)} title={isPlaying ? "إيقاف" : "تشغيل تلقائي"}>
               {isPlaying ? "⏸" : "▶"}
             </button>
-            <button onClick={handleNext} disabled={finished || loading} style={iconBtn(false)} title="الشمعة التالية">⏭</button>
-            <button onClick={() => switchMode("live")} style={iconBtn(false)} title="ارجعي للمتابعة المباشرة للسوق">🔴</button>
+            <button onClick={handleNext} disabled={finished || loading} className={iconBtnClass(false)} style={iconBtn(false)} title="الشمعة التالية">⏭</button>
+            <button onClick={() => switchMode("live")} className={iconBtnClass(false)} style={iconBtn(false)} title="ارجعي للمتابعة المباشرة للسوق">🔴</button>
           </>
         )}
 
@@ -6026,7 +6030,7 @@ export default function ReplayClient({ userId }) {
         {isAdmin && (
           <button
             onClick={() => { setDrawingsListTick((t) => t + 1); setPracticePanelOpen(true); }}
-            style={{ ...iconBtn(false), width: "auto", padding: "0 10px", fontSize: 12, fontWeight: 700 }}
+            className={iconBtnClass(false)} style={{ ...iconBtn(false), width: "auto", padding: "0 10px", fontSize: 12, fontWeight: 700 }}
             title="تسجيل تمرين تفاعلي جديد (SMC + ICT)"
           >
             🎯 تسجيل تمرين
@@ -6150,55 +6154,61 @@ export default function ReplayClient({ userId }) {
       setToolGroupDefault((prev) => ({ ...prev, [gi]: id }));
       setOpenToolGroup(null);
     }
+    // نفس منطق TOOL_GROUPS بس بمقاسات وألوان تريدنغ فيو الحقيقية: زر مربّع
+    // 40×40 (بدل 62×52)، أيقونة بس بدون نص ثابت تحتها - العنوان بيبان بس
+    // بتلميح (tooltip) لما تقفي فوقه بالماوس، بالظبط متل الشريط الجانبي
+    // الأصلي بتريدنغ فيو. زوايا أصغر (4px بدل 8px) والـ hover منعكس بصف
+    // .tv-btn المحقون فوق بجذر الكومبوننت.
     function sidebarBtnStyle(active) {
       return {
-        width: 62, minHeight: 52, display: "flex", flexDirection: "column", alignItems: "center",
-        justifyContent: "center", gap: 3, borderRadius: 8, cursor: "pointer",
+        width: 40, height: 40, display: "flex", alignItems: "center",
+        justifyContent: "center", borderRadius: 4, cursor: "pointer",
         border: "1px solid transparent",
         background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-        color: active ? "#1a1608" : "#9aa0aa",
-        transition: "background .12s, color .12s", flexShrink: 0, padding: "6px 2px",
+        color: active ? "#1a1608" : "#b2b5be",
+        flexShrink: 0,
       };
     }
-    const labelStyle = (active) => ({ fontSize: 10, fontWeight: 600, color: active ? "#1a1608" : "#8a8f99", lineHeight: 1.1 });
+    const sidebarBtnClass = (active) => `tv-btn${active ? " tv-btn-active" : ""}`;
     return (
       <div style={{
         flex: "0 0 auto", alignSelf: "stretch", position: "relative", zIndex: 10,
-        display: "flex", flexDirection: "column", gap: 3,
-        background: "#131722", border: "1px solid #242832", borderRadius: 10, padding: 6,
+        display: "flex", flexDirection: "column", gap: 2,
+        background: "#131722", border: "1px solid #2a2e39", borderRadius: 6, padding: 6,
         boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-        height: "100%", overflowY: "auto", overflowX: "visible",
+        height: "100%", overflowY: "auto", overflowX: "visible", width: 52,
       }}>
         {TOOL_GROUPS.map((group, gi) => {
           const hasMultiple = group.length > 1;
           const currentId = hasMultiple ? (toolGroupDefault[gi] || group[0]) : group[0];
           const isActive = group.includes(activeTool);
           return (
-            <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {gi > 0 && <div style={{ height: 1, background: "#242832", margin: "3px 4px" }} />}
+            <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {gi > 0 && <div style={{ height: 1, background: "#2a2e39", margin: "4px 6px" }} />}
               <button
                 type="button"
                 title={TOOL_TITLES[currentId]}
                 onClick={(e) => { e.stopPropagation(); setActiveTool((cur) => (cur === currentId ? "cursor" : currentId)); }}
+                className={sidebarBtnClass(isActive)}
                 style={{ ...sidebarBtnStyle(isActive), position: "relative" }}
               >
                 <ToolIcon id={currentId} />
-                <span style={labelStyle(isActive)}>{GROUP_LABELS[gi]}</span>
                 {hasMultiple && (
                   // منطقة ضغط أكبر بكتير من المثلث نفسه (كانت قبل شبه بلا مساحة،
-                  // فصعب جداً تصيبيها بالماوس/بالإصبع). هلأ صار في مربع ٢٦×٢٤ كامل
-                  // قابل للضغط بزاوية الزر، والمثلث المرسوم جواه بس أكبر شوي عشان يبان أوضح.
+                  // فصعب جداً تصيبيها بالماوس/بالإصبع)، بس مقاسها اتصغّر شوي
+                  // ليناسب الزر الأصغر (40×40 بدل 62×52) - نفس فلسفة تريدنغ فيو:
+                  // مثلث صغير بزاوية الزر السفلية بيفتح قائمة البدائل.
                   <span
                     onClick={(e) => { e.stopPropagation(); e.preventDefault(); openFlyout(gi, e.currentTarget.parentElement); }}
                     style={{
-                      position: "absolute", bottom: 0, right: 0, width: 26, height: 24,
+                      position: "absolute", bottom: 0, right: 0, width: 16, height: 16,
                       display: "flex", alignItems: "flex-end", justifyContent: "flex-end",
-                      padding: "0 4px 4px 0", cursor: "pointer",
+                      padding: "0 2px 2px 0", cursor: "pointer",
                     }}
                   >
                     <span style={{
                       width: 0, height: 0,
-                      borderLeft: "5px solid transparent", borderBottom: "5px solid #8a8a8a",
+                      borderLeft: "4px solid transparent", borderBottom: "4px solid #8a8a8a",
                     }} />
                   </span>
                 )}
@@ -6208,11 +6218,12 @@ export default function ReplayClient({ userId }) {
                 return (
                 <div
                   onClick={(e) => e.stopPropagation()}
+                  className="tv-flyout-scroll"
                   style={{
                     position: "fixed", zIndex: 25,
                     top: btnRect ? btnRect.top : 0,
                     left: btnRect ? btnRect.right + 8 : 0,
-                    background: "#171b26", border: "1px solid #242832", borderRadius: 10,
+                    background: "#171b26", border: "1px solid #2a2e39", borderRadius: 6,
                     boxShadow: "0 8px 28px rgba(0,0,0,0.55)", minWidth: 230,
                     maxHeight: 420, overflowY: "auto", padding: "6px 0",
                   }}
@@ -6235,11 +6246,11 @@ export default function ReplayClient({ userId }) {
                             onClick={() => pickTool(gi, id)}
                             style={{
                               display: "flex", alignItems: "center", justifyContent: "space-between",
-                              gap: 10, padding: "8px 14px", cursor: "pointer", fontSize: 13,
-                              color: activeTool === id ? GOLD_LIGHT : "#e5e5e5",
+                              gap: 10, padding: "9px 14px", cursor: "pointer", fontSize: 13,
+                              color: activeTool === id ? GOLD_LIGHT : "#d1d4dc",
                               background: activeTool === id ? "#20242f" : "transparent",
                             }}
-                            onMouseEnter={(e) => { if (activeTool !== id) e.currentTarget.style.background = "#1c202a"; }}
+                            onMouseEnter={(e) => { if (activeTool !== id) e.currentTarget.style.background = "#2a2e39"; }}
                             onMouseLeave={(e) => { if (activeTool !== id) e.currentTarget.style.background = "transparent"; }}
                           >
                             <span style={{ flex: 1 }}>{TOOL_TITLES[id]}</span>
@@ -6266,40 +6277,37 @@ export default function ReplayClient({ userId }) {
             </div>
           );
         })}
-        <div style={{ height: 1, background: "#242832", margin: "3px 4px" }} />
+        <div style={{ height: 1, background: "#2a2e39", margin: "4px 6px" }} />
         <button
           type="button"
           title={`مغناطيس: ${magnetOn ? "مفعّل" : "معطّل"} — يشتغل فقط أثناء استخدام أداة رسم، ويلتصق بأقرب سعر لما تقربي منه فعلاً`}
           onClick={(e) => { e.stopPropagation(); e.preventDefault(); setMagnetOn((m) => !m); }}
+          className={sidebarBtnClass(magnetOn)}
           style={{ ...sidebarBtnStyle(magnetOn), position: "relative" }}
         >
           <ToolIcon id="magnet" />
-          <span style={labelStyle(magnetOn)}>مغناطيس</span>
           <span style={{
             position: "absolute", top: 5, right: 8, width: 6, height: 6, borderRadius: "50%",
             background: magnetOn ? GREEN : "#555", border: "1px solid #131722",
           }} />
         </button>
-        <button type="button" title={drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات"} onClick={(e) => { e.stopPropagation(); toggleDrawingsVisible(); }} style={sidebarBtnStyle(!drawingsVisible)}>
+        <button type="button" title={drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات"} onClick={(e) => { e.stopPropagation(); toggleDrawingsVisible(); }} className={sidebarBtnClass(!drawingsVisible)} style={sidebarBtnStyle(!drawingsVisible)}>
           <ToolIcon id={drawingsVisible ? "eye" : "eyeOff"} />
-          <span style={labelStyle(!drawingsVisible)}>{drawingsVisible ? "إظهار" : "مخفي"}</span>
         </button>
         <button
           type="button"
           title={allDrawingsLocked ? "فك قفل كل الرسومات" : "قفل كل الرسومات (منع التحريك/التعديل)"}
           onClick={(e) => { e.stopPropagation(); toggleLockAllDrawings(); }}
+          className={sidebarBtnClass(allDrawingsLocked)}
           style={sidebarBtnStyle(allDrawingsLocked)}
         >
           <ToolIcon id={allDrawingsLocked ? "lock" : "unlock"} />
-          <span style={labelStyle(allDrawingsLocked)}>قفل</span>
         </button>
-        <button type="button" title="قوالب: احفظي أو حمّلي مجموعة مؤشرات جاهزة" onClick={(e) => { e.stopPropagation(); setTemplatesPanelOpen((v) => !v); }} style={sidebarBtnStyle(templatesPanelOpen)}>
+        <button type="button" title="قوالب: احفظي أو حمّلي مجموعة مؤشرات جاهزة" onClick={(e) => { e.stopPropagation(); setTemplatesPanelOpen((v) => !v); }} className={sidebarBtnClass(templatesPanelOpen)} style={sidebarBtnStyle(templatesPanelOpen)}>
           <ToolIcon id="template2" />
-          <span style={labelStyle(templatesPanelOpen)}>قالب</span>
         </button>
-        <button type="button" title="حذف كل الرسومات" onClick={(e) => { e.stopPropagation(); handleClearDrawings(); }} style={sidebarBtnStyle(false)}>
+        <button type="button" title="حذف كل الرسومات" onClick={(e) => { e.stopPropagation(); handleClearDrawings(); }} className={sidebarBtnClass(false)} style={sidebarBtnStyle(false)}>
           <ToolIcon id="trash" />
-          <span style={labelStyle(false)}>حذف</span>
         </button>
       </div>
     );
@@ -8190,6 +8198,22 @@ export default function ReplayClient({ userId }) {
 
   return (
     <div>
+      {/* ستايل عام مشترك بين شريط الأدوات العلوي والشريط الجانبي، بمواصفات
+         تريدنغ فيو: حالة Hover رمادية خفيفة (متل TradingView بالظبط) على أي
+         زر مو مفعّل حالياً، وسكرول بار رفيع بنفس أسلوبها لقوائم الأدوات
+         المنسدلة (flyouts) - مش ممكن نعمل :hover/scrollbar-width جوا inline
+         style بريأكت، فمضطرين نحقن وسم <style> مرة وحدة هون. */}
+      <style>{`
+        .tv-btn { transition: background 0.1s ease, color 0.1s ease; }
+        .tv-btn:hover:not(.tv-btn-active):not(.tv-btn-disabled) {
+          background: #2a2e39 !important;
+          color: #d1d4dc !important;
+        }
+        .tv-flyout-scroll { scrollbar-width: thin; scrollbar-color: #363a45 transparent; }
+        .tv-flyout-scroll::-webkit-scrollbar { width: 8px; }
+        .tv-flyout-scroll::-webkit-scrollbar-thumb { background: #363a45; border-radius: 4px; }
+        .tv-flyout-scroll::-webkit-scrollbar-track { background: transparent; }
+      `}</style>
       {!isFullscreen && renderTopBar()}
 
       {!supported && !error && (
