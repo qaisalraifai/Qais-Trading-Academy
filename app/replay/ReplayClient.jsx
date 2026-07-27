@@ -8196,6 +8196,91 @@ export default function ReplayClient({ userId }) {
     );
   }
 
+  /* ساعة حية أسفل الشارت (متل شريط أسفل TradingView الحقيقي: "AM UTC+3
+     05:23:49") — إضافة جديدة بالكامل، بتتحدّث كل ثانية. */
+  const [footerClock, setFooterClock] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setFooterClock(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const utcOffsetLabel = (() => {
+    const mins = -new Date().getTimezoneOffset();
+    const sign = mins >= 0 ? "+" : "-";
+    const h = Math.floor(Math.abs(mins) / 60);
+    return `UTC${sign}${h}`;
+  })();
+  const footerClockLabel = `${footerClock.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit", second: "2-digit" })} ${utcOffsetLabel}`;
+
+  /* اختصارات المدى الزمني (يوم/5 أيام/1 شهر...) — إضافة جديدة، بتحرّك زوم
+     الشارت الحقيقي (setVisibleLogicalRange) لتعرض آخر N يوم من الشموع
+     المعروضة حالياً، بالاعتماد على مدة الشمعة الفعلية للفريم الحالي
+     (INTERVAL_MS) - مش قائمة تجميلية بلا وظيفة. */
+  const RANGE_SHORTCUTS = [
+    { key: "1d", label: "يوم", days: 1 },
+    { key: "5d", label: "5 أيام", days: 5 },
+    { key: "1m", label: "1 شهر", days: 30 },
+    { key: "3m", label: "3 أشهر", days: 90 },
+    { key: "6m", label: "6 أشهر", days: 182 },
+    { key: "ytd", label: "YTD", days: "ytd" },
+    { key: "1y", label: "1 سنة", days: 365 },
+    { key: "all", label: "كل", days: "all" },
+  ];
+  function applyRangeShortcut(days) {
+    const chart = chartRef.current;
+    const total = visibleCandlesRef.current.length;
+    if (!chart || !total) return;
+    if (days === "all") {
+      chart.timeScale().fitContent();
+      return;
+    }
+    let effectiveDays = days;
+    if (days === "ytd") {
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+      effectiveDays = Math.max(1, (now.getTime() - startOfYear) / 86400000);
+    }
+    const ms = INTERVAL_MS[interval] || 60000;
+    const bars = Math.max(2, Math.round((effectiveDays * 86400000) / ms));
+    const from = Math.max(0, total - bars);
+    const to = total - 1 + 3; // هامش صغير يمين الشمعة الأخيرة (متل تريدنغ فيو)
+    try { chart.timeScale().setVisibleLogicalRange({ from, to }); } catch {}
+  }
+
+  /* شريط أسفل الشارت: ساعة + أزرار مدى زمني — إضافة جديدة (مش موجودة سابقاً
+     بالمشروع)، تظهر بس لما في بيانات محمّلة، وما بتظهر بوضع الشاشة الكاملة
+     المدمج لتوفير المساحة (بنفس منطق renderTopBar/renderLiveBadge الموجود). */
+  function renderBottomBar() {
+    if (!allCandles.length) return null;
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 12, flexWrap: "wrap", marginTop: "0.5rem",
+        padding: "0.35rem 0.7rem", background: "#131722",
+        border: "1px solid #2a2e39", borderRadius: 6,
+        fontSize: 11.5, color: "#787b86", direction: "ltr",
+      }}>
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>{footerClockLabel}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+          {RANGE_SHORTCUTS.map((r) => (
+            <button
+              key={r.key}
+              type="button"
+              onClick={() => applyRangeShortcut(r.days)}
+              style={{
+                padding: "3px 8px", borderRadius: 4, border: "1px solid transparent",
+                background: "transparent", color: "#b2b5be", cursor: "pointer",
+                fontSize: 11.5, fontWeight: 600,
+              }}
+              className="tv-btn"
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* ستايل عام مشترك بين شريط الأدوات العلوي والشريط الجانبي، بمواصفات
@@ -8389,6 +8474,8 @@ export default function ReplayClient({ userId }) {
           />
         )}
       </div>
+
+      {!isFullscreen && renderBottomBar()}
 
       {openToolGroup !== null && (
         <div
