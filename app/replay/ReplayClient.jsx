@@ -2858,12 +2858,28 @@ export default function ReplayClient({ userId }) {
      تختاريها، مش بس بمنتصفه الثابت. بترجع null إذا الفأرة أبعد من نطاق
      اللمس المسموح أو النوع مش من LINE_TEXT_TYPES أصلاً. */
   function nearestPointOnLine(d, x, y) {
-    if (!LINE_TEXT_TYPES.has(d.type)) return null;
+    if (!LINE_TEXT_TYPES.has(d.type) && d.type !== "rectangle") return null;
     const chart = chartRef.current, series = seriesRef.current;
     if (!chart || !series) return null;
     const TOL = 12;
     try {
       const ts = chart.timeScale();
+      /* المستطيل: "+ إضافة نص" بتتبع الفأرة بس فوق الخط الوهمي بمنتصف
+         ارتفاع المستطيل (نفس منطق hline بس محصور بعرض المستطيل)، وبتختفي
+         لما الفأرة تطلع برا حدود المستطيل أفقياً أو تبعد عمودياً عن منتصفه -
+         بالظبط متل تريدنغ فيو */
+      if (d.type === "rectangle") {
+        const a = logicalPriceToXY(d.p1), b = logicalPriceToXY(d.p2);
+        if (a.x == null || b.x == null || a.y == null || b.y == null) return null;
+        const left = Math.min(a.x, b.x), right = Math.max(a.x, b.x);
+        const midY = (a.y + b.y) / 2;
+        if (x < left - TOL || x > right + TOL || Math.abs(y - midY) > TOL) return null;
+        const clampedX = Math.max(left, Math.min(right, x));
+        const logical = ts.coordinateToLogical(clampedX);
+        const price = series.coordinateToPrice(midY);
+        if (logical == null || price == null) return null;
+        return { x: clampedX, y: midY, logical, price };
+      }
       if (d.type === "hline") {
         const py = series.priceToCoordinate(d.p1.price);
         if (py == null || Math.abs(y - py) > TOL) return null;
