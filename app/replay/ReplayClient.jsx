@@ -5,6 +5,8 @@ import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets
 import { createClient } from "@/lib/supabase-client";
 import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
+import ChartInfoPanel from "./ChartInfoPanel";
+import TimeframeSelector from "./TimeframeSelector";
 
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
@@ -85,6 +87,17 @@ const INTERVALS = [
   { value: "4h", label: "4 ساعات" },
   { value: "1d", label: "يومي" },
 ];
+
+// تسميات مختصرة لأزرار TimeframeSelector المدمجة (الشكل الكامل يضل موجود
+// بالـ tooltip وبأي مكان تاني بيستخدم INTERVALS.label متل renderOHLCTicker).
+const SHORT_INTERVAL_LABELS = {
+  "1m": "1د",
+  "5m": "5د",
+  "15m": "15د",
+  "1h": "1س",
+  "4h": "4س",
+  "1d": "1ي",
+};
 
 /* نفس أرقام rangeDays المضبوطة بـ lib/yahoo-candles.js (INTERVAL_CONFIG) —
    عمق البيانات التاريخي الحقيقي المتاح من يوهو فايننس لكل فريم. مكرّرة هون
@@ -6055,31 +6068,29 @@ export default function ReplayClient({ userId }) {
           </select>
         )}
 
-        <select value={interval} onChange={(e) => setIntervalValue(e.target.value)} title="الفريم"
-          style={{ ...selectStyle, minWidth: 70, padding: "0.35rem 0.5rem", fontSize: 12.5 }}>
-          {INTERVALS.map((o) => {
-            // لو في نقطة قص Replay فعّالة، منحسب عمرها بالأيام ومنعطّل أي فريم
-            // عمق بياناته الحقيقي (rangeDays) أقصر من هيك عمر — بدل ما نخلّي
-            // المستخدم يبدّل وبعدين يوصله توست "أقرب نقطة متاحة". لو الأصل
-            // الحالي عنده رمز Dukascopy، منستخدم عمق موسّع (rangeDaysFor) بدل
-            // حد يوهو الضيق، لأنه أداة الريبلاي رح تجرب Dukascopy أول شي.
+        <TimeframeSelector
+          currentTimeframe={interval}
+          onTimeframeChange={setIntervalValue}
+          options={INTERVALS.map((o) => {
+            // نفس منطق التعطيل الأصلي بالحرف — لو في نقطة قص Replay فعّالة،
+            // منحسب عمرها بالأيام ومنعطّل أي فريم عمق بياناته الحقيقي
+            // (rangeDays) أقصر من هيك عمر — بدل ما نخلّي المستخدم يبدّل
+            // وبعدين يوصله توست "أقرب نقطة متاحة". لو الأصل الحالي عنده رمز
+            // Dukascopy، منستخدم عمق موسّع (rangeDaysFor) بدل حد يوهو الضيق.
             const cutAgeDays = replayStateRef.current.isActive && replayCutTs
               ? (Date.now() / 1000 - replayCutTs) / 86400
               : null;
             const hasDuk = !!getAssetByValue(assetValue)?.dukascopy;
             const unreachable = cutAgeDays != null && cutAgeDays > rangeDaysFor(o.value, hasDuk);
-            return (
-              <option
-                key={o.value}
-                value={o.value}
-                disabled={unreachable}
-                title={unreachable ? "نقطة القص أبعد من عمق البيانات المتاح لهاد الفريم" : undefined}
-              >
-                {o.label}{unreachable ? " (بعيد عن نقطة القص)" : ""}
-              </option>
-            );
+            return {
+              value: o.value,
+              label: o.label,
+              shortLabel: SHORT_INTERVAL_LABELS[o.value] || o.label,
+              disabled: unreachable,
+              title: unreachable ? `${o.label} - نقطة القص أبعد من عمق البيانات المتاح لهاد الفريم` : o.label,
+            };
           })}
-        </select>
+        />
 
         <select
           value={assetValue}
@@ -8107,6 +8118,39 @@ export default function ReplayClient({ userId }) {
     );
   }
 
+  /* لوحة معلومات مفصّلة (سعر حالي + نسبة التغيّر + أعلى/أدنى/فتح) — إضافة
+     جديدة (مش موجودة سابقاً) بجانب شريط الـOHLC المختصر الموجود فوق. بنعرضها
+     يمين الشارت (شريط الـOHLC المختصر عالشمال) وبنربطها بنفس مفتاح إظهار/
+     إخفاء الـOHLC الموجود بالإعدادات (chartSettings.ohlcVisible) حتى تختفي
+     مع بعض. الحجم غير متوفر أصلاً ببيانات الشموع (يوهو/Dukascopy فوركس ما
+     بترجع حجم تداول حقيقي)، فمنمررها null بدل ما نختلق رقم. */
+  function renderInfoPanel() {
+    const list = mode === "training" ? allCandles.slice(0, revealCount) : allCandles;
+    const last = list[list.length - 1];
+    if (!last) return null;
+    const prev = list[list.length - 2];
+    const basis = prev ? prev.close : last.open;
+    const change = basis ? last.close - basis : 0;
+    const changePercent = basis ? (change / basis) * 100 : 0;
+    const info = getAssetByValue(assetValue);
+    const intervalLabel = INTERVALS.find((i) => i.value === interval)?.label || interval;
+    return (
+      <div style={{ position: "absolute", top: 10, right: 10, zIndex: 8 }}>
+        <ChartInfoPanel
+          symbol={info?.label || assetValue}
+          currentPrice={liveLastPrice ?? last.close}
+          priceChange={change}
+          priceChangePercent={changePercent}
+          high={last.high}
+          low={last.low}
+          open={last.open}
+          volume={last.volume ?? null}
+          timeframe={intervalLabel}
+        />
+      </div>
+    );
+  }
+
   /* أداة الزوم العائمة (شبيهة بتريدنغ فيو): زر تصغير + شريط انزلاق + زر تكبير،
      ثابتة بأسفل يسار الشارت فوق محور الوقت. الشريط بيتحدّث بشكل تصاعدي/تنازلي
      تلقائياً مع أي بان/زوم عادي (بالماوس أو العجلة) عن طريق drawOverlay فوق
@@ -8268,6 +8312,7 @@ export default function ReplayClient({ userId }) {
             >
               <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
                 {allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
+                {allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderInfoPanel()}
                 {allCandles.length > 0 && renderZoomControl()}
                 {allCandles.length > 0 && !editDraft && renderFavoritesBar()}
                 {allCandles.length > 0 && !editDraft && renderQuickTradeWidget()}
