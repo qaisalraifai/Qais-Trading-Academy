@@ -20,13 +20,13 @@ const TABS = [
   { id: "overview", label: "نظرة عامة", ready: true },
   { id: "students", label: "الطلاب", ready: true },
   { id: "live", label: "البث والحضور", ready: true },
-  { id: "lectures", label: "المحاضرات", ready: false, note: "قريبًا — المرحلة 6د" },
+  { id: "lectures", label: "المحاضرات", ready: true },
   { id: "quizzes", label: "الاختبارات", ready: false, note: "قريبًا — المرحلة 6هـ" },
   { id: "assignments", label: "الواجبات", ready: true },
   { id: "files", label: "الملفات", ready: true },
   { id: "announcements", label: "الإعلانات", ready: true },
   { id: "certificates", label: "الشهادات", ready: true },
-  { id: "calendar", label: "التقويم", ready: false, note: "قريبًا — المرحلة 6ج" },
+  { id: "calendar", label: "التقويم", ready: true },
   { id: "settings", label: "الإعدادات", ready: true },
 ];
 
@@ -200,13 +200,13 @@ export default function BatchDetailPage() {
         {tab === "overview" && <OverviewTab batch={batch} instructors={instructors} />}
         {tab === "students" && <StudentsTab batchId={batchId} batch={batch} onTransferred={fetchBatch} />}
         {tab === "live" && <LiveAttendanceTab batchId={batchId} />}
-        {tab === "lectures" && <ComingSoon note={TABS.find((t) => t.id === "lectures").note} />}
+        {tab === "lectures" && <LecturesTab batch={batch} />}
         {tab === "quizzes" && <ComingSoon note={TABS.find((t) => t.id === "quizzes").note} />}
         {tab === "assignments" && <AssignmentsTab batchId={batchId} />}
         {tab === "files" && <FilesTab batchId={batchId} />}
         {tab === "announcements" && <AnnouncementsTab batchId={batchId} />}
         {tab === "certificates" && <CertificatesTab batchId={batchId} />}
-        {tab === "calendar" && <ComingSoon note={TABS.find((t) => t.id === "calendar").note} />}
+        {tab === "calendar" && <CalendarTab batchId={batchId} batch={batch} />}
         {tab === "settings" && (
           <SettingsTab batch={batch} instructors={instructors} onSaved={fetchBatch} onAction={runAction} router={router} />
         )}
@@ -662,6 +662,154 @@ function SubmissionsPanel({ assignment, onClose }) {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------- التقويم (المرحلة 6ج) -------------------- */
+// قراءة فقط، صفر جدول جديد — تجميع لنفس البيانات المستخدمة بتبويبي "البث والحضور"
+// و"الواجبات"، بالضبط متل نسخة الطالب بـ app/course/[id]/calendar/page.js
+const eventMeta = {
+  start: { icon: "🏁", label: "بداية الدفعة" },
+  end: { icon: "🏆", label: "نهاية الدفعة" },
+  live: { icon: "🔴", label: "بث مباشر" },
+  assignment: { icon: "📝", label: "تسليم واجب" },
+};
+
+function CalendarTab({ batchId, batch }) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [attRes, assignRes] = await Promise.all([
+      fetch(`/api/admin/batches/${batchId}/attendance`),
+      fetch(`/api/admin/batches/${batchId}/assignments`),
+    ]);
+    const attData = await attRes.json();
+    const assignData = await assignRes.json();
+
+    const list = [];
+    if (batch.start_date) list.push({ type: "start", date: batch.start_date, title: "بداية الدفعة" });
+    if (batch.end_date) list.push({ type: "end", date: batch.end_date, title: "نهاية الدفعة" });
+    (attRes.ok ? attData.sessions || [] : []).forEach((sess) => {
+      if (sess.started_at) {
+        list.push({ type: "live", date: sess.started_at, title: sess.title || "بث مباشر", isActive: sess.is_active });
+      }
+    });
+    (assignRes.ok ? assignData.assignments || [] : []).forEach((a) => {
+      if (a.due_date) list.push({ type: "assignment", date: a.due_date, title: `تسليم: ${a.title}` });
+    });
+
+    list.sort((a, b) => new Date(a.date) - new Date(b.date));
+    setEvents(list);
+    setLoading(false);
+  }, [batchId, batch.start_date, batch.end_date]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  return (
+    <div style={s.card}>
+      <h3 style={s.cardTitle}>تقويم الدفعة</h3>
+      <p style={s.hint}>تجميع تلقائي لمواعيد بداية/نهاية الدفعة، البثوث المباشرة، ومواعيد تسليم الواجبات — بدون أي إدخال يدوي.</p>
+      <hr style={s.hr} />
+      {loading ? (
+        <p style={s.loading}>جاري التحميل...</p>
+      ) : events.length === 0 ? (
+        <p style={s.hint}>ما في مواعيد مسجّلة لهاي الدفعة لسا.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {events.map((ev, i) => {
+            const meta = eventMeta[ev.type];
+            const isPast = new Date(ev.date).toISOString().slice(0, 10) < todayStr;
+            return (
+              <div key={i} style={{ ...s.rowItem, opacity: isPast && ev.type !== "live" ? 0.6 : 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
+                  <span style={{ fontSize: "1.1rem" }}>{meta.icon}</span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: "0.86rem", fontWeight: 600, color: "#EAECEF" }}>
+                      {ev.title} {ev.isActive && <span style={s.badgeLive}>🔴 نشط</span>}
+                    </p>
+                    <p style={{ ...s.mono, margin: "0.2rem 0 0" }}>{meta.label}</p>
+                  </div>
+                </div>
+                <span style={s.mono}>{fmtDateTime(ev.date)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------- المحاضرات (المرحلة 6د) -------------------- */
+// عرض فلترة فقط لمحاضرات هاي الدفعة (batch_id = هاي الدفعة، أو null يعني مشتركة
+// لكل دفعات الكورس). التعديل الفعلي يصير من فورم admin/lectures المشترك، بضغطة
+// وحدة — لأنه هو المصدر الوحيد للحقيقة (Single Source of Truth) لبيانات المحاضرة.
+function LecturesTab({ batch }) {
+  const [lectures, setLectures] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/admin/lectures")
+      .then((res) => res.json())
+      .then((data) => {
+        const all = data.lectures || [];
+        const filtered = all
+          .filter((l) => l.course_id === batch.course_id && (l.batch_id === null || l.batch_id === batch.id))
+          .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+        setLectures(filtered);
+      })
+      .finally(() => setLoading(false));
+  }, [batch.course_id, batch.id]);
+
+  const exclusive = lectures.filter((l) => l.batch_id === batch.id);
+  const shared = lectures.filter((l) => l.batch_id === null);
+
+  return (
+    <div style={s.card}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+        <h3 style={{ ...s.cardTitle, margin: 0 }}>محاضرات الدفعة</h3>
+        <Link href="/admin/lectures" style={{ ...s.btnEdit, textDecoration: "none" }}>إدارة المحاضرات ↗</Link>
+      </div>
+      <p style={s.hint}>
+        هون عرض فقط — تحديد دفعة لمحاضرة أو تعديلها بيصير من صفحة "إدارة المحاضرات" المشتركة (اختاري الدفعة بالفورم هناك).
+      </p>
+      <hr style={s.hr} />
+      {loading ? (
+        <p style={s.loading}>جاري التحميل...</p>
+      ) : lectures.length === 0 ? (
+        <p style={s.hint}>ما في محاضرات لهاد الكورس لسا.</p>
+      ) : (
+        <>
+          {exclusive.length > 0 && (
+            <>
+              <p style={{ ...s.label, marginTop: 0 }}>حصرية لهاي الدفعة ({exclusive.length})</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "1rem" }}>
+                {exclusive.map((l) => (
+                  <div key={l.id} style={s.rowItem}>
+                    <span style={s.username}>{l.title}</span>
+                    <span style={s.mono}>{l.chapter || "—"}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          <p style={s.label}>مشتركة لكل دفعات الكورس ({shared.length})</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            {shared.map((l) => (
+              <div key={l.id} style={s.rowItem}>
+                <span style={s.username}>{l.title}</span>
+                <span style={s.mono}>{l.chapter || "—"}</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
