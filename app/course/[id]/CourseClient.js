@@ -3,6 +3,9 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import BatchFilesPanel from "./BatchFilesPanel";
+import BatchAssignmentsPanel from "./BatchAssignmentsPanel";
+import BatchChatPanel from "./BatchChatPanel";
+import CertificatePanel from "./CertificatePanel";
 
 const DIFFICULTY_LABELS = {
   beginner: { label: "مبتدئ", color: "#4CAF50" },
@@ -84,14 +87,20 @@ export default function CourseClient({ course, chapters }) {
               <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800 }}>{course.title}</h1>
             </div>
           </div>
-          <Link href="/lecture" style={{ color: "#555", fontSize: 13, textDecoration: "none" }}>← البرامج التعليمية</Link>
+          <div style={{ display: "flex", alignItems: "center", gap: "1.1rem" }}>
+            <Link href={`/course/${course.id}/calendar`} style={{ color: "#D4AF37", fontSize: 13, textDecoration: "none", fontWeight: 700 }}>📅 تقويم الدفعة</Link>
+            <Link href="/lecture" style={{ color: "#555", fontSize: 13, textDecoration: "none" }}>← البرامج التعليمية</Link>
+          </div>
         </div>
 
         {course.description && (
           <p style={{ color: "#666", fontSize: 14, marginBottom: "1.5rem" }}>{course.description}</p>
         )}
 
+        <CertificatePanel courseId={course.id} />
         <BatchFilesPanel courseId={course.id} />
+        <BatchAssignmentsPanel courseId={course.id} />
+        <BatchChatPanel courseId={course.id} />
 
         {/* Search + Filters */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", marginBottom: "2rem" }}>
