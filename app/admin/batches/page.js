@@ -25,6 +25,13 @@ export default function AdminBatchesPage() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
 
+  const [liveBusyId, setLiveBusyId] = useState(null); // معرّف الدفعة اللي جاري تبديل حالة بثها هلأ
+
+  const [attendanceBatch, setAttendanceBatch] = useState(null); // الدفعة اللي فاتحين شاشة حضورها
+  const [attendanceSessions, setAttendanceSessions] = useState([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceDetail, setAttendanceDetail] = useState(null); // { session, batch, students } لو فاتحين تفصيل بث معيّن
+
   const [transferBatch, setTransferBatch] = useState(null); // الدفعة المصدر
   const [transferStudents, setTransferStudents] = useState([]);
   const [transferStudentId, setTransferStudentId] = useState("");
@@ -151,6 +158,72 @@ export default function AdminBatchesPage() {
     if (res.ok) fetchBatches();
     else alert(data.error || "صار خطأ بالحذف");
   }
+
+  // -------------------- المرحلة 7: بدء/إنهاء البث المباشر لدفعة محددة --------------------
+  async function handleStartLive(batch) {
+    setLiveBusyId(batch.id);
+    const res = await fetch("/api/admin/live", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ batch_id: batch.id }),
+    });
+    const data = await res.json();
+    setLiveBusyId(null);
+    if (!res.ok) {
+      alert(data.error || "صار خطأ ببدء البث");
+      return;
+    }
+    fetchBatches();
+  }
+
+  async function handleEndLive(batch) {
+    if (!confirm(`متأكدة إنك بدك تنهي بث دفعة "${batch.name}"؟`)) return;
+    setLiveBusyId(batch.id);
+    const res = await fetch(`/api/admin/live?batch_id=${batch.id}`, { method: "DELETE" });
+    const data = await res.json();
+    setLiveBusyId(null);
+    if (!res.ok) {
+      alert(data.error || "صار خطأ بإنهاء البث");
+      return;
+    }
+    fetchBatches();
+  }
+  // -----------------------------------------------------------------------------------
+
+  // -------------------- المرحلة 8: شاشة الحضور --------------------
+  async function openAttendance(batch) {
+    setAttendanceBatch(batch);
+    setAttendanceDetail(null);
+    setAttendanceLoading(true);
+    const res = await fetch(`/api/admin/batches/${batch.id}/attendance`);
+    const data = await res.json();
+    setAttendanceSessions(res.ok ? data.sessions || [] : []);
+    setAttendanceLoading(false);
+  }
+
+  function closeAttendance() {
+    setAttendanceBatch(null);
+    setAttendanceSessions([]);
+    setAttendanceDetail(null);
+  }
+
+  async function openAttendanceDetail(sessionId) {
+    setAttendanceLoading(true);
+    const res = await fetch(`/api/admin/live-sessions/${sessionId}/attendance`);
+    const data = await res.json();
+    setAttendanceLoading(false);
+    if (!res.ok) {
+      alert(data.error || "صار خطأ بجلب تفاصيل الحضور");
+      return;
+    }
+    setAttendanceDetail(data);
+  }
+
+  function fmtDateTime(iso) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("ar-JO", { dateStyle: "medium", timeStyle: "short" });
+  }
+  // -------------------------------------------------------------------
 
   async function openTransfer(batch) {
     setTransferBatch(batch);
@@ -349,6 +422,89 @@ export default function AdminBatchesPage() {
         </div>
       )}
 
+      {/* -------------------- المرحلة 8: شاشة الحضور -------------------- */}
+      {attendanceBatch && (
+        <div style={s.overlay} onClick={closeAttendance}>
+          <div style={{ ...s.formCard, maxWidth: "640px" }} onClick={(e) => e.stopPropagation()}>
+            {!attendanceDetail ? (
+              <>
+                <h2 style={s.formTitle}>حضور دفعة "{attendanceBatch.name}"</h2>
+                {attendanceLoading ? (
+                  <p style={s.loading}>جاري التحميل...</p>
+                ) : attendanceSessions.length === 0 ? (
+                  <p style={s.hint}>ما في بثوث مسجّلة لهاي الدفعة لسا.</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
+                    {attendanceSessions.map((sess) => (
+                      <button
+                        key={sess.id}
+                        onClick={() => openAttendanceDetail(sess.id)}
+                        style={s.sessionBtn}
+                      >
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "0.2rem" }}>
+                          <span style={{ color: "#EAECEF", fontSize: "0.88rem", fontWeight: 600 }}>
+                            {sess.title || "بث مباشر"} {sess.is_active && <span style={s.badgeLive}>🔴 نشط</span>}
+                          </span>
+                          <span style={s.mono}>{fmtDateTime(sess.started_at)}</span>
+                        </div>
+                        <span style={s.mono}>{sess.present_count} / {sess.total_students} حاضر</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div style={s.formActions}>
+                  <button type="button" onClick={closeAttendance} style={s.cancelBtn}>إغلاق</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 style={s.formTitle}>{attendanceDetail.session.title || "بث مباشر"}</h2>
+                <p style={s.hint}>{fmtDateTime(attendanceDetail.session.started_at)} — دفعة "{attendanceDetail.batch?.name || "—"}"</p>
+                {attendanceLoading ? (
+                  <p style={s.loading}>جاري التحميل...</p>
+                ) : (
+                  <div style={{ maxHeight: "50vh", overflowY: "auto", marginTop: "0.75rem" }}>
+                    <table style={s.table}>
+                      <thead>
+                        <tr>
+                          {["الطالب", "الحالة", "أول دخول", "آخر ظهور"].map((h, i) => (
+                            <th key={i} style={s.th}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attendanceDetail.students.map((st) => (
+                          <tr key={st.user_id} style={s.tr}>
+                            <td style={s.td}>
+                              <span style={s.username}>{st.username}</span>
+                              <br />
+                              <span style={s.mono}>{st.email}</span>
+                            </td>
+                            <td style={s.td}>
+                              {st.present ? (
+                                <span style={s.badgeOpen}>حاضر</span>
+                              ) : (
+                                <span style={s.badgeClosed}>غايب</span>
+                              )}
+                            </td>
+                            <td style={s.td}><span style={s.mono}>{fmtDateTime(st.first_joined_at)}</span></td>
+                            <td style={s.td}><span style={s.mono}>{fmtDateTime(st.last_seen_at)}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div style={s.formActions}>
+                  <button type="button" onClick={() => setAttendanceDetail(null)} style={s.cancelBtn}>← رجوع لقائمة البثوث</button>
+                  <button type="button" onClick={closeAttendance} style={s.saveBtn}>إغلاق</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* -------------------- جدول الدفعات -------------------- */}
       <div style={s.tableWrap}>
         {loading ? (
@@ -359,7 +515,7 @@ export default function AdminBatchesPage() {
           <table style={s.table}>
             <thead>
               <tr>
-                {["الدفعة", "الدورة", "المدرب", "المقاعد", "الحالة", "الفترة", "إجراءات"].map((h, i) => (
+                {["الدفعة", "الدورة", "المدرب", "المقاعد", "الحالة", "الفترة", "البث", "إجراءات"].map((h, i) => (
                   <th key={i} style={s.th}>{h}</th>
                 ))}
               </tr>
@@ -393,8 +549,33 @@ export default function AdminBatchesPage() {
                       </span>
                     </td>
                     <td style={s.td}>
+                      {batch.is_archived ? (
+                        <span style={s.mono}>—</span>
+                      ) : batch.live_session ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", alignItems: "flex-start" }}>
+                          <span style={s.badgeLive}>🔴 مباشر الآن</span>
+                          <button
+                            onClick={() => handleEndLive(batch)}
+                            disabled={liveBusyId === batch.id}
+                            style={s.btnDanger}
+                          >
+                            {liveBusyId === batch.id ? "جاري الإنهاء..." : "⏹ إنهاء البث"}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleStartLive(batch)}
+                          disabled={liveBusyId === batch.id}
+                          style={s.btnLive}
+                        >
+                          {liveBusyId === batch.id ? "جاري البدء..." : "🔴 ابدأ بث"}
+                        </button>
+                      )}
+                    </td>
+                    <td style={s.td}>
                       <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", maxWidth: "260px" }}>
                         <button onClick={() => openEditForm(batch)} style={s.btnEdit}>تعديل</button>
+                        <button onClick={() => openAttendance(batch)} style={s.btnEdit}>الحضور</button>
                         <button onClick={() => openTransfer(batch)} style={s.btnEdit}>نقل طالب</button>
                         <button onClick={() => runAction(batch.id, "duplicate")} style={s.btnEdit}>نسخ</button>
                         {!batch.is_archived && (
@@ -462,6 +643,9 @@ const s = {
   badgeDefault: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#1a2a3a", color: "#5b9bd5", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   badgeArchived: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#2a1a1a", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   badgeFull: { color: "#ef5350", fontSize: "0.75rem" },
+  badgeLive: { fontSize: "0.72rem", color: "#F6465D", backgroundColor: "#2a1418", padding: "0.25rem 0.6rem", borderRadius: "3px", fontWeight: 700 },
+  btnLive: { backgroundColor: "#F6465D", color: "#fff", border: "none", padding: "0.45rem 0.85rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700, whiteSpace: "nowrap" },
+  sessionBtn: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.75rem 1rem", cursor: "pointer", width: "100%", textAlign: "right", fontFamily: "inherit" },
   badgeOpen: { fontSize: "0.75rem", color: "#02C076", backgroundColor: "#0a2a1e", padding: "0.25rem 0.6rem", borderRadius: "3px" },
   badgeClosed: { fontSize: "0.75rem", color: "#999", backgroundColor: "#181A20", padding: "0.25rem 0.6rem", borderRadius: "3px" },
 };

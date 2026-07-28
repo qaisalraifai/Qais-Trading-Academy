@@ -43,11 +43,27 @@ export async function GET(request) {
     }, {});
   }
 
+  // المرحلة 7: البث النشط حاليًا لكل دفعة (لو في)، عشان تبان زر "ابدأ/أنهِ بث" بالحالة الصح
+  let liveMap = {};
+  if (batchIds.length > 0) {
+    const { data: liveSessions } = await supabase
+      .from("live_sessions")
+      .select("id, room_name, title, started_at, batch_id")
+      .in("batch_id", batchIds)
+      .eq("is_active", true);
+
+    liveMap = (liveSessions || []).reduce((acc, row) => {
+      acc[row.batch_id] = row;
+      return acc;
+    }, {});
+  }
+
   const enriched = (batches || []).map((b) => {
     const seatsTaken = countsMap[b.id] || 0;
     return {
       ...b,
       seats_taken: seatsTaken,
+      live_session: liveMap[b.id] || null,
       seats_remaining: b.seats_total == null ? null : Math.max(b.seats_total - seatsTaken, 0),
       is_full: b.seats_total != null && seatsTaken >= b.seats_total,
     };
