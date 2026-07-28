@@ -4,6 +4,7 @@ import CourseClient from "./CourseClient";
 import BatchSelectClient from "./BatchSelectClient";
 import PageShell from "@/app/components/layout/PageShell";
 import { getShellProfile } from "@/lib/shell-profile";
+import { getStudentBatchId } from "@/lib/student-batch";
 
 export default async function CoursePage({ params }) {
   const supabase = createClient();
@@ -20,31 +21,51 @@ export default async function CoursePage({ params }) {
 
   if (!course) redirect("/lecture");
 
-  // ---------- المرحلة 5: اختيار الدفعة أول مرة يفتح فيها الطالب الدورة ----------
+  // ---------- المرحلة 5 (+ إعادة تصميم الدفعات المرحلة 2): اختيار الدفعة أول مرة يفتح فيها الطالب الدورة ----------
   const admin = createAdminClient();
 
-  const { data: enrollment } = await admin
-    .from("batch_enrollments")
-    .select("batch_id")
-    .eq("user_id", user.id)
-    .eq("course_id", params.id)
-    .maybeSingle();
+  // هاي الدفعة اللي رح تفلتر عليها كل محتوى الدورة تحت (المرحلة 6). بتشتغل
+  // صح سواء كان تسجيل الطالب قديم (لكل دورة لحالها) أو جديد (بمستوى الدفعة).
+  let studentBatchId = await getStudentBatchId(user.id, params.id);
 
-  // هاي الدفعة اللي رح تفلتر عليها كل محتوى الدورة تحت (المرحلة 6)
-  let studentBatchId = enrollment?.batch_id || null;
-
-  if (!enrollment) {
-    // فيه دفعات حقيقية (غير الافتراضية) مفتوحة للتسجيل لهاي الدورة؟
-    const { data: openBatches } = await admin
+  if (!studentBatchId) {
+    // فيه دفعات حقيقية (غير الافتراضية) مفتوحة للتسجيل وفيها هاي الدورة؟
+    // من مصدرين: دفعات قديمة (علاقة مباشرة course_id) ودفعات جديدة تحتوي
+    // عدة دورات (علاقة batch_courses).
+    const { data: legacyOpen } = await admin
       .from("batches")
       .select("*")
       .eq("course_id", params.id)
       .eq("is_default", false)
       .eq("is_archived", false)
-      .eq("registration_status", "open")
-      .order("start_date", { ascending: true });
+      .eq("registration_status", "open");
 
-    if (openBatches && openBatches.length > 0) {
+    const { data: courseLinks } = await admin
+      .from("batch_courses")
+      .select("batch_id")
+      .eq("course_id", params.id);
+
+    let newOpen = [];
+    const newBatchIds = (courseLinks || []).map((l) => l.batch_id);
+    if (newBatchIds.length > 0) {
+      const { data } = await admin
+        .from("batches")
+        .select("*")
+        .in("id", newBatchIds)
+        .eq("is_default", false)
+        .eq("is_archived", false)
+        .eq("registration_status", "open");
+      newOpen = data || [];
+    }
+
+    // دمج القائمتين بدون تكرار، مرتبة حسب تاريخ البداية
+    const openBatchesMap = new Map();
+    [...(legacyOpen || []), ...newOpen].forEach((b) => openBatchesMap.set(b.id, b));
+    const openBatches = [...openBatchesMap.values()].sort(
+      (a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0)
+    );
+
+    if (openBatches.length > 0) {
       const batchIds = openBatches.map((b) => b.id);
       const { data: enrollments } = await admin
         .from("batch_enrollments")
