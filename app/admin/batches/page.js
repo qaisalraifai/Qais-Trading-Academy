@@ -32,6 +32,13 @@ export default function AdminBatchesPage() {
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [attendanceDetail, setAttendanceDetail] = useState(null); // { session, batch, students } لو فاتحين تفصيل بث معيّن
 
+  const [announcementBatch, setAnnouncementBatch] = useState(null); // الدفعة اللي فاتحين شاشة إعلاناتها
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcementLoading, setAnnouncementLoading] = useState(false);
+  const [announcementForm, setAnnouncementForm] = useState({ title: "", message: "", link: "" });
+  const [announcementSending, setAnnouncementSending] = useState(false);
+  const [announcementError, setAnnouncementError] = useState("");
+
   const [transferBatch, setTransferBatch] = useState(null); // الدفعة المصدر
   const [transferStudents, setTransferStudents] = useState([]);
   const [transferStudentId, setTransferStudentId] = useState("");
@@ -224,6 +231,47 @@ export default function AdminBatchesPage() {
     return new Date(iso).toLocaleString("ar-JO", { dateStyle: "medium", timeStyle: "short" });
   }
   // -------------------------------------------------------------------
+
+  // -------------------- المرحلة 9: الإعلانات --------------------
+  async function openAnnouncements(batch) {
+    setAnnouncementBatch(batch);
+    setAnnouncementForm({ title: "", message: "", link: "" });
+    setAnnouncementError("");
+    setAnnouncementLoading(true);
+    const res = await fetch(`/api/admin/batches/${batch.id}/announcements`);
+    const data = await res.json();
+    setAnnouncements(res.ok ? data.announcements || [] : []);
+    setAnnouncementLoading(false);
+  }
+
+  function closeAnnouncements() {
+    setAnnouncementBatch(null);
+    setAnnouncements([]);
+  }
+
+  async function handleSendAnnouncement(e) {
+    e.preventDefault();
+    if (!announcementBatch) return;
+    setAnnouncementSending(true);
+    setAnnouncementError("");
+
+    const res = await fetch(`/api/admin/batches/${announcementBatch.id}/announcements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(announcementForm),
+    });
+    const data = await res.json();
+    setAnnouncementSending(false);
+
+    if (!res.ok) {
+      setAnnouncementError(data.error || "صار خطأ بإرسال الإعلان");
+      return;
+    }
+
+    setAnnouncementForm({ title: "", message: "", link: "" });
+    setAnnouncements((prev) => [data.announcement, ...prev]);
+  }
+  // -----------------------------------------------------------------
 
   async function openTransfer(batch) {
     setTransferBatch(batch);
@@ -505,6 +553,74 @@ export default function AdminBatchesPage() {
         </div>
       )}
 
+      {/* -------------------- المرحلة 9: الإعلانات -------------------- */}
+      {announcementBatch && (
+        <div style={s.overlay} onClick={closeAnnouncements}>
+          <div style={{ ...s.formCard, maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.formTitle}>إعلانات دفعة "{announcementBatch.name}"</h2>
+            <p style={s.hint}>بيوصل الإعلان بس لطلاب هاي الدفعة، عن طريق مركز الإشعارات عندهم.</p>
+
+            <form onSubmit={handleSendAnnouncement} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.5rem" }}>
+              <label style={s.label}>عنوان الإعلان</label>
+              <input
+                style={s.input}
+                value={announcementForm.title}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
+                placeholder="مثلاً: تغيير موعد البث المباشر"
+                required
+              />
+
+              <label style={s.label}>التفاصيل (اختياري)</label>
+              <textarea
+                style={{ ...s.input, minHeight: "80px", resize: "vertical", fontFamily: "inherit" }}
+                value={announcementForm.message}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, message: e.target.value })}
+                placeholder="تفاصيل الإعلان..."
+              />
+
+              <label style={s.label}>رابط (اختياري)</label>
+              <input
+                style={s.input}
+                value={announcementForm.link}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, link: e.target.value })}
+                placeholder="مثلاً: /live-sessions"
+              />
+
+              {announcementError && <p style={s.errorText}>{announcementError}</p>}
+
+              <div style={s.formActions}>
+                <button type="button" onClick={closeAnnouncements} style={s.cancelBtn}>إغلاق</button>
+                <button type="submit" disabled={announcementSending} style={s.saveBtn}>
+                  {announcementSending ? "جاري الإرسال..." : "إرسال للدفعة"}
+                </button>
+              </div>
+            </form>
+
+            <hr style={{ border: "none", borderTop: "1px solid #222", margin: "1.25rem 0 0.75rem" }} />
+            <p style={{ ...s.label, marginTop: 0 }}>إعلانات سابقة</p>
+
+            {announcementLoading ? (
+              <p style={s.loading}>جاري التحميل...</p>
+            ) : announcements.length === 0 ? (
+              <p style={s.hint}>ما في إعلانات مُرسلة لهاي الدفعة لسا.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "30vh", overflowY: "auto" }}>
+                {announcements.map((a) => (
+                  <div key={a.id} style={{ background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.75rem 1rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
+                      <span style={{ color: "#EAECEF", fontSize: "0.86rem", fontWeight: 700 }}>{a.title}</span>
+                      <span style={s.mono}>{a.recipients_count} طالب</span>
+                    </div>
+                    {a.message && <p style={{ color: "#999", fontSize: "0.8rem", margin: "0.35rem 0 0" }}>{a.message}</p>}
+                    <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>{fmtDateTime(a.created_at)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* -------------------- جدول الدفعات -------------------- */}
       <div style={s.tableWrap}>
         {loading ? (
@@ -576,6 +692,7 @@ export default function AdminBatchesPage() {
                       <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", maxWidth: "260px" }}>
                         <button onClick={() => openEditForm(batch)} style={s.btnEdit}>تعديل</button>
                         <button onClick={() => openAttendance(batch)} style={s.btnEdit}>الحضور</button>
+                        <button onClick={() => openAnnouncements(batch)} style={s.btnEdit}>إعلانات</button>
                         <button onClick={() => openTransfer(batch)} style={s.btnEdit}>نقل طالب</button>
                         <button onClick={() => runAction(batch.id, "duplicate")} style={s.btnEdit}>نسخ</button>
                         {!batch.is_archived && (
