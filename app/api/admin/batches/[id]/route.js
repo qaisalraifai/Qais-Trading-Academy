@@ -2,6 +2,54 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
 
+// GET /api/admin/batches/[id] — تفاصيل دفعة وحدة (لصفحة /admin/batches/[id] — المرحلة 6أ)
+// نفس منطق الإثراء المستخدم بقائمة الدفعات (seats_taken/remaining، البث النشط،
+// اسم الدورة والمدرب)، بس لدفعة وحدة بدل كل الدفعات.
+export async function GET(_request, { params }) {
+  const auth = await requireAdmin();
+  if (auth.error) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const supabase = createAdminClient();
+
+  const { data: batch, error } = await supabase
+    .from("batches")
+    .select("*")
+    .eq("id", params.id)
+    .maybeSingle();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!batch) return NextResponse.json({ error: "الدفعة غير موجودة" }, { status: 404 });
+
+  const [{ count: seatsTaken }, { data: course }, { data: instructor }, { data: liveSession }] = await Promise.all([
+    supabase.from("batch_enrollments").select("id", { count: "exact", head: true }).eq("batch_id", params.id),
+    supabase.from("courses").select("id, title, icon").eq("id", batch.course_id).maybeSingle(),
+    batch.instructor_id
+      ? supabase.from("profiles").select("id, username").eq("id", batch.instructor_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase.from("live_sessions").select("id, room_name, title, started_at").eq("batch_id", params.id).eq("is_active", true).maybeSingle(),
+  ]);
+
+  const { data: instructors } = await supabase
+    .from("profiles")
+    .select("id, username")
+    .eq("role", "admin")
+    .order("username", { ascending: true });
+
+  const enriched = {
+    ...batch,
+    seats_taken: seatsTaken || 0,
+    seats_remaining: batch.seats_total == null ? null : Math.max(batch.seats_total - (seatsTaken || 0), 0),
+    is_full: batch.seats_total != null && (seatsTaken || 0) >= batch.seats_total,
+    course: course || null,
+    instructor: instructor || null,
+    live_session: liveSession || null,
+  };
+
+  return NextResponse.json({ batch: enriched, instructors: instructors || [] });
+}
+
 // PUT /api/admin/batches/[id] — تعديل بيانات دفعة
 // ملاحظة: course_id و is_default ما بتتغيّر من هون عمدًا
 export async function PUT(request, { params }) {

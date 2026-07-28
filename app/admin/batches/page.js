@@ -1096,6 +1096,9 @@ export default function AdminBatchesPage() {
                   )}
 
                   <div style={s.cardActions}>
+                    <Link href={`/admin/batches/${batch.id}`} style={{ ...s.btnEdit, textDecoration: "none", backgroundColor: "#1a160a", color: gold, borderColor: "#33290a" }}>
+                      ↗ الصفحة الكاملة
+                    </Link>
                     <button onClick={() => openEditForm(batch)} style={s.btnEdit}>تعديل</button>
                     <button onClick={() => openAttendance(batch)} style={s.btnEdit}>الحضور</button>
                     <button onClick={() => openAnnouncements(batch)} style={s.btnEdit}>إعلانات</button>
