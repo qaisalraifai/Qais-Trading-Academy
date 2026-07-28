@@ -30,6 +30,9 @@ export default async function CoursePage({ params }) {
     .eq("course_id", params.id)
     .maybeSingle();
 
+  // هاي الدفعة اللي رح تفلتر عليها كل محتوى الدورة تحت (المرحلة 6)
+  let studentBatchId = enrollment?.batch_id || null;
+
   if (!enrollment) {
     // فيه دفعات حقيقية (غير الافتراضية) مفتوحة للتسجيل لهاي الدورة؟
     const { data: openBatches } = await admin
@@ -89,16 +92,25 @@ export default async function CoursePage({ params }) {
         batch_id: defaultBatch.id,
         course_id: params.id,
       });
+      studentBatchId = defaultBatch.id;
     }
   }
   // ---------------------------------------------------------------------------
 
-  const { data: lectures } = await supabase
+  // ---------- المرحلة 6: عرض محتوى دفعة الطالب بس، مو كل محتوى الدورة ----------
+  let lecturesQuery = supabase
     .from("lectures")
     .select("*")
     .eq("course_id", params.id)
     .order("chapter_order", { ascending: true })
     .order("order_index", { ascending: true });
+
+  if (studentBatchId) {
+    lecturesQuery = lecturesQuery.eq("batch_id", studentBatchId);
+  }
+
+  const { data: lectures } = await lecturesQuery;
+  // ---------------------------------------------------------------------------
 
   const { data: progress } = await supabase
     .from("lecture_progress")

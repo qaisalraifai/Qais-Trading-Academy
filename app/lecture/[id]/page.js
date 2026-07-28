@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import PageShell from "@/app/components/layout/PageShell";
 import { getShellProfile } from "@/lib/shell-profile";
+import { getStudentBatchId } from "@/lib/student-batch";
 
 export default async function LecturePage({ params }) {
   const supabase = createClient();
@@ -15,8 +16,20 @@ export default async function LecturePage({ params }) {
     .from("lectures").select("*").eq("id", params.id).single();
   if (!lecture) redirect("/lecture");
 
+  // ---------- المرحلة 6: هاي المحاضرة لازم تكون بدفعة الطالب المسجّل فيها ----------
+  // (الطالب أساسًا لازم يكون فتح صفحة الدورة قبل هيك وانسجّل بدفعتها — لو لسا
+  // ما اختار دفعة، منرجّعه لصفحة الدورة عشان يختار / ينسجل تلقائيًا أول)
+  const studentBatchId = await getStudentBatchId(user.id, lecture.course_id);
+  if (!studentBatchId) redirect(`/course/${lecture.course_id}`);
+  if (lecture.batch_id && lecture.batch_id !== studentBatchId) {
+    redirect(`/course/${lecture.course_id}`);
+  }
+  // ------------------------------------------------------------------------------
+
   const { data: lectures } = await supabase
     .from("lectures").select("id, title, order_index")
+    .eq("course_id", lecture.course_id)
+    .eq("batch_id", studentBatchId)
     .order("order_index", { ascending: true });
 
   return (

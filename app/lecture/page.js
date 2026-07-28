@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server";
+import { createClient, createAdminClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import PageShell from "@/app/components/layout/PageShell";
@@ -17,10 +17,43 @@ export default async function LecturesPage() {
     .select("*")
     .order("order_index", { ascending: true });
 
+  // ---------- المرحلة 6: نحدد دفعة الطالب بكل دورة (أو الدفعة الافتراضية كمعاينة
+  // لدورة لسا ما فتحها) عشان الأرقام (عدد الدروس/الساعات) تعكس محتوى دفعته بس ----------
+  const admin = createAdminClient();
+  const courseIds = (courses || []).map((c) => c.id);
+
+  const { data: myEnrollments } = await admin
+    .from("batch_enrollments")
+    .select("course_id, batch_id")
+    .eq("user_id", user.id)
+    .in("course_id", courseIds.length ? courseIds : ["00000000-0000-0000-0000-000000000000"]);
+
+  const enrolledBatchByCourse = (myEnrollments || []).reduce((acc, e) => {
+    acc[e.course_id] = e.batch_id;
+    return acc;
+  }, {});
+
+  const coursesNeedingDefault = courseIds.filter((id) => !enrolledBatchByCourse[id]);
+  let defaultBatchByCourse = {};
+  if (coursesNeedingDefault.length > 0) {
+    const { data: defaultBatches } = await admin
+      .from("batches")
+      .select("id, course_id")
+      .in("course_id", coursesNeedingDefault)
+      .eq("is_default", true);
+    defaultBatchByCourse = (defaultBatches || []).reduce((acc, b) => {
+      acc[b.course_id] = b.id;
+      return acc;
+    }, {});
+  }
+
+  const batchByCourse = { ...defaultBatchByCourse, ...enrolledBatchByCourse };
+  // ------------------------------------------------------------------------------------
+
   // كل المحاضرات (باش نحسب عدد الدروس والساعات لكل كورس)
   const { data: lectures } = await supabase
     .from("lectures")
-    .select("id, course_id, duration_seconds");
+    .select("id, course_id, batch_id, duration_seconds");
 
   // تقدم الطالب
   const { data: progress } = await supabase
@@ -33,7 +66,10 @@ export default async function LecturesPage() {
   );
 
   const courseStats = (courses || []).map((course) => {
-    const courseLectures = (lectures || []).filter((l) => l.course_id === course.id);
+    const myBatchId = batchByCourse[course.id];
+    const courseLectures = (lectures || []).filter(
+      (l) => l.course_id === course.id && (!myBatchId || l.batch_id === myBatchId)
+    );
     const totalLessons = courseLectures.length;
     const totalSeconds = courseLectures.reduce((sum, l) => sum + (l.duration_seconds || 0), 0);
     const completedCount = courseLectures.filter((l) => completedIds.has(l.id)).length;
