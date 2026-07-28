@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -59,6 +59,12 @@ export default function AdminBatchesPage() {
   const [transferError, setTransferError] = useState("");
   const [transferSaving, setTransferSaving] = useState(false);
 
+  // -------------------- المرحلة 4: لوحة الإحصائيات + البحث والفلترة والترتيب --------------------
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all"); // all | active | upcoming | ended | archived
+  const [instructorFilter, setInstructorFilter] = useState("");
+  const [sortBy, setSortBy] = useState("newest"); // newest | name | seats | start_date
+
   useEffect(() => {
     checkAdmin();
     fetchCourses();
@@ -99,6 +105,77 @@ export default function AdminBatchesPage() {
     const c = courses.find((c) => c.id === courseId);
     return c ? `${c.icon} ${c.title}` : "—";
   }
+
+  // -------------------- المرحلة 4: حساب حالة الدفعة (نشطة/قادمة/منتهية/مؤرشفة) --------------------
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  function getBatchStatus(batch) {
+    if (batch.is_archived) return "archived";
+    if (batch.start_date && batch.start_date > todayStr) return "upcoming";
+    if (batch.end_date && batch.end_date < todayStr) return "ended";
+    return "active";
+  }
+
+  const statusMeta = {
+    active: { label: "نشطة", badge: "badgeActive" },
+    upcoming: { label: "قادمة", badge: "badgeUpcoming" },
+    ended: { label: "منتهية", badge: "badgeEnded" },
+    archived: { label: "مؤرشفة", badge: "badgeArchived" },
+  };
+
+  // إحصائيات لوحة القمة — تُحسب على كل الدفعات (قبل فلاتر البحث المحلية) بحيث تعكس الصورة الكاملة
+  const stats = useMemo(() => {
+    let active = 0, upcoming = 0, ended = 0, archived = 0, totalStudents = 0, seatsRemaining = 0;
+    batches.forEach((b) => {
+      const st = getBatchStatus(b);
+      if (st === "active") active++;
+      else if (st === "upcoming") upcoming++;
+      else if (st === "ended") ended++;
+      else if (st === "archived") archived++;
+      totalStudents += b.seats_taken || 0;
+      if (b.seats_total != null) seatsRemaining += b.seats_remaining || 0;
+    });
+    return { total: batches.length, active, upcoming, ended, archived, totalStudents, seatsRemaining };
+  }, [batches, todayStr]);
+
+  // تطبيق البحث + فلتر الحالة + فلتر المدرب + الترتيب محليًا فوق الدفعات المجلوبة
+  const filteredBatches = useMemo(() => {
+    let list = [...batches];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter((b) => {
+        const nameMatch = (b.name || "").toLowerCase().includes(q);
+        const courseMatch = courseLabel(b.course_id).toLowerCase().includes(q);
+        return nameMatch || courseMatch;
+      });
+    }
+
+    if (statusFilter !== "all") {
+      list = list.filter((b) => getBatchStatus(b) === statusFilter);
+    }
+
+    if (instructorFilter) {
+      list = list.filter((b) => b.instructor_id === instructorFilter);
+    }
+
+    switch (sortBy) {
+      case "name":
+        list.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+        break;
+      case "seats":
+        list.sort((a, b) => (b.seats_taken || 0) - (a.seats_taken || 0));
+        break;
+      case "start_date":
+        list.sort((a, b) => (b.start_date || "").localeCompare(a.start_date || ""));
+        break;
+      default: // newest — الترتيب الأصلي من الـ API محفوظ أصلًا (الأحدث إنشاءً أولًا)
+        break;
+    }
+
+    return list;
+  }, [batches, searchQuery, statusFilter, instructorFilter, sortBy, courses, todayStr]);
+  // -----------------------------------------------------------------------------------------
 
   function openAddForm() {
     setEditingId(null);
@@ -456,14 +533,100 @@ export default function AdminBatchesPage() {
         </div>
       </header>
 
+      {/* -------------------- المرحلة 4: لوحة الإحصائيات -------------------- */}
+      <div style={s.statsBar}>
+        <button style={{ ...s.statCard, ...(statusFilter === "all" ? s.statCardActive : {}) }} onClick={() => setStatusFilter("all")}>
+          <span style={s.statValue}>{stats.total}</span>
+          <span style={s.statLabel}>كل الدفعات</span>
+        </button>
+        <button style={{ ...s.statCard, ...(statusFilter === "active" ? s.statCardActive : {}) }} onClick={() => setStatusFilter("active")}>
+          <span style={{ ...s.statValue, color: "#02C076" }}>{stats.active}</span>
+          <span style={s.statLabel}>نشطة</span>
+        </button>
+        <button style={{ ...s.statCard, ...(statusFilter === "upcoming" ? s.statCardActive : {}) }} onClick={() => setStatusFilter("upcoming")}>
+          <span style={{ ...s.statValue, color: "#5b9bd5" }}>{stats.upcoming}</span>
+          <span style={s.statLabel}>قادمة</span>
+        </button>
+        <button style={{ ...s.statCard, ...(statusFilter === "ended" ? s.statCardActive : {}) }} onClick={() => setStatusFilter("ended")}>
+          <span style={{ ...s.statValue, color: "#999" }}>{stats.ended}</span>
+          <span style={s.statLabel}>منتهية</span>
+        </button>
+        <button style={{ ...s.statCard, ...(statusFilter === "archived" ? s.statCardActive : {}) }} onClick={() => setStatusFilter("archived")}>
+          <span style={{ ...s.statValue, color: "#777" }}>{stats.archived}</span>
+          <span style={s.statLabel}>مؤرشفة</span>
+        </button>
+        <div style={{ ...s.statCard, cursor: "default" }}>
+          <span style={{ ...s.statValue, color: gold }}>{stats.totalStudents}</span>
+          <span style={s.statLabel}>إجمالي الطلاب</span>
+        </div>
+        <div style={{ ...s.statCard, cursor: "default" }}>
+          <span style={{ ...s.statValue, color: gold }}>{stats.seatsRemaining}</span>
+          <span style={s.statLabel}>المقاعد المتبقية</span>
+        </div>
+      </div>
+
       <div style={s.filterBar}>
-        <label style={s.label}>فلترة حسب الدورة</label>
-        <select style={{ ...s.input, maxWidth: "320px" }} value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)}>
-          <option value="">كل الدورات</option>
-          {courses.map((c) => (
-            <option key={c.id} value={c.id}>{c.icon} {c.title}</option>
-          ))}
-        </select>
+        <div style={s.filterRow}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: "1 1 220px" }}>
+            <label style={s.label}>بحث</label>
+            <input
+              style={s.input}
+              placeholder="اسم الدفعة أو الدورة..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: "1 1 200px" }}>
+            <label style={s.label}>فلترة حسب الدورة</label>
+            <select style={s.input} value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)}>
+              <option value="">كل الدورات</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>{c.icon} {c.title}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: "1 1 200px" }}>
+            <label style={s.label}>فلترة حسب المدرب</label>
+            <select style={s.input} value={instructorFilter} onChange={(e) => setInstructorFilter(e.target.value)}>
+              <option value="">كل المدربين</option>
+              {instructors.map((i) => (
+                <option key={i.id} value={i.id}>{i.username}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: "1 1 200px" }}>
+            <label style={s.label}>الحالة</label>
+            <select style={s.input} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="all">كل الحالات</option>
+              <option value="active">نشطة</option>
+              <option value="upcoming">قادمة</option>
+              <option value="ended">منتهية</option>
+              <option value="archived">مؤرشفة</option>
+            </select>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: "1 1 180px" }}>
+            <label style={s.label}>ترتيب حسب</label>
+            <select style={s.input} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="newest">الأحدث إنشاءً</option>
+              <option value="name">الاسم (أ-ي)</option>
+              <option value="seats">عدد الطلاب</option>
+              <option value="start_date">تاريخ البدء</option>
+            </select>
+          </div>
+        </div>
+
+        {(searchQuery || statusFilter !== "all" || instructorFilter || sortBy !== "newest") && (
+          <button
+            style={s.clearFiltersBtn}
+            onClick={() => { setSearchQuery(""); setStatusFilter("all"); setInstructorFilter(""); setSortBy("newest"); }}
+          >
+            ✕ مسح كل الفلاتر
+          </button>
+        )}
       </div>
 
       {error && <p style={{ ...s.errorText, margin: "0 3rem" }}>{error}</p>}
@@ -852,6 +1015,8 @@ export default function AdminBatchesPage() {
           <p style={s.loading}>جاري التحميل...</p>
         ) : batches.length === 0 ? (
           <p style={s.loading}>لا يوجد دفعات بعد.</p>
+        ) : filteredBatches.length === 0 ? (
+          <p style={s.loading}>ما في دفعات مطابقة لهاي الفلاتر.</p>
         ) : (
           <table style={s.table}>
             <thead>
@@ -862,14 +1027,15 @@ export default function AdminBatchesPage() {
               </tr>
             </thead>
             <tbody>
-              {batches.map((batch) => {
+              {filteredBatches.map((batch) => {
                 const instructor = instructors.find((i) => i.id === batch.instructor_id);
+                const lifecycle = statusMeta[getBatchStatus(batch)];
                 return (
                   <tr key={batch.id} style={s.tr}>
                     <td style={s.td}>
                       <span style={s.username}>{batch.name}</span>
                       {batch.is_default && <span style={s.badgeDefault}>افتراضية</span>}
-                      {batch.is_archived && <span style={s.badgeArchived}>مؤرشفة</span>}
+                      <span style={s[lifecycle.badge]}>{lifecycle.label}</span>
                     </td>
                     <td style={s.td}><span style={s.mono}>{courseLabel(batch.course_id)}</span></td>
                     <td style={s.td}><span style={s.mono}>{instructor?.username || "—"}</span></td>
@@ -963,7 +1129,17 @@ const s = {
   headerTitle: { fontSize: "1.4rem", fontWeight: 800 },
   backBtn: { background: "none", border: "1px solid #222", color: "#999", padding: "0.6rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center" },
   addBtn: { backgroundColor: gold, color: "#000", border: "none", padding: "0.6rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 700 },
-  filterBar: { display: "flex", flexDirection: "column", gap: "0.35rem", margin: "1.5rem 3rem 0" },
+  statsBar: { display: "flex", flexWrap: "wrap", gap: "0.9rem", margin: "1.75rem 3rem 0" },
+  statCard: { display: "flex", flexDirection: "column", gap: "0.3rem", alignItems: "flex-start", backgroundColor: "#0d0d0d", border: "1px solid #181A20", borderRadius: "8px", padding: "1rem 1.3rem", minWidth: "130px", cursor: "pointer", fontFamily: "inherit", textAlign: "right" },
+  statCardActive: { borderColor: gold },
+  statValue: { fontSize: "1.5rem", fontWeight: 800, color: "#EAECEF", fontFamily: "'JetBrains Mono', monospace" },
+  statLabel: { fontSize: "0.78rem", color: "#666" },
+  filterBar: { display: "flex", flexDirection: "column", gap: "0.75rem", margin: "1.5rem 3rem 0" },
+  filterRow: { display: "flex", flexWrap: "wrap", gap: "1rem" },
+  clearFiltersBtn: { alignSelf: "flex-start", background: "none", border: "1px solid #222", color: "#999", padding: "0.45rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" },
+  badgeActive: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#0a2a1e", color: "#02C076", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeUpcoming: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#1a2a3a", color: "#5b9bd5", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeEnded: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#181A20", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   tableWrap: { margin: "1.5rem 3rem 2rem", border: "1px solid #111", borderRadius: "4px", overflow: "hidden", overflowX: "auto" },
   table: { width: "100%", borderCollapse: "collapse" },
   th: { backgroundColor: "#181A20", padding: "1rem 1.25rem", textAlign: "right", fontSize: "0.78rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111", whiteSpace: "nowrap" },
