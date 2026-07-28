@@ -22,7 +22,7 @@ const TABS = [
   { id: "live", label: "البث والحضور", ready: true },
   { id: "lectures", label: "المحاضرات", ready: false, note: "قريبًا — المرحلة 6د" },
   { id: "quizzes", label: "الاختبارات", ready: false, note: "قريبًا — المرحلة 6هـ" },
-  { id: "assignments", label: "الواجبات", ready: false, note: "قريبًا — المرحلة 6ب" },
+  { id: "assignments", label: "الواجبات", ready: true },
   { id: "files", label: "الملفات", ready: true },
   { id: "announcements", label: "الإعلانات", ready: true },
   { id: "certificates", label: "الشهادات", ready: true },
@@ -202,7 +202,7 @@ export default function BatchDetailPage() {
         {tab === "live" && <LiveAttendanceTab batchId={batchId} />}
         {tab === "lectures" && <ComingSoon note={TABS.find((t) => t.id === "lectures").note} />}
         {tab === "quizzes" && <ComingSoon note={TABS.find((t) => t.id === "quizzes").note} />}
-        {tab === "assignments" && <ComingSoon note={TABS.find((t) => t.id === "assignments").note} />}
+        {tab === "assignments" && <AssignmentsTab batchId={batchId} />}
         {tab === "files" && <FilesTab batchId={batchId} />}
         {tab === "announcements" && <AnnouncementsTab batchId={batchId} />}
         {tab === "certificates" && <CertificatesTab batchId={batchId} />}
@@ -430,6 +430,236 @@ function LiveAttendanceTab({ batchId }) {
               </div>
               <span style={s.mono}>{sess.present_count} / {sess.total_students} حاضر</span>
             </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------- الواجبات (المرحلة 6ب) -------------------- */
+const emptyAssignmentForm = { title: "", description: "", due_date: "" };
+
+function AssignmentsTab({ batchId }) {
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyAssignmentForm);
+  const [saving, setSaving] = useState(false);
+  const [openAssignment, setOpenAssignment] = useState(null); // الواجب اللي فاتحين تسليماته
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch(`/api/admin/batches/${batchId}/assignments`);
+    const data = await res.json();
+    setAssignments(res.ok ? data.assignments || [] : []);
+    if (!res.ok) setError(data.error || "صار خطأ بجلب الواجبات");
+    setLoading(false);
+  }, [batchId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  function openAddForm() {
+    setEditingId(null);
+    setForm(emptyAssignmentForm);
+    setError("");
+    setShowForm(true);
+  }
+
+  function openEditForm(a) {
+    setEditingId(a.id);
+    setForm({ title: a.title || "", description: a.description || "", due_date: a.due_date || "" });
+    setError("");
+    setShowForm(true);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    const url = editingId
+      ? `/api/admin/batches/${batchId}/assignments/${editingId}`
+      : `/api/admin/batches/${batchId}/assignments`;
+    const method = editingId ? "PATCH" : "POST";
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) { setError(data.error || "صار خطأ بالحفظ"); return; }
+    setShowForm(false);
+    setEditingId(null);
+    setForm(emptyAssignmentForm);
+    load();
+  }
+
+  async function handleDelete(a) {
+    if (!confirm(`متأكدة إنك بدك تحذفي واجب "${a.title}"؟ رح تنحذف كل التسليمات معه.`)) return;
+    const res = await fetch(`/api/admin/batches/${batchId}/assignments/${a.id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (res.ok) load();
+    else alert(data.error || "صار خطأ بالحذف");
+  }
+
+  if (openAssignment) {
+    return (
+      <SubmissionsPanel
+        assignment={openAssignment}
+        onClose={() => { setOpenAssignment(null); load(); }}
+      />
+    );
+  }
+
+  return (
+    <div style={s.card}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+        <h3 style={{ ...s.cardTitle, margin: 0 }}>واجبات الدفعة</h3>
+        <button onClick={openAddForm} style={s.saveBtn}>+ واجب جديد</button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "1rem" }}>
+          <label style={s.label}>عنوان الواجب</label>
+          <input style={s.input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+
+          <label style={s.label}>الوصف (اختياري)</label>
+          <textarea style={{ ...s.input, minHeight: "70px", resize: "vertical", fontFamily: "inherit" }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+
+          <label style={s.label}>موعد التسليم (اختياري)</label>
+          <input type="date" style={s.input} value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
+
+          {error && <p style={s.errorText}>{error}</p>}
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+            <button type="button" onClick={() => setShowForm(false)} style={s.cancelBtn}>إلغاء</button>
+            <button type="submit" disabled={saving} style={s.saveBtn}>{saving ? "جاري الحفظ..." : "حفظ"}</button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <p style={s.loading}>جاري التحميل...</p>
+      ) : assignments.length === 0 ? (
+        <p style={s.hint}>ما في واجبات لهاي الدفعة لسا.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {assignments.map((a) => (
+            <div key={a.id} style={s.rowItem}>
+              <div style={{ minWidth: 0, cursor: "pointer" }} onClick={() => setOpenAssignment(a)}>
+                <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#EAECEF" }}>{a.title}</p>
+                {a.description && <p style={{ color: "#999", fontSize: "0.8rem", margin: "0.3rem 0 0" }}>{a.description}</p>}
+                <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>
+                  {a.due_date ? `موعد التسليم: ${a.due_date}` : "بدون موعد محدد"} — {a.submitted_count} تسليم ({a.graded_count} مقيّم)
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0 }}>
+                <button onClick={() => setOpenAssignment(a)} style={s.btnEdit}>التسليمات</button>
+                <button onClick={() => openEditForm(a)} style={s.btnEdit}>تعديل</button>
+                <button onClick={() => handleDelete(a)} style={s.btnDanger}>حذف</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SubmissionsPanel({ assignment, onClose }) {
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [gradingId, setGradingId] = useState(null);
+  const [gradeForm, setGradeForm] = useState({ grade: "", feedback: "" });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch(`/api/admin/assignments/${assignment.id}/submissions`);
+    const data = await res.json();
+    setSubmissions(res.ok ? data.submissions || [] : []);
+    setLoading(false);
+  }, [assignment.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  function startGrading(sub) {
+    setGradingId(sub.id);
+    setGradeForm({ grade: sub.grade || "", feedback: sub.feedback || "" });
+  }
+
+  async function handleGrade(e, sub) {
+    e.preventDefault();
+    setSaving(true);
+    const res = await fetch(`/api/admin/assignments/${assignment.id}/submissions/${sub.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(gradeForm),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) { alert(data.error || "صار خطأ بالتقييم"); return; }
+    setGradingId(null);
+    load();
+  }
+
+  return (
+    <div style={s.card}>
+      <button onClick={onClose} style={s.cancelBtn}>← رجوع لكل الواجبات</button>
+      <h3 style={{ ...s.cardTitle, marginTop: "0.75rem" }}>تسليمات "{assignment.title}"</h3>
+      {loading ? (
+        <p style={s.loading}>جاري التحميل...</p>
+      ) : submissions.length === 0 ? (
+        <p style={s.hint}>ما في تسليمات لهاد الواجب لسا.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+          {submissions.map((sub) => (
+            <div key={sub.id} style={{ background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.85rem 1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem", flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0 }}>
+                  <span style={s.username}>{sub.username}</span> <span style={s.mono}>— {sub.email}</span>
+                  <p style={{ ...s.mono, margin: "0.3rem 0 0" }}>سلّم بتاريخ {fmtDateTime(sub.submitted_at)}</p>
+                  {sub.note && <p style={{ color: "#ccc", fontSize: "0.82rem", margin: "0.4rem 0 0" }}>{sub.note}</p>}
+                  {sub.file_path && (
+                    <a href={sub.download_url || "#"} target="_blank" rel="noopener noreferrer" style={{ ...s.fileLink, display: "inline-block", marginTop: "0.4rem" }}>
+                      📄 {sub.file_name || "الملف المرفوع"}
+                    </a>
+                  )}
+                </div>
+                <div style={{ textAlign: "left", flexShrink: 0 }}>
+                  {sub.grade ? (
+                    <span style={s.badgeOpen}>الدرجة: {sub.grade}</span>
+                  ) : (
+                    <span style={s.badgeClosed}>لسا ما انقيّم</span>
+                  )}
+                </div>
+              </div>
+
+              {sub.feedback && gradingId !== sub.id && (
+                <p style={{ color: "#999", fontSize: "0.8rem", margin: "0.5rem 0 0" }}>ملاحظتك: {sub.feedback}</p>
+              )}
+
+              {gradingId === sub.id ? (
+                <form onSubmit={(e) => handleGrade(e, sub)} style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "flex-end", marginTop: "0.6rem" }}>
+                  <div style={{ flex: "1 1 140px" }}>
+                    <label style={s.label}>الدرجة</label>
+                    <input style={s.input} value={gradeForm.grade} onChange={(e) => setGradeForm({ ...gradeForm, grade: e.target.value })} placeholder="مثلاً: 9/10" required />
+                  </div>
+                  <div style={{ flex: "2 1 220px" }}>
+                    <label style={s.label}>ملاحظة (اختياري)</label>
+                    <input style={s.input} value={gradeForm.feedback} onChange={(e) => setGradeForm({ ...gradeForm, feedback: e.target.value })} />
+                  </div>
+                  <button type="button" onClick={() => setGradingId(null)} style={s.cancelBtn}>إلغاء</button>
+                  <button type="submit" disabled={saving} style={s.saveBtn}>{saving ? "جاري الحفظ..." : "حفظ التقييم"}</button>
+                </form>
+              ) : (
+                <button onClick={() => startGrading(sub)} style={{ ...s.btnEdit, marginTop: "0.6rem" }}>
+                  {sub.grade ? "تعديل التقييم" : "تقييم"}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
