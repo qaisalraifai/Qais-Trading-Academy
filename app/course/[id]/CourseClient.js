@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import BatchFilesPanel from "./BatchFilesPanel";
 
 const DIFFICULTY_LABELS = {
   beginner: { label: "مبتدئ", color: "#4CAF50" },
@@ -89,6 +90,8 @@ export default function CourseClient({ course, chapters }) {
         {course.description && (
           <p style={{ color: "#666", fontSize: 14, marginBottom: "1.5rem" }}>{course.description}</p>
         )}
+
+        <BatchFilesPanel courseId={course.id} />
 
         {/* Search + Filters */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", marginBottom: "2rem" }}>

@@ -39,6 +39,13 @@ export default function AdminBatchesPage() {
   const [announcementSending, setAnnouncementSending] = useState(false);
   const [announcementError, setAnnouncementError] = useState("");
 
+  const [filesBatch, setFilesBatch] = useState(null); // الدفعة اللي فاتحين مكتبة ملفاتها
+  const [batchFiles, setBatchFiles] = useState([]);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [fileUploading, setFileUploading] = useState(false);
+  const [fileError, setFileError] = useState("");
+  const [fileDeletingId, setFileDeletingId] = useState(null);
+
   const [transferBatch, setTransferBatch] = useState(null); // الدفعة المصدر
   const [transferStudents, setTransferStudents] = useState([]);
   const [transferStudentId, setTransferStudentId] = useState("");
@@ -272,6 +279,63 @@ export default function AdminBatchesPage() {
     setAnnouncements((prev) => [data.announcement, ...prev]);
   }
   // -----------------------------------------------------------------
+
+  // -------------------- المرحلة 10: مكتبة الملفات --------------------
+  async function openFiles(batch) {
+    setFilesBatch(batch);
+    setFileError("");
+    setFilesLoading(true);
+    const res = await fetch(`/api/admin/batches/${batch.id}/files`);
+    const data = await res.json();
+    setBatchFiles(res.ok ? data.files || [] : []);
+    setFilesLoading(false);
+  }
+
+  function closeFiles() {
+    setFilesBatch(null);
+    setBatchFiles([]);
+  }
+
+  async function handleUploadFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // يسمح ترفعي نفس الاسم مرة ثانية
+    if (!file || !filesBatch) return;
+
+    setFileError("");
+    setFileUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`/api/admin/batches/${filesBatch.id}/files`, { method: "POST", body: formData });
+    const data = await res.json();
+    setFileUploading(false);
+
+    if (!res.ok) {
+      setFileError(data.error || "صار خطأ برفع الملف");
+      return;
+    }
+    setBatchFiles((prev) => [data.file, ...prev]);
+  }
+
+  async function handleDeleteFile(file) {
+    if (!confirm(`متأكدة إنك بدك تحذفي "${file.file_name}"؟`)) return;
+    setFileDeletingId(file.id);
+    const res = await fetch(`/api/admin/batches/${filesBatch.id}/files/${file.id}`, { method: "DELETE" });
+    const data = await res.json();
+    setFileDeletingId(null);
+    if (!res.ok) {
+      alert(data.error || "صار خطأ بالحذف");
+      return;
+    }
+    setBatchFiles((prev) => prev.filter((f) => f.id !== file.id));
+  }
+
+  function formatFileSize(bytes) {
+    if (!bytes) return "—";
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} كيلوبايت`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} ميجابايت`;
+  }
+  // ---------------------------------------------------------------------
 
   async function openTransfer(batch) {
     setTransferBatch(batch);
@@ -621,6 +685,52 @@ export default function AdminBatchesPage() {
         </div>
       )}
 
+      {/* -------------------- المرحلة 10: مكتبة الملفات -------------------- */}
+      {filesBatch && (
+        <div style={s.overlay} onClick={closeFiles}>
+          <div style={{ ...s.formCard, maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.formTitle}>ملفات دفعة "{filesBatch.name}"</h2>
+            <p style={s.hint}>الملفات هون بتظهر بس لطلاب هاي الدفعة بصفحة الدورة عندهم.</p>
+
+            <label style={{ ...s.saveBtn, textAlign: "center", marginTop: "0.75rem", display: "block", cursor: "pointer" }}>
+              {fileUploading ? "جاري الرفع..." : "+ رفع ملف جديد"}
+              <input type="file" onChange={handleUploadFile} disabled={fileUploading} style={{ display: "none" }} />
+            </label>
+            <p style={s.hint}>الحد الأقصى 25 ميجابايت لكل ملف.</p>
+
+            {fileError && <p style={s.errorText}>{fileError}</p>}
+
+            <hr style={{ border: "none", borderTop: "1px solid #222", margin: "1rem 0 0.75rem" }} />
+
+            {filesLoading ? (
+              <p style={s.loading}>جاري التحميل...</p>
+            ) : batchFiles.length === 0 ? (
+              <p style={s.hint}>ما في ملفات مرفوعة لهاي الدفعة لسا.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "40vh", overflowY: "auto" }}>
+                {batchFiles.map((f) => (
+                  <div key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.65rem 0.9rem", gap: "0.5rem" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <a href={f.download_url || "#"} target="_blank" rel="noopener noreferrer" style={{ color: "#5b9bd5", fontSize: "0.85rem", fontWeight: 600, textDecoration: "none" }}>
+                        📄 {f.file_name}
+                      </a>
+                      <p style={{ ...s.mono, margin: "0.25rem 0 0" }}>{formatFileSize(f.file_size)} — {fmtDateTime(f.created_at)}</p>
+                    </div>
+                    <button onClick={() => handleDeleteFile(f)} disabled={fileDeletingId === f.id} style={s.btnDanger}>
+                      {fileDeletingId === f.id ? "..." : "حذف"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={s.formActions}>
+              <button type="button" onClick={closeFiles} style={s.cancelBtn}>إغلاق</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* -------------------- جدول الدفعات -------------------- */}
       <div style={s.tableWrap}>
         {loading ? (
@@ -693,6 +803,7 @@ export default function AdminBatchesPage() {
                         <button onClick={() => openEditForm(batch)} style={s.btnEdit}>تعديل</button>
                         <button onClick={() => openAttendance(batch)} style={s.btnEdit}>الحضور</button>
                         <button onClick={() => openAnnouncements(batch)} style={s.btnEdit}>إعلانات</button>
+                        <button onClick={() => openFiles(batch)} style={s.btnEdit}>الملفات</button>
                         <button onClick={() => openTransfer(batch)} style={s.btnEdit}>نقل طالب</button>
                         <button onClick={() => runAction(batch.id, "duplicate")} style={s.btnEdit}>نسخ</button>
                         {!batch.is_archived && (
