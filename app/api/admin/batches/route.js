@@ -53,7 +53,14 @@ export async function GET(request) {
     };
   });
 
-  return NextResponse.json({ batches: enriched });
+  // قائمة الأدمنز (يُستخدمون كمدربين مؤقتًا لعدم وجود كيان "مدرب" منفصل بالمنصة حاليًا)
+  const { data: instructors } = await supabase
+    .from("profiles")
+    .select("id, username")
+    .eq("role", "admin")
+    .order("username", { ascending: true });
+
+  return NextResponse.json({ batches: enriched, instructors: instructors || [] });
 }
 
 // POST /api/admin/batches — إنشاء دفعة جديدة
