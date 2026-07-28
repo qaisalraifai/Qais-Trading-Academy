@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import AITradesClient from "./AITradesClient";
+import CombinedAITradesClient from "./CombinedClient";
 import PageShell from "@/app/components/layout/PageShell";
 import { getShellProfile } from "@/lib/shell-profile";
 
@@ -17,7 +17,7 @@ export default async function AITradesPage() {
 
   return (
     <PageShell {...shellProfile}>
-      <AITradesClient />
+      <CombinedAITradesClient />
     </PageShell>
   );
 }

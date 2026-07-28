@@ -370,7 +370,7 @@ export default function SettingsView({ username }) {
       {/* 5. المزايا الحالية */}
       <SectionCard title="مزايا الاشتراك" icon="📋">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
-          {["جميع المحاضرات", "التقويم الاقتصادي", "Replay التدريب", "الاستراتيجيات", "التقارير", "مجتمع Discord"].map((f) => (
+          {["جميع المحاضرات", "التقويم الاقتصادي", "Replay التدريب", "التقارير", "مجتمع Discord"].map((f) => (
             <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#ccc" }}>
               <span style={{ color: GREEN }}>✅</span>
               <span>{f}</span>
