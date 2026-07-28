@@ -1010,7 +1010,7 @@ export default function AdminBatchesPage() {
       )}
 
       {/* -------------------- جدول الدفعات -------------------- */}
-      <div style={s.tableWrap}>
+      <div style={s.cardsWrap}>
         {loading ? (
           <p style={s.loading}>جاري التحميل...</p>
         ) : batches.length === 0 ? (
@@ -1018,102 +1018,115 @@ export default function AdminBatchesPage() {
         ) : filteredBatches.length === 0 ? (
           <p style={s.loading}>ما في دفعات مطابقة لهاي الفلاتر.</p>
         ) : (
-          <table style={s.table}>
-            <thead>
-              <tr>
-                {["الدفعة", "الدورة", "المدرب", "المقاعد", "الحالة", "الفترة", "البث", "إجراءات"].map((h, i) => (
-                  <th key={i} style={s.th}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBatches.map((batch) => {
-                const instructor = instructors.find((i) => i.id === batch.instructor_id);
-                const lifecycle = statusMeta[getBatchStatus(batch)];
-                return (
-                  <tr key={batch.id} style={s.tr}>
-                    <td style={s.td}>
-                      <span style={s.username}>{batch.name}</span>
-                      {batch.is_default && <span style={s.badgeDefault}>افتراضية</span>}
-                      <span style={s[lifecycle.badge]}>{lifecycle.label}</span>
-                    </td>
-                    <td style={s.td}><span style={s.mono}>{courseLabel(batch.course_id)}</span></td>
-                    <td style={s.td}><span style={s.mono}>{instructor?.username || "—"}</span></td>
-                    <td style={s.td}>
+          <div style={s.cardsGrid}>
+            {filteredBatches.map((batch) => {
+              const instructor = instructors.find((i) => i.id === batch.instructor_id);
+              const status = getBatchStatus(batch);
+              const lifecycle = statusMeta[status];
+              const fillPct = batch.seats_total
+                ? Math.min(Math.round(((batch.seats_taken || 0) / batch.seats_total) * 100), 100)
+                : null;
+              const fillColor = batch.is_full ? "#F6465D" : fillPct != null && fillPct >= 80 ? "#d4a017" : "#02C076";
+
+              return (
+                <div key={batch.id} style={{ ...s.card, ...s[`cardAccent_${status}`] }}>
+                  <div style={s.cardTop}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", minWidth: 0 }}>
+                      <span style={s.cardName}>{batch.name}</span>
+                      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                        <span style={s[lifecycle.badge]}>{lifecycle.label}</span>
+                        {batch.is_default && <span style={s.badgeDefault}>افتراضية</span>}
+                        {batch.live_session && <span style={s.badgeLive}>🔴 مباشر الآن</span>}
+                      </div>
+                    </div>
+                    <span style={batch.registration_status === "open" ? s.badgeOpen : s.badgeClosed}>
+                      {batch.registration_status === "open" ? "التسجيل مفتوح" : "التسجيل مغلق"}
+                    </span>
+                  </div>
+
+                  {/* الدورات ضمن الدفعة كـ Tags — حاليًا دورة وحدة لحد ما تنبني المرحلة 7 (دفعات متعددة الدورات) */}
+                  <div style={s.courseTags}>
+                    <span style={s.courseTag}>{courseLabel(batch.course_id)}</span>
+                  </div>
+
+                  <div style={s.cardMetaRow}>
+                    <div style={s.cardMetaItem}>
+                      <span style={s.statLabel}>المدرب</span>
+                      <span style={s.mono}>{instructor?.username || "—"}</span>
+                    </div>
+                    <div style={s.cardMetaItem}>
+                      <span style={s.statLabel}>الفترة</span>
+                      <span style={s.mono}>{batch.start_date || "—"} → {batch.end_date || "—"}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={s.progressLabelRow}>
+                      <span style={s.statLabel}>المقاعد</span>
                       <span style={s.mono}>
-                        {batch.seats_taken}{batch.seats_total != null ? ` / ${batch.seats_total}` : ""}
+                        {batch.seats_taken}{batch.seats_total != null ? ` / ${batch.seats_total}` : " (بلا حد)"}
                         {batch.is_full && <span style={s.badgeFull}> ممتلئة</span>}
                       </span>
-                    </td>
-                    <td style={s.td}>
-                      <span style={batch.registration_status === "open" ? s.badgeOpen : s.badgeClosed}>
-                        {batch.registration_status === "open" ? "التسجيل مفتوح" : "التسجيل مغلق"}
-                      </span>
-                    </td>
-                    <td style={s.td}>
-                      <span style={s.mono}>
-                        {batch.start_date || "—"} → {batch.end_date || "—"}
-                      </span>
-                    </td>
-                    <td style={s.td}>
-                      {batch.is_archived ? (
-                        <span style={s.mono}>—</span>
-                      ) : batch.live_session ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", alignItems: "flex-start" }}>
-                          <span style={s.badgeLive}>🔴 مباشر الآن</span>
-                          <button
-                            onClick={() => handleEndLive(batch)}
-                            disabled={liveBusyId === batch.id}
-                            style={s.btnDanger}
-                          >
-                            {liveBusyId === batch.id ? "جاري الإنهاء..." : "⏹ إنهاء البث"}
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleStartLive(batch)}
-                          disabled={liveBusyId === batch.id}
-                          style={s.btnLive}
-                        >
-                          {liveBusyId === batch.id ? "جاري البدء..." : "🔴 ابدأ بث"}
-                        </button>
-                      )}
-                    </td>
-                    <td style={s.td}>
-                      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", maxWidth: "260px" }}>
-                        <button onClick={() => openEditForm(batch)} style={s.btnEdit}>تعديل</button>
-                        <button onClick={() => openAttendance(batch)} style={s.btnEdit}>الحضور</button>
-                        <button onClick={() => openAnnouncements(batch)} style={s.btnEdit}>إعلانات</button>
-                        <button onClick={() => openFiles(batch)} style={s.btnEdit}>الملفات</button>
-                        <button onClick={() => openCertificates(batch)} style={s.btnEdit}>الشهادات</button>
-                        <button onClick={() => openTransfer(batch)} style={s.btnEdit}>نقل طالب</button>
-                        <button onClick={() => runAction(batch.id, "duplicate")} style={s.btnEdit}>نسخ</button>
-                        {!batch.is_archived && (
-                          <button
-                            onClick={() => runAction(batch.id, batch.registration_status === "open" ? "close_registration" : "open_registration")}
-                            style={s.btnEdit}
-                          >
-                            {batch.registration_status === "open" ? "إغلاق التسجيل" : "فتح التسجيل"}
-                          </button>
-                        )}
-                        {!batch.is_default && (
-                          <button
-                            onClick={() => runAction(batch.id, batch.is_archived ? "unarchive" : "archive")}
-                            style={s.btnEdit}
-                          >
-                            {batch.is_archived ? "فك الأرشفة" : "أرشفة"}
-                          </button>
-                        )}
-                        {!batch.is_default && (
-                          <button onClick={() => handleDelete(batch)} style={s.btnDanger}>حذف</button>
-                        )}
+                    </div>
+                    {fillPct != null && (
+                      <div style={s.progressBarBg}>
+                        <div style={{ ...s.progressBarFill, width: `${fillPct}%`, backgroundColor: fillColor }} />
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    )}
+                  </div>
+
+                  {!batch.is_archived && (
+                    batch.live_session ? (
+                      <button
+                        onClick={() => handleEndLive(batch)}
+                        disabled={liveBusyId === batch.id}
+                        style={{ ...s.btnDanger, width: "100%", padding: "0.55rem" }}
+                      >
+                        {liveBusyId === batch.id ? "جاري الإنهاء..." : "⏹ إنهاء البث"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleStartLive(batch)}
+                        disabled={liveBusyId === batch.id}
+                        style={{ ...s.btnLive, width: "100%", padding: "0.55rem" }}
+                      >
+                        {liveBusyId === batch.id ? "جاري البدء..." : "🔴 ابدأ بث"}
+                      </button>
+                    )
+                  )}
+
+                  <div style={s.cardActions}>
+                    <button onClick={() => openEditForm(batch)} style={s.btnEdit}>تعديل</button>
+                    <button onClick={() => openAttendance(batch)} style={s.btnEdit}>الحضور</button>
+                    <button onClick={() => openAnnouncements(batch)} style={s.btnEdit}>إعلانات</button>
+                    <button onClick={() => openFiles(batch)} style={s.btnEdit}>الملفات</button>
+                    <button onClick={() => openCertificates(batch)} style={s.btnEdit}>الشهادات</button>
+                    <button onClick={() => openTransfer(batch)} style={s.btnEdit}>نقل طالب</button>
+                    <button onClick={() => runAction(batch.id, "duplicate")} style={s.btnEdit}>نسخ</button>
+                    {!batch.is_archived && (
+                      <button
+                        onClick={() => runAction(batch.id, batch.registration_status === "open" ? "close_registration" : "open_registration")}
+                        style={s.btnEdit}
+                      >
+                        {batch.registration_status === "open" ? "إغلاق التسجيل" : "فتح التسجيل"}
+                      </button>
+                    )}
+                    {!batch.is_default && (
+                      <button
+                        onClick={() => runAction(batch.id, batch.is_archived ? "unarchive" : "archive")}
+                        style={s.btnEdit}
+                      >
+                        {batch.is_archived ? "فك الأرشفة" : "أرشفة"}
+                      </button>
+                    )}
+                    {!batch.is_default && (
+                      <button onClick={() => handleDelete(batch)} style={s.btnDanger}>حذف</button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
@@ -1140,7 +1153,23 @@ const s = {
   badgeActive: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#0a2a1e", color: "#02C076", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   badgeUpcoming: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#1a2a3a", color: "#5b9bd5", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   badgeEnded: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#181A20", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  tableWrap: { margin: "1.5rem 3rem 2rem", border: "1px solid #111", borderRadius: "4px", overflow: "hidden", overflowX: "auto" },
+  cardsWrap: { margin: "1.5rem 3rem 2rem" },
+  cardsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1.1rem" },
+  card: { display: "flex", flexDirection: "column", gap: "0.9rem", backgroundColor: "#0d0d0d", border: "1px solid #181A20", borderRight: "3px solid #333", borderRadius: "8px", padding: "1.3rem", transition: "border-color 0.15s ease" },
+  cardAccent_active: { borderRightColor: "#02C076" },
+  cardAccent_upcoming: { borderRightColor: "#5b9bd5" },
+  cardAccent_ended: { borderRightColor: "#555" },
+  cardAccent_archived: { borderRightColor: "#333", opacity: 0.7 },
+  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem" },
+  cardName: { fontSize: "1.05rem", fontWeight: 700, color: "#EAECEF" },
+  courseTags: { display: "flex", gap: "0.4rem", flexWrap: "wrap" },
+  courseTag: { fontSize: "0.75rem", color: "#c9a227", backgroundColor: "#1a160a", border: "1px solid #33290a", padding: "0.2rem 0.65rem", borderRadius: "999px" },
+  cardMetaRow: { display: "flex", gap: "1.5rem", flexWrap: "wrap" },
+  cardMetaItem: { display: "flex", flexDirection: "column", gap: "0.25rem" },
+  progressLabelRow: { display: "flex", justifyContent: "space-between", marginBottom: "0.4rem" },
+  progressBarBg: { width: "100%", height: "6px", backgroundColor: "#181A20", borderRadius: "999px", overflow: "hidden" },
+  progressBarFill: { height: "100%", borderRadius: "999px", transition: "width 0.2s ease" },
+  cardActions: { display: "flex", gap: "0.4rem", flexWrap: "wrap", paddingTop: "0.6rem", borderTop: "1px solid #181A20" },
   table: { width: "100%", borderCollapse: "collapse" },
   th: { backgroundColor: "#181A20", padding: "1rem 1.25rem", textAlign: "right", fontSize: "0.78rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111", whiteSpace: "nowrap" },
   tr: { borderBottom: "1px solid #0d0d0d" },
