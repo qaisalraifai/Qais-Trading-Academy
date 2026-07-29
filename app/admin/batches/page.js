@@ -6,8 +6,19 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const emptyForm = {
-  course_id: "", name: "", instructor_id: "", start_date: "", end_date: "", seats_total: "",
+  course_id: "", name: "", instructor_id: "", start_date: "", end_date: "", seats_total: "", registration_status: "open",
 };
+
+// -------------------- المرحلة 7: خطوات الـ Wizard --------------------
+const WIZARD_STEPS = [
+  { id: 1, label: "الاسم" },
+  { id: 2, label: "الدورة" },
+  { id: 3, label: "المدرب" },
+  { id: 4, label: "التواريخ" },
+  { id: 5, label: "المقاعد والتسجيل" },
+  { id: 6, label: "مراجعة" },
+];
+// ------------------------------------------------------------------
 
 export default function AdminBatchesPage() {
   const supabase = createClient();
@@ -24,6 +35,7 @@ export default function AdminBatchesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [wizardStep, setWizardStep] = useState(1); // المرحلة 7
 
   const [liveBusyId, setLiveBusyId] = useState(null); // معرّف الدفعة اللي جاري تبديل حالة بثها هلأ
 
@@ -181,6 +193,7 @@ export default function AdminBatchesPage() {
     setEditingId(null);
     setForm({ ...emptyForm, course_id: selectedCourseId || "" });
     setError("");
+    setWizardStep(1);
     setShowForm(true);
   }
 
@@ -203,6 +216,19 @@ export default function AdminBatchesPage() {
     setEditingId(null);
     setForm(emptyForm);
     setError("");
+    setWizardStep(1);
+  }
+
+  function wizardNext() {
+    if (wizardStep === 1 && !form.name.trim()) { setError("لازم تكتبي اسم الدفعة"); return; }
+    if (wizardStep === 2 && !form.course_id) { setError("لازم تختاري الدورة"); return; }
+    setError("");
+    setWizardStep((step) => Math.min(step + 1, WIZARD_STEPS.length));
+  }
+
+  function wizardBack() {
+    setError("");
+    setWizardStep((step) => Math.max(step - 1, 1));
   }
 
   async function handleSubmit(e) {
@@ -631,90 +657,125 @@ export default function AdminBatchesPage() {
 
       {error && <p style={{ ...s.errorText, margin: "0 3rem" }}>{error}</p>}
 
-      {/* -------------------- فورم إضافة/تعديل دفعة -------------------- */}
+      {/* -------------------- المرحلة 7: Wizard إنشاء دفعة جديدة (6 خطوات) -------------------- */}
       {showForm && (
         <div style={s.overlay} onClick={closeForm}>
-          <form style={s.formCard} onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
-            <h2 style={s.formTitle}>{editingId ? "تعديل دفعة" : "إضافة دفعة جديدة"}</h2>
+          <form
+            style={s.formCard}
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => { e.preventDefault(); if (wizardStep < WIZARD_STEPS.length) wizardNext(); else handleSubmit(e); }}
+          >
+            <h2 style={s.formTitle}>إضافة دفعة جديدة</h2>
 
-            <label style={s.label}>الدورة</label>
-            <select
-              style={s.input}
-              value={form.course_id}
-              onChange={(e) => setForm({ ...form, course_id: e.target.value })}
-              disabled={!!editingId}
-              required
-            >
-              <option value="">اختاري الدورة</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>{c.icon} {c.title}</option>
+            <div style={s.wizardStepsBar}>
+              {WIZARD_STEPS.map((st) => (
+                <div key={st.id} style={{ ...s.wizardDot, ...(st.id === wizardStep ? s.wizardDotActive : {}), ...(st.id < wizardStep ? s.wizardDotDone : {}) }}>
+                  <span>{st.id}</span>
+                  <span style={s.wizardDotLabel}>{st.label}</span>
+                </div>
               ))}
-            </select>
-            {editingId && <p style={s.hint}>ما فيك تغيّري دورة الدفعة بعد إنشائها.</p>}
-
-            <label style={s.label}>اسم الدفعة</label>
-            <input
-              style={s.input}
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="مثلاً: دفعة يناير 2026 — مسائي"
-              required
-            />
-
-            <label style={s.label}>المدرب (اختياري)</label>
-            <select
-              style={s.input}
-              value={form.instructor_id}
-              onChange={(e) => setForm({ ...form, instructor_id: e.target.value })}
-            >
-              <option value="">بدون تحديد</option>
-              {instructors.map((i) => (
-                <option key={i.id} value={i.id}>{i.username}</option>
-              ))}
-            </select>
-
-            <div style={{ display: "flex", gap: "0.75rem" }}>
-              <div style={{ flex: 1 }}>
-                <label style={s.label}>تاريخ البداية</label>
-                <input
-                  type="date"
-                  style={s.input}
-                  value={form.start_date}
-                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={s.label}>تاريخ النهاية</label>
-                <input
-                  type="date"
-                  style={s.input}
-                  value={form.end_date}
-                  onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                />
-              </div>
             </div>
 
-            <label style={s.label}>عدد المقاعد (اختياري)</label>
-            <input
-              type="number"
-              min="1"
-              style={s.input}
-              value={form.seats_total}
-              onChange={(e) => setForm({ ...form, seats_total: e.target.value })}
-              placeholder="اتركيه فاضي = بدون حد أقصى"
-            />
+            {wizardStep === 1 && (
+              <>
+                <label style={s.label}>اسم الدفعة</label>
+                <input
+                  style={s.input}
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="مثلاً: دفعة يناير 2026 — مسائي"
+                  autoFocus
+                  required
+                />
+              </>
+            )}
+
+            {wizardStep === 2 && (
+              <>
+                <label style={s.label}>الدورة</label>
+                <select style={s.input} value={form.course_id} onChange={(e) => setForm({ ...form, course_id: e.target.value })} required>
+                  <option value="">اختاري الدورة</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>{c.icon} {c.title}</option>
+                  ))}
+                </select>
+                <p style={s.hint}>ما فيك تغيّري دورة الدفعة بعد إنشائها.</p>
+              </>
+            )}
+
+            {wizardStep === 3 && (
+              <>
+                <label style={s.label}>المدرب (اختياري)</label>
+                <select style={s.input} value={form.instructor_id} onChange={(e) => setForm({ ...form, instructor_id: e.target.value })}>
+                  <option value="">بدون تحديد</option>
+                  {instructors.map((i) => (
+                    <option key={i.id} value={i.id}>{i.username}</option>
+                  ))}
+                </select>
+                <p style={s.hint}>كل دفعة مدرب واحد حاليًا. تعدد المدربين لدفعة وحدة محتاج تعديل بقاعدة البيانات أول.</p>
+              </>
+            )}
+
+            {wizardStep === 4 && (
+              <>
+                <div style={{ display: "flex", gap: "0.75rem" }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={s.label}>تاريخ البداية</label>
+                    <input type="date" style={s.input} value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={s.label}>تاريخ النهاية</label>
+                    <input type="date" style={s.input} value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+                  </div>
+                </div>
+                <p style={s.hint}>اختياريين — سيبيهم فاضيين لو التواريخ لسا مش محددة.</p>
+              </>
+            )}
+
+            {wizardStep === 5 && (
+              <>
+                <label style={s.label}>عدد المقاعد (اختياري)</label>
+                <input
+                  type="number"
+                  min="1"
+                  style={s.input}
+                  value={form.seats_total}
+                  onChange={(e) => setForm({ ...form, seats_total: e.target.value })}
+                  placeholder="اتركيه فاضي = بدون حد أقصى"
+                />
+                <label style={s.label}>حالة التسجيل</label>
+                <select style={s.input} value={form.registration_status} onChange={(e) => setForm({ ...form, registration_status: e.target.value })}>
+                  <option value="open">مفتوح</option>
+                  <option value="closed">مغلق</option>
+                </select>
+              </>
+            )}
+
+            {wizardStep === 6 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={s.reviewRow}><span style={s.label}>الاسم</span><span>{form.name || "—"}</span></div>
+                <div style={s.reviewRow}><span style={s.label}>الدورة</span><span>{courseLabel(form.course_id)}</span></div>
+                <div style={s.reviewRow}><span style={s.label}>المدرب</span><span>{instructors.find((i) => i.id === form.instructor_id)?.username || "بدون تحديد"}</span></div>
+                <div style={s.reviewRow}><span style={s.label}>الفترة</span><span>{form.start_date || "—"} → {form.end_date || "—"}</span></div>
+                <div style={s.reviewRow}><span style={s.label}>المقاعد</span><span>{form.seats_total || "بدون حد أقصى"}</span></div>
+                <div style={s.reviewRow}><span style={s.label}>التسجيل</span><span>{form.registration_status === "open" ? "مفتوح" : "مغلق"}</span></div>
+              </div>
+            )}
 
             {error && <p style={s.errorText}>{error}</p>}
 
             <div style={s.formActions}>
-              <button type="button" onClick={closeForm} style={s.cancelBtn}>إلغاء</button>
+              <button type="button" onClick={wizardStep === 1 ? closeForm : wizardBack} style={s.cancelBtn}>
+                {wizardStep === 1 ? "إلغاء" : "← رجوع"}
+              </button>
               <button type="submit" disabled={saving} style={s.saveBtn}>
-                {saving ? "جاري الحفظ..." : editingId ? "حفظ التعديلات" : "إضافة الدفعة"}
+                {wizardStep < WIZARD_STEPS.length ? "التالي ←" : saving ? "جاري الحفظ..." : "إضافة الدفعة"}
               </button>
             </div>
           </form>
         </div>
       )}
+      {/* --------------------------------------------------------------------------------------- */}
 
       {/* -------------------- فورم نقل طالب -------------------- */}
       {transferBatch && (
@@ -1190,6 +1251,12 @@ const s = {
   hint: { fontSize: "0.75rem", color: "#555", marginTop: "0.15rem" },
   errorText: { color: "#ef5350", fontSize: "0.85rem", marginTop: "0.5rem" },
   formActions: { display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" },
+  wizardStepsBar: { display: "flex", justifyContent: "space-between", gap: "0.25rem", marginBottom: "0.5rem" },
+  wizardDot: { display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem", flex: 1, opacity: 0.4, fontSize: "0.68rem", color: "#999" },
+  wizardDotActive: { opacity: 1, color: "#D4AF37" },
+  wizardDotDone: { opacity: 0.75, color: "#02C076" },
+  wizardDotLabel: { whiteSpace: "nowrap", fontSize: "0.62rem" },
+  reviewRow: { display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #181A20", fontSize: "0.85rem" },
   cancelBtn: { background: "none", border: "1px solid #222", color: "#999", padding: "0.6rem 1.4rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" },
   saveBtn: { backgroundColor: gold, color: "#000", border: "none", padding: "0.6rem 1.4rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 700 },
   badgeDefault: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#1a2a3a", color: "#5b9bd5", padding: "0.15rem 0.5rem", borderRadius: "3px" },
