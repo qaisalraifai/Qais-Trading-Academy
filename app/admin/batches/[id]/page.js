@@ -21,7 +21,7 @@ const TABS = [
   { id: "students", label: "الطلاب", ready: true },
   { id: "live", label: "البث والحضور", ready: true },
   { id: "lectures", label: "المحاضرات", ready: true },
-  { id: "quizzes", label: "الاختبارات", ready: false, note: "قريبًا — المرحلة 6هـ" },
+  { id: "quizzes", label: "الاختبارات", ready: true },
   { id: "assignments", label: "الواجبات", ready: true },
   { id: "files", label: "الملفات", ready: true },
   { id: "announcements", label: "الإعلانات", ready: true },
@@ -201,7 +201,7 @@ export default function BatchDetailPage() {
         {tab === "students" && <StudentsTab batchId={batchId} batch={batch} onTransferred={fetchBatch} />}
         {tab === "live" && <LiveAttendanceTab batchId={batchId} />}
         {tab === "lectures" && <LecturesTab batch={batch} />}
-        {tab === "quizzes" && <ComingSoon note={TABS.find((t) => t.id === "quizzes").note} />}
+        {tab === "quizzes" && <QuizzesTab batchId={batchId} batch={batch} />}
         {tab === "assignments" && <AssignmentsTab batchId={batchId} />}
         {tab === "files" && <FilesTab batchId={batchId} />}
         {tab === "announcements" && <AnnouncementsTab batchId={batchId} />}
@@ -815,6 +815,337 @@ function LecturesTab({ batch }) {
   );
 }
 
+/* -------------------- الاختبارات (المرحلة 6هـ) -------------------- */
+const emptyQuizForm = { title: "", chapter: "", scope: "shared" }; // scope: shared | exclusive
+
+function QuizzesTab({ batchId, batch }) {
+  const [quizzes, setQuizzes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyQuizForm);
+  const [saving, setSaving] = useState(false);
+  const [panel, setPanel] = useState(null); // { mode: 'questions'|'attempts', quiz }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch(`/api/admin/batches/${batchId}/quizzes`);
+    const data = await res.json();
+    setQuizzes(res.ok ? data.quizzes || [] : []);
+    if (!res.ok) setError(data.error || "صار خطأ بجلب الاختبارات");
+    setLoading(false);
+  }, [batchId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  function openAddForm() {
+    setEditingId(null);
+    setForm(emptyQuizForm);
+    setError("");
+    setShowForm(true);
+  }
+
+  function openEditForm(q) {
+    setEditingId(q.id);
+    setForm({ title: q.title || "", chapter: q.chapter || "", scope: q.batch_id ? "exclusive" : "shared" });
+    setError("");
+    setShowForm(true);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    const payload = {
+      title: form.title,
+      chapter: form.chapter,
+      batch_id: form.scope === "exclusive" ? batchId : null,
+    };
+    const url = editingId ? `/api/admin/quizzes/${editingId}` : `/api/admin/batches/${batchId}/quizzes`;
+    const method = editingId ? "PATCH" : "POST";
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) { setError(data.error || "صار خطأ بالحفظ"); return; }
+    setShowForm(false);
+    setEditingId(null);
+    setForm(emptyQuizForm);
+    load();
+  }
+
+  async function handleDelete(q) {
+    if (!confirm(`متأكدة إنك بدك تحذفي اختبار "${q.title}"؟ رح تنحذف كل أسئلته ومحاولات الطلاب فيه.`)) return;
+    const res = await fetch(`/api/admin/quizzes/${q.id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (res.ok) load();
+    else alert(data.error || "صار خطأ بالحذف");
+  }
+
+  if (panel?.mode === "questions") {
+    return <QuestionsPanel quiz={panel.quiz} onClose={() => { setPanel(null); load(); }} />;
+  }
+  if (panel?.mode === "attempts") {
+    return <AttemptsPanel quiz={panel.quiz} onClose={() => setPanel(null)} />;
+  }
+
+  return (
+    <div style={s.card}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+        <h3 style={{ ...s.cardTitle, margin: 0 }}>اختبارات الدفعة</h3>
+        <button onClick={openAddForm} style={s.saveBtn}>+ اختبار جديد</button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "1rem" }}>
+          <label style={s.label}>عنوان الاختبار</label>
+          <input style={s.input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+
+          <label style={s.label}>الفصل (اختياري)</label>
+          <input style={s.input} value={form.chapter} onChange={(e) => setForm({ ...form, chapter: e.target.value })} placeholder="مثلاً: الفصل الثاني" />
+
+          <label style={s.label}>النطاق</label>
+          <select style={s.input} value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })}>
+            <option value="shared">مشترك لكل دفعات الكورس</option>
+            <option value="exclusive">حصري لهاي الدفعة بس</option>
+          </select>
+
+          {error && <p style={s.errorText}>{error}</p>}
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+            <button type="button" onClick={() => setShowForm(false)} style={s.cancelBtn}>إلغاء</button>
+            <button type="submit" disabled={saving} style={s.saveBtn}>{saving ? "جاري الحفظ..." : "حفظ"}</button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <p style={s.loading}>جاري التحميل...</p>
+      ) : quizzes.length === 0 ? (
+        <p style={s.hint}>ما في اختبارات لهاي الدفعة لسا.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {quizzes.map((q) => (
+            <div key={q.id} style={s.rowItem}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#EAECEF" }}>
+                  {q.title} {q.batch_id ? <span style={s.badgeDefault}>حصري</span> : <span style={s.badgeShared}>مشترك</span>}
+                </p>
+                <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>
+                  {q.chapter ? `${q.chapter} — ` : ""}{q.question_count} سؤال — {q.attempt_count} محاولة طالب
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0, flexWrap: "wrap" }}>
+                <button onClick={() => setPanel({ mode: "questions", quiz: q })} style={s.btnEdit}>الأسئلة</button>
+                <button onClick={() => setPanel({ mode: "attempts", quiz: q })} style={s.btnEdit}>النتائج</button>
+                <button onClick={() => openEditForm(q)} style={s.btnEdit}>تعديل</button>
+                <button onClick={() => handleDelete(q)} style={s.btnDanger}>حذف</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const emptyQuestionForm = { question_text: "", options: ["", ""], correct_option_index: 0 };
+
+function QuestionsPanel({ quiz, onClose }) {
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyQuestionForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch(`/api/admin/quizzes/${quiz.id}/questions`);
+    const data = await res.json();
+    setQuestions(res.ok ? data.questions || [] : []);
+    setLoading(false);
+  }, [quiz.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  function openAddForm() {
+    setEditingId(null);
+    setForm(emptyQuestionForm);
+    setError("");
+    setShowForm(true);
+  }
+
+  function openEditForm(q) {
+    setEditingId(q.id);
+    setForm({ question_text: q.question_text, options: [...q.options], correct_option_index: q.correct_option_index });
+    setError("");
+    setShowForm(true);
+  }
+
+  function updateOption(idx, value) {
+    const options = [...form.options];
+    options[idx] = value;
+    setForm({ ...form, options });
+  }
+
+  function addOption() {
+    if (form.options.length >= 6) return;
+    setForm({ ...form, options: [...form.options, ""] });
+  }
+
+  function removeOption(idx) {
+    if (form.options.length <= 2) return;
+    const options = form.options.filter((_, i) => i !== idx);
+    const correct = form.correct_option_index >= options.length ? 0 : form.correct_option_index;
+    setForm({ ...form, options, correct_option_index: correct });
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    const url = editingId
+      ? `/api/admin/quizzes/${quiz.id}/questions/${editingId}`
+      : `/api/admin/quizzes/${quiz.id}/questions`;
+    const method = editingId ? "PATCH" : "POST";
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) { setError(data.error || "صار خطأ بالحفظ"); return; }
+    setShowForm(false);
+    setEditingId(null);
+    setForm(emptyQuestionForm);
+    load();
+  }
+
+  async function handleDelete(q) {
+    if (!confirm("متأكدة إنك بدك تحذفي هاد السؤال؟")) return;
+    const res = await fetch(`/api/admin/quizzes/${quiz.id}/questions/${q.id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (res.ok) load();
+    else alert(data.error || "صار خطأ بالحذف");
+  }
+
+  return (
+    <div style={s.card}>
+      <button onClick={onClose} style={s.cancelBtn}>← رجوع لكل الاختبارات</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0.75rem 0" }}>
+        <h3 style={{ ...s.cardTitle, margin: 0 }}>أسئلة "{quiz.title}"</h3>
+        <button onClick={openAddForm} style={s.saveBtn}>+ سؤال جديد</button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "560px", marginBottom: "1rem", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "1rem" }}>
+          <label style={s.label}>نص السؤال</label>
+          <textarea style={{ ...s.input, minHeight: "60px", resize: "vertical", fontFamily: "inherit" }} value={form.question_text} onChange={(e) => setForm({ ...form, question_text: e.target.value })} required />
+
+          <label style={s.label}>الخيارات (حددي الإجابة الصحيحة بالزر ⚪)</label>
+          {form.options.map((opt, idx) => (
+            <div key={idx} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <input
+                type="radio"
+                name="correct_option"
+                checked={form.correct_option_index === idx}
+                onChange={() => setForm({ ...form, correct_option_index: idx })}
+              />
+              <input style={{ ...s.input, flex: 1 }} value={opt} onChange={(e) => updateOption(idx, e.target.value)} placeholder={`خيار ${idx + 1}`} required />
+              {form.options.length > 2 && (
+                <button type="button" onClick={() => removeOption(idx)} style={s.btnDanger}>حذف</button>
+              )}
+            </div>
+          ))}
+          {form.options.length < 6 && (
+            <button type="button" onClick={addOption} style={{ ...s.cancelBtn, alignSelf: "flex-start" }}>+ خيار إضافي</button>
+          )}
+
+          {error && <p style={s.errorText}>{error}</p>}
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+            <button type="button" onClick={() => setShowForm(false)} style={s.cancelBtn}>إلغاء</button>
+            <button type="submit" disabled={saving} style={s.saveBtn}>{saving ? "جاري الحفظ..." : "حفظ"}</button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <p style={s.loading}>جاري التحميل...</p>
+      ) : questions.length === 0 ? (
+        <p style={s.hint}>ما في أسئلة بهاد الاختبار لسا.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {questions.map((q, idx) => (
+            <div key={q.id} style={{ background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.85rem 1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem" }}>
+                <p style={{ margin: 0, fontSize: "0.86rem", fontWeight: 600, color: "#EAECEF" }}>{idx + 1}. {q.question_text}</p>
+                <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0 }}>
+                  <button onClick={() => openEditForm(q)} style={s.btnEdit}>تعديل</button>
+                  <button onClick={() => handleDelete(q)} style={s.btnDanger}>حذف</button>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: "0.5rem" }}>
+                {q.options.map((opt, i) => (
+                  <span key={i} style={{ fontSize: "0.8rem", color: i === q.correct_option_index ? "#02C076" : "#999" }}>
+                    {i === q.correct_option_index ? "✓ " : "— "}{opt}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AttemptsPanel({ quiz, onClose }) {
+  const [attempts, setAttempts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/admin/quizzes/${quiz.id}/attempts`)
+      .then((res) => res.json())
+      .then((data) => setAttempts(data.attempts || []))
+      .finally(() => setLoading(false));
+  }, [quiz.id]);
+
+  const avgPercent = attempts.length
+    ? Math.round(attempts.reduce((sum, a) => sum + a.percent, 0) / attempts.length)
+    : null;
+
+  return (
+    <div style={s.card}>
+      <button onClick={onClose} style={s.cancelBtn}>← رجوع لكل الاختبارات</button>
+      <h3 style={{ ...s.cardTitle, marginTop: "0.75rem" }}>نتائج "{quiz.title}"</h3>
+      {avgPercent != null && <p style={s.hint}>{attempts.length} محاولة — متوسط النتيجة {avgPercent}%</p>}
+      <hr style={s.hr} />
+      {loading ? (
+        <p style={s.loading}>جاري التحميل...</p>
+      ) : attempts.length === 0 ? (
+        <p style={s.hint}>ما في طالب سوّى هاد الاختبار لسا.</p>
+      ) : (
+        <table style={s.table}>
+          <thead>
+            <tr>{["الطالب", "النتيجة", "النسبة", "تاريخ المحاولة"].map((h, i) => <th key={i} style={s.th}>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {attempts.map((a) => (
+              <tr key={a.id} style={s.tr}>
+                <td style={s.td}><span style={s.username}>{a.username}</span><br /><span style={s.mono}>{a.email}</span></td>
+                <td style={s.td}><span style={s.mono}>{a.score} / {a.total_questions}</span></td>
+                <td style={s.td}>
+                  <span style={a.percent >= 60 ? s.badgeOpen : s.badgeClosed}>{a.percent}%</span>
+                </td>
+                <td style={s.td}><span style={s.mono}>{fmtDateTime(a.attempted_at)}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 /* -------------------- الملفات -------------------- */
 function FilesTab({ batchId }) {
   const [files, setFiles] = useState([]);
@@ -1181,6 +1512,7 @@ const s = {
   btnDanger: { backgroundColor: "#2a1a1a", color: "#ef5350", border: "1px solid #4a2a2a", padding: "0.45rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.8rem" },
   btnLive: { backgroundColor: "#F6465D", color: "#fff", border: "none", padding: "0.55rem 1.1rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700, whiteSpace: "nowrap" },
   badgeDefault: { fontSize: "0.68rem", backgroundColor: "#1a2a3a", color: "#5b9bd5", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeShared: { fontSize: "0.68rem", backgroundColor: "#181A20", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   badgeActive: { fontSize: "0.68rem", backgroundColor: "#0a2a1e", color: "#02C076", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   badgeUpcoming: { fontSize: "0.68rem", backgroundColor: "#1a2a3a", color: "#5b9bd5", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   badgeEnded: { fontSize: "0.68rem", backgroundColor: "#181A20", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
