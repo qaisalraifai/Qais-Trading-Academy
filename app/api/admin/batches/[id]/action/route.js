@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
 
 // POST /api/admin/batches/[id]/action { action, payload }
-// actions: archive | unarchive | open_registration | close_registration | duplicate
+// actions: archive | unarchive | open_registration | close_registration | duplicate | end_batch
 export async function POST(request, { params }) {
   const auth = await requireAdmin();
   if (auth.error) {
@@ -68,8 +68,24 @@ export async function POST(request, { params }) {
       return NextResponse.json({ batch: data });
     }
 
+    case "end_batch": {
+      // المرحلة 8: إنهاء الدفعة يدويًا الآن، بغض النظر عن end_date المجدول
+      if (batch.is_archived) {
+        return NextResponse.json({ error: "الدفعة مؤرشفة أصلًا" }, { status: 400 });
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from("batches")
+        .update({ end_date: today, registration_status: "closed" })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ batch: data });
+    }
+
     case "duplicate": {
-      // نسخ إعدادات الدفعة (الاسم، المدرب، عدد المقاعد) لدفعة جديدة
+      // نسخ إعدادات الدفعة (الاسم، المدربين، عدد المقاعد) لدفعة جديدة
       // التواريخ ما بتتنسخ عمدًا (دفعة جديدة = مواعيد جديدة)، وحالة التسجيل
       // بتبلّش "مغلقة" افتراضيًا لحد ما الأدمن يحدد المواعيد ويفتحها بنفسه
       const newName = payload.name?.trim() || `${batch.name} (نسخة)`;
@@ -88,6 +104,13 @@ export async function POST(request, { params }) {
         .select()
         .single();
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+      // المرحلة 7: نسخ كل المدربين المرتبطين (مش بس المدرب الرئيسي)
+      const { data: existingInstructors } = await supabase.from("batch_instructors").select("instructor_id").eq("batch_id", id);
+      if (existingInstructors?.length) {
+        await supabase.from("batch_instructors").insert(existingInstructors.map((r) => ({ batch_id: data.id, instructor_id: r.instructor_id })));
+      }
+
       return NextResponse.json({ batch: { ...data, seats_taken: 0, seats_remaining: data.seats_total, is_full: false } });
     }
 

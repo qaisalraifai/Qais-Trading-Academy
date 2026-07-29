@@ -292,6 +292,22 @@ function StudentsTab({ batchId, batch, onTransferred }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // المرحلة 8: تصدير قائمة الطلاب CSV — توليد بالكامل بالمتصفح، بدون أي حاجة لباك اند جديد
+  function handleExportCsv() {
+    const header = ["الاسم", "البريد", "تاريخ التسجيل"];
+    const rows = students.map((st) => [st.username, st.email, st.enrolled_at || ""]);
+    const csv = [header, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }); // BOM عشان العربي يظهر صح بإكسل
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `طلاب-${batch.name}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function handleTransfer(e) {
     e.preventDefault();
     if (!transferStudentId || !transferTargetId) return;
@@ -343,7 +359,12 @@ function StudentsTab({ batchId, batch, onTransferred }) {
       </div>
 
       <div style={{ ...s.card, marginTop: "1rem" }}>
-        <h3 style={s.cardTitle}>الطلاب المسجّلين ({students.length})</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+          <h3 style={{ ...s.cardTitle, margin: 0 }}>الطلاب المسجّلين ({students.length})</h3>
+          {students.length > 0 && (
+            <button onClick={handleExportCsv} style={s.btnEdit}>⬇ تصدير CSV</button>
+          )}
+        </div>
         {loading ? (
           <p style={s.loading}>جاري التحميل...</p>
         ) : students.length === 0 ? (
@@ -1482,6 +1503,14 @@ function SettingsTab({ batch, instructors, onSaved, onAction, router }) {
         <h3 style={s.cardTitle}>إجراءات أخرى</h3>
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           <button onClick={() => onAction("duplicate")} style={s.btnEdit}>نسخ الدفعة</button>
+          {!batch.is_archived && (
+            <button
+              onClick={() => { if (confirm(`متأكدة إنك بدك تنهي دفعة "${batch.name}" هلأ؟ رح يصير تاريخ نهايتها اليوم ويقفل التسجيل.`)) onAction("end_batch"); }}
+              style={s.btnEdit}
+            >
+              إنهاء الدفعة الآن
+            </button>
+          )}
           {!batch.is_archived && (
             <button onClick={() => onAction(batch.registration_status === "open" ? "close_registration" : "open_registration")} style={s.btnEdit}>
               {batch.registration_status === "open" ? "إغلاق التسجيل" : "فتح التسجيل"}
