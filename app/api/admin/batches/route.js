@@ -58,6 +58,25 @@ export async function GET(request) {
     }, {});
   }
 
+  // المرحلة 7: كل المدربين المرتبطين بكل دفعة (تعدد مدربين)
+  let instructorsListMap = {};
+  if (batchIds.length > 0) {
+    const { data: batchInstructors } = await supabase
+      .from("batch_instructors")
+      .select("batch_id, instructor_id")
+      .in("batch_id", batchIds);
+    const instructorIds = [...new Set((batchInstructors || []).map((bi) => bi.instructor_id))];
+    let instructorProfiles = {};
+    if (instructorIds.length) {
+      const { data: profs } = await supabase.from("profiles").select("id, username").in("id", instructorIds);
+      instructorProfiles = (profs || []).reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+    }
+    (batchInstructors || []).forEach((bi) => {
+      if (!instructorsListMap[bi.batch_id]) instructorsListMap[bi.batch_id] = [];
+      if (instructorProfiles[bi.instructor_id]) instructorsListMap[bi.batch_id].push(instructorProfiles[bi.instructor_id]);
+    });
+  }
+
   const enriched = (batches || []).map((b) => {
     const seatsTaken = countsMap[b.id] || 0;
     return {
@@ -66,6 +85,7 @@ export async function GET(request) {
       live_session: liveMap[b.id] || null,
       seats_remaining: b.seats_total == null ? null : Math.max(b.seats_total - seatsTaken, 0),
       is_full: b.seats_total != null && seatsTaken >= b.seats_total,
+      instructors_list: instructorsListMap[b.id] || [],
     };
   });
 
@@ -87,7 +107,9 @@ export async function POST(request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { course_id, name, instructor_id, start_date, end_date, seats_total, registration_status } = body;
+  const { course_id, name, instructor_ids, start_date, end_date, seats_total, registration_status } = body;
+  // instructor_ids: array (المرحلة 7 — تعدد المدربين). لسا بندعم instructor_id المفرد كـ fallback.
+  const instructorIdList = Array.isArray(instructor_ids) ? instructor_ids.filter(Boolean) : (body.instructor_id ? [body.instructor_id] : []);
 
   if (!course_id) {
     return NextResponse.json({ error: "لازم تحددي الدورة التابعة لها الدفعة" }, { status: 400 });
@@ -112,7 +134,7 @@ export async function POST(request) {
     .insert({
       course_id,
       name: name.trim(),
-      instructor_id: instructor_id || null,
+      instructor_id: instructorIdList[0] || null, // المدرب الرئيسي — أول واحد بالقائمة، للتوافق مع الشاشات القديمة
       start_date: start_date || null,
       end_date: end_date || null,
       seats_total: seats_total ? Number(seats_total) : null,
@@ -123,5 +145,14 @@ export async function POST(request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ batch: { ...data, seats_taken: 0, seats_remaining: data.seats_total, is_full: false } });
+
+  // المرحلة 7: ربط كل المدربين المختارين بجدول batch_instructors
+  let instructorsList = [];
+  if (instructorIdList.length) {
+    await supabase.from("batch_instructors").insert(instructorIdList.map((id) => ({ batch_id: data.id, instructor_id: id })));
+    const { data: profs } = await supabase.from("profiles").select("id, username").in("id", instructorIdList);
+    instructorsList = profs || [];
+  }
+
+  return NextResponse.json({ batch: { ...data, seats_taken: 0, seats_remaining: data.seats_total, is_full: false, instructors_list: instructorsList } });
 }

@@ -22,14 +22,23 @@ export async function GET(_request, { params }) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!batch) return NextResponse.json({ error: "الدفعة غير موجودة" }, { status: 404 });
 
-  const [{ count: seatsTaken }, { data: course }, { data: instructor }, { data: liveSession }] = await Promise.all([
+  const [{ count: seatsTaken }, { data: course }, { data: instructor }, { data: liveSession }, { data: batchInstructorRows }] = await Promise.all([
     supabase.from("batch_enrollments").select("id", { count: "exact", head: true }).eq("batch_id", params.id),
     supabase.from("courses").select("id, title, icon").eq("id", batch.course_id).maybeSingle(),
     batch.instructor_id
       ? supabase.from("profiles").select("id, username").eq("id", batch.instructor_id).maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.from("live_sessions").select("id, room_name, title, started_at").eq("batch_id", params.id).eq("is_active", true).maybeSingle(),
+    supabase.from("batch_instructors").select("instructor_id").eq("batch_id", params.id),
   ]);
+
+  // المرحلة 7: قائمة كل المدربين المرتبطين بهاي الدفعة (تعدد مدربين)
+  const instructorIds = (batchInstructorRows || []).map((r) => r.instructor_id);
+  let instructorsList = [];
+  if (instructorIds.length) {
+    const { data: profs } = await supabase.from("profiles").select("id, username").in("id", instructorIds);
+    instructorsList = profs || [];
+  }
 
   const { data: instructors } = await supabase
     .from("profiles")
@@ -44,6 +53,7 @@ export async function GET(_request, { params }) {
     is_full: batch.seats_total != null && (seatsTaken || 0) >= batch.seats_total,
     course: course || null,
     instructor: instructor || null,
+    instructors_list: instructorsList,
     live_session: liveSession || null,
   };
 
@@ -59,14 +69,15 @@ export async function PUT(request, { params }) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { name, instructor_id, start_date, end_date, seats_total, registration_status } = body;
+  const { name, instructor_ids, start_date, end_date, seats_total, registration_status } = body;
+  const instructorIdList = Array.isArray(instructor_ids) ? instructor_ids.filter(Boolean) : undefined;
 
   const updateData = {};
   if (name !== undefined) {
     if (!name.trim()) return NextResponse.json({ error: "اسم الدفعة مطلوب" }, { status: 400 });
     updateData.name = name.trim();
   }
-  if (instructor_id !== undefined) updateData.instructor_id = instructor_id || null;
+  if (instructorIdList !== undefined) updateData.instructor_id = instructorIdList[0] || null; // المدرب الرئيسي
   if (start_date !== undefined) updateData.start_date = start_date || null;
   if (end_date !== undefined) updateData.end_date = end_date || null;
   if (registration_status !== undefined) {
@@ -106,7 +117,26 @@ export async function PUT(request, { params }) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ batch: data });
+
+  // المرحلة 7: تحديث قائمة المدربين المرتبطين (استبدال كامل — أسهل وأضمن من الفرق بين القديم والجديد)
+  let instructorsList = [];
+  if (instructorIdList !== undefined) {
+    await supabase.from("batch_instructors").delete().eq("batch_id", params.id);
+    if (instructorIdList.length) {
+      await supabase.from("batch_instructors").insert(instructorIdList.map((id) => ({ batch_id: params.id, instructor_id: id })));
+      const { data: profs } = await supabase.from("profiles").select("id, username").in("id", instructorIdList);
+      instructorsList = profs || [];
+    }
+  } else {
+    const { data: rows } = await supabase.from("batch_instructors").select("instructor_id").eq("batch_id", params.id);
+    const ids = (rows || []).map((r) => r.instructor_id);
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id, username").in("id", ids);
+      instructorsList = profs || [];
+    }
+  }
+
+  return NextResponse.json({ batch: { ...data, instructors_list: instructorsList } });
 }
 
 // DELETE /api/admin/batches/[id] — حذف نهائي (بس لو فاضية تمامًا)

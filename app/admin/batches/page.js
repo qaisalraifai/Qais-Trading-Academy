@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const emptyForm = {
-  course_id: "", name: "", instructor_id: "", start_date: "", end_date: "", seats_total: "", registration_status: "open",
+  course_id: "", name: "", instructor_ids: [], start_date: "", end_date: "", seats_total: "", registration_status: "open",
 };
 
 // -------------------- المرحلة 7: خطوات الـ Wizard --------------------
@@ -168,7 +168,7 @@ export default function AdminBatchesPage() {
     }
 
     if (instructorFilter) {
-      list = list.filter((b) => b.instructor_id === instructorFilter);
+      list = list.filter((b) => (b.instructors_list || []).some((i) => i.id === instructorFilter) || b.instructor_id === instructorFilter);
     }
 
     switch (sortBy) {
@@ -239,8 +239,8 @@ export default function AdminBatchesPage() {
     const url = editingId ? `/api/admin/batches/${editingId}` : "/api/admin/batches";
     const method = editingId ? "PUT" : "POST";
     const payload = editingId
-      ? { name: form.name, instructor_id: form.instructor_id || null, start_date: form.start_date || null, end_date: form.end_date || null, seats_total: form.seats_total || null }
-      : { ...form, instructor_id: form.instructor_id || null, seats_total: form.seats_total || null };
+      ? { name: form.name, instructor_ids: form.instructor_ids, start_date: form.start_date || null, end_date: form.end_date || null, seats_total: form.seats_total || null }
+      : { ...form, instructor_ids: form.instructor_ids, seats_total: form.seats_total || null };
 
     const res = await fetch(url, {
       method,
@@ -705,14 +705,29 @@ export default function AdminBatchesPage() {
 
             {wizardStep === 3 && (
               <>
-                <label style={s.label}>المدرب (اختياري)</label>
-                <select style={s.input} value={form.instructor_id} onChange={(e) => setForm({ ...form, instructor_id: e.target.value })}>
-                  <option value="">بدون تحديد</option>
-                  {instructors.map((i) => (
-                    <option key={i.id} value={i.id}>{i.username}</option>
-                  ))}
-                </select>
-                <p style={s.hint}>كل دفعة مدرب واحد حاليًا. تعدد المدربين لدفعة وحدة محتاج تعديل بقاعدة البيانات أول.</p>
+                <label style={s.label}>المدربين (اختياري، تقدري تختاري أكتر من وحد)</label>
+                <div style={s.checkboxList}>
+                  {instructors.length === 0 && <p style={s.hint}>ما في مدربين متاحين.</p>}
+                  {instructors.map((i) => {
+                    const checked = form.instructor_ids.includes(i.id);
+                    return (
+                      <label key={i.id} style={s.checkboxRow}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            const next = checked
+                              ? form.instructor_ids.filter((id) => id !== i.id)
+                              : [...form.instructor_ids, i.id];
+                            setForm({ ...form, instructor_ids: next });
+                          }}
+                        />
+                        {i.username}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p style={s.hint}>أول مدرب تختاريه بيصير "المدرب الرئيسي" اللي بيظهر بالبطاقات والفلاتر.</p>
               </>
             )}
 
@@ -755,7 +770,7 @@ export default function AdminBatchesPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <div style={s.reviewRow}><span style={s.label}>الاسم</span><span>{form.name || "—"}</span></div>
                 <div style={s.reviewRow}><span style={s.label}>الدورة</span><span>{courseLabel(form.course_id)}</span></div>
-                <div style={s.reviewRow}><span style={s.label}>المدرب</span><span>{instructors.find((i) => i.id === form.instructor_id)?.username || "بدون تحديد"}</span></div>
+                <div style={s.reviewRow}><span style={s.label}>المدربين</span><span>{form.instructor_ids.length ? form.instructor_ids.map((id) => instructors.find((i) => i.id === id)?.username).filter(Boolean).join("، ") : "بدون تحديد"}</span></div>
                 <div style={s.reviewRow}><span style={s.label}>الفترة</span><span>{form.start_date || "—"} → {form.end_date || "—"}</span></div>
                 <div style={s.reviewRow}><span style={s.label}>المقاعد</span><span>{form.seats_total || "بدون حد أقصى"}</span></div>
                 <div style={s.reviewRow}><span style={s.label}>التسجيل</span><span>{form.registration_status === "open" ? "مفتوح" : "مغلق"}</span></div>
@@ -1081,7 +1096,10 @@ export default function AdminBatchesPage() {
         ) : (
           <div style={s.cardsGrid}>
             {filteredBatches.map((batch) => {
-              const instructor = instructors.find((i) => i.id === batch.instructor_id);
+              const instructorNames = (batch.instructors_list && batch.instructors_list.length
+                ? batch.instructors_list.map((i) => i.username)
+                : [instructors.find((i) => i.id === batch.instructor_id)?.username].filter(Boolean)
+              ).join("، ");
               const status = getBatchStatus(batch);
               const lifecycle = statusMeta[status];
               const fillPct = batch.seats_total
@@ -1113,7 +1131,7 @@ export default function AdminBatchesPage() {
                   <div style={s.cardMetaRow}>
                     <div style={s.cardMetaItem}>
                       <span style={s.statLabel}>المدرب</span>
-                      <span style={s.mono}>{instructor?.username || "—"}</span>
+                      <span style={s.mono}>{instructorNames || "—"}</span>
                     </div>
                     <div style={s.cardMetaItem}>
                       <span style={s.statLabel}>الفترة</span>
@@ -1257,6 +1275,8 @@ const s = {
   wizardDotDone: { opacity: 0.75, color: "#02C076" },
   wizardDotLabel: { whiteSpace: "nowrap", fontSize: "0.62rem" },
   reviewRow: { display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #181A20", fontSize: "0.85rem" },
+  checkboxList: { display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "220px", overflowY: "auto", border: "1px solid #222", borderRadius: "6px", padding: "0.6rem" },
+  checkboxRow: { display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "#EAECEF", cursor: "pointer" },
   cancelBtn: { background: "none", border: "1px solid #222", color: "#999", padding: "0.6rem 1.4rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" },
   saveBtn: { backgroundColor: gold, color: "#000", border: "none", padding: "0.6rem 1.4rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 700 },
   badgeDefault: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#1a2a3a", color: "#5b9bd5", padding: "0.15rem 0.5rem", borderRadius: "3px" },

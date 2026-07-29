@@ -230,7 +230,10 @@ function ComingSoon({ note }) {
 
 /* -------------------- نظرة عامة -------------------- */
 function OverviewTab({ batch, instructors }) {
-  const instructor = instructors.find((i) => i.id === batch.instructor_id);
+  const instructorNames = (batch.instructors_list && batch.instructors_list.length
+    ? batch.instructors_list.map((i) => i.username)
+    : [instructors.find((i) => i.id === batch.instructor_id)?.username || batch.instructor?.username].filter(Boolean)
+  ).join("، ");
   const fillPct = batch.seats_total
     ? Math.min(Math.round(((batch.seats_taken || 0) / batch.seats_total) * 100), 100)
     : null;
@@ -242,8 +245,8 @@ function OverviewTab({ batch, instructors }) {
         <span style={s.overviewValue}>{batch.course ? `${batch.course.icon || ""} ${batch.course.title}` : "—"}</span>
       </div>
       <div style={s.overviewCard}>
-        <span style={s.statLabel}>المدرب</span>
-        <span style={s.overviewValue}>{instructor?.username || batch.instructor?.username || "—"}</span>
+        <span style={s.statLabel}>{batch.instructors_list?.length > 1 ? "المدربين" : "المدرب"}</span>
+        <span style={s.overviewValue}>{instructorNames || "—"}</span>
       </div>
       <div style={s.overviewCard}>
         <span style={s.statLabel}>الفترة</span>
@@ -1392,7 +1395,7 @@ function CertificatesTab({ batchId }) {
 function SettingsTab({ batch, instructors, onSaved, onAction, router }) {
   const [form, setForm] = useState({
     name: batch.name || "",
-    instructor_id: batch.instructor_id || "",
+    instructor_ids: batch.instructors_list?.length ? batch.instructors_list.map((i) => i.id) : (batch.instructor_id ? [batch.instructor_id] : []),
     start_date: batch.start_date || "",
     end_date: batch.end_date || "",
     seats_total: batch.seats_total ?? "",
@@ -1407,7 +1410,7 @@ function SettingsTab({ batch, instructors, onSaved, onAction, router }) {
     const res = await fetch(`/api/admin/batches/${batch.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, instructor_id: form.instructor_id || null, seats_total: form.seats_total || null }),
+      body: JSON.stringify({ ...form, seats_total: form.seats_total || null }),
     });
     const data = await res.json();
     setSaving(false);
@@ -1431,11 +1434,28 @@ function SettingsTab({ batch, instructors, onSaved, onAction, router }) {
           <label style={s.label}>اسم الدفعة</label>
           <input style={s.input} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
 
-          <label style={s.label}>المدرب (اختياري)</label>
-          <select style={s.input} value={form.instructor_id} onChange={(e) => setForm({ ...form, instructor_id: e.target.value })}>
-            <option value="">بدون تحديد</option>
-            {instructors.map((i) => <option key={i.id} value={i.id}>{i.username}</option>)}
-          </select>
+          <label style={s.label}>المدربين (اختياري، تقدري تختاري أكتر من وحد)</label>
+          <div style={s.checkboxList}>
+            {instructors.length === 0 && <p style={s.hint}>ما في مدربين متاحين.</p>}
+            {instructors.map((i) => {
+              const checked = form.instructor_ids.includes(i.id);
+              return (
+                <label key={i.id} style={s.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      const next = checked
+                        ? form.instructor_ids.filter((id) => id !== i.id)
+                        : [...form.instructor_ids, i.id];
+                      setForm({ ...form, instructor_ids: next });
+                    }}
+                  />
+                  {i.username}
+                </label>
+              );
+            })}
+          </div>
 
           <div style={{ display: "flex", gap: "0.75rem" }}>
             <div style={{ flex: 1 }}>
@@ -1512,6 +1532,8 @@ const s = {
   mono: { fontFamily: "'JetBrains Mono', monospace", color: "#555", fontSize: "0.8rem" },
   label: { fontSize: "0.82rem", color: "#999", marginTop: "0.5rem" },
   input: { backgroundColor: "#181A20", border: "1px solid #222", color: "#EAECEF", padding: "0.65rem 0.9rem", borderRadius: "4px", fontSize: "0.88rem", outline: "none", fontFamily: "inherit" },
+  checkboxList: { display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "220px", overflowY: "auto", border: "1px solid #222", borderRadius: "6px", padding: "0.6rem" },
+  checkboxRow: { display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "#EAECEF", cursor: "pointer" },
   hint: { fontSize: "0.75rem", color: "#555", marginTop: "0.15rem" },
   errorText: { color: "#ef5350", fontSize: "0.85rem", marginTop: "0.5rem" },
   loading: { textAlign: "center", padding: "2rem", color: "#444" },
