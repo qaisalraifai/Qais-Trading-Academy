@@ -1097,14 +1097,14 @@ export default function AdminBatchesPage() {
 
                   <div style={s.cardActions}>
                     <Link href={`/admin/batches/${batch.id}`} style={{ ...s.btnEdit, textDecoration: "none", backgroundColor: "#1a160a", color: gold, borderColor: "#33290a" }}>
-                      ↗ الصفحة الكاملة
+                      ↗ فتح الدفعة
                     </Link>
-                    <button onClick={() => openEditForm(batch)} style={s.btnEdit}>تعديل</button>
-                    <button onClick={() => openAttendance(batch)} style={s.btnEdit}>الحضور</button>
-                    <button onClick={() => openAnnouncements(batch)} style={s.btnEdit}>إعلانات</button>
-                    <button onClick={() => openFiles(batch)} style={s.btnEdit}>الملفات</button>
-                    <button onClick={() => openCertificates(batch)} style={s.btnEdit}>الشهادات</button>
-                    <button onClick={() => openTransfer(batch)} style={s.btnEdit}>نقل طالب</button>
+                    <Link href={`/admin/batches/${batch.id}?tab=settings`} style={{ ...s.btnEdit, textDecoration: "none" }}>تعديل</Link>
+                    <Link href={`/admin/batches/${batch.id}?tab=live`} style={{ ...s.btnEdit, textDecoration: "none" }}>الحضور</Link>
+                    <Link href={`/admin/batches/${batch.id}?tab=announcements`} style={{ ...s.btnEdit, textDecoration: "none" }}>إعلانات</Link>
+                    <Link href={`/admin/batches/${batch.id}?tab=files`} style={{ ...s.btnEdit, textDecoration: "none" }}>الملفات</Link>
+                    <Link href={`/admin/batches/${batch.id}?tab=certificates`} style={{ ...s.btnEdit, textDecoration: "none" }}>الشهادات</Link>
+                    <Link href={`/admin/batches/${batch.id}?tab=students`} style={{ ...s.btnEdit, textDecoration: "none" }}>نقل طالب</Link>
                     <button onClick={() => runAction(batch.id, "duplicate")} style={s.btnEdit}>نسخ</button>
                     {!batch.is_archived && (
                       <button

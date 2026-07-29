@@ -48,6 +48,15 @@ export default function BatchDetailPage() {
   const batchId = params.id;
 
   const [tab, setTab] = useState("overview");
+
+  // -------------------- المرحلة 6و: فتح تبويب معيّن مباشرة عبر ?tab= بالرابط --------------------
+  // بنقرأها يدويًا بعد التحميل (بدل useSearchParams) عشان نتفادى شرط Suspense
+  // اللي بيكسر البناء بالـ App Router.
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    if (requestedTab && TABS.some((t) => t.id === requestedTab)) setTab(requestedTab);
+  }, []);
+  // ------------------------------------------------------------------------------------------
   const [batch, setBatch] = useState(null);
   const [instructors, setInstructors] = useState([]);
   const [loading, setLoading] = useState(true);
