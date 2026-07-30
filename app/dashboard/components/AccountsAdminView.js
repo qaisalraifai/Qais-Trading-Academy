@@ -311,6 +311,9 @@ export default function AccountsAdminView({ username }) {
           </div>
 
           <div style={{ display: "flex", gap: "0.6rem" }}>
+            <Link href="/admin/batches" style={{ ...s.btn, textDecoration: "none", display: "flex", alignItems: "center" }}>
+              🗂️ إدارة الدفعات
+            </Link>
             <Link href="/admin/lectures" style={{ ...s.btn, textDecoration: "none", display: "flex", alignItems: "center" }}>
               📚 إدارة المحاضرات
             </Link>
