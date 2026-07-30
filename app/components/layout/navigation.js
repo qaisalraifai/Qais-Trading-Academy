@@ -16,6 +16,8 @@ import {
   Crown,
   Radar,
   Bot,
+  Layers,
+  BookOpen,
 } from "lucide-react";
 
 /* ============================================================================
@@ -25,6 +27,8 @@ import {
    ============================================================================ */
 export const NAV_ITEMS = [
   { key: "accounts", label: "إدارة الحسابات", icon: Users, href: "/accounts", adminOnly: true },
+  { key: "admin-batches", label: "إدارة الدفعات", icon: Layers, href: "/admin/batches", adminOnly: true },
+  { key: "admin-lectures", label: "إدارة المحاضرات", icon: BookOpen, href: "/admin/lectures", adminOnly: true },
   { key: "live", label: "البث المباشر", icon: Radio, href: "/live-sessions" },
   { key: "radar", label: "Trading Radar", icon: Radar, href: "/trading-radar" },
   { key: "ai-trades", label: "صفقات QAIS AI", icon: Bot, href: "/ai-trades" },
