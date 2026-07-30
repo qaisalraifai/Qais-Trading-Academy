@@ -107,13 +107,10 @@ export async function POST(request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { course_id, name, instructor_ids, start_date, end_date, seats_total, registration_status } = body;
+  const { name, instructor_ids, start_date, end_date, seats_total, registration_status } = body;
   // instructor_ids: array (المرحلة 7 — تعدد المدربين). لسا بندعم instructor_id المفرد كـ fallback.
   const instructorIdList = Array.isArray(instructor_ids) ? instructor_ids.filter(Boolean) : (body.instructor_id ? [body.instructor_id] : []);
 
-  if (!course_id) {
-    return NextResponse.json({ error: "لازم تحددي الدورة التابعة لها الدفعة" }, { status: 400 });
-  }
   if (!name || !name.trim()) {
     return NextResponse.json({ error: "اسم الدفعة مطلوب" }, { status: 400 });
   }
@@ -123,16 +120,20 @@ export async function POST(request) {
 
   const supabase = createAdminClient();
 
-  // تأكيد إن الدورة موجودة فعلاً
-  const { data: course } = await supabase.from("courses").select("id").eq("id", course_id).maybeSingle();
-  if (!course) {
-    return NextResponse.json({ error: "الدورة غير موجودة" }, { status: 404 });
+  // كل دفعة بتحتوي تلقائيًا كل الدورات الموجودة بالمنصة — بدون أي اختيار يدوي
+  const { data: allCourses, error: coursesError } = await supabase
+    .from("courses")
+    .select("id")
+    .order("order_index", { ascending: true });
+  if (coursesError) return NextResponse.json({ error: coursesError.message }, { status: 500 });
+  if (!allCourses || allCourses.length === 0) {
+    return NextResponse.json({ error: "لازم يكون في دورة وحدة عالأقل بالمنصة قبل ما تنشئي دفعة" }, { status: 400 });
   }
 
   const { data, error } = await supabase
     .from("batches")
     .insert({
-      course_id,
+      course_id: allCourses[0].id, // مرجع تاريخي فقط (Legacy) — المرجع الفعلي هلأ batch_courses
       name: name.trim(),
       instructor_id: instructorIdList[0] || null, // المدرب الرئيسي — أول واحد بالقائمة، للتوافق مع الشاشات القديمة
       start_date: start_date || null,
@@ -145,6 +146,11 @@ export async function POST(request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // ربط كل دورات المنصة تلقائيًا بالدفعة الجديدة
+  await supabase.from("batch_courses").insert(
+    allCourses.map((c, idx) => ({ batch_id: data.id, course_id: c.id, order_index: idx, status: "not_started" }))
+  );
 
   // المرحلة 7: ربط كل المدربين المختارين بجدول batch_instructors
   let instructorsList = [];

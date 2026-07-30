@@ -6,17 +6,17 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const emptyForm = {
-  course_id: "", name: "", instructor_ids: [], start_date: "", end_date: "", seats_total: "", registration_status: "open",
+  name: "", instructor_ids: [], start_date: "", end_date: "", seats_total: "", registration_status: "open",
 };
 
 // -------------------- المرحلة 7: خطوات الـ Wizard --------------------
+// خطوة "الدورة" اتشالت — كل دفعة بتحتوي تلقائيًا كل دورات المنصة، بدون اختيار يدوي
 const WIZARD_STEPS = [
   { id: 1, label: "الاسم" },
-  { id: 2, label: "الدورة" },
-  { id: 3, label: "المدرب" },
-  { id: 4, label: "التواريخ" },
-  { id: 5, label: "المقاعد والتسجيل" },
-  { id: 6, label: "مراجعة" },
+  { id: 2, label: "المدرب" },
+  { id: 3, label: "التواريخ" },
+  { id: 4, label: "المقاعد والتسجيل" },
+  { id: 5, label: "مراجعة" },
 ];
 // ------------------------------------------------------------------
 
@@ -191,7 +191,7 @@ export default function AdminBatchesPage() {
 
   function openAddForm() {
     setEditingId(null);
-    setForm({ ...emptyForm, course_id: selectedCourseId || "" });
+    setForm(emptyForm);
     setError("");
     setWizardStep(1);
     setShowForm(true);
@@ -221,7 +221,6 @@ export default function AdminBatchesPage() {
 
   function wizardNext() {
     if (wizardStep === 1 && !form.name.trim()) { setError("لازم تكتبي اسم الدفعة"); return; }
-    if (wizardStep === 2 && !form.course_id) { setError("لازم تختاري الدورة"); return; }
     setError("");
     setWizardStep((step) => Math.min(step + 1, WIZARD_STEPS.length));
   }
@@ -687,23 +686,11 @@ export default function AdminBatchesPage() {
                   autoFocus
                   required
                 />
+                <p style={s.hint}>الدفعة رح تحتوي تلقائيًا كل دورات المنصة — تقدري تتحكمي بحالة كل دورة لحالها من صفحة الدفعة بعد إنشائها.</p>
               </>
             )}
 
             {wizardStep === 2 && (
-              <>
-                <label style={s.label}>الدورة</label>
-                <select style={s.input} value={form.course_id} onChange={(e) => setForm({ ...form, course_id: e.target.value })} required>
-                  <option value="">اختاري الدورة</option>
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.id}>{c.icon} {c.title}</option>
-                  ))}
-                </select>
-                <p style={s.hint}>ما فيك تغيّري دورة الدفعة بعد إنشائها.</p>
-              </>
-            )}
-
-            {wizardStep === 3 && (
               <>
                 <label style={s.label}>المدربين (اختياري، تقدري تختاري أكتر من وحد)</label>
                 <div style={s.checkboxList}>
@@ -731,7 +718,7 @@ export default function AdminBatchesPage() {
               </>
             )}
 
-            {wizardStep === 4 && (
+            {wizardStep === 3 && (
               <>
                 <div style={{ display: "flex", gap: "0.75rem" }}>
                   <div style={{ flex: 1 }}>
@@ -747,7 +734,7 @@ export default function AdminBatchesPage() {
               </>
             )}
 
-            {wizardStep === 5 && (
+            {wizardStep === 4 && (
               <>
                 <label style={s.label}>عدد المقاعد (اختياري)</label>
                 <input
@@ -766,10 +753,9 @@ export default function AdminBatchesPage() {
               </>
             )}
 
-            {wizardStep === 6 && (
+            {wizardStep === 5 && (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <div style={s.reviewRow}><span style={s.label}>الاسم</span><span>{form.name || "—"}</span></div>
-                <div style={s.reviewRow}><span style={s.label}>الدورة</span><span>{courseLabel(form.course_id)}</span></div>
                 <div style={s.reviewRow}><span style={s.label}>المدربين</span><span>{form.instructor_ids.length ? form.instructor_ids.map((id) => instructors.find((i) => i.id === id)?.username).filter(Boolean).join("، ") : "بدون تحديد"}</span></div>
                 <div style={s.reviewRow}><span style={s.label}>الفترة</span><span>{form.start_date || "—"} → {form.end_date || "—"}</span></div>
                 <div style={s.reviewRow}><span style={s.label}>المقاعد</span><span>{form.seats_total || "بدون حد أقصى"}</span></div>

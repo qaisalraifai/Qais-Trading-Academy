@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase-client";
 
 const TABS = [
   { id: "overview", label: "نظرة عامة", ready: true },
+  { id: "courses", label: "الدورات", ready: true },
   { id: "students", label: "الطلاب", ready: true },
   { id: "live", label: "البث والحضور", ready: true },
   { id: "lectures", label: "المحاضرات", ready: true },
@@ -207,6 +208,7 @@ export default function BatchDetailPage() {
 
       <div style={s.tabBody}>
         {tab === "overview" && <OverviewTab batch={batch} instructors={instructors} />}
+        {tab === "courses" && <CoursesTab batchId={batchId} />}
         {tab === "students" && <StudentsTab batchId={batchId} batch={batch} onTransferred={fetchBatch} />}
         {tab === "live" && <LiveAttendanceTab batchId={batchId} />}
         {tab === "lectures" && <LecturesTab batch={batch} />}
@@ -1179,19 +1181,136 @@ function AttemptsPanel({ quiz, onClose }) {
   );
 }
 
+/* -------------------- الدورات (المرحلة: الدفعة متعددة الدورات — الأساس) -------------------- */
+const STATUS_LABELS = {
+  not_started: "لم تبدأ",
+  ongoing: "جارية",
+  paused: "متوقفة",
+  ended: "منتهية",
+  archived: "مؤرشفة",
+};
+const STATUS_BADGE_STYLE = {
+  not_started: "badgeUpcoming",
+  ongoing: "badgeActive",
+  paused: "badgeClosed",
+  ended: "badgeEnded",
+  archived: "badgeArchived",
+};
+
+function CoursesTab({ batchId }) {
+  const [links, setLinks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch(`/api/admin/batches/${batchId}/courses`);
+    const data = await res.json();
+    setLinks(res.ok ? data.batch_courses || [] : []);
+    setLoading(false);
+  }, [batchId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleStatusChange(link, status) {
+    setBusyId(link.id);
+    const res = await fetch(`/api/admin/batches/${batchId}/courses/${link.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    const data = await res.json();
+    setBusyId(null);
+    if (!res.ok) { alert(data.error || "صار خطأ بتحديث الحالة"); return; }
+    load();
+  }
+
+  async function handleMove(link, direction) {
+    const idx = links.findIndex((l) => l.id === link.id);
+    const swapWith = links[idx + direction];
+    if (!swapWith) return;
+    setBusyId(link.id);
+    await Promise.all([
+      fetch(`/api/admin/batches/${batchId}/courses/${link.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_index: swapWith.order_index }),
+      }),
+      fetch(`/api/admin/batches/${batchId}/courses/${swapWith.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_index: link.order_index }),
+      }),
+    ]);
+    setBusyId(null);
+    load();
+  }
+
+  return (
+    <div style={s.card}>
+      <h3 style={s.cardTitle}>دورات الدفعة</h3>
+      <p style={s.hint}>كل دفعة بتحتوي تلقائيًا كل دورات المنصة — بلا إضافة أو حذف يدوي. لكل دورة هون حالتها المستقلة، ومحتواها (محاضرات/اختبارات/ملفات/إعلانات/واجبات) منفصل تمامًا عن باقي دورات الدفعة.</p>
+      <hr style={s.hr} />
+
+      {loading ? (
+        <p style={s.loading}>جاري التحميل...</p>
+      ) : links.length === 0 ? (
+        <p style={s.hint}>ما في دورات بالمنصة لسا.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {links.map((link, idx) => (
+            <div key={link.id} style={s.rowItem}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                  <button onClick={() => handleMove(link, -1)} disabled={idx === 0 || busyId === link.id} style={s.moveBtn}>▲</button>
+                  <button onClick={() => handleMove(link, 1)} disabled={idx === links.length - 1 || busyId === link.id} style={s.moveBtn}>▼</button>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#EAECEF" }}>
+                    {link.course ? `${link.course.icon || ""} ${link.course.title}` : "دورة محذوفة"}
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexShrink: 0 }}>
+                <select
+                  style={{ ...s.input, padding: "0.4rem 0.6rem", fontSize: "0.78rem" }}
+                  value={link.status}
+                  disabled={busyId === link.id}
+                  onChange={(e) => handleStatusChange(link, e.target.value)}
+                >
+                  {Object.entries(STATUS_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+                <span style={s[STATUS_BADGE_STYLE[link.status]]}>{STATUS_LABELS[link.status]}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* -------------------- الملفات -------------------- */
 function FilesTab({ batchId }) {
   const [files, setFiles] = useState([]);
+  const [batchCourses, setBatchCourses] = useState([]); // دورات الدفعة — لفلترة/تصنيف الملفات
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadCourseId, setUploadCourseId] = useState(""); // فاضي = مشتركة لكل الدفعة
+  const [filterCourseId, setFilterCourseId] = useState("all"); // all = كل الملفات
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/admin/batches/${batchId}/files`);
+    const [res, coursesRes] = await Promise.all([
+      fetch(`/api/admin/batches/${batchId}/files`),
+      fetch(`/api/admin/batches/${batchId}/courses`),
+    ]);
     const data = await res.json();
+    const coursesData = await coursesRes.json();
     setFiles(res.ok ? data.files || [] : []);
+    setBatchCourses(coursesRes.ok ? coursesData.batch_courses || [] : []);
     setLoading(false);
   }, [batchId]);
 
@@ -1205,6 +1324,7 @@ function FilesTab({ batchId }) {
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
+    if (uploadCourseId) formData.append("batch_course_id", uploadCourseId);
     const res = await fetch(`/api/admin/batches/${batchId}/files`, { method: "POST", body: formData });
     const data = await res.json();
     setUploading(false);
@@ -1222,27 +1342,61 @@ function FilesTab({ batchId }) {
     setFiles((prev) => prev.filter((f) => f.id !== file.id));
   }
 
+  const visibleFiles = filterCourseId === "all"
+    ? files
+    : filterCourseId === "shared"
+    ? files.filter((f) => !f.batch_course_id)
+    : files.filter((f) => f.batch_course_id === filterCourseId);
+
   return (
     <div style={s.card}>
       <h3 style={s.cardTitle}>مكتبة الملفات</h3>
       <p style={s.hint}>الملفات هون بتظهر بس لطلاب هاي الدفعة بصفحة الدورة عندهم. الحد الأقصى 25 ميجابايت لكل ملف.</p>
-      <label style={{ ...s.saveBtn, display: "inline-block", cursor: "pointer", marginTop: "0.5rem" }}>
-        {uploading ? "جاري الرفع..." : "+ رفع ملف جديد"}
-        <input type="file" onChange={handleUpload} disabled={uploading} style={{ display: "none" }} />
-      </label>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", alignItems: "flex-end", marginTop: "0.6rem" }}>
+        <div>
+          <label style={s.label}>الدورة (اختياري)</label>
+          <select style={s.input} value={uploadCourseId} onChange={(e) => setUploadCourseId(e.target.value)}>
+            <option value="">مشتركة لكل دورات الدفعة</option>
+            {batchCourses.map((bc) => (
+              <option key={bc.id} value={bc.id}>{bc.course?.icon} {bc.course?.title}</option>
+            ))}
+          </select>
+        </div>
+        <label style={{ ...s.saveBtn, display: "inline-block", cursor: "pointer" }}>
+          {uploading ? "جاري الرفع..." : "+ رفع ملف جديد"}
+          <input type="file" onChange={handleUpload} disabled={uploading} style={{ display: "none" }} />
+        </label>
+      </div>
       {error && <p style={s.errorText}>{error}</p>}
       <hr style={s.hr} />
+
+      {batchCourses.length > 1 && files.length > 0 && (
+        <div style={{ marginBottom: "0.75rem" }}>
+          <label style={s.label}>فلترة حسب الدورة</label>
+          <select style={s.input} value={filterCourseId} onChange={(e) => setFilterCourseId(e.target.value)}>
+            <option value="all">كل الملفات</option>
+            <option value="shared">مشتركة فقط</option>
+            {batchCourses.map((bc) => (
+              <option key={bc.id} value={bc.id}>{bc.course?.icon} {bc.course?.title}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {loading ? (
         <p style={s.loading}>جاري التحميل...</p>
-      ) : files.length === 0 ? (
+      ) : visibleFiles.length === 0 ? (
         <p style={s.hint}>ما في ملفات مرفوعة لهاي الدفعة لسا.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {files.map((f) => (
+          {visibleFiles.map((f) => (
             <div key={f.id} style={s.rowItem}>
               <div style={{ minWidth: 0 }}>
                 <a href={f.download_url || "#"} target="_blank" rel="noopener noreferrer" style={s.fileLink}>📄 {f.file_name}</a>
-                <p style={{ ...s.mono, margin: "0.25rem 0 0" }}>{formatFileSize(f.file_size)} — {fmtDateTime(f.created_at)}</p>
+                <p style={{ ...s.mono, margin: "0.25rem 0 0" }}>
+                  {formatFileSize(f.file_size)} — {fmtDateTime(f.created_at)} — {f.course ? <span style={s.badgeDefault}>{f.course.icon} {f.course.title}</span> : <span style={s.badgeShared}>مشتركة</span>}
+                </p>
               </div>
               <button onClick={() => handleDelete(f)} disabled={deletingId === f.id} style={s.btnDanger}>
                 {deletingId === f.id ? "..." : "حذف"}
@@ -1258,16 +1412,22 @@ function FilesTab({ batchId }) {
 /* -------------------- الإعلانات -------------------- */
 function AnnouncementsTab({ batchId }) {
   const [announcements, setAnnouncements] = useState([]);
+  const [batchCourses, setBatchCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ title: "", message: "", link: "" });
+  const [form, setForm] = useState({ title: "", message: "", link: "", batch_course_id: "" });
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/admin/batches/${batchId}/announcements`);
+    const [res, coursesRes] = await Promise.all([
+      fetch(`/api/admin/batches/${batchId}/announcements`),
+      fetch(`/api/admin/batches/${batchId}/courses`),
+    ]);
     const data = await res.json();
+    const coursesData = await coursesRes.json();
     setAnnouncements(res.ok ? data.announcements || [] : []);
+    setBatchCourses(coursesRes.ok ? coursesData.batch_courses || [] : []);
     setLoading(false);
   }, [batchId]);
 
@@ -1285,14 +1445,14 @@ function AnnouncementsTab({ batchId }) {
     const data = await res.json();
     setSending(false);
     if (!res.ok) { setError(data.error || "صار خطأ بإرسال الإعلان"); return; }
-    setForm({ title: "", message: "", link: "" });
+    setForm({ title: "", message: "", link: "", batch_course_id: "" });
     setAnnouncements((prev) => [data.announcement, ...prev]);
   }
 
   return (
     <div style={s.card}>
       <h3 style={s.cardTitle}>إعلانات الدفعة</h3>
-      <p style={s.hint}>بيوصل الإعلان بس لطلاب هاي الدفعة، عن طريق مركز الإشعارات عندهم.</p>
+      <p style={s.hint}>بيوصل الإعلان لكل طلاب هاي الدفعة دايمًا (بغض النظر عن الدورة) — تحديد الدورة هون بس لتصنيف الإعلان وتنظيم السجل.</p>
       <form onSubmit={handleSend} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.5rem", maxWidth: "480px" }}>
         <label style={s.label}>عنوان الإعلان</label>
         <input style={s.input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="مثلاً: تغيير موعد البث المباشر" required />
@@ -1300,6 +1460,13 @@ function AnnouncementsTab({ batchId }) {
         <textarea style={{ ...s.input, minHeight: "80px", resize: "vertical", fontFamily: "inherit" }} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="تفاصيل الإعلان..." />
         <label style={s.label}>رابط (اختياري)</label>
         <input style={s.input} value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })} placeholder="مثلاً: /live-sessions" />
+        <label style={s.label}>يخص دورة معينة؟ (اختياري)</label>
+        <select style={s.input} value={form.batch_course_id} onChange={(e) => setForm({ ...form, batch_course_id: e.target.value })}>
+          <option value="">عام لكل دورات الدفعة</option>
+          {batchCourses.map((bc) => (
+            <option key={bc.id} value={bc.id}>{bc.course?.icon} {bc.course?.title}</option>
+          ))}
+        </select>
         {error && <p style={s.errorText}>{error}</p>}
         <button type="submit" disabled={sending} style={{ ...s.saveBtn, alignSelf: "flex-start", marginTop: "0.5rem" }}>
           {sending ? "جاري الإرسال..." : "إرسال للدفعة"}
@@ -1318,6 +1485,7 @@ function AnnouncementsTab({ batchId }) {
             <div key={a.id} style={s.rowItem}>
               <div style={{ minWidth: 0 }}>
                 <span style={{ color: "#EAECEF", fontSize: "0.86rem", fontWeight: 700 }}>{a.title}</span>
+                {a.course && <span style={{ ...s.badgeDefault, marginRight: "0.4rem" }}>{a.course.icon} {a.course.title}</span>}
                 {a.message && <p style={{ color: "#999", fontSize: "0.8rem", margin: "0.35rem 0 0" }}>{a.message}</p>}
                 <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>{fmtDateTime(a.created_at)}</p>
               </div>
@@ -1563,6 +1731,7 @@ const s = {
   input: { backgroundColor: "#181A20", border: "1px solid #222", color: "#EAECEF", padding: "0.65rem 0.9rem", borderRadius: "4px", fontSize: "0.88rem", outline: "none", fontFamily: "inherit" },
   checkboxList: { display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "220px", overflowY: "auto", border: "1px solid #222", borderRadius: "6px", padding: "0.6rem" },
   checkboxRow: { display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "#EAECEF", cursor: "pointer" },
+  moveBtn: { background: "#181A20", border: "1px solid #222", color: "#999", width: "22px", height: "18px", fontSize: "0.6rem", cursor: "pointer", borderRadius: "3px", lineHeight: 1 },
   hint: { fontSize: "0.75rem", color: "#555", marginTop: "0.15rem" },
   errorText: { color: "#ef5350", fontSize: "0.85rem", marginTop: "0.5rem" },
   loading: { textAlign: "center", padding: "2rem", color: "#444" },
