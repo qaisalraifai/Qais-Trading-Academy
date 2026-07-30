@@ -2,16 +2,20 @@
 import { useState } from "react";
 import { GOLD, BORDER, card, sectionTitle, sectionEyebrow, transition } from "./shared";
 
-function buildFaq(settings) {
-  const signup = settings?.signupPercent || 10;
-  const renewal = settings?.renewalPercent || 8;
+function buildFaq(settings, tier) {
+  const signup = tier?.current?.signup_amount ?? 30;
+  const renewal = tier?.current?.renewal_amount ?? 8;
   const minPayout = settings?.minPayoutUsd || 0;
   const cycle = settings?.payoutCycleDays || 14;
 
   return [
     {
       q: "كيف أحصل على العمولة؟",
-      a: `في مصدرين للدخل بس: عمولة تسجيل ${signup}% من قيمة أول اشتراك لأي شخص ينضم برابطك، وعمولة تجديد شهري ${renewal}% من قيمة كل تجديد بعد هيك، طول ما ضل مشترك. بدون أي طبقات أو مستويات تحتك — راعي مباشر واحد بس.`,
+      a: `في مصدرين للدخل: عمولة تسجيل ($${signup} بمستواك الحالي) لأي شخص ينضم برابطك، وعمولة تجديد شهري ($${renewal}) من كل تجديد بعد هيك، طول ما ضل مشترك. القيمتين بترتفعوا أوتوماتيكياً كل ما ترقّيت مستوى — بدون أي طبقات أو مستويات تحتك، راعي مباشر واحد بس.`,
+    },
+    {
+      q: "ليش عمولتي مش نفس عمولة مسوّق تاني؟",
+      a: "لأنه العمولة بتعتمد على مستواك (Bronze إلى Elite)، والمستوى بيعتمد على عدد عملائك النشطين حالياً. كل مسوّق عنده مستواه الخاص فيه، وبالتالي عمولته الخاصة فيه — شوف صفحة المستويات لتفاصيل كل مستوى.",
     },
     {
       q: "ليش عمولة التسجيل ما بتظهر فوراً؟",
@@ -78,8 +82,8 @@ function FaqItem({ q, a }) {
   );
 }
 
-export function FaqSection({ settings }) {
-  const items = buildFaq(settings);
+export function FaqSection({ settings, tier }) {
+  const items = buildFaq(settings, tier);
   return (
     <section id="faq" style={{ scrollMarginTop: 90, marginBottom: "1.4rem" }}>
       <div style={card} className="qta-animate-in">
@@ -96,17 +100,18 @@ export function FaqSection({ settings }) {
   );
 }
 
-export function TermsSection({ settings }) {
+export function TermsSection({ settings, tier }) {
   const [open, setOpen] = useState(false);
-  const signup = settings?.signupPercent || 10;
-  const renewal = settings?.renewalPercent || 8;
+  const signup = tier?.current?.signup_amount ?? 30;
+  const renewal = tier?.current?.renewal_amount ?? 8;
   const minPayout = settings?.minPayoutUsd || 0;
   const cycle = settings?.payoutCycleDays || 14;
 
   const terms = [
-    `عمولة التسجيل: ${signup}% من قيمة أول اشتراك، تُدفع مرة وحدة بعد إكمال المدعو أول درس بالمنصة.`,
-    `عمولة التجديد: ${renewal}% من قيمة كل تجديد شهري، طول ما استمر المدعو مشتركاً.`,
-    "راعي مباشر واحد بس لكل عضو — بدون طبقات أو عمولات على شبكة الشبكة.",
+    `عمولة التسجيل: $${signup} بمستواك الحالي، تُدفع مرة وحدة بعد إكمال المدعو أول درس بالمنصة.`,
+    `عمولة التجديد: $${renewal} بمستواك الحالي، عن كل تجديد شهري، طول ما استمر المدعو مشتركاً.`,
+    "العمولة تعتمد على مستواك الحالي (Bronze إلى Elite) وترتفع تلقائياً مع الترقية — راعي مباشر واحد بس لكل عضو، بدون طبقات أو عمولات على شبكة الشبكة.",
+    "الترقية والتراجع بين المستويات تلقائيان بالكامل حسب عدد عملائك النشطين حالياً، وعمولاتك المستحقة سابقاً لا تتأثر بأي تغيّر لاحق بالمستوى.",
     `الحد الأدنى للسحب: $${minPayout}.`,
     `دورة الدفع: كل ${cycle} يوم تقريباً.`,
     "العمولة تُحسب فقط على الاشتراكات الفعلية الناجحة، ولا تشمل الاسترجاعات أو المعاملات الملغاة.",

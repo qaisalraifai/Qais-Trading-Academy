@@ -12,19 +12,19 @@ import {
 } from "./components/shared";
 
 export default function CombinedClient() {
-  const [settings, setSettings] = useState(null);
-  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [tiersData, setTiersData] = useState(null);
+  const [loadingTiers, setLoadingTiers] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/affiliate/me");
+        const res = await fetch("/api/affiliate/tiers-overview");
         const json = await res.json();
-        if (res.ok) setSettings(json.settings);
+        if (res.ok) setTiersData(json);
       } catch {
-        // مش مشكلة، الشرح بيشتغل برضه بالنسب الافتراضية
+        // مش مشكلة، الشرح بيشتغل برضه بالقيم الافتراضية
       } finally {
-        setLoadingSettings(false);
+        setLoadingTiers(false);
       }
     })();
   }, []);
@@ -46,14 +46,14 @@ export default function CombinedClient() {
         </p>
       </div>
 
-      {loadingSettings ? (
+      {loadingTiers ? (
         <div style={{ ...card, marginBottom: "1.4rem" }}>
           <SkeletonBlock h={16} w={220} />
           <div style={{ height: 12 }} />
           <SkeletonBlock h={90} radius={14} />
         </div>
       ) : (
-        <CommissionSystemExplainer settings={settings} />
+        <CommissionSystemExplainer tiers={tiersData?.tiers} />
       )}
 
       <AffiliateClient embedded />

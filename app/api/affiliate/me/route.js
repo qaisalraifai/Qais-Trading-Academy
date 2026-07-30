@@ -27,13 +27,11 @@ export async function GET(request) {
 
   const { data: settingsRow } = await admin
     .from("affiliate_settings")
-    .select("signup_percent, renewal_percent, min_payout_usd, payout_cycle_days")
+    .select("min_payout_usd, payout_cycle_days")
     .eq("id", 1)
     .maybeSingle();
 
   const settings = {
-    signupPercent: Number(settingsRow?.signup_percent) || 10,
-    renewalPercent: Number(settingsRow?.renewal_percent) || 8,
     minPayoutUsd: Number(settingsRow?.min_payout_usd) || 0,
     payoutCycleDays: Number(settingsRow?.payout_cycle_days) || 14,
   };
@@ -230,6 +228,10 @@ export async function GET(request) {
       progressPct: tierStatus.progressPct,
       activeClientsCount: tierStatus.activeClientsCount,
       allTiers: tierStatus.tiers,
+      signupDelta: tierStatus.signupDelta,
+      renewalDelta: tierStatus.renewalDelta,
+      projectedMonthlyIncome: tierStatus.projectedMonthlyIncome,
+      projectedMonthlyIncomeAtNextTier: tierStatus.projectedMonthlyIncomeAtNextTier,
     },
     earnings,
     payouts: payouts || [],

@@ -3,6 +3,7 @@ import { GOLD, BORDER, card, fmt, monoStack, displayStack, transition, btnPrimar
 
 export const SECTIONS = [
   { id: "how", label: "كيف يعمل" },
+  { id: "tier", label: "مستواك" },
   { id: "link", label: "رابط الإحالة" },
   { id: "stats", label: "الإحصائيات" },
   { id: "referrals", label: "الإحالات" },
@@ -23,13 +24,25 @@ export default function QuickSummary({ data, onShare }) {
   const referralsCount = data.network?.direct || 0;
   const activeSubs = (data.referrals || []).filter((r) => r.subscriptionStatus === "active" || r.subscriptionStatus === "vip").length;
 
+  const tierNow = data.tier?.current;
+
   const stats = [
     { label: "إجمالي الأرباح", value: `$${fmt(data.earnings?.totalEarned)}`, tip: "كل العمولات اللي حصلت عليها من بداية اشتراكك بالبرنامج، بكل الحالات." },
     { label: "قابلة للسحب", value: `$${fmt(readyToWithdraw)}`, highlight: true, tip: "عمولات وصلت مرحلة الجهوزية، ورح تنضم لأقرب دفعة." },
     { label: "معلّقة", value: `$${fmt(pending)}`, tip: "عمولات جديدة لسا ما وصلت موعد الدفعة القادمة." },
     { label: "عدد الإحالات", value: referralsCount, tip: "إجمالي الأعضاء يلي انضموا عن طريقك مباشرة." },
     { label: "مشتركين نشطين", value: activeSubs, tip: "من إحالاتك المباشرة، عدد اللي عندهم اشتراك فعّال حالياً." },
-    { label: "نسبة عمولة التسجيل", value: `${data.settings?.signupPercent || 10}%`, tip: "نسبتك من قيمة أول اشتراك، تتحرر بعد ما يكمّل المدعو أول درس." },
+    {
+      label: "عمولتك الحالية",
+      value: tierNow ? `$${fmt(tierNow.signup_amount)} / $${fmt(tierNow.renewal_amount)}` : "—",
+      tip: "عمولة التسجيل / عمولة التجديد الشهري بمستواك الحالي. بتزيد أوتوماتيكياً كل ما ترقّيت مستوى.",
+    },
+    {
+      label: "دخل متوقع شهرياً",
+      value: `$${fmt(data.tier?.projectedMonthlyIncome)}`,
+      highlight: true,
+      tip: "لو استمريت بنفس عدد العملاء النشطين الحاليين وبنفس مستواك، هيك دخلك المتكرر كل شهر من عمولات التجديد بس.",
+    },
   ];
 
   return (

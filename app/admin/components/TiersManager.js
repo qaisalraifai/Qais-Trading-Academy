@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { gold, s as baseStyles, glass, transition } from "../styles";
 
-const EMPTY = { code: "", title_ar: "", badge_icon: "🏅", color_hex: "#D4AF37", min_active_clients: 0, sort_order: 0 };
+const EMPTY = { code: "", title_ar: "", badge_icon: "🏅", color_hex: "#D4AF37", min_active_clients: 0, signup_amount: 30, renewal_amount: 8, sort_order: 0 };
 
 export default function TiersManager() {
   const [tiers, setTiers] = useState([]);
@@ -29,7 +29,7 @@ export default function TiersManager() {
 
   function startEdit(t) {
     setEditingId(t.id);
-    setForm({ code: t.code, title_ar: t.title_ar, badge_icon: t.badge_icon, color_hex: t.color_hex, min_active_clients: t.min_active_clients, sort_order: t.sort_order });
+    setForm({ code: t.code, title_ar: t.title_ar, badge_icon: t.badge_icon, color_hex: t.color_hex, min_active_clients: t.min_active_clients, signup_amount: t.signup_amount, renewal_amount: t.renewal_amount, sort_order: t.sort_order });
   }
 
   function resetForm() {
@@ -86,7 +86,8 @@ export default function TiersManager() {
     <div>
       <p style={{ color: "#888", fontSize: "0.85rem", marginBottom: "1.3rem", lineHeight: 1.8 }}>
         المستويات ديناميكية بالكامل — تُحسب حيًّا من عدد العملاء النشطين حالياً عند كل مسوّق (مو تراكمياً).
-        رتّب المستويات حسب "الحد الأدنى من العملاء النشطين" تصاعدياً.
+        رتّب المستويات حسب "الحد الأدنى من العملاء النشطين" تصاعدياً. عمولة التسجيل والتجديد هون بالدولار الفعلي
+        (مو نسبة) — كل ما ترقّى المسوّق، عمولته على كل عملائه (الحاليين والجدد) بترتفع فوراً لقيمة مستواه الجديد.
       </p>
 
       <div style={{ ...glass, padding: "1.4rem", marginBottom: "1.5rem", maxWidth: 620 }}>
@@ -108,6 +109,12 @@ export default function TiersManager() {
           </Field>
           <Field label="الحد الأدنى من العملاء النشطين">
             <input type="number" style={styles.input} value={form.min_active_clients} onChange={(e) => setForm({ ...form, min_active_clients: e.target.value })} />
+          </Field>
+          <Field label="عمولة التسجيل ($)">
+            <input type="number" step="0.01" style={styles.input} value={form.signup_amount} onChange={(e) => setForm({ ...form, signup_amount: e.target.value })} />
+          </Field>
+          <Field label="عمولة التجديد الشهري ($)">
+            <input type="number" step="0.01" style={styles.input} value={form.renewal_amount} onChange={(e) => setForm({ ...form, renewal_amount: e.target.value })} />
           </Field>
           <Field label="ترتيب العرض">
             <input type="number" style={styles.input} value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} />
@@ -134,6 +141,8 @@ export default function TiersManager() {
                 <th style={styles.th}>الشارة</th>
                 <th style={styles.th}>الاسم</th>
                 <th style={styles.th}>الحد الأدنى (عملاء نشطين)</th>
+                <th style={styles.th}>عمولة التسجيل</th>
+                <th style={styles.th}>عمولة التجديد</th>
                 <th style={styles.th}>الحالة</th>
                 <th style={styles.th}>إجراءات</th>
               </tr>
@@ -148,6 +157,8 @@ export default function TiersManager() {
                     <span style={{ color: t.color_hex, fontWeight: 700 }}>{t.title_ar}</span>
                   </td>
                   <td style={styles.td}>{t.min_active_clients}+</td>
+                  <td style={{ ...styles.td, color: gold, fontWeight: 700 }}>${t.signup_amount}</td>
+                  <td style={{ ...styles.td, color: gold, fontWeight: 700 }}>${t.renewal_amount}</td>
                   <td style={styles.td}>
                     <span style={{ color: t.is_active ? "#4CAF50" : "#888" }}>{t.is_active ? "مفعّل" : "معطّل"}</span>
                   </td>

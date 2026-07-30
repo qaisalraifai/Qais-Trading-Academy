@@ -233,8 +233,8 @@ export default function AffiliateClient({ embedded = false }) {
 
           <PayoutsHistory payouts={data.payouts} />
           <ExtrasAccordion />
-          <FaqSection settings={data.settings} />
-          <TermsSection settings={data.settings} />
+          <FaqSection settings={data.settings} tier={data.tier} />
+          <TermsSection settings={data.settings} tier={data.tier} />
 
           <AlertToasts />
         </>

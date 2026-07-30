@@ -1,10 +1,22 @@
 "use client";
-import { GOLD, BORDER, card, sectionTitle, sectionEyebrow, monoStack, InfoDot } from "./shared";
+import Link from "next/link";
+import { GOLD, BORDER, card, sectionTitle, sectionEyebrow, monoStack, fmt, InfoDot } from "./shared";
 
 export default function TierProgress({ tier }) {
   if (!tier || !tier.current) return null;
 
-  const { current, next, remaining, progressPct, activeClientsCount, allTiers } = tier;
+  const {
+    current,
+    next,
+    remaining,
+    progressPct,
+    activeClientsCount,
+    allTiers,
+    signupDelta,
+    renewalDelta,
+    projectedMonthlyIncome,
+    projectedMonthlyIncomeAtNextTier,
+  } = tier;
 
   return (
     <section id="tier" style={{ scrollMarginTop: 90, marginBottom: "1.4rem" }}>
@@ -18,8 +30,14 @@ export default function TierProgress({ tier }) {
           }}
         />
 
-        <p style={sectionEyebrow}>مستواك الحالي</p>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", marginBottom: "1rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+          <p style={sectionEyebrow}>مستواك الحالي</p>
+          <Link href="/affiliate/tiers" style={{ fontSize: "0.75rem", color: GOLD, textDecoration: "none", fontWeight: 700 }}>
+            كل المستويات ←
+          </Link>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", marginBottom: "1.1rem" }}>
           <div
             style={{
               width: 58,
@@ -46,6 +64,22 @@ export default function TierProgress({ tier }) {
           </div>
         </div>
 
+        {/* عمولتك الحالية بهالمستوى */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: "1.2rem" }}>
+          <div style={rateBox(current.color_hex)}>
+            <p style={rateLabel}>عمولة التسجيل</p>
+            <p style={{ ...rateValue, color: current.color_hex }}>${fmt(current.signup_amount)}</p>
+          </div>
+          <div style={rateBox(current.color_hex)}>
+            <p style={rateLabel}>عمولة التجديد الشهري</p>
+            <p style={{ ...rateValue, color: current.color_hex }}>${fmt(current.renewal_amount)}</p>
+          </div>
+          <div style={rateBox("#4CAF50")}>
+            <p style={rateLabel}>دخلك المتكرر المتوقع شهرياً</p>
+            <p style={{ ...rateValue, color: "#4CAF50" }}>${fmt(projectedMonthlyIncome)}</p>
+          </div>
+        </div>
+
         {next ? (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -57,7 +91,7 @@ export default function TierProgress({ tier }) {
               </span>
               <span style={{ fontFamily: monoStack, fontSize: "0.75rem", color: "#8A8580" }}>{progressPct}%</span>
             </div>
-            <div style={{ height: 10, borderRadius: 6, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
+            <div style={{ height: 10, borderRadius: 6, background: "rgba(255,255,255,0.05)", overflow: "hidden", marginBottom: "0.9rem" }}>
               <div
                 style={{
                   height: "100%",
@@ -68,10 +102,37 @@ export default function TierProgress({ tier }) {
                 }}
               />
             </div>
+
+            {/* كم بيتغير دخلك بعد الترقية — أقوى جزء تحفيزي */}
+            <div
+              style={{
+                background: `${next.color_hex}0d`,
+                border: `1px solid ${next.color_hex}44`,
+                borderRadius: 12,
+                padding: "0.9rem 1.1rem",
+              }}
+            >
+              <p style={{ fontSize: "0.8rem", color: "#EAECEF", fontWeight: 700, marginBottom: 6 }}>
+                {next.badge_icon} بعد الترقية لـ {next.title_ar}:
+              </p>
+              <div style={{ display: "flex", gap: "1.4rem", flexWrap: "wrap", fontSize: "0.78rem", color: "#B8B0A0" }}>
+                <span>
+                  عمولة التسجيل: <b style={{ color: next.color_hex }}>${fmt(next.signup_amount)}</b>{" "}
+                  <span style={{ color: "#4CAF50" }}>(+${fmt(signupDelta)})</span>
+                </span>
+                <span>
+                  عمولة التجديد: <b style={{ color: next.color_hex }}>${fmt(next.renewal_amount)}</b>{" "}
+                  <span style={{ color: "#4CAF50" }}>(+${fmt(renewalDelta)})</span>
+                </span>
+                <span>
+                  دخلك الشهري بيصير: <b style={{ color: "#4CAF50" }}>${fmt(projectedMonthlyIncomeAtNextTier)}</b>
+                </span>
+              </div>
+            </div>
           </>
         ) : (
           <p style={{ color: GOLD, fontSize: "0.85rem", fontWeight: 700 }}>
-            👑 وصلت لأعلى مستوى — استمر هيك، أنت مثال يُحتذى به!
+            👑 وصلت لأعلى مستوى وأعلى عمولة بالبرنامج — استمر هيك، أنت مثال يُحتذى به!
           </p>
         )}
 
@@ -97,7 +158,10 @@ export default function TierProgress({ tier }) {
                   <div style={{ fontSize: "0.68rem", color: reached ? "#EAECEF" : "#6E7177", fontWeight: 700, marginTop: 2 }}>
                     {t.title_ar}
                   </div>
-                  <div style={{ fontSize: "0.62rem", color: "#6E7177" }}>{t.min_active_clients}+</div>
+                  <div style={{ fontSize: "0.6rem", color: "#6E7177" }}>{t.min_active_clients}+ عميل</div>
+                  <div style={{ fontSize: "0.62rem", color: t.color_hex, fontWeight: 700, marginTop: 2 }}>
+                    ${t.signup_amount} / ${t.renewal_amount}
+                  </div>
                 </div>
               );
             })}
@@ -106,4 +170,17 @@ export default function TierProgress({ tier }) {
       </div>
     </section>
   );
+}
+
+const rateLabel = { fontSize: "0.68rem", color: "#9A9A9A", marginBottom: 4 };
+const rateValue = { fontSize: "1.1rem", fontWeight: 800, fontFamily: monoStack };
+function rateBox(color) {
+  return {
+    flex: "1 1 130px",
+    textAlign: "center",
+    background: `${color}0d`,
+    border: `1px solid ${color}33`,
+    borderRadius: 12,
+    padding: "0.8rem 0.6rem",
+  };
 }

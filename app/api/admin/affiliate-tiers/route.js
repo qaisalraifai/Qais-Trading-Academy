@@ -17,13 +17,13 @@ export async function GET() {
   return NextResponse.json({ tiers: data || [] });
 }
 
-// POST /api/admin/affiliate-tiers  { code, title_ar, badge_icon, color_hex, min_active_clients, sort_order }
+// POST /api/admin/affiliate-tiers  { code, title_ar, badge_icon, color_hex, min_active_clients, signup_amount, renewal_amount, sort_order }
 export async function POST(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const body = await request.json();
-  const { code, title_ar, badge_icon, color_hex, min_active_clients, sort_order } = body;
+  const { code, title_ar, badge_icon, color_hex, min_active_clients, signup_amount, renewal_amount, sort_order } = body;
 
   if (!code || !title_ar) {
     return NextResponse.json({ error: "code و title_ar مطلوبين" }, { status: 400 });
@@ -38,6 +38,8 @@ export async function POST(request) {
       badge_icon: badge_icon || "🏅",
       color_hex: color_hex || "#D4AF37",
       min_active_clients: Number(min_active_clients) || 0,
+      signup_amount: Number(signup_amount) || 0,
+      renewal_amount: Number(renewal_amount) || 0,
       sort_order: Number(sort_order) || 0,
     })
     .select("*")
@@ -56,7 +58,7 @@ export async function PATCH(request) {
   const { id, ...fields } = body;
   if (!id) return NextResponse.json({ error: "id مطلوب" }, { status: 400 });
 
-  const allowed = ["title_ar", "badge_icon", "color_hex", "min_active_clients", "sort_order", "is_active"];
+  const allowed = ["title_ar", "badge_icon", "color_hex", "min_active_clients", "signup_amount", "renewal_amount", "sort_order", "is_active"];
   const update = {};
   for (const key of allowed) {
     if (key in fields) update[key] = fields[key];
