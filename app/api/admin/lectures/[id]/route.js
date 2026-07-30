@@ -11,7 +11,7 @@ export async function PUT(request, { params }) {
   const body = await request.json();
   const {
     title, description, videoLink, video_provider, order_index,
-    course_id, chapter, chapter_order, duration_minutes, difficulty, practice_type,
+    course_id, chapter, chapter_order, duration_minutes, difficulty, practice_type, batch_id, batch_course_id,
   } = body;
 
   const provider = video_provider === "drive" ? "drive" : "youtube";
@@ -23,6 +23,8 @@ export async function PUT(request, { params }) {
   if (videoLink !== undefined) updateData.youtube_video_id = extractVideoId(videoLink, provider);
   if (order_index !== undefined && order_index !== "") updateData.order_index = order_index;
   if (course_id !== undefined) updateData.course_id = course_id || null;
+  if (batch_id !== undefined) updateData.batch_id = batch_id || null;
+  if (batch_course_id !== undefined) updateData.batch_course_id = batch_course_id || null;
   if (chapter !== undefined) updateData.chapter = chapter || null;
   if (chapter_order !== undefined) updateData.chapter_order = chapter_order === "" ? null : Number(chapter_order);
   if (duration_minutes !== undefined) updateData.duration_seconds = duration_minutes === "" ? null : Math.round(Number(duration_minutes) * 60);

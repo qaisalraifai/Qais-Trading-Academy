@@ -17,6 +17,13 @@ export async function PATCH(request, { params }) {
   if (body.title !== undefined) updates.title = body.title?.trim();
   if (body.description !== undefined) updates.description = body.description?.trim() || null;
   if (body.due_date !== undefined) updates.due_date = body.due_date || null;
+  if (body.batch_course_id !== undefined) {
+    if (body.batch_course_id) {
+      const { data: courseLink } = await supabase.from("batch_courses").select("id").eq("id", body.batch_course_id).eq("batch_id", params.id).maybeSingle();
+      if (!courseLink) return NextResponse.json({ error: "الدورة غير مرتبطة بهاي الدفعة" }, { status: 400 });
+    }
+    updates.batch_course_id = body.batch_course_id || null;
+  }
 
   const { data, error } = await supabase
     .from("batch_assignments")

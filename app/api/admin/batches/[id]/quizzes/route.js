@@ -2,24 +2,27 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
 
-// GET /api/admin/batches/[id]/quizzes — كل اختبارات هاي الدفعة (حصرية + مشتركة لكورس الدفعة)
-// نفس القاعدة الذهبية المستخدمة بالمحاضرات: batch_id فاضي = مشترك لكل دفعات الكورس.
-export async function GET(_request, { params }) {
+// GET /api/admin/batches/[id]/quizzes?batch_course_id=... — اختبارات دورة معينة
+// جوا هاي الدفعة (حصرية لهاي الدفعة + مشتركة لكل دفعات نفس الدورة).
+// batch_course_id مطلوب هلأ (بما إن الدفعة صارت تحتوي أكتر من دورة).
+export async function GET(request, { params }) {
   const auth = await requireAdmin();
   if (auth.error) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   const supabase = createAdminClient();
+  const batchCourseId = new URL(request.url).searchParams.get("batch_course_id");
+  if (!batchCourseId) return NextResponse.json({ error: "لازم تحددي الدورة" }, { status: 400 });
 
-  const { data: batch } = await supabase.from("batches").select("id, course_id").eq("id", params.id).maybeSingle();
-  if (!batch) return NextResponse.json({ error: "الدفعة غير موجودة" }, { status: 404 });
+  const { data: link } = await supabase.from("batch_courses").select("id, course_id").eq("id", batchCourseId).eq("batch_id", params.id).maybeSingle();
+  if (!link) return NextResponse.json({ error: "الدورة غير مرتبطة بهاي الدفعة" }, { status: 404 });
 
   const { data: quizzes, error } = await supabase
     .from("quizzes")
     .select("*")
-    .eq("course_id", batch.course_id)
-    .or(`batch_id.is.null,batch_id.eq.${params.id}`)
+    .eq("course_id", link.course_id)
+    .or(`batch_course_id.is.null,batch_course_id.eq.${batchCourseId}`)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -46,7 +49,7 @@ export async function GET(_request, { params }) {
 }
 
 // POST /api/admin/batches/[id]/quizzes — إنشاء اختبار جديد
-// body: { title, chapter?, batch_id? }  — batch_id فاضي = مشترك لكل دفعات الكورس
+// body: { title, chapter?, batch_course_id (مطلوب — أي دورة جوا الدفعة), scope: 'shared'|'exclusive' }
 export async function POST(request, { params }) {
   const auth = await requireAdmin();
   if (auth.error) {
@@ -54,21 +57,22 @@ export async function POST(request, { params }) {
   }
 
   const supabase = createAdminClient();
-
-  const { data: batch } = await supabase.from("batches").select("id, course_id").eq("id", params.id).maybeSingle();
-  if (!batch) return NextResponse.json({ error: "الدفعة غير موجودة" }, { status: 404 });
-
   const body = await request.json().catch(() => null);
+
   const title = body?.title?.trim();
   if (!title) return NextResponse.json({ error: "لازم تكتبي عنوان الاختبار" }, { status: 400 });
+  if (!body?.batch_course_id) return NextResponse.json({ error: "لازم تحددي الدورة" }, { status: 400 });
+
+  const { data: link } = await supabase.from("batch_courses").select("id, course_id").eq("id", body.batch_course_id).eq("batch_id", params.id).maybeSingle();
+  if (!link) return NextResponse.json({ error: "الدورة غير مرتبطة بهاي الدفعة" }, { status: 404 });
 
   const { data, error } = await supabase
     .from("quizzes")
     .insert({
       title,
-      course_id: batch.course_id,
+      course_id: link.course_id,
       chapter: body?.chapter?.trim() || null,
-      batch_id: body?.batch_id || null,
+      batch_course_id: body?.scope === "exclusive" ? link.id : null,
     })
     .select()
     .single();

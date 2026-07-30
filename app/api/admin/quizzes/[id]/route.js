@@ -20,7 +20,9 @@ export async function PATCH(request, { params }) {
     updateData.title = title;
   }
   if (body.chapter !== undefined) updateData.chapter = body.chapter?.trim() || null;
-  if (body.batch_id !== undefined) updateData.batch_id = body.batch_id || null;
+  if (body.scope !== undefined && body.batch_course_id !== undefined) {
+    updateData.batch_course_id = body.scope === "exclusive" ? body.batch_course_id : null;
+  }
 
   const { data, error } = await supabase.from("quizzes").update(updateData).eq("id", params.id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

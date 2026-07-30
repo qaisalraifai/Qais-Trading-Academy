@@ -473,10 +473,11 @@ function LiveAttendanceTab({ batchId }) {
 }
 
 /* -------------------- الواجبات (المرحلة 6ب) -------------------- */
-const emptyAssignmentForm = { title: "", description: "", due_date: "" };
+const emptyAssignmentForm = { title: "", description: "", due_date: "", batch_course_id: "" };
 
 function AssignmentsTab({ batchId }) {
   const [assignments, setAssignments] = useState([]);
+  const [batchCourses, setBatchCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -487,9 +488,14 @@ function AssignmentsTab({ batchId }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/admin/batches/${batchId}/assignments`);
+    const [res, coursesRes] = await Promise.all([
+      fetch(`/api/admin/batches/${batchId}/assignments`),
+      fetch(`/api/admin/batches/${batchId}/courses`),
+    ]);
     const data = await res.json();
+    const coursesData = await coursesRes.json();
     setAssignments(res.ok ? data.assignments || [] : []);
+    setBatchCourses(coursesRes.ok ? coursesData.batch_courses || [] : []);
     if (!res.ok) setError(data.error || "صار خطأ بجلب الواجبات");
     setLoading(false);
   }, [batchId]);
@@ -505,7 +511,7 @@ function AssignmentsTab({ batchId }) {
 
   function openEditForm(a) {
     setEditingId(a.id);
-    setForm({ title: a.title || "", description: a.description || "", due_date: a.due_date || "" });
+    setForm({ title: a.title || "", description: a.description || "", due_date: a.due_date || "", batch_course_id: a.batch_course_id || "" });
     setError("");
     setShowForm(true);
   }
@@ -567,6 +573,14 @@ function AssignmentsTab({ batchId }) {
           <label style={s.label}>موعد التسليم (اختياري)</label>
           <input type="date" style={s.input} value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
 
+          <label style={s.label}>الدورة (اختياري)</label>
+          <select style={s.input} value={form.batch_course_id} onChange={(e) => setForm({ ...form, batch_course_id: e.target.value })}>
+            <option value="">عام لكل دورات الدفعة</option>
+            {batchCourses.map((bc) => (
+              <option key={bc.id} value={bc.id}>{bc.course?.icon} {bc.course?.title}</option>
+            ))}
+          </select>
+
           {error && <p style={s.errorText}>{error}</p>}
           <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
             <button type="button" onClick={() => setShowForm(false)} style={s.cancelBtn}>إلغاء</button>
@@ -584,7 +598,9 @@ function AssignmentsTab({ batchId }) {
           {assignments.map((a) => (
             <div key={a.id} style={s.rowItem}>
               <div style={{ minWidth: 0, cursor: "pointer" }} onClick={() => setOpenAssignment(a)}>
-                <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#EAECEF" }}>{a.title}</p>
+                <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#EAECEF" }}>
+                  {a.title} {a.course ? <span style={s.badgeDefault}>{a.course.icon} {a.course.title}</span> : <span style={s.badgeShared}>عام</span>}
+                </p>
                 {a.description && <p style={{ color: "#999", fontSize: "0.8rem", margin: "0.3rem 0 0" }}>{a.description}</p>}
                 <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>
                   {a.due_date ? `موعد التسليم: ${a.due_date}` : "بدون موعد محدد"} — {a.submitted_count} تسليم ({a.graded_count} مقيّم)
@@ -786,25 +802,43 @@ function CalendarTab({ batchId, batch }) {
 // لكل دفعات الكورس). التعديل الفعلي يصير من فورم admin/lectures المشترك، بضغطة
 // وحدة — لأنه هو المصدر الوحيد للحقيقة (Single Source of Truth) لبيانات المحاضرة.
 function LecturesTab({ batch }) {
+  const [batchCourses, setBatchCourses] = useState([]);
+  const [selectedLinkId, setSelectedLinkId] = useState("");
   const [lectures, setLectures] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    setLoadingCourses(true);
+    fetch(`/api/admin/batches/${batch.id}/courses`)
+      .then((res) => res.json())
+      .then((data) => {
+        const links = data.batch_courses || [];
+        setBatchCourses(links);
+        if (links.length) setSelectedLinkId(links[0].id);
+      })
+      .finally(() => setLoadingCourses(false));
+  }, [batch.id]);
+
+  const selectedLink = batchCourses.find((l) => l.id === selectedLinkId);
+
+  useEffect(() => {
+    if (!selectedLink) { setLectures([]); return; }
     setLoading(true);
     fetch("/api/admin/lectures")
       .then((res) => res.json())
       .then((data) => {
         const all = data.lectures || [];
         const filtered = all
-          .filter((l) => l.course_id === batch.course_id && (l.batch_id === null || l.batch_id === batch.id))
+          .filter((l) => l.course_id === selectedLink.course_id && (l.batch_course_id === null || l.batch_course_id === selectedLink.id))
           .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
         setLectures(filtered);
       })
       .finally(() => setLoading(false));
-  }, [batch.course_id, batch.id]);
+  }, [selectedLink?.id, selectedLink?.course_id]);
 
-  const exclusive = lectures.filter((l) => l.batch_id === batch.id);
-  const shared = lectures.filter((l) => l.batch_id === null);
+  const exclusive = lectures.filter((l) => l.batch_course_id === selectedLinkId);
+  const shared = lectures.filter((l) => l.batch_course_id === null);
 
   return (
     <div style={s.card}>
@@ -815,18 +849,46 @@ function LecturesTab({ batch }) {
       <p style={s.hint}>
         هون عرض فقط — تحديد دفعة لمحاضرة أو تعديلها بيصير من صفحة "إدارة المحاضرات" المشتركة (اختاري الدفعة بالفورم هناك).
       </p>
-      <hr style={s.hr} />
-      {loading ? (
+
+      {loadingCourses ? (
         <p style={s.loading}>جاري التحميل...</p>
-      ) : lectures.length === 0 ? (
-        <p style={s.hint}>ما في محاضرات لهاد الكورس لسا.</p>
+      ) : batchCourses.length === 0 ? (
+        <p style={s.hint}>ما في دورات بالدفعة لسا.</p>
       ) : (
         <>
-          {exclusive.length > 0 && (
+          {batchCourses.length > 1 && (
+            <div style={{ marginTop: "0.5rem" }}>
+              <label style={s.label}>الدورة</label>
+              <select style={s.input} value={selectedLinkId} onChange={(e) => setSelectedLinkId(e.target.value)}>
+                {batchCourses.map((l) => (
+                  <option key={l.id} value={l.id}>{l.course?.icon} {l.course?.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <hr style={s.hr} />
+          {loading ? (
+            <p style={s.loading}>جاري التحميل...</p>
+          ) : lectures.length === 0 ? (
+            <p style={s.hint}>ما في محاضرات لهاد الكورس لسا.</p>
+          ) : (
             <>
-              <p style={{ ...s.label, marginTop: 0 }}>حصرية لهاي الدفعة ({exclusive.length})</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "1rem" }}>
-                {exclusive.map((l) => (
+              {exclusive.length > 0 && (
+                <>
+                  <p style={{ ...s.label, marginTop: 0 }}>حصرية لهاي الدفعة ({exclusive.length})</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "1rem" }}>
+                    {exclusive.map((l) => (
+                      <div key={l.id} style={s.rowItem}>
+                        <span style={s.username}>{l.title}</span>
+                        <span style={s.mono}>{l.chapter || "—"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              <p style={s.label}>مشتركة لكل دفعات الكورس ({shared.length})</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                {shared.map((l) => (
                   <div key={l.id} style={s.rowItem}>
                     <span style={s.username}>{l.title}</span>
                     <span style={s.mono}>{l.chapter || "—"}</span>
@@ -835,15 +897,6 @@ function LecturesTab({ batch }) {
               </div>
             </>
           )}
-          <p style={s.label}>مشتركة لكل دفعات الكورس ({shared.length})</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-            {shared.map((l) => (
-              <div key={l.id} style={s.rowItem}>
-                <span style={s.username}>{l.title}</span>
-                <span style={s.mono}>{l.chapter || "—"}</span>
-              </div>
-            ))}
-          </div>
         </>
       )}
     </div>
@@ -853,9 +906,12 @@ function LecturesTab({ batch }) {
 /* -------------------- الاختبارات (المرحلة 6هـ) -------------------- */
 const emptyQuizForm = { title: "", chapter: "", scope: "shared" }; // scope: shared | exclusive
 
-function QuizzesTab({ batchId, batch }) {
+function QuizzesTab({ batchId }) {
+  const [batchCourses, setBatchCourses] = useState([]);
+  const [selectedLinkId, setSelectedLinkId] = useState("");
   const [quizzes, setQuizzes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -863,14 +919,27 @@ function QuizzesTab({ batchId, batch }) {
   const [saving, setSaving] = useState(false);
   const [panel, setPanel] = useState(null); // { mode: 'questions'|'attempts', quiz }
 
+  useEffect(() => {
+    setLoadingCourses(true);
+    fetch(`/api/admin/batches/${batchId}/courses`)
+      .then((res) => res.json())
+      .then((data) => {
+        const links = data.batch_courses || [];
+        setBatchCourses(links);
+        if (links.length) setSelectedLinkId(links[0].id);
+      })
+      .finally(() => setLoadingCourses(false));
+  }, [batchId]);
+
   const load = useCallback(async () => {
+    if (!selectedLinkId) return;
     setLoading(true);
-    const res = await fetch(`/api/admin/batches/${batchId}/quizzes`);
+    const res = await fetch(`/api/admin/batches/${batchId}/quizzes?batch_course_id=${selectedLinkId}`);
     const data = await res.json();
     setQuizzes(res.ok ? data.quizzes || [] : []);
     if (!res.ok) setError(data.error || "صار خطأ بجلب الاختبارات");
     setLoading(false);
-  }, [batchId]);
+  }, [batchId, selectedLinkId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -883,7 +952,7 @@ function QuizzesTab({ batchId, batch }) {
 
   function openEditForm(q) {
     setEditingId(q.id);
-    setForm({ title: q.title || "", chapter: q.chapter || "", scope: q.batch_id ? "exclusive" : "shared" });
+    setForm({ title: q.title || "", chapter: q.chapter || "", scope: q.batch_course_id ? "exclusive" : "shared" });
     setError("");
     setShowForm(true);
   }
@@ -895,7 +964,8 @@ function QuizzesTab({ batchId, batch }) {
     const payload = {
       title: form.title,
       chapter: form.chapter,
-      batch_id: form.scope === "exclusive" ? batchId : null,
+      scope: form.scope,
+      batch_course_id: selectedLinkId,
     };
     const url = editingId ? `/api/admin/quizzes/${editingId}` : `/api/admin/batches/${batchId}/quizzes`;
     const method = editingId ? "PATCH" : "POST";
@@ -928,62 +998,79 @@ function QuizzesTab({ batchId, batch }) {
     <div style={s.card}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
         <h3 style={{ ...s.cardTitle, margin: 0 }}>اختبارات الدفعة</h3>
-        <button onClick={openAddForm} style={s.saveBtn}>+ اختبار جديد</button>
+        {selectedLinkId && <button onClick={openAddForm} style={s.saveBtn}>+ اختبار جديد</button>}
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "1rem" }}>
-          <label style={s.label}>عنوان الاختبار</label>
-          <input style={s.input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-
-          <label style={s.label}>الفصل (اختياري)</label>
-          <input style={s.input} value={form.chapter} onChange={(e) => setForm({ ...form, chapter: e.target.value })} placeholder="مثلاً: الفصل الثاني" />
-
-          <label style={s.label}>النطاق</label>
-          <select style={s.input} value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })}>
-            <option value="shared">مشترك لكل دفعات الكورس</option>
-            <option value="exclusive">حصري لهاي الدفعة بس</option>
-          </select>
-
-          {error && <p style={s.errorText}>{error}</p>}
-          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-            <button type="button" onClick={() => setShowForm(false)} style={s.cancelBtn}>إلغاء</button>
-            <button type="submit" disabled={saving} style={s.saveBtn}>{saving ? "جاري الحفظ..." : "حفظ"}</button>
-          </div>
-        </form>
-      )}
-
-      {loading ? (
+      {loadingCourses ? (
         <p style={s.loading}>جاري التحميل...</p>
-      ) : quizzes.length === 0 ? (
-        <p style={s.hint}>ما في اختبارات لهاي الدفعة لسا.</p>
+      ) : batchCourses.length === 0 ? (
+        <p style={s.hint}>ما في دورات بالدفعة لسا.</p>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {quizzes.map((q) => (
-            <div key={q.id} style={s.rowItem}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#EAECEF" }}>
-                  {q.title} {q.batch_id ? <span style={s.badgeDefault}>حصري</span> : <span style={s.badgeShared}>مشترك</span>}
-                </p>
-                <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>
-                  {q.chapter ? `${q.chapter} — ` : ""}{q.question_count} سؤال — {q.attempt_count} محاولة طالب
-                </p>
-              </div>
-              <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0, flexWrap: "wrap" }}>
-                <button onClick={() => setPanel({ mode: "questions", quiz: q })} style={s.btnEdit}>الأسئلة</button>
-                <button onClick={() => setPanel({ mode: "attempts", quiz: q })} style={s.btnEdit}>النتائج</button>
-                <button onClick={() => openEditForm(q)} style={s.btnEdit}>تعديل</button>
-                <button onClick={() => handleDelete(q)} style={s.btnDanger}>حذف</button>
-              </div>
+        <>
+          {batchCourses.length > 1 && (
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={s.label}>الدورة</label>
+              <select style={s.input} value={selectedLinkId} onChange={(e) => setSelectedLinkId(e.target.value)}>
+                {batchCourses.map((l) => (
+                  <option key={l.id} value={l.id}>{l.course?.icon} {l.course?.title}</option>
+                ))}
+              </select>
             </div>
-          ))}
-        </div>
+          )}
+
+          {showForm && (
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "1rem" }}>
+              <label style={s.label}>عنوان الاختبار</label>
+              <input style={s.input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+
+              <label style={s.label}>الفصل (اختياري)</label>
+              <input style={s.input} value={form.chapter} onChange={(e) => setForm({ ...form, chapter: e.target.value })} placeholder="مثلاً: الفصل الثاني" />
+
+              <label style={s.label}>النطاق</label>
+              <select style={s.input} value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })}>
+                <option value="shared">مشترك لكل دفعات هاي الدورة</option>
+                <option value="exclusive">حصري لهاي الدفعة بس</option>
+              </select>
+
+              {error && <p style={s.errorText}>{error}</p>}
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+                <button type="button" onClick={() => setShowForm(false)} style={s.cancelBtn}>إلغاء</button>
+                <button type="submit" disabled={saving} style={s.saveBtn}>{saving ? "جاري الحفظ..." : "حفظ"}</button>
+              </div>
+            </form>
+          )}
+
+          {loading ? (
+            <p style={s.loading}>جاري التحميل...</p>
+          ) : quizzes.length === 0 ? (
+            <p style={s.hint}>ما في اختبارات لهاي الدورة جوا هاي الدفعة لسا.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {quizzes.map((q) => (
+                <div key={q.id} style={s.rowItem}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#EAECEF" }}>
+                      {q.title} {q.batch_course_id ? <span style={s.badgeDefault}>حصري</span> : <span style={s.badgeShared}>مشترك</span>}
+                    </p>
+                    <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>
+                      {q.chapter ? `${q.chapter} — ` : ""}{q.question_count} سؤال — {q.attempt_count} محاولة طالب
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0, flexWrap: "wrap" }}>
+                    <button onClick={() => setPanel({ mode: "questions", quiz: q })} style={s.btnEdit}>الأسئلة</button>
+                    <button onClick={() => setPanel({ mode: "attempts", quiz: q })} style={s.btnEdit}>النتائج</button>
+                    <button onClick={() => openEditForm(q)} style={s.btnEdit}>تعديل</button>
+                    <button onClick={() => handleDelete(q)} style={s.btnDanger}>حذف</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 }
-
-const emptyQuestionForm = { question_text: "", options: ["", ""], correct_option_index: 0 };
 
 function QuestionsPanel({ quiz, onClose }) {
   const [questions, setQuestions] = useState([]);
