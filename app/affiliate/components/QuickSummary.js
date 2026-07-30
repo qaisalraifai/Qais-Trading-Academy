@@ -8,7 +8,6 @@ export const SECTIONS = [
   { id: "stats", label: "الإحصائيات" },
   { id: "referrals", label: "الإحالات" },
   { id: "payouts", label: "المدفوعات" },
-  { id: "more", label: "أنشطة إضافية" },
   { id: "faq", label: "الأسئلة الشائعة" },
 ];
 

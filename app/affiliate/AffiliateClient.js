@@ -11,7 +11,6 @@ import Leaderboard from "./components/Leaderboard";
 import ReferralsTable from "./components/ReferralsTable";
 import PayoutsHistory from "./components/PayoutsHistory";
 import { FaqSection, TermsSection } from "./components/FaqTerms";
-import ExtrasAccordion from "./components/ExtrasAccordion";
 import AlertToasts from "./components/AlertToasts";
 import {
   GOLD,
@@ -232,7 +231,6 @@ export default function AffiliateClient({ embedded = false }) {
           </div>
 
           <PayoutsHistory payouts={data.payouts} />
-          <ExtrasAccordion />
           <FaqSection settings={data.settings} tier={data.tier} />
           <TermsSection settings={data.settings} tier={data.tier} />
 
