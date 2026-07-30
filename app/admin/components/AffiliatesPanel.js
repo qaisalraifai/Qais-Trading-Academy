@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { gold, s as baseStyles, glass, transition } from "../styles";
+import TiersManager from "./TiersManager";
+import AchievementsManager from "./AchievementsManager";
 
 const STATUS_LABELS = {
   pending: "قيد المراجعة",
@@ -22,7 +24,7 @@ function fmt(n) {
 }
 
 export default function AffiliatesPanel() {
-  const [tab, setTab] = useState("applications"); // applications | payouts | settings
+  const [tab, setTab] = useState("applications"); // applications | payouts | tiers | achievements | settings
   const [affiliates, setAffiliates] = useState([]);
   const [payouts, setPayouts] = useState([]);
   const [settings, setSettings] = useState(null);
@@ -169,6 +171,8 @@ export default function AffiliatesPanel() {
           {[
             { key: "applications", label: "طلبات المسوّقين" },
             { key: "payouts", label: "دفعات الصرف" },
+            { key: "tiers", label: "المستويات" },
+            { key: "achievements", label: "الإنجازات والمكافآت" },
             { key: "settings", label: "إعدادات العمولة" },
           ].map((t) => (
             <div
@@ -187,6 +191,10 @@ export default function AffiliatesPanel() {
 
         {loading ? (
           <p style={{ color: "#666" }}>جاري التحميل...</p>
+        ) : tab === "tiers" ? (
+          <TiersManager />
+        ) : tab === "achievements" ? (
+          <AchievementsManager />
         ) : tab === "applications" ? (
           <div style={{ overflowX: "auto" }}>
             <table style={styles.table}>
@@ -302,13 +310,11 @@ export default function AffiliatesPanel() {
         ) : tab === "settings" && settings ? (
           <div style={{ ...glass, padding: "2rem", maxWidth: 480 }}>
             <p style={{ color: "#888", fontSize: "0.85rem", marginBottom: "1.5rem", lineHeight: 1.8 }}>
-              نسب العمولة لكل مستوى (من قيمة كل دفعة)، والحد الأدنى للمبلغ حتى يتجهز للصرف،
-              ودورة الصرف بالأيام (14 = كل أسبوعين).
+              نسبة عمولة التسجيل (من قيمة أول اشتراك، تُدفع بعد إكمال المدعو أول درس) ونسبة عمولة التجديد الشهري (من قيمة كل تجديد)، والحد الأدنى للمبلغ حتى يتجهز للصرف، ودورة الصرف بالأيام (14 = كل أسبوعين).
             </p>
             {[
-              { key: "level1_percent", label: "نسبة المستوى 1 (%)" },
-              { key: "level2_percent", label: "نسبة المستوى 2 (%)" },
-              { key: "level3_percent", label: "نسبة المستوى 3 (%)" },
+              { key: "signup_percent", label: "نسبة عمولة التسجيل (%)" },
+              { key: "renewal_percent", label: "نسبة عمولة التجديد الشهري (%)" },
               { key: "min_payout_usd", label: "الحد الأدنى للصرف ($)" },
               { key: "payout_cycle_days", label: "دورة الصرف (أيام)" },
             ].map((f) => (
@@ -322,6 +328,17 @@ export default function AffiliatesPanel() {
                 />
               </div>
             ))}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1.3rem" }}>
+              <input
+                type="checkbox"
+                id="leaderboard_show_names"
+                checked={settings.leaderboard_show_names !== false}
+                onChange={(e) => setSettings({ ...settings, leaderboard_show_names: e.target.checked })}
+              />
+              <label htmlFor="leaderboard_show_names" style={{ color: "#888", fontSize: "0.82rem" }}>
+                إظهار أسماء المسوّقين الحقيقية بلوحة الصدارة (لو ألغيتها، بيظهروا بمعرّف مموّه)
+              </label>
+            </div>
             <button disabled={savingSettings} onClick={handleSaveSettings} style={{ ...baseStyles.btn, ...baseStyles.btnGold, marginTop: "0.5rem" }}>
               {savingSettings ? "جاري الحفظ..." : "حفظ الإعدادات"}
             </button>

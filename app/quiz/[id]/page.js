@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import QuizForm from "@/app/components/QuizForm";
 import PageShell from "@/app/components/layout/PageShell";
 import { getShellProfile } from "@/lib/shell-profile";
-import { getStudentBatchId } from "@/lib/student-batch";
 
 export default async function QuizPage({ params }) {
   const supabase = createClient();
@@ -19,16 +18,6 @@ export default async function QuizPage({ params }) {
     .single();
 
   if (!quiz) redirect("/dashboard");
-
-  // ---------- المرحلة 6: الاختبار لازم يكون بدفعة الطالب المسجّل فيها ----------
-  if (quiz.course_id) {
-    const studentBatchId = await getStudentBatchId(user.id, quiz.course_id);
-    if (!studentBatchId) redirect(`/course/${quiz.course_id}`);
-    if (quiz.batch_id && quiz.batch_id !== studentBatchId) {
-      redirect(`/course/${quiz.course_id}`);
-    }
-  }
-  // --------------------------------------------------------------------------
 
   const { data: questions } = await supabase
     .from("quiz_questions")

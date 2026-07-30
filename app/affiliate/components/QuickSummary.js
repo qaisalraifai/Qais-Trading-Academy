@@ -20,16 +20,16 @@ export default function QuickSummary({ data, onShare }) {
   const available = (data.earnings?.ready || 0) + (data.earnings?.paid ? 0 : 0);
   const readyToWithdraw = data.earnings?.ready || 0;
   const pending = data.earnings?.pending || 0;
-  const referralsCount = (data.network?.level1 || 0) + (data.network?.level2 || 0) + (data.network?.level3 || 0);
+  const referralsCount = data.network?.direct || 0;
   const activeSubs = (data.referrals || []).filter((r) => r.subscriptionStatus === "active" || r.subscriptionStatus === "vip").length;
 
   const stats = [
     { label: "إجمالي الأرباح", value: `$${fmt(data.earnings?.totalEarned)}`, tip: "كل العمولات اللي حصلت عليها من بداية اشتراكك بالبرنامج، بكل الحالات." },
     { label: "قابلة للسحب", value: `$${fmt(readyToWithdraw)}`, highlight: true, tip: "عمولات وصلت مرحلة الجهوزية، ورح تنضم لأقرب دفعة." },
     { label: "معلّقة", value: `$${fmt(pending)}`, tip: "عمولات جديدة لسا ما وصلت موعد الدفعة القادمة." },
-    { label: "عدد الإحالات", value: referralsCount, tip: "إجمالي الأعضاء يلي انضموا عن طريقك بـ 3 مستويات." },
+    { label: "عدد الإحالات", value: referralsCount, tip: "إجمالي الأعضاء يلي انضموا عن طريقك مباشرة." },
     { label: "مشتركين نشطين", value: activeSubs, tip: "من إحالاتك المباشرة، عدد اللي عندهم اشتراك فعّال حالياً." },
-    { label: "نسبة العمولة", value: `${data.settings?.level1Percent || 0}%`, tip: "نسبتك من كل اشتراك مباشر (مستوى 1)." },
+    { label: "نسبة عمولة التسجيل", value: `${data.settings?.signupPercent || 10}%`, tip: "نسبتك من قيمة أول اشتراك، تتحرر بعد ما يكمّل المدعو أول درس." },
   ];
 
   return (

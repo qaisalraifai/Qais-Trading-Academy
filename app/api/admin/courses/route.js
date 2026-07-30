@@ -56,14 +56,5 @@ export async function POST(request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  // كل دفعة موجودة أصلًا لازم تاخد هاي الدورة الجديدة تلقائيًا — بدون أي إعداد يدوي
-  const { data: allBatches } = await supabase.from("batches").select("id");
-  if (allBatches?.length) {
-    await supabase.from("batch_courses").insert(
-      allBatches.map((b) => ({ batch_id: b.id, course_id: data.id, order_index: finalOrder, status: "not_started" }))
-    );
-  }
-
   return NextResponse.json({ course: data });
 }

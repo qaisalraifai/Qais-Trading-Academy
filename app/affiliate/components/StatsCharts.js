@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { GOLD, BORDER, card, sectionTitle, sectionEyebrow, monoStack, transition, fmt, EmptyState } from "./shared";
 
 const PERIODS = [
@@ -8,7 +8,7 @@ const PERIODS = [
   { key: "monthly", label: "شهري" },
 ];
 
-function EarningsBarChart({ rows }) {
+function EarningsBarChart({ rows, color = GOLD, valuePrefix = "$" }) {
   const width = 700;
   const height = 220;
   const padding = { top: 20, right: 10, bottom: 30, left: 10 };
@@ -37,7 +37,7 @@ function EarningsBarChart({ rows }) {
         ))}
         {!hasData && (
           <text x={width / 2} y={height / 2} textAnchor="middle" fill="#555" fontSize="12">
-            ما في أرباح مسجّلة بهاي الفترة بعد
+            ما في بيانات مسجّلة بهاي الفترة بعد
           </text>
         )}
         {rows.map((r, i) => {
@@ -52,10 +52,10 @@ function EarningsBarChart({ rows }) {
                 width={barW}
                 height={Math.max(barH, r.total > 0 ? 2 : 0)}
                 rx={4}
-                fill={r.total > 0 ? GOLD : "rgba(255,255,255,0.06)"}
+                fill={r.total > 0 ? color : "rgba(255,255,255,0.06)"}
                 opacity={r.total > 0 ? 0.9 : 0.5}
               >
-                <title>{`${r.label}: $${fmt(r.total)}`}</title>
+                <title>{`${r.label}: ${valuePrefix}${fmt(r.total)}`}</title>
               </rect>
               <text
                 x={x + barW / 2}
@@ -78,6 +78,14 @@ function EarningsBarChart({ rows }) {
 export default function StatsCharts({ funnel, series }) {
   const [period, setPeriod] = useState("daily");
   const rows = series?.[period] || [];
+
+  const [growth, setGrowth] = useState(null);
+  useEffect(() => {
+    fetch("/api/affiliate/growth-stats")
+      .then((r) => r.json())
+      .then(setGrowth)
+      .catch(() => {});
+  }, []);
 
   const funnelStats = [
     { label: "عدد الزيارات", value: funnel?.clicks ?? 0, tip: "عدد مرات الضغط على رابط الإحالة تبعك." },
@@ -135,6 +143,30 @@ export default function StatsCharts({ funnel, series }) {
           <EmptyState icon="📈" title="ما في بيانات كفاية بعد" desc="ابدأ شارك رابطك وبتظهر أرباحك هون." />
         ) : (
           <EarningsBarChart rows={rows} />
+        )}
+
+        {growth && (growth.activeClientsSeries?.length > 0 || growth.activeNow > 0 || growth.cancelledNow > 0) && (
+          <div style={{ marginTop: "1.8rem", paddingTop: "1.4rem", borderTop: `1px solid ${BORDER}` }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.8rem", marginBottom: "1.2rem" }}>
+              <div style={{ background: "rgba(76,175,80,0.05)", border: "1px solid rgba(76,175,80,0.25)", borderRadius: 12, padding: "1rem", textAlign: "center" }}>
+                <p style={{ color: "#9A9A9A", fontSize: "0.72rem", marginBottom: 6 }}>معدل الاحتفاظ بالعملاء</p>
+                <p style={{ color: "#4CAF50", fontSize: "1.2rem", fontWeight: 800, fontFamily: monoStack }}>{growth.retentionRate}%</p>
+              </div>
+              <div style={{ background: "rgba(246,70,93,0.05)", border: "1px solid rgba(246,70,93,0.25)", borderRadius: 12, padding: "1rem", textAlign: "center" }}>
+                <p style={{ color: "#9A9A9A", fontSize: "0.72rem", marginBottom: 6 }}>معدل إلغاء العملاء</p>
+                <p style={{ color: "#F6465D", fontSize: "1.2rem", fontWeight: 800, fontFamily: monoStack }}>{growth.churnRate}%</p>
+              </div>
+            </div>
+
+            {growth.activeClientsSeries?.length > 0 && (
+              <>
+                <p style={{ fontWeight: 700, fontSize: "0.88rem", color: "#EAECEF", marginBottom: "0.9rem" }}>
+                  العملاء النشطون — آخر 30 يوم
+                </p>
+                <EarningsBarChart rows={growth.activeClientsSeries} color="#4FA8E0" valuePrefix="" />
+              </>
+            )}
+          </div>
         )}
       </div>
     </section>

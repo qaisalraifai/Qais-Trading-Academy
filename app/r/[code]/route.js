@@ -3,11 +3,13 @@ import crypto from "crypto";
 import { createAdminClient } from "@/lib/supabase-server";
 import { parseDevice } from "@/lib/activity-log";
 
-// GET /r/[code] — رابط التتبع اللي المسوّق يشاركه (بدل الرابط المباشر لـ /signup).
-// يسجل نقرة بجدول affiliate_clicks، يحط cookie فيها id النقرة، وبعدين يحوّل لصفحة التسجيل.
+// GET /r/[code]?c=slug — رابط التتبع اللي المسوّق يشاركه (بدل الرابط المباشر لـ /signup).
+// يسجل نقرة بجدول affiliate_clicks (مع ربطها بحملة مخصصة لو موجودة عبر ?c=)،
+// يحط cookie فيها id النقرة، وبعدين يحوّل لصفحة التسجيل.
 export async function GET(request, { params }) {
   const origin = new URL(request.url).origin;
   const code = (params?.code || "").trim();
+  const campaignSlug = new URL(request.url).searchParams.get("c")?.trim() || null;
 
   if (!code) {
     return NextResponse.redirect(new URL("/signup", origin));
@@ -38,6 +40,7 @@ export async function GET(request, { params }) {
     .insert({
       affiliate_id: affiliate.id,
       affiliate_code: code,
+      campaign_slug: campaignSlug,
       ip_hash: ipHash,
       user_agent: userAgent,
       device: parseDevice(userAgent),

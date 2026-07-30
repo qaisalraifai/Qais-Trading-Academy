@@ -13,23 +13,23 @@ export async function GET() {
   return NextResponse.json({ settings: data });
 }
 
-// POST /api/admin/affiliates/settings  { level1_percent, level2_percent, level3_percent, min_payout_usd, payout_cycle_days }
+// POST /api/admin/affiliates/settings  { signup_percent, renewal_percent, min_payout_usd, payout_cycle_days, leaderboard_show_names }
 export async function POST(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const body = await request.json();
-  const { level1_percent, level2_percent, level3_percent, min_payout_usd, payout_cycle_days } = body;
+  const { signup_percent, renewal_percent, min_payout_usd, payout_cycle_days, leaderboard_show_names } = body;
 
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("affiliate_settings")
     .update({
-      level1_percent: Number(level1_percent),
-      level2_percent: Number(level2_percent),
-      level3_percent: Number(level3_percent),
+      signup_percent: Number(signup_percent),
+      renewal_percent: Number(renewal_percent),
       min_payout_usd: Number(min_payout_usd),
       payout_cycle_days: Number(payout_cycle_days),
+      leaderboard_show_names: Boolean(leaderboard_show_names),
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);

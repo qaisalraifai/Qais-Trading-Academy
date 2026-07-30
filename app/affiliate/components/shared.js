@@ -43,6 +43,7 @@ export const SUB_STATUS_LABELS = {
 
 export const COMMISSION_STATUS_LABELS = {
   none: { label: "لا يوجد", color: "#6E7177" },
+  awaiting_lesson: { label: "بانتظار إكمال الدرس", color: "#4FA8E0" },
   pending: { label: "معلّقة", color: "#eab308" },
   ready: { label: "جاهزة للسحب", color: "#4CAF50" },
   paid: { label: "مدفوعة", color: GOLD },

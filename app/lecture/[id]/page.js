@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import PageShell from "@/app/components/layout/PageShell";
 import { getShellProfile } from "@/lib/shell-profile";
-import { getStudentBatchId } from "@/lib/student-batch";
+import LectureCompleteButton from "./LectureCompleteButton";
 
 export default async function LecturePage({ params }) {
   const supabase = createClient();
@@ -16,20 +16,15 @@ export default async function LecturePage({ params }) {
     .from("lectures").select("*").eq("id", params.id).single();
   if (!lecture) redirect("/lecture");
 
-  // ---------- المرحلة 6: هاي المحاضرة لازم تكون بدفعة الطالب المسجّل فيها ----------
-  // (الطالب أساسًا لازم يكون فتح صفحة الدورة قبل هيك وانسجّل بدفعتها — لو لسا
-  // ما اختار دفعة، منرجّعه لصفحة الدورة عشان يختار / ينسجل تلقائيًا أول)
-  const studentBatchId = await getStudentBatchId(user.id, lecture.course_id);
-  if (!studentBatchId) redirect(`/course/${lecture.course_id}`);
-  if (lecture.batch_id && lecture.batch_id !== studentBatchId) {
-    redirect(`/course/${lecture.course_id}`);
-  }
-  // ------------------------------------------------------------------------------
+  const { data: progress } = await supabase
+    .from("lecture_progress")
+    .select("completed")
+    .eq("user_id", user.id)
+    .eq("lecture_id", params.id)
+    .maybeSingle();
 
   const { data: lectures } = await supabase
     .from("lectures").select("id, title, order_index")
-    .eq("course_id", lecture.course_id)
-    .eq("batch_id", studentBatchId)
     .order("order_index", { ascending: true });
 
   return (
@@ -126,6 +121,8 @@ export default async function LecturePage({ params }) {
         <p style={{ color: "#444", fontSize: 12, marginTop: "0.75rem" }}>
           💡 اضغط على أيقونة التكبير ⛶ بالفيديو للعرض بشاشة كاملة
         </p>
+
+        <LectureCompleteButton lectureId={params.id} initialCompleted={!!progress?.completed} />
       </div>
     </div>
     </PageShell>

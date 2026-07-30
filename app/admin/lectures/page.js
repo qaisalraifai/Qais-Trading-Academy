@@ -8,7 +8,7 @@ import Link from "next/link";
 const emptyForm = {
   title: "", description: "", videoLink: "", video_provider: "youtube", order_index: "",
   course_id: "", chapter: "", chapter_order: "", duration_minutes: "",
-  difficulty: "", practice_type: "", batch_id: "",
+  difficulty: "", practice_type: "",
 };
 
 const VIDEO_PROVIDER_OPTIONS = [
@@ -38,8 +38,6 @@ export default function AdminLecturesPage() {
 
   const [lectures, setLectures] = useState([]);
   const [courses, setCourses] = useState([]);
-  const [courseBatches, setCourseBatches] = useState([]); // دفعات الكورس المختار بالفورم — المرحلة 6د
-  const [allBatches, setAllBatches] = useState([]); // كل الدفعات — لعرض اسم الدفعة بجدول المحاضرات
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -52,19 +50,7 @@ export default function AdminLecturesPage() {
     checkAdmin();
     fetchLectures();
     fetchCourses();
-    fetchAllBatches();
   }, []);
-
-  // -------------------- المرحلة 6د: جلب دفعات الكورس المختار بالفورم --------------------
-  useEffect(() => {
-    if (!form.course_id) { setCourseBatches([]); return; }
-    let cancelled = false;
-    fetch(`/api/admin/batches?course_id=${form.course_id}`)
-      .then((res) => res.json())
-      .then((data) => { if (!cancelled) setCourseBatches(data.batches || []); });
-    return () => { cancelled = true; };
-  }, [form.course_id]);
-  // ------------------------------------------------------------------------------------
 
   async function checkAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -88,12 +74,6 @@ export default function AdminLecturesPage() {
     if (res.ok) setCourses(data.courses || []);
   }
 
-  async function fetchAllBatches() {
-    const res = await fetch("/api/admin/batches");
-    const data = await res.json();
-    if (res.ok) setAllBatches(data.batches || []);
-  }
-
   function openAddForm() {
     setEditingId(null);
     setForm(emptyForm);
@@ -110,7 +90,6 @@ export default function AdminLecturesPage() {
       video_provider: lecture.video_provider || "youtube",
       order_index: lecture.order_index ?? "",
       course_id: lecture.course_id || "",
-      batch_id: lecture.batch_id || "",
       chapter: lecture.chapter || "",
       chapter_order: lecture.chapter_order ?? "",
       duration_minutes: lecture.duration_seconds ? Math.round(lecture.duration_seconds / 60 * 10) / 10 : "",
@@ -269,26 +248,6 @@ export default function AdminLecturesPage() {
             </div>
             <p style={s.hint}>ما في كورسات؟ دوسي "+ كورس جديد" وحطي اسمه، وبعدين اختاريه هون.</p>
 
-            {/* -------------------- المرحلة 6د: تخصيص المحاضرة لدفعة معينة (اختياري) -------------------- */}
-            <label style={s.label}>الدفعة (اختياري)</label>
-            <select
-              style={s.input}
-              value={form.batch_id}
-              onChange={(e) => setForm({ ...form, batch_id: e.target.value })}
-              disabled={!form.course_id}
-            >
-              <option value="">كل دفعات الكورس (مشتركة)</option>
-              {courseBatches.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
-            <p style={s.hint}>
-              {form.course_id
-                ? "اتركيها \"كل دفعات الكورس\" لو المحاضرة عامة، أو حددي دفعة عشان تظهر لطلابها بس."
-                : "اختاري الكورس أول عشان تقدري تحددي دفعة معينة."}
-            </p>
-            {/* ---------------------------------------------------------------------------------------- */}
-
             <label style={s.label}>الفصل (Chapter)</label>
             <input
               style={s.input}
@@ -368,7 +327,7 @@ export default function AdminLecturesPage() {
           <table style={s.table}>
             <thead>
               <tr>
-                {["الترتيب", "العنوان", "الكورس", "الدفعة", "الفصل", "المنصة", "الصعوبة", "إجراءات"].map((h, i) => (
+                {["الترتيب", "العنوان", "الكورس", "الفصل", "المنصة", "الصعوبة", "إجراءات"].map((h, i) => (
                   <th key={i} style={s.th}>{h}</th>
                 ))}
               </tr>
@@ -376,16 +335,12 @@ export default function AdminLecturesPage() {
             <tbody>
               {lectures.map((lecture) => {
                 const course = courses.find((c) => c.id === lecture.course_id);
-                const batch = allBatches.find((b) => b.id === lecture.batch_id);
                 const diff = DIFFICULTY_OPTIONS.find((d) => d.value === lecture.difficulty);
                 return (
                   <tr key={lecture.id} style={s.tr}>
                     <td style={s.td}><span style={s.mono}>{lecture.order_index}</span></td>
                     <td style={s.td}><span style={s.username}>{lecture.title}</span></td>
                     <td style={s.td}><span style={s.mono}>{course ? `${course.icon} ${course.title}` : "—"}</span></td>
-                    <td style={s.td}>
-                      {batch ? <span style={s.mono}>{batch.name}</span> : <span style={s.badgeShared}>مشتركة</span>}
-                    </td>
                     <td style={s.td}><span style={s.mono}>{lecture.chapter || "—"}</span></td>
                     <td style={s.td}>
                       <span style={s.mono}>
@@ -429,7 +384,6 @@ const s = {
   mono: { fontFamily: "'JetBrains Mono', monospace", color: "#555", fontSize: "0.82rem" },
   btnEdit: { backgroundColor: "#1a2a3a", color: "#5b9bd5", border: "1px solid #2a3a5a", padding: "0.4rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.82rem" },
   btnDanger: { backgroundColor: "#2a1a1a", color: "#ef5350", border: "1px solid #4a2a2a", padding: "0.4rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.82rem" },
-  badgeShared: { fontSize: "0.72rem", color: "#5b9bd5", backgroundColor: "#1a2a3a", padding: "0.2rem 0.55rem", borderRadius: "3px" },
   loading: { textAlign: "center", padding: "3rem", color: "#444" },
   overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "1rem" },
   formCard: { backgroundColor: "#0d0d0d", border: `1px solid ${gold}44`, borderRadius: "8px", padding: "2rem", width: "100%", maxWidth: "480px", display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "90vh", overflowY: "auto" },

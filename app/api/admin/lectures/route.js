@@ -27,7 +27,7 @@ export async function POST(request) {
   const body = await request.json();
   const {
     title, description, videoLink, video_provider, order_index,
-    course_id, chapter, chapter_order, duration_minutes, difficulty, practice_type, batch_id,
+    course_id, chapter, chapter_order, duration_minutes, difficulty, practice_type,
   } = body;
 
   const provider = video_provider === "drive" ? "drive" : "youtube";
@@ -63,7 +63,6 @@ export async function POST(request) {
       video_provider: provider,
       order_index: finalOrder,
       course_id: course_id || null,
-      batch_id: batch_id || null,
       chapter: chapter || null,
       chapter_order: chapter_order === "" || chapter_order === undefined ? null : Number(chapter_order),
       duration_seconds: duration_minutes ? Math.round(Number(duration_minutes) * 60) : null,

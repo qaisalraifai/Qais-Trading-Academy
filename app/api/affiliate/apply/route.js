@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase-server";
-import { generateAffiliateCode } from "@/lib/affiliate";
+import { generateAffiliateCode } from "@/lib/referral-commissions";
 import { logActivity } from "@/lib/activity-log";
 
 // POST /api/affiliate/apply — الطالب يطلب ينضم لبرنامج التسويق بالعمولة

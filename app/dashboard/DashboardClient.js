@@ -35,7 +35,7 @@ const SHORTCUTS = [
   { href: "/backtest", icon: "📊", label: "الصفقات", desc: "سجل وتابع صفقاتك بالتفصيل" },
   { href: "/reports", icon: "📋", label: "التقارير", desc: "تحليل أداءك الكامل كمتداول" },
   { href: "/trader-dna", icon: "🧬", label: "بصمتك كمتداول", desc: "نقاط قوتك وأخطاؤك المتكررة" },
-  { href: "/mlm", icon: "🌐", label: "الشبكة (Network)", desc: "شجرتك الثنائية وعمولاتك" },
+  { href: "/affiliate", icon: "🔗", label: "برنامج العمولة", desc: "رابط الإحالة، عمولاتك، وشرح النظام بالتفصيل" },
 ];
 
 function fmt(n) {

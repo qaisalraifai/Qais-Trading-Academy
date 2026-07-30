@@ -116,7 +116,7 @@ export default function ReferralsTable({ referrals = [] }) {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
-                      {["اسم المستخدم", "تاريخ التسجيل", "حالة الاشتراك", "قيمة العمولة", "حالة العمولة", "آخر نشاط"].map((h) => (
+                      {["اسم المستخدم", "تاريخ التسجيل", "حالة الاشتراك", "قيمة آخر دفعة", "تاريخ آخر دفعة", "قيمة العمولة", "حالة العمولة", "آخر نشاط"].map((h) => (
                         <th key={h} style={{ textAlign: "right", color: "#6E7177", fontSize: "0.72rem", padding: "0.6rem", borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap" }}>
                           {h}
                         </th>
@@ -133,6 +133,12 @@ export default function ReferralsTable({ referrals = [] }) {
                           <td style={tdStyle}>{fmtDate(r.joinedAt)}</td>
                           <td style={tdStyle}>
                             <span style={{ ...pill, color: sub.color, borderColor: sub.color + "55" }}>{sub.label}</span>
+                          </td>
+                          <td style={{ ...tdStyle, fontFamily: monoStack, color: "#B8B0A0" }}>
+                            {r.lastPaymentAmount != null ? `$${fmt(r.lastPaymentAmount)}` : "—"}
+                          </td>
+                          <td style={{ ...tdStyle, color: "#9A9A9A", fontSize: "0.75rem" }}>
+                            {r.lastPaymentDate ? fmtDate(r.lastPaymentDate) : "—"}
                           </td>
                           <td style={{ ...tdStyle, fontFamily: monoStack, color: GOLD }}>${fmt(r.commissionAmount)}</td>
                           <td style={tdStyle}>

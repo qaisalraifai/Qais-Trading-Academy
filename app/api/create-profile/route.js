@@ -1,8 +1,6 @@
 import { createAdminClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 import { createNotification } from "@/lib/notifications";
-import { placeNewMember } from "@/lib/binary-tree";
-import { logActivity } from "@/lib/activity-log";
 import { checkFraudBeforeSignup, recordSignupFingerprint } from "@/lib/fraud-checks";
 
 // ينشئ صف profiles مباشرة بعد supabase.auth.signUp()، باستخدام Service Role
@@ -43,12 +41,14 @@ export async function POST(request) {
   }
 
   // لازم نتحقق إنه كود الدعوة فعلاً يعود لمسوّق موجود ومفعّل — وما بنسمح
-  // إنه الشخص يحيل نفسه. هاد الراعي (sponsor) هو نفسه اللي رح يُستخدم
-  // بمحرك وضع الشجرة الثنائية تحت.
+  // إنه الشخص يحيل نفسه. referred_by هاد هو الراعي المباشر يلي بتتحدد عليه
+  // كل عمولات الإحالة (تسجيل/تجديد) بالنظام الجديد.
   //
-  // لو ما في كود دعوة إطلاقاً (سجّل مباشرة بدون رابط)، بنحطه تلقائياً تحت
-  // أول حساب أدمن (role="admin") كراعي افتراضي، بدل ما نرفض التسجيل.
-  let referredBy;
+  // لو ما في كود دعوة إطلاقاً (سجّل مباشرة بدون رابط)، referred_by بتضل
+  // فاضية — حساب عادي بدون راعي، وما حدا ياخد عمولة عنه. هاد مختلف عن
+  // النظام القديم يلي كان يفرض راعي افتراضي (كان لازم للشجرة الثنائية،
+  // ما إلها داعي هلأ بعد إلغائها).
+  let referredBy = null;
   if (ref) {
     const { data: affiliate } = await supabase
       .from("profiles")
@@ -65,58 +65,38 @@ export async function POST(request) {
 
     referredBy = affiliate.id;
   } else {
-    const { data: defaultSponsor } = await supabase
+    // لو فعلاً ما في ولا صف بجدول profiles إطلاقاً، هاد المستخدم بيصير
+    // تلقائياً هو الأدمن الجذر (تنصيب جديد كامل للمنصة).
+    const { count: totalProfiles } = await supabase
       .from("profiles")
-      .select("id")
-      .eq("role", "admin")
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .select("id", { count: "exact", head: true });
 
-    if (!defaultSponsor) {
-      // ما في ولا حساب أدمن لسا — إما هاد أول حساب عالإطلاق بقاعدة البيانات
-      // (تنصيب جديد كامل)، أو ببساطة محدا عمل حساب أدمن يدوياً لسا.
-      // بدل ما نرفض كل تسجيل جديد (قفلة كاملة بدون أي طريقة تفتحها من الواجهة)،
-      // منتحقق: لو فعلاً ما في ولا صف بجدول profiles إطلاقاً، هاد المستخدم
-      // بيصير تلقائياً هو "الأدمن الجذر" (root) للشجرة الثنائية.
-      const { count: totalProfiles } = await supabase
-        .from("profiles")
-        .select("id", { count: "exact", head: true });
+    if (!totalProfiles || totalProfiles === 0) {
+      const { error: rootProfileError } = await supabase.from("profiles").upsert(
+        {
+          id: userId,
+          username: username.trim(),
+          role: "admin",
+          subscription_status: "inactive",
+          referred_by: null,
+        },
+        { onConflict: "id", ignoreDuplicates: false }
+      );
 
-      if (!totalProfiles || totalProfiles === 0) {
-        const { error: rootProfileError } = await supabase.from("profiles").upsert(
-          {
-            id: userId,
-            username: username.trim(),
-            role: "admin",
-            subscription_status: "inactive",
-            referred_by: null,
-          },
-          { onConflict: "id", ignoreDuplicates: false }
-        );
-
-        if (rootProfileError) {
-          console.error("create-profile root admin upsert failed:", rootProfileError);
-          return NextResponse.json({ error: rootProfileError.message }, { status: 400 });
-        }
-
-        await recordSignupFingerprint(supabase, userId, {
-          deviceFingerprint,
-          ip: requestIp,
-          suspicious: false,
-          reason: null,
-        }).catch((e) => console.error("recordSignupFingerprint failed:", e.message));
-
-        return NextResponse.json({ success: true, isRootAdmin: true });
+      if (rootProfileError) {
+        console.error("create-profile root admin upsert failed:", rootProfileError);
+        return NextResponse.json({ error: rootProfileError.message }, { status: 400 });
       }
 
-      return NextResponse.json(
-        { error: "لا يوجد حساب أدمن مسجّل ليكون الراعي الافتراضي — تواصل مع الدعم" },
-        { status: 500 }
-      );
-    }
+      await recordSignupFingerprint(supabase, userId, {
+        deviceFingerprint,
+        ip: requestIp,
+        suspicious: false,
+        reason: null,
+      }).catch((e) => console.error("recordSignupFingerprint failed:", e.message));
 
-    referredBy = defaultSponsor.id;
+      return NextResponse.json({ success: true, isRootAdmin: true });
+    }
   }
 
   const { error: profileError } = await supabase
@@ -138,18 +118,6 @@ export async function POST(request) {
       { error: profileError.message },
       { status: 400 }
     );
-  }
-
-  // وضع العضو الجديد بالشجرة الثنائية تحت راعيه (أقرب مكان فاضٍ بشجرته)
-  try {
-    await placeNewMember(supabase, userId, referredBy);
-  } catch (e) {
-    console.error("placeNewMember failed:", e.message);
-    // ما منفشل التسجيل كله بسبب هيك — الحساب موجود ومربوط بالراعي (referred_by)،
-    // بس بدون مكان بالشجرة. لازم يتحل يدوياً من الأدمن أو retry لاحقاً.
-    await logActivity(userId, "note", "⚠️ فشل وضع العضو بالشجرة الثنائية", {
-      error: e.message,
-    }).catch(() => {});
   }
 
   await recordSignupFingerprint(supabase, userId, {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase-server";
+import { getAffiliateTierStatus, getCancelledClientsCount } from "@/lib/tiers";
 
 // GET /api/affiliate/me — بيانات وإحصائيات المسوّق الحالي (الشبكة + الأرباح + الدفعات + الإحالات + السلاسل الزمنية)
 export async function GET(request) {
@@ -26,14 +27,13 @@ export async function GET(request) {
 
   const { data: settingsRow } = await admin
     .from("affiliate_settings")
-    .select("level1_percent, level2_percent, level3_percent, min_payout_usd, payout_cycle_days")
+    .select("signup_percent, renewal_percent, min_payout_usd, payout_cycle_days")
     .eq("id", 1)
     .maybeSingle();
 
   const settings = {
-    level1Percent: Number(settingsRow?.level1_percent) || 0,
-    level2Percent: Number(settingsRow?.level2_percent) || 0,
-    level3Percent: Number(settingsRow?.level3_percent) || 0,
+    signupPercent: Number(settingsRow?.signup_percent) || 10,
+    renewalPercent: Number(settingsRow?.renewal_percent) || 8,
     minPayoutUsd: Number(settingsRow?.min_payout_usd) || 0,
     payoutCycleDays: Number(settingsRow?.payout_cycle_days) || 14,
   };
@@ -48,44 +48,36 @@ export async function GET(request) {
   };
 
   if (profile.affiliate_status !== "approved") {
-    return NextResponse.json({ ...base, network: { level1: 0, level2: 0, level3: 0 }, earnings: {}, payouts: [], referrals: [], series: { daily: [], weekly: [], monthly: [] } });
+    return NextResponse.json({ ...base, network: { direct: 0 }, earnings: {}, payouts: [], referrals: [], series: { daily: [], weekly: [], monthly: [] }, tier: null });
   }
 
-  // نبني الشبكة: مستوى 1 -> 2 -> 3
+  // الشبكة الآن مسطّحة: إحالات مباشرة بس (بدون مستوى 2 أو 3)
   const { data: level1Rows } = await admin
     .from("profiles")
     .select("id, username, subscription_status, created_at")
     .eq("referred_by", user.id)
     .order("created_at", { ascending: false });
-  const level1Ids = (level1Rows || []).map((r) => r.id);
 
-  let level2Rows = [];
-  if (level1Ids.length > 0) {
-    const { data } = await admin.from("profiles").select("id, username, subscription_status, created_at").in("referred_by", level1Ids);
-    level2Rows = data || [];
-  }
-  const level2Ids = level2Rows.map((r) => r.id);
-
-  let level3Rows = [];
-  if (level2Ids.length > 0) {
-    const { data } = await admin.from("profiles").select("id, username, subscription_status, created_at").in("referred_by", level2Ids);
-    level3Rows = data || [];
-  }
+  const [tierStatus, cancelledClientsCount] = await Promise.all([
+    getAffiliateTierStatus(admin, user.id),
+    getCancelledClientsCount(admin, user.id),
+  ]);
 
   // عمولات المسوّق (كل السجلات، لنبني منها الإجماليات + جدول الإحالات + السلاسل الزمنية)
   const { data: commissions } = await admin
     .from("commissions")
-    .select("level, status, commission_amount, created_at, source_user_id")
+    .select("type, status, commission_amount, created_at, source_user_id")
     .eq("affiliate_id", user.id);
 
-  const earnings = { totalEarned: 0, pending: 0, ready: 0, paid: 0, byLevel: { 1: 0, 2: 0, 3: 0 } };
+  const earnings = { totalEarned: 0, pending: 0, ready: 0, paid: 0, awaitingLesson: 0, byType: { signup: 0, renewal: 0 } };
   for (const c of commissions || []) {
     const amt = Number(c.commission_amount) || 0;
     earnings.totalEarned += amt;
     if (c.status === "pending") earnings.pending += amt;
     if (c.status === "ready") earnings.ready += amt;
     if (c.status === "paid") earnings.paid += amt;
-    if (c.level >= 1 && c.level <= 3) earnings.byLevel[c.level] += amt;
+    if (c.status === "awaiting_lesson") earnings.awaitingLesson += amt;
+    if (c.type === "signup" || c.type === "renewal") earnings.byType[c.type] += amt;
   }
 
   const { data: payouts } = await admin
@@ -109,11 +101,29 @@ export async function GET(request) {
   };
 
   // جدول الإحالات المباشرة (مستوى 1) — لكل واحد فيهم نجمع عمولاته الخاصة معك + آخر نشاط
+  const level1Ids = (level1Rows || []).map((r) => r.id);
+  const { data: paymentsRows } =
+    level1Ids.length > 0
+      ? await admin
+          .from("payments")
+          .select("user_id, amount, created_at")
+          .in("user_id", level1Ids)
+          .eq("status", "paid")
+          .order("created_at", { ascending: false })
+      : { data: [] };
+
+  const lastPaymentByUser = {};
+  for (const p of paymentsRows || []) {
+    if (!lastPaymentByUser[p.user_id]) {
+      lastPaymentByUser[p.user_id] = { amount: p.amount, date: p.created_at };
+    }
+  }
+
   const commissionsBySource = {};
   for (const c of commissions || []) {
     if (!c.source_user_id) continue;
     if (!commissionsBySource[c.source_user_id]) {
-      commissionsBySource[c.source_user_id] = { pending: 0, ready: 0, paid: 0, total: 0, lastActivity: null };
+      commissionsBySource[c.source_user_id] = { pending: 0, ready: 0, paid: 0, awaitingLesson: 0, total: 0, lastActivity: null };
     }
     const bucket = commissionsBySource[c.source_user_id];
     const amt = Number(c.commission_amount) || 0;
@@ -121,14 +131,16 @@ export async function GET(request) {
     if (c.status === "pending") bucket.pending += amt;
     if (c.status === "ready") bucket.ready += amt;
     if (c.status === "paid") bucket.paid += amt;
+    if (c.status === "awaiting_lesson") bucket.awaitingLesson += amt;
     if (!bucket.lastActivity || new Date(c.created_at) > new Date(bucket.lastActivity)) {
       bucket.lastActivity = c.created_at;
     }
   }
 
   const referrals = (level1Rows || []).map((r) => {
-    const bucket = commissionsBySource[r.id] || { pending: 0, ready: 0, paid: 0, total: 0, lastActivity: null };
+    const bucket = commissionsBySource[r.id] || { pending: 0, ready: 0, paid: 0, awaitingLesson: 0, total: 0, lastActivity: null };
     let commissionStatus = "none";
+    if (bucket.awaitingLesson > 0) commissionStatus = "awaiting_lesson";
     if (bucket.pending > 0) commissionStatus = "pending";
     else if (bucket.ready > 0) commissionStatus = "ready";
     else if (bucket.paid > 0) commissionStatus = "paid";
@@ -140,6 +152,8 @@ export async function GET(request) {
       commissionAmount: Math.round(bucket.total * 100) / 100,
       commissionStatus,
       lastActivity: bucket.lastActivity || r.created_at,
+      lastPaymentAmount: lastPaymentByUser[r.id]?.amount ?? null,
+      lastPaymentDate: lastPaymentByUser[r.id]?.date ?? null,
     };
   });
 
@@ -205,9 +219,17 @@ export async function GET(request) {
   return NextResponse.json({
     ...base,
     network: {
-      level1: level1Rows?.length || 0,
-      level2: level2Rows?.length || 0,
-      level3: level3Rows?.length || 0,
+      direct: level1Rows?.length || 0,
+      active: tierStatus.activeClientsCount,
+      cancelled: cancelledClientsCount,
+    },
+    tier: {
+      current: tierStatus.current,
+      next: tierStatus.next,
+      remaining: tierStatus.remaining,
+      progressPct: tierStatus.progressPct,
+      activeClientsCount: tierStatus.activeClientsCount,
+      allTiers: tierStatus.tiers,
     },
     earnings,
     payouts: payouts || [],

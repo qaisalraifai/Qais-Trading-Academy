@@ -2,9 +2,12 @@
 import { useEffect, useState } from "react";
 import NotificationBell from "../components/NotificationBell";
 import QuickSummary from "./components/QuickSummary";
-import HowItWorks from "./components/HowItWorks";
+import TierProgress from "./components/TierProgress";
 import ReferralLink from "./components/ReferralLink";
+import CampaignLinks from "./components/CampaignLinks";
+import AchievementsGrid from "./components/AchievementsGrid";
 import StatsCharts from "./components/StatsCharts";
+import Leaderboard from "./components/Leaderboard";
 import ReferralsTable from "./components/ReferralsTable";
 import PayoutsHistory from "./components/PayoutsHistory";
 import { FaqSection, TermsSection } from "./components/FaqTerms";
@@ -157,7 +160,7 @@ export default function AffiliateClient({ embedded = false }) {
           <h1 style={{ fontSize: "1.6rem", fontWeight: 800, fontFamily: displayStack, marginBottom: 12 }}>برنامج العمولة</h1>
           <p style={{ color: "#B8B0A0", fontSize: "0.9rem", lineHeight: 1.9, marginBottom: "1.4rem", maxWidth: 480, margin: "0 auto 1.4rem" }}>
             بصفتك طالب بالأكاديمية، فيك تنضم لبرنامج التسويق بالعمولة وتشارك رابطك الخاص مع أصدقائك ومتابعينك،
-            وتاخذ عمولة على كل اشتراك يصير عن طريقك — وحتى عمولة أقل على اللي بيجيبوهم هنن (شبكي 3 مستويات).
+            وتاخذ عمولة تسجيل لما ينضموا، وعمولة شهرية كل ما جدّدوا اشتراكهم — طول ما ضلوا مشتركين معك.
           </p>
           <button onClick={handleApply} disabled={applying} style={btnPrimary}>
             {applying ? "جاري الإرسال..." : "قدّم طلب الانضمام"}
@@ -188,9 +191,12 @@ export default function AffiliateClient({ embedded = false }) {
       {status === "approved" && (
         <>
           <QuickSummary data={data} onShare={handleShare} />
-          <HowItWorks settings={data.settings} />
+          <TierProgress tier={data.tier} />
           <ReferralLink link={link} clicks={data.funnel?.clicks} code={data.affiliateCode} />
+          <CampaignLinks affiliateCode={data.affiliateCode} siteOrigin={siteOrigin} />
+          <AchievementsGrid />
           <StatsCharts funnel={data.funnel} series={data.series} />
+          <Leaderboard />
           <ReferralsTable referrals={data.referrals} />
 
           {/* طريقة استلام العمولة */}

@@ -3,8 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { getWhop } from "@/lib/whop";
 import { kickMemberFromGuild } from "@/lib/discord";
 import { logActivity } from "@/lib/activity-log";
-import { recordCommissionsForPayment } from "@/lib/affiliate";
-import { processMlmCommissionsForPayment } from "@/lib/compensation-engine";
+import { recordSignupCommission, recordRenewalCommission } from "@/lib/referral-commissions";
+import { syncAffiliateTier } from "@/lib/tiers";
 
 // عميل Supabase بصلاحية Service Role — بيتكوّن بس أول ما يُستخدم فعلياً (lazy)،
 // مش وقت تحميل الملف. لو سويناه على مستوى الملف مباشرة، Next.js بمرحلة
@@ -45,19 +45,20 @@ async function recordPayment(userId, payment, isFirstPayment) {
     return;
   }
 
-  // النظام القديم (3 مستويات، نسبة من قيمة الدفعة) — يضل شغال متل ما هو
-  await recordCommissionsForPayment(getSupabaseAdmin(), {
-    paidUserId: userId,
-    paymentId: row?.id,
-    amount,
-  }).catch((e) => console.error("recordCommissionsForPayment error:", e));
-
-  // نظام الخطة الجديد (CV + شجرة ثنائية + Direct/Renewal Bonus) — مستقل تمامًا
-  await processMlmCommissionsForPayment(getSupabaseAdmin(), {
-    userId,
-    paymentId: row?.id,
-    isFirstPayment,
-  }).catch((e) => console.error("processMlmCommissionsForPayment error:", e));
+  // عمولة الإحالة المباشرة (بدون طبقات، بدون شجرة) — راجع lib/referral-commissions.js
+  if (isFirstPayment) {
+    await recordSignupCommission(getSupabaseAdmin(), {
+      referredUserId: userId,
+      paymentId: row?.id,
+      amount,
+    }).catch((e) => console.error("recordSignupCommission error:", e));
+  } else {
+    await recordRenewalCommission(getSupabaseAdmin(), {
+      referredUserId: userId,
+      paymentId: row?.id,
+      amount,
+    }).catch((e) => console.error("recordRenewalCommission error:", e));
+  }
 }
 
 function readUserId(metadata) {
@@ -175,7 +176,7 @@ export async function POST(request) {
           .from("profiles")
           .update({ subscription_status: "inactive" })
           .eq("whop_membership_id", membership.id)
-          .select("id, discord_id")
+          .select("id, discord_id, referred_by")
           .maybeSingle();
 
         if (error) {
@@ -184,6 +185,11 @@ export async function POST(request) {
           if (updated.discord_id) {
             await kickMemberFromGuild(updated.discord_id).catch((e) =>
               console.error("Discord kick error:", e)
+            );
+          }
+          if (updated.referred_by) {
+            await syncAffiliateTier(getSupabaseAdmin(), updated.referred_by).catch((e) =>
+              console.error("syncAffiliateTier failed:", e.message)
             );
           }
           await logActivity(updated.id, "note", "أصبحت العضوية غير فعّالة", {

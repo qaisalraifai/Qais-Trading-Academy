@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { GOLD, BORDER, card, sectionTitle, sectionEyebrow, monoStack, btnGhost, btnPrimary, transition } from "./shared";
+import QrCodeBox from "./QrCodeBox";
 
 export default function ReferralLink({ link, clicks, code }) {
   const [copyState, setCopyState] = useState("");
@@ -24,8 +25,6 @@ export default function ReferralLink({ link, clicks, code }) {
       copyLink();
     }
   }
-
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&color=D4AF37&bgcolor=0B0E11&data=${encodeURIComponent(link)}`;
 
   return (
     <section id="link" style={{ scrollMarginTop: 90, marginBottom: "1.4rem" }}>
@@ -107,29 +106,7 @@ export default function ReferralLink({ link, clicks, code }) {
             </div>
           </div>
 
-          {showQr && (
-            <div
-              style={{
-                flex: "0 0 auto",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "0.7rem",
-                background: "rgba(255,255,255,0.02)",
-                border: `1px solid ${BORDER}`,
-                borderRadius: 14,
-                padding: "1.1rem",
-                margin: "0 auto",
-              }}
-              className="qta-animate-in"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrUrl} alt="QR Code لرابط الإحالة" width={180} height={180} style={{ borderRadius: 8, display: "block" }} />
-              <a href={qrUrl} download="qta-referral-qr.png" style={{ ...btnGhost, textDecoration: "none", fontSize: "0.75rem" }}>
-                تنزيل الصورة
-              </a>
-            </div>
-          )}
+          {showQr && <QrCodeBox value={link} size={180} filename="qta-referral-qr.png" />}
         </div>
       </div>
     </section>

@@ -1,10 +1,8 @@
-import { createClient, createAdminClient } from "@/lib/supabase-server";
+import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import CourseClient from "./CourseClient";
-import BatchSelectClient from "./BatchSelectClient";
 import PageShell from "@/app/components/layout/PageShell";
 import { getShellProfile } from "@/lib/shell-profile";
-import { getStudentBatchId } from "@/lib/student-batch";
 
 export default async function CoursePage({ params }) {
   const supabase = createClient();
@@ -21,117 +19,12 @@ export default async function CoursePage({ params }) {
 
   if (!course) redirect("/lecture");
 
-  // ---------- المرحلة 5 (+ إعادة تصميم الدفعات المرحلة 2): اختيار الدفعة أول مرة يفتح فيها الطالب الدورة ----------
-  const admin = createAdminClient();
-
-  // هاي الدفعة اللي رح تفلتر عليها كل محتوى الدورة تحت (المرحلة 6). بتشتغل
-  // صح سواء كان تسجيل الطالب قديم (لكل دورة لحالها) أو جديد (بمستوى الدفعة).
-  let studentBatchId = await getStudentBatchId(user.id, params.id);
-
-  if (!studentBatchId) {
-    // فيه دفعات حقيقية (غير الافتراضية) مفتوحة للتسجيل وفيها هاي الدورة؟
-    // من مصدرين: دفعات قديمة (علاقة مباشرة course_id) ودفعات جديدة تحتوي
-    // عدة دورات (علاقة batch_courses).
-    const { data: legacyOpen } = await admin
-      .from("batches")
-      .select("*")
-      .eq("course_id", params.id)
-      .eq("is_default", false)
-      .eq("is_archived", false)
-      .eq("registration_status", "open");
-
-    const { data: courseLinks } = await admin
-      .from("batch_courses")
-      .select("batch_id")
-      .eq("course_id", params.id);
-
-    let newOpen = [];
-    const newBatchIds = (courseLinks || []).map((l) => l.batch_id);
-    if (newBatchIds.length > 0) {
-      const { data } = await admin
-        .from("batches")
-        .select("*")
-        .in("id", newBatchIds)
-        .eq("is_default", false)
-        .eq("is_archived", false)
-        .eq("registration_status", "open");
-      newOpen = data || [];
-    }
-
-    // دمج القائمتين بدون تكرار، مرتبة حسب تاريخ البداية
-    const openBatchesMap = new Map();
-    [...(legacyOpen || []), ...newOpen].forEach((b) => openBatchesMap.set(b.id, b));
-    const openBatches = [...openBatchesMap.values()].sort(
-      (a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0)
-    );
-
-    if (openBatches.length > 0) {
-      const batchIds = openBatches.map((b) => b.id);
-      const { data: enrollments } = await admin
-        .from("batch_enrollments")
-        .select("batch_id")
-        .in("batch_id", batchIds);
-
-      const counts = (enrollments || []).reduce((acc, r) => {
-        acc[r.batch_id] = (acc[r.batch_id] || 0) + 1;
-        return acc;
-      }, {});
-
-      const enrichedBatches = openBatches.map((b) => {
-        const taken = counts[b.id] || 0;
-        return {
-          id: b.id,
-          name: b.name,
-          start_date: b.start_date,
-          end_date: b.end_date,
-          seats_total: b.seats_total,
-          seats_remaining: b.seats_total == null ? null : Math.max(b.seats_total - taken, 0),
-          is_full: b.seats_total != null && taken >= b.seats_total,
-        };
-      });
-
-      return (
-        <PageShell {...shellProfile}>
-          <BatchSelectClient course={course} batches={enrichedBatches} />
-        </PageShell>
-      );
-    }
-
-    // ما في دفعات حقيقية مفتوحة لهاي الدورة لسا — نسجّل الطالب تلقائيًا
-    // بالدفعة الافتراضية بصمت (استمرارية بدون احتكاك)، لحد ما الأدمن ينشئ
-    // دفعات فعلية، عندها بتظهرله شاشة الاختيار فعليًا
-    const { data: defaultBatch } = await admin
-      .from("batches")
-      .select("id")
-      .eq("course_id", params.id)
-      .eq("is_default", true)
-      .maybeSingle();
-
-    if (defaultBatch) {
-      await admin.from("batch_enrollments").insert({
-        user_id: user.id,
-        batch_id: defaultBatch.id,
-        course_id: params.id,
-      });
-      studentBatchId = defaultBatch.id;
-    }
-  }
-  // ---------------------------------------------------------------------------
-
-  // ---------- المرحلة 6: عرض محتوى دفعة الطالب بس، مو كل محتوى الدورة ----------
-  let lecturesQuery = supabase
+  const { data: lectures } = await supabase
     .from("lectures")
     .select("*")
     .eq("course_id", params.id)
     .order("chapter_order", { ascending: true })
     .order("order_index", { ascending: true });
-
-  if (studentBatchId) {
-    lecturesQuery = lecturesQuery.eq("batch_id", studentBatchId);
-  }
-
-  const { data: lectures } = await lecturesQuery;
-  // ---------------------------------------------------------------------------
 
   const { data: progress } = await supabase
     .from("lecture_progress")
