@@ -5,6 +5,7 @@ import { kickMemberFromGuild } from "@/lib/discord";
 import { logActivity } from "@/lib/activity-log";
 import { recordSignupCommission, recordRenewalCommission } from "@/lib/referral-commissions";
 import { syncAffiliateTier } from "@/lib/tiers";
+import { markInvoicePaid } from "@/lib/payments/billing-service";
 
 // عميل Supabase بصلاحية Service Role — بيتكوّن بس أول ما يُستخدم فعلياً (lazy)،
 // مش وقت تحميل الملف. لو سويناه على مستوى الملف مباشرة، Next.js بمرحلة
@@ -88,7 +89,28 @@ export async function POST(request) {
       case "payment.succeeded": {
         const payment = event.data;
         const userId = readUserId(payment.metadata);
+        const invoiceId = payment.metadata?.invoice_id || null;
         const membershipId = payment.member?.id || payment.membership?.id || null;
+
+        // مسار البنية الموحّدة الجديدة (lib/payments): كل جلسة دفع مُنشأة عبر
+        // app/api/payments/checkout بتحمل invoice_id بالـ metadata. هاد بيمر
+        // عبر markInvoicePaid المركزية (بتحدّث جداول subscriptions/invoices
+        // الجديدة + profiles + العمولات + جدول payments القديم بخطوة وحدة).
+        // أي جلسة قديمة بدون invoice_id (مُنشأة قبل هاد التحديث) بتكمل
+        // بالمسار القديم تحت بدون أي تغيير بالسلوك.
+        if (invoiceId) {
+          try {
+            await markInvoicePaid({
+              invoiceId,
+              providerCode: "whop",
+              externalRef: membershipId || payment.id || null,
+              rawPayload: payment,
+            });
+          } catch (e) {
+            console.error("markInvoicePaid (whop) failed:", e.message);
+          }
+          break;
+        }
 
         if (userId) {
           const updateData = {

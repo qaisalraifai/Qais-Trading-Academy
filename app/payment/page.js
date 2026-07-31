@@ -1,18 +1,30 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { WhopCheckoutEmbed } from "@whop/checkout/react";
 import { createClient } from "@/lib/supabase-client";
 
 export default function PaymentPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [providers, setProviders] = useState([]);
+  const [loadingProviders, setLoadingProviders] = useState(true);
+
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [checkoutStarted, setCheckoutStarted] = useState(false);
   const [configError, setConfigError] = useState("");
-  const supabase = createClient();
 
-  async function handlePayment() {
-    setLoading(true);
+  useEffect(() => {
+    fetch("/api/payments/methods")
+      .then((r) => r.json())
+      .then((data) => setProviders(data.providers || []))
+      .finally(() => setLoadingProviders(false));
+  }, []);
+
+  async function handlePayment(providerCode) {
     setConfigError("");
 
     const {
@@ -20,21 +32,38 @@ export default function PaymentPage() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setLoading(false);
       window.location.href = "/login";
       return;
     }
 
+    // الدفع اليدوي بالكريبتو إله صفحة تدفق خاصة (اختيار شبكة + رفع إثبات)
+    if (providerCode === "manual_usdt") {
+      router.push("/payment/crypto");
+      return;
+    }
+
+    setLoading(true);
     try {
-      const res = await fetch("/api/checkout", { method: "POST" });
+      const res = await fetch("/api/payments/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerCode }),
+      });
       const data = await res.json();
-      if (!res.ok || !data.sessionId) {
+      if (!res.ok) {
         setConfigError(data.error || "تعذر بدء عملية الدفع.");
         setLoading(false);
         return;
       }
-      setSessionId(data.sessionId);
-      setCheckoutStarted(true);
+
+      if (data.checkout?.mode === "embed") {
+        setSessionId(data.checkout.sessionId);
+        setCheckoutStarted(true);
+      } else if (data.checkout?.mode === "redirect" && data.checkout?.url) {
+        window.location.href = data.checkout.url;
+      } else {
+        setConfigError("رد غير متوقع من مزوّد الدفع.");
+      }
     } catch (e) {
       setConfigError("تعذر الاتصال بخادم الدفع: " + (e?.message || "خطأ غير معروف"));
     } finally {
@@ -68,9 +97,23 @@ export default function PaymentPage() {
         </ul>
 
         {!checkoutStarted && (
-          <button style={styles.btn} onClick={handlePayment} disabled={loading}>
-            {loading ? "جاري التحويل..." : "ادفع $300 وابدأ الاشتراك"}
-          </button>
+          <div style={styles.providerList}>
+            {loadingProviders ? (
+              <p style={styles.note}>...جاري تحميل وسائل الدفع</p>
+            ) : providers.length === 0 ? (
+              <p style={styles.configError}>⚠️ ما في وسائل دفع مفعّلة حالياً — تواصل مع الدعم.</p>
+            ) : (
+              providers.map((p) => (
+                <button key={p.code} style={styles.providerBtn} onClick={() => handlePayment(p.code)} disabled={loading}>
+                  <div style={styles.providerBtnMain}>
+                    <span>{providerIcon(p.type)} {p.name}</span>
+                    {loading && <span style={{ fontSize: "0.75rem" }}>جاري التحويل...</span>}
+                  </div>
+                  {p.description && <div style={styles.providerBtnDesc}>{p.description}</div>}
+                </button>
+              ))
+            )}
+          </div>
         )}
 
         {configError && (
@@ -91,18 +134,24 @@ export default function PaymentPage() {
         )}
 
         <p style={styles.note}>
-          بعد $300 رسوم التسجيل، بينسحب تلقائياً <strong style={{ color: "#D4AF37" }}>$100 كل شهر</strong> من نفس البطاقة لحد ما تلغي الاشتراك.
+          بعد $300 رسوم التسجيل، بينسحب تلقائياً <strong style={{ color: "#D4AF37" }}>$100 كل شهر</strong> (بالبطاقة) أو بيتوجب عليك التجديد يدوياً كل شهر (بالكريبتو) لحد ما تلغي الاشتراك.
         </p>
         <p style={styles.taxNote}>
           الأسعار المعروضة قابلة لتطبيق ضرائب حسب موقعك — بيتم احتسابها وعرضها بوضوح قبل إتمام الدفع.
         </p>
       </div>
 
-      <p style={styles.footer}>🔒 جميع المدفوعات مؤمنة عبر Whop · يمكنك الإلغاء بأي وقت</p>
+      <p style={styles.footer}>🔒 جميع المدفوعات مؤمنة · يمكنك الإلغاء بأي وقت</p>
 
       <Link href="/admin" style={styles.adminLink}>⚙</Link>
     </div>
   );
+}
+
+function providerIcon(type) {
+  if (type === "card") return "💳";
+  if (type === "crypto_manual" || type === "crypto_auto") return "🪙";
+  return "💰";
 }
 
 const gold = "#D4AF37";
@@ -157,18 +206,22 @@ const styles = {
   features: { listStyle: "none", padding: 0, width: "100%", display: "flex", flexDirection: "column", gap: "0.75rem" },
   feature: { color: "#888", fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "0.5rem" },
   check: { color: gold, fontSize: "0.6rem" },
-  btn: {
+  providerList: { width: "100%", display: "flex", flexDirection: "column", gap: "0.75rem" },
+  providerBtn: {
     width: "100%",
-    padding: "1rem",
-    borderRadius: "2px",
-    border: "none",
-    backgroundColor: gold,
-    color: "#000",
-    fontSize: "1rem",
+    padding: "0.9rem 1rem",
+    borderRadius: "6px",
+    border: `1px solid ${gold}55`,
+    backgroundColor: "transparent",
+    color: "#fff",
+    fontSize: "0.95rem",
     fontWeight: "bold",
     cursor: "pointer",
-    letterSpacing: "1px",
+    textAlign: "right",
+    fontFamily: "inherit",
   },
+  providerBtnMain: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+  providerBtnDesc: { color: "#777", fontSize: "0.75rem", fontWeight: "normal", marginTop: "0.3rem" },
   checkoutContainer: {
     width: "100%",
     minHeight: "450px",
