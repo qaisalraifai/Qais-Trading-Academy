@@ -1,130 +1,129 @@
-import { createClient } from "@/lib/supabase-server";
+import { createClient, createAdminClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import CourseClient from "./CourseClient";
+import BatchSelectClient from "./BatchSelectClient";
 import PageShell from "@/app/components/layout/PageShell";
 import { getShellProfile } from "@/lib/shell-profile";
-import LectureCompleteButton from "./LectureCompleteButton";
+import { getStudentBatchId } from "@/lib/student-batch";
 
-export default async function LecturePage({ params }) {
+export default async function CoursePage({ params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const shellProfile = await getShellProfile(supabase, user);
 
-  const { data: lecture } = await supabase
-    .from("lectures").select("*").eq("id", params.id).single();
-  if (!lecture) redirect("/lecture");
+  const { data: course } = await supabase
+    .from("courses")
+    .select("*")
+    .eq("id", params.id)
+    .single();
+
+  if (!course) redirect("/lecture");
+
+  // أول مرة الطالب يفتح هاي الدورة، لازم يختار دفعته قبل ما يشوف أي محتوى —
+  // هاد كان معمول من قبل (BatchSelectClient + getStudentBatchId) بس ما كان
+  // مربوط فعليًا بالصفحة. صلّحناها هون.
+  const batchId = await getStudentBatchId(user.id, params.id);
+
+  if (!batchId) {
+    const admin = createAdminClient();
+    const { data: links } = await admin.from("batch_courses").select("batch_id").eq("course_id", params.id);
+    const batchIds = [...new Set((links || []).map((l) => l.batch_id))];
+
+    let availableBatches = [];
+    if (batchIds.length) {
+      const { data: batches } = await admin
+        .from("batches")
+        .select("*")
+        .in("id", batchIds)
+        .eq("is_archived", false)
+        .eq("registration_status", "open")
+        .order("start_date", { ascending: true });
+
+      availableBatches = await Promise.all(
+        (batches || []).map(async (b) => {
+          const { count } = await admin
+            .from("batch_enrollments")
+            .select("id", { count: "exact", head: true })
+            .eq("batch_id", b.id);
+          const seatsTaken = count || 0;
+          return {
+            ...b,
+            seats_remaining: b.seats_total == null ? null : Math.max(b.seats_total - seatsTaken, 0),
+            is_full: b.seats_total != null && seatsTaken >= b.seats_total,
+          };
+        })
+      );
+    }
+
+    return (
+      <PageShell {...shellProfile}>
+        <BatchSelectClient course={course} batches={availableBatches} />
+      </PageShell>
+    );
+  }
+
+  // تحديد batch_course_id الخاص بهاي الدورة داخل دفعة الطالب، عشان نفلتر
+  // المحاضرات: حصرية لهاي الدفعة + مشتركة لكل دفعات الدورة (نفس منطق لوحة الإدارة)
+  const { data: batchCourseLink } = await supabase
+    .from("batch_courses")
+    .select("id")
+    .eq("batch_id", batchId)
+    .eq("course_id", params.id)
+    .maybeSingle();
+  const batchCourseId = batchCourseLink?.id || null;
+
+  let lectureQuery = supabase
+    .from("lectures")
+    .select("*")
+    .eq("course_id", params.id);
+
+  lectureQuery = batchCourseId
+    ? lectureQuery.or(`batch_course_id.is.null,batch_course_id.eq.${batchCourseId}`)
+    : lectureQuery.is("batch_course_id", null);
+
+  const { data: lectures } = await lectureQuery
+    .order("chapter_order", { ascending: true })
+    .order("order_index", { ascending: true });
 
   const { data: progress } = await supabase
     .from("lecture_progress")
-    .select("completed")
-    .eq("user_id", user.id)
-    .eq("lecture_id", params.id)
-    .maybeSingle();
+    .select("*")
+    .eq("user_id", user.id);
 
-  const { data: lectures } = await supabase
-    .from("lectures").select("id, title, order_index")
-    .order("order_index", { ascending: true });
+  const progressMap = {};
+  (progress || []).forEach((p) => {
+    progressMap[p.lecture_id] = p;
+  });
+
+  // تجميع المحاضرات حسب الفصل مع الحفاظ على ترتيب ظهورها
+  const chaptersOrder = [];
+  const chaptersMap = new Map();
+
+  (lectures || []).forEach((lecture) => {
+    const chapterName = lecture.chapter || "عام";
+    if (!chaptersMap.has(chapterName)) {
+      chaptersMap.set(chapterName, {
+        name: chapterName,
+        order: lecture.chapter_order ?? 999,
+        lectures: [],
+      });
+      chaptersOrder.push(chapterName);
+    }
+    chaptersMap.get(chapterName).lectures.push({
+      ...lecture,
+      progress: progressMap[lecture.id] || null,
+    });
+  });
+
+  const chapters = chaptersOrder
+    .map((name) => chaptersMap.get(name))
+    .sort((a, b) => a.order - b.order);
 
   return (
     <PageShell {...shellProfile}>
-    <div style={{
-      minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%)",
-      color: "#fff",
-      fontFamily: "'Segoe UI', sans-serif",
-      direction: "rtl",
-      display: "flex",
-    }}>
-      {/* Sidebar */}
-      <div style={{
-        width: 280,
-        background: "linear-gradient(180deg, #111108 0%, #181A20 100%)",
-        borderLeft: "1px solid #D4AF3722",
-        padding: "1.5rem 1rem",
-        display: "flex", flexDirection: "column", gap: "0.5rem",
-        overflowY: "auto",
-      }}>
-        {/* Logo + Title */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "1px solid #1a1a0a" }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #D4AF37", overflow: "hidden", flexShrink: 0 }}>
-            <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          </div>
-          <div>
-            <p style={{ color: "#D4AF37", fontSize: 9, letterSpacing: 2, margin: 0 }}>QTA</p>
-            <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, margin: 0 }}>المحاضرات</p>
-          </div>
-        </div>
-
-        <Link href="/lecture" style={{ color: "#D4AF37", textDecoration: "none", fontSize: 12, marginBottom: "0.5rem", display: "block" }}>
-          ← قائمة المحاضرات
-        </Link>
-
-        {lectures?.map((l, index) => (
-          <Link key={l.id} href={`/lecture/${l.id}`} style={{ textDecoration: "none" }}>
-            <div style={{
-              padding: "0.75rem 1rem",
-              borderRadius: 10,
-              background: l.id === params.id ? "linear-gradient(135deg, #D4AF3722, #9C7A2211)" : "transparent",
-              border: l.id === params.id ? "1px solid #D4AF3744" : "1px solid transparent",
-              color: l.id === params.id ? "#D4AF37" : "#666",
-              fontSize: 13,
-              cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 10,
-            }}>
-              <div style={{
-                width: 26, height: 26, borderRadius: "50%",
-                background: l.id === params.id ? "linear-gradient(135deg, #D4AF37, #9C7A22)" : "#1a1a0a",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 700, color: l.id === params.id ? "#000" : "#555",
-                flexShrink: 0,
-              }}>
-                {index + 1}
-              </div>
-              {l.title}
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* Video Area */}
-      <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column" }}>
-        {/* Header */}
-        <div style={{ marginBottom: "1.5rem" }}>
-          <p style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 3, margin: "0 0 8px" }}>QAIS TRADING ACADEMY</p>
-          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>{lecture.title}</h2>
-          {lecture.description && (
-            <p style={{ color: "#666", margin: "8px 0 0", fontSize: 14 }}>{lecture.description}</p>
-          )}
-        </div>
-
-        {/* Video */}
-        <div style={{
-          position: "relative", width: "100%", paddingTop: "56.25%",
-          background: "#000", borderRadius: 16, overflow: "hidden",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-          border: "1px solid #D4AF3722",
-        }}>
-          <iframe
-            src={
-              lecture.video_provider === "drive"
-                ? `https://drive.google.com/file/d/${lecture.youtube_video_id}/preview`
-                : `https://www.youtube.com/embed/${lecture.youtube_video_id}?rel=0&modestbranding=1`
-            }
-            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-          />
-        </div>
-
-        <p style={{ color: "#444", fontSize: 12, marginTop: "0.75rem" }}>
-          💡 اضغط على أيقونة التكبير ⛶ بالفيديو للعرض بشاشة كاملة
-        </p>
-
-        <LectureCompleteButton lectureId={params.id} initialCompleted={!!progress?.completed} />
-      </div>
-    </div>
+      <CourseClient course={course} chapters={chapters} />
     </PageShell>
   );
 }
