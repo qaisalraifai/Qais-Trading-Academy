@@ -16,6 +16,7 @@ import UserDrawer from "./components/UserDrawer";
 import ActivityFeed from "./components/ActivityFeed";
 import QuickActions from "./components/QuickActions";
 import AffiliatesPanel from "./components/AffiliatesPanel";
+import PaymentsPanel from "./components/PaymentsPanel";
 
 export default function AdminPage() {
   const supabase = createClient();
@@ -34,6 +35,7 @@ export default function AdminPage() {
 
   const [drawerUserId, setDrawerUserId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [mainTab, setMainTab] = useState("overview"); // "overview" | "payments"
 
   useEffect(() => {
     checkAdmin();
@@ -241,12 +243,25 @@ export default function AdminPage() {
           <h1 style={s.headerTitle}>Qais Trading Academy</h1>
         </div>
         <div style={{ display: "flex", gap: "0.75rem" }}>
-          <Link href="/admin/payments" style={{ ...s.btn, textDecoration: "none" }}>💳 إدارة المدفوعات</Link>
+          <button onClick={() => setMainTab("overview")} style={{ ...s.btn, ...(mainTab === "overview" ? s.btnGold : {}) }}>
+            📊 نظرة عامة
+          </button>
+          <button onClick={() => setMainTab("payments")} style={{ ...s.btn, ...(mainTab === "payments" ? s.btnGold : {}) }}>
+            💳 المدفوعات
+          </button>
           <Link href="/admin/lectures" style={{ ...s.btn, textDecoration: "none" }}>📚 إدارة المحاضرات</Link>
           <button onClick={() => { supabase.auth.signOut(); router.push("/login"); }} style={s.btn}>تسجيل الخروج</button>
         </div>
       </header>
 
+      {mainTab === "payments" && (
+        <div style={s.section}>
+          <PaymentsPanel />
+        </div>
+      )}
+
+      {mainTab === "overview" && (
+      <>
       {/* الإحصائيات */}
       <div style={{ ...s.section, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
         <StatCard icon="👥" label="إجمالي المستخدمين" value={cards?.totalUsers ?? 0} color={gold} sparkline={trend} sub="آخر 30 يوم" />
@@ -316,6 +331,8 @@ export default function AdminPage() {
           onExtendUser={handleExtendUser}
           onDiscountUser={handleDiscountUser}
         />
+      )}
+      </>
       )}
 
       {toast && (
