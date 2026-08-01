@@ -1,0 +1,28 @@
+# ============================================================================
+# livekit.yaml — إعداد سيرفر LiveKit Community Edition
+# راجعي التوثيق الرسمي لكل الخيارات: https://docs.livekit.io/home/self-hosting/deployment/
+# ============================================================================
+
+port: 7880
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 60000
+  # لازم تحطي هون IP السيرفر العام (Public IP) عشان WebRTC يشتغل صح خلف NAT
+  use_external_ip: true
+
+# مفتاح/سر الـ API — استخدمي مولّد عشوائي قوي، ونفس القيم لازم تنحط بمتغيرات
+# البيئة LIVEKIT_API_KEY / LIVEKIT_API_SECRET بمشروع Next.js
+keys:
+  APIkeyChangeMe: secretChangeMeToARandom32PlusCharString
+
+# نقطة الاستقبال اللي منصتك بتستقبل فيها حدث انتهاء التسجيل تلقائيًا
+webhook:
+  api_key: APIkeyChangeMe
+  urls:
+    - https://your-domain.com/api/live/webhook
+
+# (اختياري) تسجيل أحداث أعمق للمراقبة
+logging:
+  level: info

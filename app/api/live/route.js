@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase-server";
+import { getAccessibleActiveSessions } from "@/lib/live-access";
 
-// GET /api/live — أي مستخدم مسجل دخول بيشوف إذا في بث مباشر نشط هلأ
+// GET /api/live — كل البثوث النشطة هلأ اللي المستخدم مسموحله ينضم إلها
+// (طالب: بس بثوث دفعاته — أدمن/مدرب دفعة: بثوث دفعته أو كل البثوث لو أدمن عام)
 export async function GET() {
   const supabase = createClient();
   const {
@@ -10,14 +12,6 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 
   const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("live_sessions")
-    .select("id, room_name, title, started_at")
-    .eq("is_active", true)
-    .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ session: data || null });
+  const sessions = await getAccessibleActiveSessions(admin, user.id);
+  return NextResponse.json({ sessions });
 }

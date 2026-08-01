@@ -1,0 +1,60 @@
+# ============================================================================
+# LiveKit Community Edition — Self-Hosted Stack
+# يشغّل: LiveKit Server (SFU) + Redis (لازم للتوسّع/التنسيق) + Egress (التسجيل)
+#
+# التشغيل:
+#   docker compose -f docker-compose.livekit.yml up -d
+#
+# قبل التشغيل، عدّلي:
+#   1) livekit.yaml       -> API key/secret + إعداد الـ webhook
+#   2) متغيرات .env       -> راجعي LIVEKIT_SETUP.md
+# ============================================================================
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - livekit_redis_data:/data
+    networks:
+      - livekit-net
+
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7880:7880/tcp"   # HTTP / WebSocket (API + الاتصال بالمتصفح)
+      - "7881:7881/tcp"   # RTC TCP fallback
+      - "50000-60000:50000-60000/udp" # مدى منافذ WebRTC (UDP) — لازم تكون مفتوحة بجدار الحماية
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      - redis
+    networks:
+      - livekit-net
+
+  egress:
+    image: livekit/egress:latest
+    restart: unless-stopped
+    environment:
+      - EGRESS_CONFIG_FILE=/etc/egress.yaml
+    volumes:
+      - ./egress.yaml:/etc/egress.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    cap_add:
+      - CAP_SYS_ADMIN # لازم لـ Chrome headless جوا الـ Egress
+    shm_size: 2gb
+    depends_on:
+      - redis
+      - livekit
+    networks:
+      - livekit-net
+
+networks:
+  livekit-net:
+    driver: bridge
+
+volumes:
+  livekit_redis_data:

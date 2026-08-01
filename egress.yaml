@@ -1,0 +1,13 @@
+# ============================================================================
+# egress.yaml — إعداد خدمة التسجيل (Egress) التابعة لـ LiveKit
+# ============================================================================
+
+api_key: APIkeyChangeMe
+api_secret: secretChangeMeToARandom32PlusCharString
+ws_url: ws://livekit:7880
+
+redis:
+  address: redis:6379
+
+# مجلد مؤقت أثناء المعالجة قبل الرفع للتخزين النهائي (S3-compatible)
+log_level: info

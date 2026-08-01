@@ -1,225 +1,142 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { Radio, Loader2, Video, Users } from "lucide-react";
+import Link from "next/link";
+import LiveRoom from "./live/LiveRoom";
 
-const GOLD = "#D4AF37";
+function fmtTime(iso) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" });
+}
 
-// 🚧 اللايف موقوف مؤقتًا لحين ما نجهز بنية تحتية جديدة (بدون قيود مدة).
-// لإعادة تفعيله لاحقًا: خليها false.
-const LIVE_COMING_SOON = true;
-
-function ComingSoonCard() {
+function SessionCard({ sess, onJoin, joining }) {
+  const courseTitle = sess.batches?.courses?.title;
   return (
-    <div style={s.wrap}>
-      <div style={{ ...s.emptyCard, padding: "4rem 1.5rem" }}>
-        <div style={{ fontSize: 42, marginBottom: "1rem" }}>🚧</div>
-        <h2 style={{ margin: "0 0 0.5rem", fontSize: 20, fontWeight: 800, color: "#fff" }}>
-          البث المباشر — قريبًا
-        </h2>
-        <p style={{ color: "#888", fontSize: 14, margin: 0 }}>
-          عم نشتغل على تطوير خاصية البث المباشر حاليًا، وح تكون متاحة قريبًا بإذن الله. تابعونا!
+    <div className="bg-surface-1 border border-line rounded-2xl p-5 flex items-center justify-between gap-4 flex-wrap">
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="flex items-center gap-1 bg-loss text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+            <Radio size={10} /> مباشر الآن
+          </span>
+          <h3 className="text-text-primary font-bold text-base">{sess.title}</h3>
+        </div>
+        <p className="text-text-secondary text-xs">
+          {sess.batches?.name && `دفعة: ${sess.batches.name}`} {courseTitle && `— ${courseTitle}`}
         </p>
+        <p className="text-text-muted text-[11px] mt-0.5">بدأ الساعة {fmtTime(sess.started_at)}</p>
       </div>
+      <button
+        onClick={() => onJoin(sess)}
+        disabled={joining}
+        className="bg-gold-300 text-ink font-bold rounded-lg px-5 py-2.5 text-sm hover:bg-gold-200 disabled:opacity-60 inline-flex items-center gap-2 shrink-0"
+      >
+        {joining ? <Loader2 size={16} className="animate-spin" /> : <Video size={16} />}
+        {joining ? "جاري الانضمام..." : "انضمام"}
+      </button>
     </div>
   );
 }
 
-function LiveViewActual({ isAdmin = false, username = "" }) {
-  const [session, setSession] = useState(undefined); // undefined = جاري التحميل، null = ما في بث
-  const [starting, setStarting] = useState(false);
-  const [ending, setEnding] = useState(false);
+export default function LiveView({ isAdmin = false, username = "" }) {
+  const [sessions, setSessions] = useState(undefined); // undefined = تحميل
+  const [joining, setJoining] = useState(null); // id الجلسة يلي عم تنضم إلها
   const [error, setError] = useState("");
-  const [joined, setJoined] = useState(false);
+  const [tokenInfo, setTokenInfo] = useState(null);
+  const [activeSession, setActiveSession] = useState(null);
 
-  const jitsiContainerRef = useRef(null);
-  const jitsiApiRef = useRef(null);
-
-  async function fetchSession() {
+  async function fetchSessions() {
     try {
       const res = await fetch("/api/live");
       const data = await res.json();
-      if (res.ok) setSession(data.session || null);
+      if (res.ok) setSessions(data.sessions || []);
     } catch (e) {
-      // تجاهل أخطاء الشبكة العابرة بالـ polling
+      // تجاهل أخطاء الشبكة العابرة أثناء الـ polling
     }
   }
 
   useEffect(() => {
-    fetchSession();
-    const interval = setInterval(fetchSession, 15000);
+    fetchSessions();
+    const interval = setInterval(() => {
+      if (!tokenInfo) fetchSessions(); // ما نعمل polling وإحنا جوا البث
+    }, 15000);
     return () => clearInterval(interval);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenInfo]);
 
-  // نظّفي غرفة Jitsi لو الجلسة انتهت أو المستخدم غادر
-  useEffect(() => {
-    if (!session && jitsiApiRef.current) {
-      jitsiApiRef.current.dispose();
-      jitsiApiRef.current = null;
-      setJoined(false);
-    }
-  }, [session]);
-
-  useEffect(() => {
-    return () => {
-      if (jitsiApiRef.current) {
-        jitsiApiRef.current.dispose();
-        jitsiApiRef.current = null;
-      }
-    };
-  }, []);
-
-  function loadJitsiScript() {
-    return new Promise((resolve, reject) => {
-      if (window.JitsiMeetExternalAPI) return resolve();
-      const script = document.createElement("script");
-      script.src = "https://meet.jit.si/external_api.js";
-      script.async = true;
-      script.onload = resolve;
-      script.onerror = () => reject(new Error("تعذّر تحميل خدمة البث"));
-      document.body.appendChild(script);
-    });
-  }
-
-  async function handleJoin() {
-    if (!session) return;
+  async function handleJoin(sess) {
+    setJoining(sess.id);
     setError("");
     try {
-      await loadJitsiScript();
-      setJoined(true); // بيخلي الـ div الحاوي يترندر، وبعدين الـ useEffect تحت رح تبني غرفة Jitsi فيه
+      const res = await fetch("/api/live/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sess.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "تعذّر الانضمام للبث");
+      setActiveSession(sess);
+      setTokenInfo(data);
     } catch (e) {
-      setError(e.message || "صار خطأ بالانضمام للبث");
+      setError(e.message);
+    } finally {
+      setJoining(null);
     }
   }
 
-  // نبني غرفة Jitsi بس بعد ما الـ div الحاوي (jitsiContainerRef) صار موجود فعليًا بالـ DOM
-  useEffect(() => {
-    if (!joined || !session || jitsiApiRef.current) return;
-    if (!jitsiContainerRef.current) return;
-
-    jitsiApiRef.current = new window.JitsiMeetExternalAPI("meet.jit.si", {
-      roomName: session.room_name,
-      parentNode: jitsiContainerRef.current,
-      width: "100%",
-      height: "100%",
-      userInfo: { displayName: username || "طالب" },
-      configOverwrite: {
-        prejoinPageEnabled: true,
-        disableDeepLinking: true,
-        disableTileView: true,
-      },
-      interfaceConfigOverwrite: {
-        SHOW_JITSI_WATERMARK: false,
-        SHOW_WATERMARK_FOR_GUESTS: false,
-        MOBILE_APP_PROMO: false,
-      },
-    });
-  }, [joined, session, username]);
-
-  async function handleStart() {
-    setStarting(true);
-    setError("");
-    const res = await fetch("/api/admin/live", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "بث مباشر — Qais Trading Academy" }),
-    });
-    const data = await res.json();
-    setStarting(false);
-    if (!res.ok) {
-      setError(data.error || "صار خطأ ببدء البث");
-      return;
-    }
-    setSession(data.session);
-  }
-
-  async function handleEnd() {
-    if (!confirm("متأكد إنك بدك تنهي البث المباشر؟")) return;
-    setEnding(true);
-    setError("");
-    const res = await fetch("/api/admin/live", { method: "DELETE" });
-    const data = await res.json();
-    setEnding(false);
-    if (!res.ok) {
-      setError(data.error || "صار خطأ بإنهاء البث");
-      return;
-    }
-    if (jitsiApiRef.current) {
-      jitsiApiRef.current.dispose();
-      jitsiApiRef.current = null;
-    }
-    setJoined(false);
-    setSession(null);
+  function handleLeave() {
+    setTokenInfo(null);
+    setActiveSession(null);
+    fetchSessions();
   }
 
   return (
-    <div style={s.wrap}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1rem" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#fff" }}>🔴 البث المباشر</h2>
-          <p style={{ margin: "6px 0 0", color: "#777", fontSize: 13 }}>
-            {session ? "في بث مباشر عم يصير هلأ — انضمي وشاركي بالنقاش." : "ما في بث مباشر هلأ."}
+    <div className="bg-surface-0 border border-line rounded-2xl p-4 sm:p-6">
+      {!tokenInfo && (
+        <div className="mb-4">
+          <h2 className="text-text-primary font-bold text-xl flex items-center gap-2">
+            <Radio size={20} className="text-loss" /> البث المباشر
+          </h2>
+          <p className="text-text-secondary text-sm mt-1">
+            {sessions?.length
+              ? "في بث مباشر عم يصير هلأ لدفعتك — انضمي وشاركي بالنقاش."
+              : "ما في بث مباشر هلأ."}
           </p>
-        </div>
-
-        {isAdmin && (
-          <div style={{ display: "flex", gap: "0.6rem" }}>
-            {!session ? (
-              <button onClick={handleStart} disabled={starting} style={s.startBtn}>
-                {starting ? "جاري البدء..." : "🔴 ابدأ بث مباشر"}
-              </button>
-            ) : (
-              <button onClick={handleEnd} disabled={ending} style={s.endBtn}>
-                {ending ? "جاري الإنهاء..." : "⏹ إنهاء البث"}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {error && <p style={{ color: "#ef5350", fontSize: 13, marginBottom: "0.75rem" }}>{error}</p>}
-
-      {session === undefined ? (
-        <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>...جاري التحقق</div>
-      ) : !session ? (
-        <div style={s.emptyCard}>
-          <div style={{ fontSize: 36, marginBottom: "0.75rem" }}>📡</div>
-          <p style={{ color: "#888", fontSize: 14, margin: 0 }}>
-            {isAdmin ? 'دوسي "🔴 ابدأ بث مباشر" فوق حتى تفتحي غرفة البث للطلاب.' : "بترجع تشوفي هون تلقائيًا لما تبدأ الأكاديمية بث مباشر."}
-          </p>
-        </div>
-      ) : !joined ? (
-        <div style={s.emptyCard}>
-          <div style={{ fontSize: 36, marginBottom: "0.75rem" }}>🎥</div>
-          <p style={{ color: "#ccc", fontSize: 15, fontWeight: 700, margin: "0 0 0.5rem" }}>البث جاهز — دوسي انضمام</p>
-          <p style={{ color: "#777", fontSize: 13, margin: "0 0 1.25rem" }}>
-            رح يفتحلك متصفحك إذن الوصول للمايك والكاميرا (اختياري) — فيك تنضمي بس بالصوت أو حتى بدون مايك/كاميرا وتتفرجي وتكتبي بالشات.
-          </p>
-          <button onClick={handleJoin} style={s.joinBtn}>🎥 انضمام للبث</button>
-        </div>
-      ) : (
-        <div style={{ position: "relative", width: "100%", height: "70vh", minHeight: 420, background: "#000", borderRadius: 14, overflow: "hidden", border: `1px solid ${GOLD}33` }}>
-          <div ref={jitsiContainerRef} style={{ width: "100%", height: "100%" }} />
         </div>
       )}
 
-      {session && !joined && (
-        <p style={{ color: "#555", fontSize: 12, marginTop: "1rem" }}>
-          💡 مشاركة الشاشة: أي طالب فيه يشاركها من شريط الأدوات، بس كمضيفة فيكي توقفي مشاركة أي حدا مباشرة من قائمة المشاركين جوا البث.
-        </p>
+      {error && !tokenInfo && <p className="text-loss text-sm mb-3">{error}</p>}
+
+      {sessions === undefined ? (
+        <div className="text-text-muted text-sm py-12 text-center flex items-center justify-center gap-2">
+          <Loader2 size={16} className="animate-spin" /> جاري التحقق...
+        </div>
+      ) : tokenInfo && activeSession ? (
+        <LiveRoom session={{ ...activeSession, recording_status: activeSession.recording_status }} tokenInfo={tokenInfo} onLeave={handleLeave} />
+      ) : sessions.length === 0 ? (
+        <div className="text-center py-14 border border-dashed border-line rounded-xl">
+          <div className="text-3xl mb-2">📡</div>
+          <p className="text-text-secondary text-sm">
+            {isAdmin
+              ? "ما في بث نشط. ابدئي بث من صفحة الدفعة (تبويب «البث والحضور»)."
+              : "بترجعي تشوفي هون تلقائيًا لما تبدأ الأكاديمية بث مباشر لدفعتك."}
+          </p>
+          {isAdmin && (
+            <Link href="/admin/batches" className="inline-flex items-center gap-1.5 text-gold-300 text-sm font-bold mt-3 hover:underline">
+              <Users size={14} /> الذهاب لإدارة الدفعات
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sessions.map((sess) => (
+            <SessionCard key={sess.id} sess={sess} onJoin={handleJoin} joining={joining === sess.id} />
+          ))}
+          <p className="text-text-muted text-[11px] mt-2">
+            رح يفتحلك المتصفح إذن الوصول للكاميرا والمايك — فيكِ تنضمي وتتفرجي بس بدون تفعيلهم.
+          </p>
+        </div>
       )}
     </div>
   );
 }
-
-export default function LiveView(props) {
-  if (LIVE_COMING_SOON) return <ComingSoonCard />;
-  return <LiveViewActual {...props} />;
-}
-
-const s = {
-  wrap: { background: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: 16, padding: "1.5rem" },
-  startBtn: { backgroundColor: "#F6465D", color: "#fff", border: "none", padding: "0.65rem 1.3rem", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700 },
-  endBtn: { backgroundColor: "#181A20", color: "#F6465D", border: "1px solid #F6465D55", padding: "0.65rem 1.3rem", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700 },
-  joinBtn: { backgroundColor: GOLD, color: "#000", border: "none", padding: "0.75rem 1.6rem", borderRadius: 8, cursor: "pointer", fontSize: 14, fontWeight: 800 },
-  emptyCard: { textAlign: "center", padding: "3.5rem 1.5rem", border: "1px dashed #222", borderRadius: 12 },
-};
