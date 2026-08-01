@@ -21,30 +21,36 @@ export default function ParticipantTile({ room, participant, big = false, source
   const videoRef = useRef(null);
   const audioRef = useRef(null);
 
-  useEffect(() => {
-    const rp = participant.isLocal ? room.current?.localParticipant : room.current?.getParticipantByIdentity?.(participant.identity);
-    if (!rp) return;
+  const rp = participant.isLocal
+    ? room.current?.localParticipant
+    : room.current?.getParticipantByIdentity?.(participant.identity);
 
-    const pub = rp.getTrackPublication?.(source);
-    const track = pub?.track;
-    if (track && videoRef.current) {
-      track.attach(videoRef.current);
-    }
-    return () => {
-      track?.detach();
-    };
-  });
-
-  useEffect(() => {
-    if (participant.isLocal) return; // ما منشغّل صوت المستخدم لحاله
-    const rp = room.current?.getParticipantByIdentity?.(participant.identity);
-    const pub = rp?.getTrackPublication?.(Track.Source.Microphone);
-    const track = pub?.track;
-    if (track && audioRef.current) track.attach(audioRef.current);
-    return () => track?.detach();
-  });
-
+  const videoTrack = rp?.getTrackPublication?.(source)?.track || null;
+  const audioTrack = !participant.isLocal ? rp?.getTrackPublication?.(Track.Source.Microphone)?.track || null : null;
   const hasVideo = source === Track.Source.Camera ? participant.isCameraEnabled : participant.isScreenShareEnabled;
+
+  // نربط الفيديو بس لما المسار (track) يتغيّر فعليًا أو لما عنصر الفيديو يترسم/يتشال
+  // من الصفحة (تشغيل/تعطيل الكاميرا) — مش بكل مرة الشاشة تتحدّث عمومًا
+  useEffect(() => {
+    const el = videoRef.current;
+    if (videoTrack && el) videoTrack.attach(el);
+    return () => {
+      if (el) videoTrack?.detach(el); // فك الربط عن هالعنصر بالذات بس، مش عن كل العناصر
+    };
+  }, [videoTrack, hasVideo]);
+
+  // نفس الشي بالصوت — وهاد بالتحديد كان سبب الصدى وتكرار الصوت: كان الصوت
+  // ينربط بعنصر <audio> جديد من غير ما ينفك من القديم صح، فصار الصوت يتشغّل
+  // من مكانين بنفس الوقت (خصوصًا وقت الحكي، لأنه وقتها الشاشة بتتحدّث كتير)
+  useEffect(() => {
+    if (participant.isLocal) return;
+    const el = audioRef.current;
+    if (audioTrack && el) audioTrack.attach(el);
+    return () => {
+      if (el) audioTrack?.detach(el);
+    };
+  }, [audioTrack, participant.isLocal]);
+
   const isSpeaking = participant.isSpeaking && source === Track.Source.Camera;
 
   return (

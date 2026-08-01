@@ -6,6 +6,8 @@ import { Room, RoomEvent, Track, ConnectionState } from "livekit-client";
 const CHAT_TOPIC = "chat";
 const REACTION_TOPIC = "reaction";
 const ANNOUNCEMENT_TOPIC = "announcement";
+const SCREEN_REQUEST_TOPIC = "screen_share_request";
+const SCREEN_APPROVAL_TOPIC = "screen_share_approval";
 
 function participantSnapshot(p) {
   let meta = {};
@@ -71,6 +73,7 @@ export function useLiveKitRoom({ wsUrl, token, onChatMessage, onAnnouncement }) 
       dynacast: true,
       publishDefaults: { simulcast: true, videoCodec: "vp9" },
       videoCaptureDefaults: { resolution: { width: 1280, height: 720 } },
+      audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       reconnectPolicy: { nextRetryDelayInMs: (ctx) => Math.min(1000 * 2 ** ctx.retryCount, 10000) },
     });
     roomRef.current = room;
@@ -217,6 +220,52 @@ export function useLiveKitRoom({ wsUrl, token, onChatMessage, onAnnouncement }) 
     return () => room.off(RoomEvent.DataReceived, handler);
   }, []);
 
+  // طلب مشاركة شاشة (الطلاب) — بيبعت طلب لكل الحضور (المضيف/المشرف رح يشوفوه ويوافقوا)
+  const requestScreenShare = useCallback((name) => {
+    const room = roomRef.current;
+    if (!room) return;
+    const data = { identity: room.localParticipant.identity, name: name || room.localParticipant.identity, at: Date.now() };
+    const payload = new TextEncoder().encode(JSON.stringify(data));
+    room.localParticipant.publishData(payload, { reliable: true, topic: SCREEN_REQUEST_TOPIC });
+  }, []);
+
+  // رد المضيف/المشرف على طلب مشاركة شاشة — بيوصل لكل الحضور، وكل جهاز بيتحقق إذا الرد إله
+  const respondScreenShareRequest = useCallback((identity, approved) => {
+    const room = roomRef.current;
+    if (!room) return;
+    const data = { identity, approved };
+    const payload = new TextEncoder().encode(JSON.stringify(data));
+    room.localParticipant.publishData(payload, { reliable: true, topic: SCREEN_APPROVAL_TOPIC });
+  }, []);
+
+  const onScreenShareRequest = useCallback((cb) => {
+    const room = roomRef.current;
+    if (!room) return () => {};
+    const handler = (payload, participant, kind, topic) => {
+      if (topic !== SCREEN_REQUEST_TOPIC) return;
+      try {
+        const data = JSON.parse(new TextDecoder().decode(payload));
+        cb(data);
+      } catch (_) {}
+    };
+    room.on(RoomEvent.DataReceived, handler);
+    return () => room.off(RoomEvent.DataReceived, handler);
+  }, []);
+
+  const onScreenShareApproval = useCallback((cb) => {
+    const room = roomRef.current;
+    if (!room) return () => {};
+    const handler = (payload, participant, kind, topic) => {
+      if (topic !== SCREEN_APPROVAL_TOPIC) return;
+      try {
+        const data = JSON.parse(new TextDecoder().decode(payload));
+        cb(data);
+      } catch (_) {}
+    };
+    room.on(RoomEvent.DataReceived, handler);
+    return () => room.off(RoomEvent.DataReceived, handler);
+  }, []);
+
   const toggleHandRaise = useCallback(async () => {
     const room = roomRef.current;
     if (!room) return;
@@ -246,6 +295,10 @@ export function useLiveKitRoom({ wsUrl, token, onChatMessage, onAnnouncement }) 
     sendReaction,
     sendAnnouncement,
     onReaction,
+    requestScreenShare,
+    respondScreenShareRequest,
+    onScreenShareRequest,
+    onScreenShareApproval,
     toggleHandRaise,
     refreshParticipants,
   };

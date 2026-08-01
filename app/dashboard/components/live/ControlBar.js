@@ -18,6 +18,9 @@ import {
   FileText,
   HelpCircle,
   BarChart3,
+  Maximize,
+  Minimize,
+  Loader2,
 } from "lucide-react";
 
 const REACTIONS = ["👍", "❤️", "😂", "👏", "🔥", "🎉"];
@@ -46,6 +49,7 @@ export default function ControlBar({
   micEnabled,
   camEnabled,
   screenEnabled,
+  screenRequestPending,
   handRaised,
   isHost,
   isModerator,
@@ -63,6 +67,8 @@ export default function ControlBar({
   onTogglePolls,
   onToggleRecording,
   onLeave,
+  isFullscreen,
+  onToggleFullscreen,
 }) {
   return (
     <div className="flex items-center justify-between gap-2 bg-surface-1/95 backdrop-blur border border-line rounded-2xl px-3 py-2 flex-wrap">
@@ -73,8 +79,19 @@ export default function ControlBar({
         <CtrlBtn active={camEnabled} onClick={onToggleCam} label={camEnabled ? "إيقاف الكاميرا" : "تفعيل الكاميرا"}>
           {camEnabled ? <Video size={18} /> : <VideoOff size={18} />}
         </CtrlBtn>
-        <CtrlBtn active={screenEnabled} onClick={onToggleScreen} label={screenEnabled ? "إيقاف المشاركة" : "مشاركة الشاشة"}>
-          {screenEnabled ? <ScreenShareOff size={18} /> : <ScreenShare size={18} />}
+        <CtrlBtn
+          active={screenEnabled}
+          disabled={screenRequestPending}
+          onClick={onToggleScreen}
+          label={screenRequestPending ? "بانتظار الموافقة" : screenEnabled ? "إيقاف المشاركة" : "مشاركة الشاشة"}
+        >
+          {screenRequestPending ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : screenEnabled ? (
+            <ScreenShareOff size={18} />
+          ) : (
+            <ScreenShare size={18} />
+          )}
         </CtrlBtn>
         <CtrlBtn active={handRaised} onClick={onToggleHand} label={handRaised ? "خفض اليد" : "رفع اليد"}>
           <Hand size={18} />
@@ -96,6 +113,12 @@ export default function ControlBar({
         <CtrlBtn onClick={onOpenSettings} label="الإعدادات">
           <Settings size={18} />
         </CtrlBtn>
+
+        {onToggleFullscreen && (
+          <CtrlBtn active={isFullscreen} onClick={onToggleFullscreen} label={isFullscreen ? "تصغير" : "ملء الشاشة"}>
+            {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+          </CtrlBtn>
+        )}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">

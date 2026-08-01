@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Users, Radio } from "lucide-react";
 import { Track } from "livekit-client";
 import { useLiveKitRoom } from "./useLiveKitRoom";
@@ -27,6 +27,12 @@ export default function LiveRoom({ session, tokenInfo, onLeave }) {
   const [polls, setPolls] = useState([]);
   const [files, setFiles] = useState([]);
   const [recordingStatus, setRecordingStatus] = useState(session.recording_status || "idle");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const roomContainerRef = useRef(null);
+  const [screenRequests, setScreenRequests] = useState([]); // طلبات الطلاب لمشاركة الشاشة (تظهر للمضيف/المشرف)
+  const [screenRequestPending, setScreenRequestPending] = useState(false); // طلبي أنا (كطالب) لسا بانتظار الرد
+  const [screenApproved, setScreenApproved] = useState(false); // انوافق عليّ قبل هيك بنفس الجلسة
+  const [screenNotice, setScreenNotice] = useState(""); // رسالة عابرة (مثلاً: تم رفض الطلب)
 
   const isHost = tokenInfo.role === "host";
   const isModerator = tokenInfo.role === "moderator";
@@ -52,6 +58,10 @@ export default function LiveRoom({ session, tokenInfo, onLeave }) {
     sendReaction,
     sendAnnouncement,
     onReaction,
+    requestScreenShare,
+    respondScreenShareRequest,
+    onScreenShareRequest,
+    onScreenShareApproval,
     toggleHandRaise,
   } = useLiveKitRoom({
     wsUrl: tokenInfo.wsUrl,
@@ -94,6 +104,53 @@ export default function LiveRoom({ session, tokenInfo, onLeave }) {
     });
     return off;
   }, [onReaction]);
+
+  // طلبات مشاركة الشاشة — يشوفها المضيف/المشرف بس، ويقدر يوافق أو يرفض
+  useEffect(() => {
+    if (!canModerate) return;
+    const off = onScreenShareRequest((data) => {
+      setScreenRequests((prev) => (prev.some((r) => r.identity === data.identity) ? prev : [...prev, data]));
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canModerate, onScreenShareRequest]);
+
+  // رد الموافقة/الرفض — يوصل لكل الحضور، كل جهاز بيتحقق إذا الرد إله هو تحديدًا
+  useEffect(() => {
+    const off = onScreenShareApproval((data) => {
+      const myIdentity = room.current?.localParticipant?.identity;
+      if (!myIdentity || data.identity !== myIdentity) return;
+      setScreenRequestPending(false);
+      if (data.approved) {
+        setScreenApproved(true);
+        setScreenNotice("تمت الموافقة على مشاركة شاشتك — اضغطي «مشاركة الشاشة» مرة ثانية");
+      } else {
+        setScreenNotice("تم رفض طلب مشاركة الشاشة");
+      }
+      setTimeout(() => setScreenNotice(""), 6000);
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onScreenShareApproval]);
+
+  function handleScreenShareClick() {
+    if (screenEnabled) {
+      toggleScreenShare(); // إيقاف المشاركة مسموح دايمًا
+      return;
+    }
+    if (canModerate || screenApproved) {
+      toggleScreenShare();
+      return;
+    }
+    if (screenRequestPending) return;
+    setScreenRequestPending(true);
+    requestScreenShare(tokenInfo.username);
+  }
+
+  function handleRespondScreenRequest(identity, approved) {
+    respondScreenShareRequest(identity, approved);
+    setScreenRequests((prev) => prev.filter((r) => r.identity !== identity));
+  }
 
   // تحميل تاريخ الدردشة عند الدخول
   useEffect(() => {
@@ -234,8 +291,34 @@ export default function LiveRoom({ session, tokenInfo, onLeave }) {
 
   const togglePanel = (name) => setPanel((cur) => (cur === name ? null : name));
 
+  // ملء الشاشة — يشمل الفيديو + شريط التحكم + اللوحات الجانبية
+  useEffect(() => {
+    function onFsChange() {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    }
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  async function handleToggleFullscreen() {
+    try {
+      if (!document.fullscreenElement) {
+        await roomContainerRef.current?.requestFullscreen?.();
+      } else {
+        await document.exitFullscreen?.();
+      }
+    } catch (e) {
+      // بعض المتصفحات (مثلاً iOS Safari) ما بتدعم الـ Fullscreen API — تجاهل بهدوء
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-3 w-full h-[85vh] min-h-[560px]">
+    <div
+      ref={roomContainerRef}
+      className={`flex flex-col gap-3 w-full h-[85vh] min-h-[560px] ${
+        isFullscreen ? "bg-surface-0 p-3 overflow-y-auto" : ""
+      }`}
+    >
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1 bg-loss text-white text-xs font-bold px-2 py-1 rounded-md">
@@ -255,6 +338,39 @@ export default function LiveRoom({ session, tokenInfo, onLeave }) {
       </div>
 
       {error && <p className="text-loss text-xs">{error}</p>}
+
+      {screenNotice && (
+        <p className={`text-xs font-semibold ${screenApproved ? "text-profit" : "text-loss"}`}>{screenNotice}</p>
+      )}
+
+      {canModerate && screenRequests.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {screenRequests.map((r) => (
+            <div
+              key={r.identity}
+              className="flex items-center justify-between gap-2 bg-gold-300/10 border border-gold-300/40 rounded-lg px-3 py-2"
+            >
+              <span className="text-text-primary text-xs font-semibold">
+                {r.name} بدها/بده يشارك شاشته — توافقي؟
+              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => handleRespondScreenRequest(r.identity, true)}
+                  className="bg-gold-300 text-ink font-bold rounded-md px-3 py-1 text-[11px] hover:bg-gold-200"
+                >
+                  موافقة
+                </button>
+                <button
+                  onClick={() => handleRespondScreenRequest(r.identity, false)}
+                  className="bg-surface-2 border border-line text-text-secondary font-bold rounded-md px-3 py-1 text-[11px] hover:bg-surface-3"
+                >
+                  رفض
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {isHost && (
         <div className="flex items-center gap-2">
@@ -283,13 +399,14 @@ export default function LiveRoom({ session, tokenInfo, onLeave }) {
             micEnabled={micEnabled}
             camEnabled={camEnabled}
             screenEnabled={screenEnabled}
+            screenRequestPending={screenRequestPending}
             handRaised={handRaised}
             isHost={isHost}
             isModerator={isModerator}
             isRecording={recordingStatus === "recording"}
             onToggleMic={toggleMic}
             onToggleCam={toggleCam}
-            onToggleScreen={toggleScreenShare}
+            onToggleScreen={handleScreenShareClick}
             onToggleHand={toggleHandRaise}
             onReact={sendReaction}
             onOpenSettings={() => setShowSettings(true)}
@@ -300,6 +417,8 @@ export default function LiveRoom({ session, tokenInfo, onLeave }) {
             onTogglePolls={() => togglePanel("polls")}
             onToggleRecording={handleToggleRecording}
             onLeave={onLeave}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreen}
           />
         </div>
 
