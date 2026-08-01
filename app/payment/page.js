@@ -42,6 +42,13 @@ export default function PaymentPage() {
       return;
     }
 
+    // الكريبتو التلقائي (NOWPayments) إله صفحة تدفق داخل موقعنا بالكامل
+    // (اختيار عملة → عنوان دفع + QR → تفعيل فوري)، بدون تحويل لصفحة خارجية
+    if (providerCode === "nowpayments") {
+      router.push("/payment/crypto-auto");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/payments/checkout", {

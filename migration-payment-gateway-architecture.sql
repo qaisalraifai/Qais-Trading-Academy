@@ -42,7 +42,7 @@ ON CONFLICT (code) DO NOTHING;
 -- Placeholder فقط — مش مفعّل، وما إله مفاتيح API حالياً. بينفعّل لاحقاً بمجرد
 -- ما يتحدد المزوّد المناسب (الحساب بالأردن) وبتم ربط مفاتيحه الحقيقية.
 INSERT INTO payment_providers (code, name, type, enabled, supports_auto_renew, sort_order, description)
-VALUES ('nowpayments', 'كريبتو تلقائي (قريباً)', 'crypto_auto', false, false, 30, 'دفع كريبتو تلقائي مع تفعيل فوري — قيد الإعداد')
+VALUES ('nowpayments', 'كريبتو تلقائي', 'crypto_auto', false, false, 30, 'اختر عملة، ادفع من محفظتك، وبيتفعّل اشتراكك تلقائياً خلال دقائق')
 ON CONFLICT (code) DO NOTHING;
 
 -- ---------------------------------------------------------------------
