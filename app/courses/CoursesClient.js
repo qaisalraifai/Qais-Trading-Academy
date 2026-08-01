@@ -65,6 +65,7 @@ function LecturesView({
   courses, allLectures, progressMap, loading,
   selectedCourseId, onSelectCourse, onBackToCourses,
   selectedLecture, onSelect, onBack,
+  batchInfo, onEnrollBatch, enrolling,
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -124,7 +125,10 @@ function LecturesView({
 
   const chapters = useMemo(() => {
     if (!selectedCourseId) return [];
-    const courseLectures = allLectures.filter((l) => l.course_id === selectedCourseId);
+    const resolvedBatchCourseId = batchInfo?.batch_course_id ?? null;
+    const courseLectures = allLectures.filter(
+      (l) => l.course_id === selectedCourseId && (l.batch_course_id === null || l.batch_course_id === resolvedBatchCourseId)
+    );
     const order = [];
     const map = new Map();
     courseLectures.forEach((lecture) => {
@@ -136,7 +140,7 @@ function LecturesView({
       map.get(chapterName).lectures.push({ ...lecture, progress: progressMap[lecture.id] || null });
     });
     return order.map((name) => map.get(name)).sort((a, b) => a.order - b.order);
-  }, [selectedCourseId, allLectures, progressMap]);
+  }, [selectedCourseId, allLectures, progressMap, batchInfo]);
 
   const filteredChapters = useMemo(() => {
     return chapters
@@ -208,6 +212,60 @@ function LecturesView({
 
   /* المستوى 2: فصول ومحاضرات كورس معيّن */
   if (selectedCourse) {
+    // بوابة اختيار الدفعة — أول مرة الطالب يفتح هاي الدورة ولسا ما اختار دفعته
+    if (batchInfo?.needs_selection) {
+      return (
+        <div style={{ ...cardStyle, padding: "1.3rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 26 }}>{selectedCourse.icon}</div>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{selectedCourse.title}</h2>
+            </div>
+            <div onClick={onBackToCourses} style={{ color: GOLD, fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
+              ← البرامج التعليمية
+            </div>
+          </div>
+          <p style={{ color: "#999", fontSize: 14, marginBottom: "1.2rem" }}>
+            اختاري الدفعة اللي بدك تنضمي فيها لهاي الدورة قبل ما تبلشي بالمحاضرات:
+          </p>
+          {batchInfo.batches.length === 0 ? (
+            <p style={{ color: "#666", fontSize: 14 }}>ما في دفعات متاحة للتسجيل هلأ لهاي الدورة. تواصلي معنا للمساعدة.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              {batchInfo.batches.map((b) => (
+                <div
+                  key={b.id}
+                  style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    background: "#181A20", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem 1.1rem",
+                  }}
+                >
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{b.name}</p>
+                    <p style={{ margin: "0.3rem 0 0", color: "#666", fontSize: 12 }}>
+                      {b.start_date || "—"} → {b.end_date || "—"}
+                      {b.seats_total != null && ` — ${b.seats_remaining} مقعد متاح`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => onEnrollBatch(b.id)}
+                    disabled={enrolling || b.is_full}
+                    style={{
+                      background: b.is_full ? "#333" : GOLD, color: b.is_full ? "#888" : "#000",
+                      border: "none", borderRadius: 8, padding: "0.55rem 1.1rem", fontWeight: 700,
+                      fontSize: 13, cursor: b.is_full ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {b.is_full ? "مكتملة" : enrolling ? "جاري التسجيل..." : "انضمي"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div style={{ ...cardStyle, padding: "1.3rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
@@ -592,6 +650,8 @@ export default function CoursesClient({ username, currentStreak = 0 }) {
   const [lecturesLoading, setLecturesLoading] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState(null);
   const [selectedLecture, setSelectedLecture] = useState(null);
+  const [batchInfoByCourse, setBatchInfoByCourse] = useState({}); // courseId -> { needs_selection, batch_id, batch_course_id, batches }
+  const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -630,6 +690,43 @@ export default function CoursesClient({ username, currentStreak = 0 }) {
     };
   }, []);
 
+  // -------------------- بوابة اختيار الدفعة --------------------
+  // أول مرة الطالب يختار دورة، بنتحقق هل عنده دفعة محلولة لهاي الدورة أصلًا.
+  // لو لأ، بنرجّع له قائمة الدفعات المتاحة عشان يختار (شوف
+  // app/api/batches/for-course/[courseId]/route.js).
+  async function resolveBatchForCourse(courseId) {
+    const res = await fetch(`/api/batches/for-course/${courseId}`);
+    const data = await res.json();
+    if (res.ok) {
+      setBatchInfoByCourse((prev) => ({ ...prev, [courseId]: data }));
+    }
+  }
+
+  function handleSelectCourse(courseId) {
+    setSelectedCourseId(courseId);
+    if (courseId && !batchInfoByCourse[courseId]) {
+      resolveBatchForCourse(courseId);
+    }
+  }
+
+  async function handleEnrollBatch(batchId) {
+    if (!selectedCourseId) return;
+    setEnrolling(true);
+    const res = await fetch("/api/batches/enroll", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ course_id: selectedCourseId, batch_id: batchId }),
+    });
+    const data = await res.json();
+    setEnrolling(false);
+    if (!res.ok) {
+      alert(data.error || "صار خطأ بالتسجيل، حاولي مرة تانية");
+      return;
+    }
+    await resolveBatchForCourse(selectedCourseId);
+  }
+  // ---------------------------------------------------------------
+
   return (
     <LecturesView
       username={username}
@@ -639,11 +736,14 @@ export default function CoursesClient({ username, currentStreak = 0 }) {
       progressMap={progressMap}
       loading={lecturesLoading}
       selectedCourseId={selectedCourseId}
-      onSelectCourse={setSelectedCourseId}
+      onSelectCourse={handleSelectCourse}
       onBackToCourses={() => setSelectedCourseId(null)}
       selectedLecture={selectedLecture}
       onSelect={setSelectedLecture}
       onBack={() => setSelectedLecture(null)}
+      batchInfo={selectedCourseId ? batchInfoByCourse[selectedCourseId] : null}
+      onEnrollBatch={handleEnrollBatch}
+      enrolling={enrolling}
     />
   );
 }
