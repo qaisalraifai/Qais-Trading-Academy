@@ -315,27 +315,29 @@ export default function LiveRoom({ session, tokenInfo, onLeave }) {
   return (
     <div
       ref={roomContainerRef}
-      className={`flex flex-col gap-3 w-full h-[85vh] min-h-[560px] ${
-        isFullscreen ? "bg-surface-0 p-3 overflow-y-auto" : ""
+      className={`flex flex-col gap-3 w-full ${
+        isFullscreen ? "h-screen bg-black p-2 overflow-hidden" : "h-[85vh] min-h-[560px]"
       }`}
     >
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1 bg-loss text-white text-xs font-bold px-2 py-1 rounded-md">
-            <Radio size={12} className="animate-pulse-soft" /> بث مباشر
-          </span>
-          <h2 className="text-text-primary font-bold text-base">{session.title}</h2>
-          {recordingStatus === "recording" && (
-            <span className="text-loss text-xs font-bold flex items-center gap-1">● يتم التسجيل</span>
-          )}
+      {!isFullscreen && (
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 bg-loss text-white text-xs font-bold px-2 py-1 rounded-md">
+              <Radio size={12} className="animate-pulse-soft" /> بث مباشر
+            </span>
+            <h2 className="text-text-primary font-bold text-base">{session.title}</h2>
+            {recordingStatus === "recording" && (
+              <span className="text-loss text-xs font-bold flex items-center gap-1">● يتم التسجيل</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1 text-text-secondary text-xs">
+              <Users size={13} /> {participants.length}
+            </span>
+            <ConnectionBadge state={connState} />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1 text-text-secondary text-xs">
-            <Users size={13} /> {participants.length}
-          </span>
-          <ConnectionBadge state={connState} />
-        </div>
-      </div>
+      )}
 
       {error && <p className="text-loss text-xs">{error}</p>}
 
@@ -372,7 +374,7 @@ export default function LiveRoom({ session, tokenInfo, onLeave }) {
         </div>
       )}
 
-      {isHost && (
+      {isHost && !isFullscreen && (
         <div className="flex items-center gap-2">
           <input
             placeholder="اكتبي تنبيهًا يظهر لكل الحضور..."
@@ -387,7 +389,7 @@ export default function LiveRoom({ session, tokenInfo, onLeave }) {
         </div>
       )}
 
-      <div className="flex-1 min-h-0 flex gap-3">
+      <div className="flex-1 min-h-0 flex gap-3 relative">
         <div className="relative flex-1 min-w-0 flex flex-col gap-3">
           <div className="relative flex-1 min-h-0">
             <VideoStage room={room} participants={participants} />
@@ -395,35 +397,43 @@ export default function LiveRoom({ session, tokenInfo, onLeave }) {
             <AnnouncementBanner announcement={announcement} onDismiss={() => setAnnouncement(null)} />
           </div>
 
-          <ControlBar
-            micEnabled={micEnabled}
-            camEnabled={camEnabled}
-            screenEnabled={screenEnabled}
-            screenRequestPending={screenRequestPending}
-            handRaised={handRaised}
-            isHost={isHost}
-            isModerator={isModerator}
-            isRecording={recordingStatus === "recording"}
-            onToggleMic={toggleMic}
-            onToggleCam={toggleCam}
-            onToggleScreen={handleScreenShareClick}
-            onToggleHand={toggleHandRaise}
-            onReact={sendReaction}
-            onOpenSettings={() => setShowSettings(true)}
-            onToggleChat={() => togglePanel("chat")}
-            onToggleParticipants={() => togglePanel("participants")}
-            onToggleFiles={() => togglePanel("files")}
-            onToggleQna={() => togglePanel("qna")}
-            onTogglePolls={() => togglePanel("polls")}
-            onToggleRecording={handleToggleRecording}
-            onLeave={onLeave}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreen}
-          />
+          <div className={isFullscreen ? "absolute bottom-2 left-2 right-2 z-20" : ""}>
+            <ControlBar
+              micEnabled={micEnabled}
+              camEnabled={camEnabled}
+              screenEnabled={screenEnabled}
+              screenRequestPending={screenRequestPending}
+              handRaised={handRaised}
+              isHost={isHost}
+              isModerator={isModerator}
+              isRecording={recordingStatus === "recording"}
+              onToggleMic={toggleMic}
+              onToggleCam={toggleCam}
+              onToggleScreen={handleScreenShareClick}
+              onToggleHand={toggleHandRaise}
+              onReact={sendReaction}
+              onOpenSettings={() => setShowSettings(true)}
+              onToggleChat={() => togglePanel("chat")}
+              onToggleParticipants={() => togglePanel("participants")}
+              onToggleFiles={() => togglePanel("files")}
+              onToggleQna={() => togglePanel("qna")}
+              onTogglePolls={() => togglePanel("polls")}
+              onToggleRecording={handleToggleRecording}
+              onLeave={onLeave}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreen}
+            />
+          </div>
         </div>
 
         {panel && (
-          <div className="w-[320px] shrink-0 hidden md:block">
+          <div
+            className={
+              isFullscreen
+                ? "absolute top-0 bottom-0 right-0 w-[320px] shrink-0 hidden md:block z-20 bg-surface-0/95 backdrop-blur border-r border-line shadow-2xl"
+                : "w-[320px] shrink-0 hidden md:block"
+            }
+          >
             {panel === "chat" && (
               <SidePanel title="الدردشة المباشرة" onClose={() => setPanel(null)}>
                 <ChatPanel messages={chatMessages} onSend={handleSendChat} />
