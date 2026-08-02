@@ -155,7 +155,6 @@ export default function MlmTreePage() {
   return (
     <Suspense fallback={<div style={{ background: BG, color: "#888", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>...</div>}>
       <MlmTreeInner />
-    }
     </Suspense>
   );
 }

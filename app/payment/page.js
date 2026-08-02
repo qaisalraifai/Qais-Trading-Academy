@@ -115,10 +115,8 @@ export default function PaymentPage() {
                   <div style={styles.providerBtnMain}>
                     <span>{providerIcon(p.type)} {p.name}</span>
                     {loading && <span style={{ fontSize: "0.75rem" }}>جاري التحويل...</span>}
-                    }
                   </div>
                   {p.description && <div style={styles.providerBtnDesc}>{p.description}</div>}
-                  }
                 </button>
               ))
             )}

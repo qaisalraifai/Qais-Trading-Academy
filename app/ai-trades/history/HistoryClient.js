@@ -149,7 +149,6 @@ export default function HistoryClient() {
       </div>
 
       {error && <div style={{ ...glass, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
-      }
 
       {/* ================= إحصائيات ================= */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>

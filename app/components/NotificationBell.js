@@ -79,7 +79,6 @@ export default function NotificationBell({ soundEnabled = true }) {
       <button onClick={toggleOpen} style={s.bellBtn} aria-label="الإشعارات">
         🔔
         {unreadCount > 0 && <span style={s.badge}>{unreadCount > 9 ? "9+" : unreadCount}</span>}
-        }
       </button>
 
       {open && (
@@ -87,12 +86,10 @@ export default function NotificationBell({ soundEnabled = true }) {
           <div style={s.dropdownHeader}>الإشعارات</div>
           <div style={s.list}>
             {items.length === 0 && <p style={s.empty}>ما في إشعارات لسا</p>}
-            }
             {items.map((n) => (
               <div key={n.id} style={s.item}>
                 <p style={s.itemTitle}>{n.title}</p>
                 {n.message && <p style={s.itemMsg}>{n.message}</p>}
-                }
                 <p style={s.itemTime}>{timeAgo(n.created_at)}</p>
               </div>
             ))}

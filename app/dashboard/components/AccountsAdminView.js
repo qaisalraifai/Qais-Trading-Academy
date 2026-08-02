@@ -304,7 +304,6 @@ export default function AccountsAdminView({ username }) {
             <h2 style={{ fontFamily: displayStack, fontSize: "1.9rem", fontWeight: 800, margin: 0 }}>
               {greetingWord()}
               {username ? <span style={{ color: gold }}>، {username}</span> : null}
-              }
             </h2>
             <p style={{ marginTop: "0.35rem", color: "#8a8a8a", fontSize: "0.9rem" }}>
               نظرة سريعة على الاشتراكات، الأعضاء، والعمولات — محدّثة لحظيًا.

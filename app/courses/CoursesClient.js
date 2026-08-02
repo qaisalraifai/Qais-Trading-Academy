@@ -375,13 +375,9 @@ function LecturesView({
                           <div style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>{lecture.title}</div>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.55rem", marginTop: 4, fontSize: 11, color: "#777" }}>
                             {duration && <span>⏱ {duration}</span>}
-                            }
                             {diff && <span style={{ color: diff.color }}>🟢 {t(diff.labelKey)}</span>}
-                            }
                             {lecture.practice_type && <span>{t("courses.practiceExercise")}</span>}
-                            }
                             {lastWatched && <span>{t("courses.lastWatchedLabel", { date: lastWatched })}</span>}
-                            }
                           </div>
                           {!isCompleted && watchedPct > 0 && (
                             <div style={{ width: "100%", height: 3, background: "#1a1a0a", borderRadius: 2, overflow: "hidden", marginTop: 6 }}>
@@ -392,7 +388,6 @@ function LecturesView({
 
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
                           {lecture.progress?.favorite && <span style={{ fontSize: 13 }}>⭐</span>}
-                          }
                           <div style={{ color: GOLD, fontSize: 14 }}>←</div>
                         </div>
                       </div>

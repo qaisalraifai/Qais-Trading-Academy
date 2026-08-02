@@ -41,7 +41,6 @@ function StatCard({ label, value, sub, color }) {
       <div style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 800, color: color || "#eee" }}>{value}</div>
       {sub && <div style={{ fontSize: 11.5, color: "#666", marginTop: 4 }}>{sub}</div>}
-      }
     </div>
   );
 }

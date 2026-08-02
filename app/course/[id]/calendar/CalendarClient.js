@@ -139,7 +139,6 @@ export default function CalendarClient({ course, batch, events }) {
                     <div key={idx} style={s.eventRow}>
                       <span>{TYPE_META[e.type]?.icon} {e.title}</span>
                       {e.isActive && <span style={s.liveNow}>مباشر الآن</span>}
-                      }
                     </div>
                   ))}
                 </div>

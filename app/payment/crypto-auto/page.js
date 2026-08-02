@@ -132,7 +132,6 @@ export default function CryptoAutoPaymentPage() {
 
       <div style={styles.card}>
         {step === "loading" && <p style={styles.note}>...جاري التحضير</p>}
-        }
 
         {step === "error" && (
           <>
@@ -161,9 +160,7 @@ export default function CryptoAutoPaymentPage() {
               ))}
             </div>
             {creatingPayment && <p style={styles.note}>...جاري إنشاء عملية الدفع</p>}
-            }
             {error && <p style={styles.configError}>{error}</p>}
-            }
           </>
         )}
 

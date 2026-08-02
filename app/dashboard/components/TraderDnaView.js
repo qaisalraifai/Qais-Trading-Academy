@@ -124,7 +124,6 @@ function StatBlock({ icon, label, value, sub }) {
       </div>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>{value}</div>
       {sub && <div style={{ fontSize: 11.5, color: "#666", marginTop: 2 }}>{sub}</div>}
-      }
     </div>
   );
 }
@@ -281,9 +280,7 @@ function DnaCard({ profile, insights, onRetake }) {
         <Pill>{t("traderDna.riskLabel", { value: RISK_LABELS[profile.risk_tolerance] })}</Pill>
         <Pill color={BLUE}>{SESSION_LABELS[profile.session_preference] || "—"}</Pill>
         {insights?.bestAsset && <Pill color={GREEN}>{t("traderDna.bestAssetLabel", { value: insights.bestAsset.name })}</Pill>}
-        }
         {insights?.bestSetup && <Pill color={GOLD_LIGHT}>{t("traderDna.bestSetupLabel", { value: insights.bestSetup.name })}</Pill>}
-        }
       </div>
     </div>
   );
@@ -385,7 +382,6 @@ export default function TraderDnaView({ userId: userIdProp }) {
           )}
           <QuizFlow onFinish={handleFinishQuiz} onCancel={() => setShowQuiz(false)} />
           {saving && <div style={{ color: "#9a9a9a", fontSize: 13, marginTop: 8 }}>{t("traderDna.savingResult")}</div>}
-          }
         </>
       );
     }

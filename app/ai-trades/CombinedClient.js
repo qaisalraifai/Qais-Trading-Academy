@@ -246,7 +246,6 @@ export default function CombinedAITradesClient() {
       </div>
 
       {error && <div style={{ ...glass, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
-      }
 
       {/* ================= تبويب: الصفقات (مباشر) ================= */}
       {view === "live" && (

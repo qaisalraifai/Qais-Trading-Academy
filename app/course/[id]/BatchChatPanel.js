@@ -184,7 +184,6 @@ export default function BatchChatPanel({ courseId }) {
           </div>
 
           {err && <div style={{ color: "#f66", fontSize: 12, marginTop: 4 }}>{err}</div>}
-          }
 
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <textarea

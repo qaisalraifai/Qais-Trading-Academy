@@ -116,7 +116,6 @@ function AssignmentRow({ assignment, onSubmitted }) {
           }}
         />
         {err && <div style={{ color: "#f66", fontSize: 12 }}>{err}</div>}
-        }
         <button
           onClick={handleSubmit}
           disabled={busy}

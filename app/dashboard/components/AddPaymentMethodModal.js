@@ -132,7 +132,6 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
             </p>
             <div className="add-card-checkout-container" style={{ width: "100%", minHeight: 300 }}>
               {!paddle && <p style={{ color: "#666", fontSize: 13, textAlign: "center" }}>...جاري التحميل</p>}
-              }
             </div>
           </>
         )}

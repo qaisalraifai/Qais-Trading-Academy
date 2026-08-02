@@ -147,7 +147,6 @@ export default function AITradesClient() {
       </div>
 
       {error && <div style={{ ...glass, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
-      }
 
       {loading ? (
         <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#888" }}>{t("aiTrades.loading")}</div>

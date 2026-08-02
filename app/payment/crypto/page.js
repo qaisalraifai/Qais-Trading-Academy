@@ -127,7 +127,6 @@ export default function CryptoPaymentPage() {
 
       <div style={styles.card}>
         {step === "loading" && <p style={styles.note}>...جاري التحضير</p>}
-        }
 
         {step === "error" && (
           <>
@@ -175,7 +174,6 @@ export default function CryptoPaymentPage() {
                   <input ref={fileInputRef} type="file" accept="image/*,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} style={styles.input} />
 
                   {error && <p style={styles.configError}>{error}</p>}
-                  }
 
                   <button onClick={submitProof} disabled={submitting} style={styles.submitBtn}>
                     {submitting ? "...جاري الإرسال" : "إرسال للمراجعة"}
@@ -208,7 +206,6 @@ export default function CryptoPaymentPage() {
                 <div style={styles.spinnerIcon}>❌</div>
                 <h2 style={styles.title}>تعذّرت مراجعة الدفعة</h2>
                 {rejectionReason && <p style={styles.configError}>السبب: {rejectionReason}</p>}
-                }
                 <button
                   onClick={() => {
                     setStep("pick-network");

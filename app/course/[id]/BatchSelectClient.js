@@ -126,7 +126,6 @@ export default function BatchSelectClient({ course, batches }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.9rem", marginTop: 6, fontSize: 12.5, color: "#888" }}>
                     <span>📅 تبدأ: {formatDate(batch.start_date)}</span>
                     {batch.end_date && <span>🏁 تنتهي: {formatDate(batch.end_date)}</span>}
-                    }
                     <span>
                       🪑{" "}
                       {batch.seats_total != null ? `${batch.seats_remaining} مقعد متبقي من ${batch.seats_total}` : "مقاعد غير محدودة"}
@@ -150,7 +149,6 @@ export default function BatchSelectClient({ course, batches }) {
         </div>
 
         {error && <p style={{ color: "#E5484D", fontSize: 13.5, marginBottom: "1rem" }}>{error}</p>}
-        }
 
         <button
           onClick={handleConfirm}

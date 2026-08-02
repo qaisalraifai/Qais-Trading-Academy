@@ -92,7 +92,6 @@ export default function LoginPage() {
             </div>
 
             {error && <p style={{ color: "#E5484D", fontSize: 13, textAlign: "center", margin: 0 }}>{error}</p>}
-            }
 
             <button onClick={handleLogin} disabled={loading} style={{
               background: "linear-gradient(135deg, #E8B86D, #D4A05A)",

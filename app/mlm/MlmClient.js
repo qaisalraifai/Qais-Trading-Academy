@@ -276,11 +276,9 @@ export default function MlmClient({ embedded = false }) {
               {kycUploading ? t("mlm.kycUploading") : t("mlm.kycSubmitBtn")}
             </button>
             {kycStatus === "rejected" && <span style={{ color: "#E5484D", fontSize: "0.8rem" }}>{t("mlm.kycRejected")}</span>}
-            }
           </form>
         )}
         {kycMsg && <div style={{ marginTop: 8, fontSize: "0.8rem", color: "#aaa" }}>{kycMsg}</div>}
-        }
       </Card>
 
       {/* طلب سحب */}
@@ -310,7 +308,6 @@ export default function MlmClient({ embedded = false }) {
           </form>
         )}
         {withdrawMsg && <div style={{ marginTop: 8, fontSize: "0.8rem", color: "#aaa" }}>{withdrawMsg}</div>}
-        }
       </Card>
 
       {/* آخر العمولات */}

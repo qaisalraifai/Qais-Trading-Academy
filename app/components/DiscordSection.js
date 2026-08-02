@@ -42,7 +42,6 @@ export default function DiscordSection({ discordUsername }) {
         <div style={s.title}>مجتمع Discord</div>
         <div style={s.desc}>حسابك مربوط: <strong style={{ color: "#fff" }}>{discordUsername}</strong></div>
         {error && <div style={s.error}>{error}</div>}
-        }
       </div>
       <button onClick={handleJoin} disabled={loading} style={s.btn}>
         {loading ? "جاري إنشاء الدعوة..." : "انضمي للسيرفر"}

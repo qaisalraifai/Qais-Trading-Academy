@@ -198,14 +198,11 @@ export default function CourseClient({ course, chapters }) {
                             <div style={{ fontWeight: 700, fontSize: 15, color: "#fff" }}>{lecture.title}</div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", marginTop: 5, fontSize: 12, color: "#777" }}>
                               {duration && <span>⏱ {duration}</span>}
-                              }
                               {diff && (
                                 <span style={{ color: diff.color }}>🟢 {diff.label}</span>
                               )}
                               {lecture.practice_type && <span>🧪 تمرين تطبيقي</span>}
-                              }
                               {lastWatched && <span>📅 آخر مشاهدة: {lastWatched}</span>}
-                              }
                             </div>
                             {!isCompleted && watchedPct > 0 && (
                               <div style={{ width: "100%", height: 4, background: "#1a1a0a", borderRadius: 3, overflow: "hidden", marginTop: 8 }}>
@@ -222,7 +219,6 @@ export default function CourseClient({ course, chapters }) {
                           {/* Favorite + arrow */}
                           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
                             {lecture.progress?.favorite && <span style={{ fontSize: 14 }}>⭐</span>}
-                            }
                             <div style={{
                               width: 32, height: 32, borderRadius: "50%",
                               background: "#E8B86D22",
