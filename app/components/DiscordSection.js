@@ -42,6 +42,7 @@ export default function DiscordSection({ discordUsername }) {
         <div style={s.title}>مجتمع Discord</div>
         <div style={s.desc}>حسابك مربوط: <strong style={{ color: "#fff" }}>{discordUsername}</strong></div>
         {error && <div style={s.error}>{error}</div>}
+        }
       </div>
       <button onClick={handleJoin} disabled={loading} style={s.btn}>
         {loading ? "جاري إنشاء الدعوة..." : "انضمي للسيرفر"}
@@ -64,7 +65,7 @@ const s = {
   icon: { fontSize: "1.6rem" },
   title: { fontWeight: "bold", marginBottom: "0.25rem" },
   desc: { color: "#888", fontSize: "0.85rem" },
-  error: { color: "#ef5350", fontSize: "0.8rem", marginTop: "0.35rem" },
+  error: { color: "#E5484D", fontSize: "0.8rem", marginTop: "0.35rem" },
   btn: {
     padding: "0.65rem 1.25rem",
     backgroundColor: "#5865F2",

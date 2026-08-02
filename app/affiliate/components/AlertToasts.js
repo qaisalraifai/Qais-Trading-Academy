@@ -10,10 +10,10 @@ const TOAST_ICONS = {
 };
 
 const TOAST_ACCENT = {
-  referral_joined: "#4CAF50",
+  referral_joined: "#3DBB6E",
   commission: GOLD,
-  payout: "#4FA8E0",
-  application_rejected: "#F6465D",
+  payout: "#3D8BFD",
+  application_rejected: "#E5484D",
 };
 
 // أنواع الإشعارات يلي بدنا نطلعلها Toast فوري (إحالة جديدة، عمولة جاهزة، دفعة، رفض/إلغاء)
@@ -101,6 +101,7 @@ export default function AlertToasts() {
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#EAECEF" }}>{t.title}</p>
             {t.message && <p style={{ fontSize: "0.74rem", color: "#9A9A9A", marginTop: 2, lineHeight: 1.5 }}>{t.message}</p>}
+            }
           </div>
         </div>
       ))}

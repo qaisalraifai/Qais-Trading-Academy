@@ -35,7 +35,7 @@ export default function BatchFilesPanel({ courseId }) {
   return (
     <div style={{
       background: "#111108",
-      border: "1px solid #D4AF3733",
+      border: "1px solid #E8B86D33",
       borderRadius: 12,
       marginBottom: "1.5rem",
       overflow: "hidden",
@@ -56,7 +56,7 @@ export default function BatchFilesPanel({ courseId }) {
         }}
       >
         <span style={{ fontSize: 14, fontWeight: 800 }}>📁 ملفات الدفعة ({files.length})</span>
-        <span style={{ color: "#D4AF37", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
+        <span style={{ color: "#E8B86D", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
       </button>
 
       {open && (
@@ -71,8 +71,8 @@ export default function BatchFilesPanel({ courseId }) {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                background: "#181A20",
-                border: "1px solid #D4AF3722",
+                background: "#0D0E10",
+                border: "1px solid #E8B86D22",
                 borderRadius: 8,
                 padding: "0.65rem 0.9rem",
                 color: "#eee",

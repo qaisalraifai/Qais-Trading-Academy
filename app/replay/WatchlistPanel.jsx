@@ -2,10 +2,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ASSETS } from "@/lib/assets";
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GREEN = "#02C076";
-const RED = "#F6465D";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GREEN = "#3DBB6E";
+const RED = "#E5484D";
 
 const COLLAPSE_STORAGE_KEY = "qais_watchlist_collapsed_groups_v1";
 const POLL_MS = 10000; // كل 10 ثواني - توازن بين الحيوية وتجنّب حظر يوهو لكتر طلبات
@@ -40,7 +40,7 @@ function AssetBadge({ label }) {
       style={{
         width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 10, fontWeight: 800, color: "#1a1608",
+        fontSize: 10, fontWeight: 800, color: "#1A1408",
         background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
       }}
     >
@@ -143,7 +143,7 @@ export default function WatchlistPanel({ activeSymbol, onSelectSymbol, onClose }
       </div>
 
       {error && (
-        <div style={{ padding: "6px 10px", fontSize: 11, color: RED, background: "#F6465D14", flexShrink: 0 }}>
+        <div style={{ padding: "6px 10px", fontSize: 11, color: RED, background: "#E5484D14", flexShrink: 0 }}>
           {error}
         </div>
       )}

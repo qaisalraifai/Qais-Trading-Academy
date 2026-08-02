@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GREEN = "#02C076";
-const RED = "#F6465D";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GREEN = "#3DBB6E";
+const RED = "#E5484D";
 
 const cardStyle = {
-  background: "linear-gradient(145deg, #22252B, #181A20)",
+  background: "linear-gradient(145deg, #141517, #0D0E10)",
   border: `1px solid ${GOLD}26`,
   borderRadius: 18,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
@@ -41,6 +41,7 @@ function StatCard({ label, value, sub, color }) {
       <div style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 800, color: color || "#eee" }}>{value}</div>
       {sub && <div style={{ fontSize: 11.5, color: "#666", marginTop: 4 }}>{sub}</div>}
+      }
     </div>
   );
 }
@@ -210,7 +211,7 @@ export default function ReportsView({ userId }) {
           <div style={{ fontSize: 18, fontWeight: 800, color: "#eee" }}>{t("reports.title")}</div>
           <div style={{ fontSize: 12.5, color: "#777", marginTop: 2 }}>{t("reports.subtitle")}</div>
         </div>
-        <div style={{ display: "flex", gap: 6, background: "#1a1c22", padding: 4, borderRadius: 10 }}>
+        <div style={{ display: "flex", gap: 6, background: "#0D0E10", padding: 4, borderRadius: 10 }}>
           {RANGES.map((r) => (
             <button
               key={r.key}
@@ -219,7 +220,7 @@ export default function ReportsView({ userId }) {
                 padding: "0.35rem 0.8rem", borderRadius: 8, fontSize: 12.5, fontWeight: 600,
                 border: "none", cursor: "pointer",
                 background: rangeKey === r.key ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-                color: rangeKey === r.key ? "#1a1608" : "#999",
+                color: rangeKey === r.key ? "#1A1408" : "#999",
               }}
             >
               {t(r.labelKey)}

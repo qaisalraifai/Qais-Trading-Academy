@@ -115,8 +115,10 @@ export default function PaymentPage() {
                   <div style={styles.providerBtnMain}>
                     <span>{providerIcon(p.type)} {p.name}</span>
                     {loading && <span style={{ fontSize: "0.75rem" }}>جاري التحويل...</span>}
+                    }
                   </div>
                   {p.description && <div style={styles.providerBtnDesc}>{p.description}</div>}
+                  }
                 </button>
               ))
             )}
@@ -141,7 +143,7 @@ export default function PaymentPage() {
         )}
 
         <p style={styles.note}>
-          بعد $300 رسوم التسجيل، بينسحب تلقائياً <strong style={{ color: "#D4AF37" }}>$100 كل شهر</strong> (بالبطاقة) أو بيتوجب عليك التجديد يدوياً كل شهر (بالكريبتو) لحد ما تلغي الاشتراك.
+          بعد $300 رسوم التسجيل، بينسحب تلقائياً <strong style={{ color: "#E8B86D" }}>$100 كل شهر</strong> (بالبطاقة) أو بيتوجب عليك التجديد يدوياً كل شهر (بالكريبتو) لحد ما تلغي الاشتراك.
         </p>
         <p style={styles.taxNote}>
           الأسعار المعروضة قابلة لتطبيق ضرائب حسب موقعك — بيتم احتسابها وعرضها بوضوح قبل إتمام الدفع.
@@ -161,12 +163,12 @@ function providerIcon(type) {
   return "💰";
 }
 
-const gold = "#D4AF37";
+const gold = "#E8B86D";
 
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#181A20",
+    backgroundColor: "#0D0E10",
     color: "#fff",
     direction: "rtl",
     fontFamily: "'Georgia', serif",
@@ -234,8 +236,8 @@ const styles = {
     minHeight: "450px",
   },
   note: { color: "#555", fontSize: "0.8rem", textAlign: "center", lineHeight: 1.6 },
-  configError: { color: "#F6465D", fontSize: "0.78rem", textAlign: "center", lineHeight: 1.7, background: "#F6465D14", border: "1px solid #F6465D44", borderRadius: 6, padding: "0.75rem 1rem" },
-  taxNote: { color: "#3a3a3a", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5, marginTop: "-0.75rem" },
+  configError: { color: "#E5484D", fontSize: "0.78rem", textAlign: "center", lineHeight: 1.7, background: "#E5484D14", border: "1px solid #E5484D44", borderRadius: 6, padding: "0.75rem 1rem" },
+  taxNote: { color: "#26282C", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5, marginTop: "-0.75rem" },
   footer: { color: "#333", fontSize: "0.8rem", marginTop: "1.5rem" },
   adminLink: {
     position: "fixed",

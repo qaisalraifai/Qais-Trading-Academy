@@ -74,9 +74,9 @@ export default function TierProgress({ tier }) {
             <p style={rateLabel}>عمولة التجديد الشهري</p>
             <p style={{ ...rateValue, color: current.color_hex }}>${fmt(current.renewal_amount)}</p>
           </div>
-          <div style={rateBox("#4CAF50")}>
+          <div style={rateBox("#3DBB6E")}>
             <p style={rateLabel}>دخلك المتكرر المتوقع شهرياً</p>
-            <p style={{ ...rateValue, color: "#4CAF50" }}>${fmt(projectedMonthlyIncome)}</p>
+            <p style={{ ...rateValue, color: "#3DBB6E" }}>${fmt(projectedMonthlyIncome)}</p>
           </div>
         </div>
 
@@ -118,14 +118,14 @@ export default function TierProgress({ tier }) {
               <div style={{ display: "flex", gap: "1.4rem", flexWrap: "wrap", fontSize: "0.78rem", color: "#B8B0A0" }}>
                 <span>
                   عمولة التسجيل: <b style={{ color: next.color_hex }}>${fmt(next.signup_amount)}</b>{" "}
-                  <span style={{ color: "#4CAF50" }}>(+${fmt(signupDelta)})</span>
+                  <span style={{ color: "#3DBB6E" }}>(+${fmt(signupDelta)})</span>
                 </span>
                 <span>
                   عمولة التجديد: <b style={{ color: next.color_hex }}>${fmt(next.renewal_amount)}</b>{" "}
-                  <span style={{ color: "#4CAF50" }}>(+${fmt(renewalDelta)})</span>
+                  <span style={{ color: "#3DBB6E" }}>(+${fmt(renewalDelta)})</span>
                 </span>
                 <span>
-                  دخلك الشهري بيصير: <b style={{ color: "#4CAF50" }}>${fmt(projectedMonthlyIncomeAtNextTier)}</b>
+                  دخلك الشهري بيصير: <b style={{ color: "#3DBB6E" }}>${fmt(projectedMonthlyIncomeAtNextTier)}</b>
                 </span>
               </div>
             </div>

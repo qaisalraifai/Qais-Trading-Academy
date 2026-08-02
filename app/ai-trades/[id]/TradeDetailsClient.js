@@ -2,17 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  TrendingUp, TrendingDown, RefreshCw, ArrowRight, CheckCircle2, XCircle,
-  Layers, Waves, GitBranch, GitCommit, Box, Zap as FvgIcon, Radio, Target,
-} from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, ArrowRight, CircleCheck as CheckCircle2, Circle as XCircle, Layers, Waves, GitBranch, GitCommitVertical as GitCommit, Box, Zap as FvgIcon, Radio, Target } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GREEN = "#02C076";
-const RED = "#F6465D";
-const BLUE = "#4f7cff";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GREEN = "#3DBB6E";
+const RED = "#E5484D";
+const BLUE = "#3D8BFD";
 
 const glass = {
   background: "linear-gradient(145deg, rgba(34,37,43,0.9), rgba(20,22,26,0.92))",
@@ -106,10 +103,10 @@ export default function TradeDetailsClient({ tradeId }) {
               {isBuy ? "BUY" : "SELL"}
             </span>
             <h1 style={{ fontSize: 18, fontWeight: 900, color: "#f0f0f0", margin: 0 }}>{trade.symbol}</h1>
-            <span style={{ fontSize: 11.5, color: "#999", background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 6, padding: "3px 9px" }}>
+            <span style={{ fontSize: 11.5, color: "#999", background: "#141517", border: "1px solid #34373B", borderRadius: 6, padding: "3px 9px" }}>
               {trade.timeframe}
             </span>
-            <span style={{ fontSize: 11.5, color: "#777", background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 6, padding: "3px 9px" }}>
+            <span style={{ fontSize: 11.5, color: "#777", background: "#141517", border: "1px solid #34373B", borderRadius: 6, padding: "3px 9px" }}>
               {t("aiTrades.sourceLabel", { source: trade.source })}
             </span>
           </div>
@@ -127,7 +124,7 @@ export default function TradeDetailsClient({ tradeId }) {
               <button
                 onClick={handleCheck}
                 disabled={checking}
-                style={{ display: "flex", alignItems: "center", gap: 6, background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, border: "none", color: "#181A20", fontWeight: 800, borderRadius: 8, padding: "7px 14px", fontSize: 12, cursor: checking ? "default" : "pointer" }}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, border: "none", color: "#0D0E10", fontWeight: 800, borderRadius: 8, padding: "7px 14px", fontSize: 12, cursor: checking ? "default" : "pointer" }}
               >
                 <RefreshCw size={12} /> {checking ? t("aiTrades.checking") : t("aiTrades.checkPriceNow")}
               </button>
@@ -192,7 +189,7 @@ export default function TradeDetailsClient({ tradeId }) {
           <SectionTitle icon={CheckCircle2} title={t("aiTrades.entryLogicChecklist")} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8, marginTop: 12 }}>
             {a.reasonsChecklist.map((c) => (
-              <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 8, background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 8, padding: "8px 10px" }}>
+              <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 8, background: "#141517", border: "1px solid #34373B", borderRadius: 8, padding: "8px 10px" }}>
                 {c.ok ? <CheckCircle2 size={14} color={GREEN} /> : <XCircle size={14} color="#555" />}
                 <span style={{ fontSize: 12, color: c.ok ? "#ddd" : "#777" }}>{c.label}</span>
               </div>
@@ -222,7 +219,7 @@ function StatusProgress({ status }) {
           <div
             style={{
               flex: 1, height: 5, borderRadius: 3,
-              background: isLoss ? (i <= activeIdx ? RED : "#2e2e2e") : i <= activeIdx || isWin ? GREEN : "#2e2e2e",
+              background: isLoss ? (i <= activeIdx ? RED : "#34373B") : i <= activeIdx || isWin ? GREEN : "#34373B",
             }}
           />
         </div>
@@ -230,7 +227,7 @@ function StatusProgress({ status }) {
       <div
         style={{
           flexShrink: 0, width: 9, height: 9, borderRadius: "50%",
-          background: isWin ? GREEN : isLoss ? RED : "#2e2e2e",
+          background: isWin ? GREEN : isLoss ? RED : "#34373B",
           boxShadow: isWin ? `0 0 8px ${GREEN}` : isLoss ? `0 0 8px ${RED}` : "none",
         }}
       />
@@ -240,7 +237,7 @@ function StatusProgress({ status }) {
 
 function Stat({ label, value, color = "#f0f0f0" }) {
   return (
-    <div style={{ background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 8, padding: "7px 10px" }}>
+    <div style={{ background: "#141517", border: "1px solid #34373B", borderRadius: 8, padding: "7px 10px" }}>
       <div style={{ fontSize: 10.5, color: "#888", marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 13.5, fontWeight: 800, color }}>{value}</div>
     </div>
@@ -249,7 +246,7 @@ function Stat({ label, value, color = "#f0f0f0" }) {
 
 function AnalysisRow({ icon: Icon, label, value }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 8, padding: "9px 11px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#141517", border: "1px solid #34373B", borderRadius: 8, padding: "9px 11px" }}>
       <Icon size={14} color={GOLD_LIGHT} style={{ flexShrink: 0 }} />
       <div>
         <div style={{ fontSize: 10.5, color: "#888" }}>{label}</div>

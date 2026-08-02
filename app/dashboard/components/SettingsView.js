@@ -2,15 +2,15 @@
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GOLD_DARK = "#9C7A22";
-const GREEN = "#02C076";
-const RED = "#F6465D";
-const BLUE = "#4FA8E0";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GOLD_DARK = "#D4A05A";
+const GREEN = "#3DBB6E";
+const RED = "#E5484D";
+const BLUE = "#3D8BFD";
 
 const cardStyle = {
-  background: "linear-gradient(145deg, #22252B, #181A20)",
+  background: "linear-gradient(145deg, #141517, #0D0E10)",
   border: `1px solid ${GOLD}26`,
   borderRadius: 18,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
@@ -157,7 +157,7 @@ export default function SettingsView({ username }) {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 4,
-                  background: isActive ? "#0f3d2c" : "#3d1a1a",
+                  background: isActive ? "#0D1A12" : "#3d1a1a",
                   border: `1px solid ${isActive ? GREEN : RED}33`,
                   color: isActive ? GREEN : RED,
                   fontSize: 11,
@@ -269,7 +269,7 @@ export default function SettingsView({ username }) {
                 alignItems: "center",
                 gap: 6,
                 background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                color: "#1a1608",
+                color: "#1A1408",
                 border: "none",
                 fontWeight: 800,
                 fontSize: 13,
@@ -304,7 +304,7 @@ export default function SettingsView({ username }) {
               gap: 8,
               background: data.profile.auto_renew ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})` : "transparent",
               border: `1px solid ${GOLD}66`,
-              color: data.profile.auto_renew ? "#1a1608" : GOLD_LIGHT,
+              color: data.profile.auto_renew ? "#1A1408" : GOLD_LIGHT,
               fontWeight: 800,
               fontSize: 13,
               padding: "0.6rem 1.2rem",
@@ -330,7 +330,7 @@ export default function SettingsView({ username }) {
                 key={key}
                 style={{
                   border: `1px solid ${isCurrent ? GOLD : "#222"}`,
-                  background: isCurrent ? `linear-gradient(135deg, ${GOLD}1a, #181A20)` : "#181A20",
+                  background: isCurrent ? `linear-gradient(135deg, ${GOLD}1a, #0D0E10)` : "#0D0E10",
                   borderRadius: 12,
                   padding: "1rem",
                   textAlign: "center",
@@ -345,7 +345,7 @@ export default function SettingsView({ username }) {
                       marginTop: 8,
                       fontSize: 10,
                       fontWeight: 800,
-                      color: "#1a1608",
+                      color: "#1A1408",
                       background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
                       padding: "3px 10px",
                       borderRadius: 20,
@@ -425,7 +425,7 @@ export default function SettingsView({ username }) {
             style={{
               flex: 1,
               minWidth: 200,
-              background: "#181A20",
+              background: "#0D0E10",
               border: `1px solid ${GOLD}33`,
               borderRadius: 10,
               padding: "0.6rem 1rem",
@@ -439,7 +439,7 @@ export default function SettingsView({ username }) {
             disabled={couponBusy || !couponCode.trim()}
             style={{
               background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-              color: "#1a1608",
+              color: "#1A1408",
               border: "none",
               fontWeight: 800,
               fontSize: 13,

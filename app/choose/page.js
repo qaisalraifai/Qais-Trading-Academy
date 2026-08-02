@@ -28,7 +28,7 @@ export default function ChoosePage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%)",
+      background: "radial-gradient(ellipse at top, #1A1408 0%, #0D0E10 60%)",
       direction: "rtl",
       fontFamily: "'Segoe UI', sans-serif",
       color: "#fff",
@@ -56,8 +56,8 @@ export default function ChoosePage() {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.5rem" }}>
           <div style={{
             width: 110, height: 110, borderRadius: "50%",
-            border: "2px solid #D4AF37",
-            boxShadow: "0 0 40px #D4AF3744, 0 0 80px #D4AF3722",
+            border: "2px solid #E8B86D",
+            boxShadow: "0 0 40px #E8B86D44, 0 0 80px #E8B86D22",
             overflow: "hidden",
             transform: `translateY(${logoY}px)`,
             transition: "transform 0.1s ease-out",
@@ -66,7 +66,7 @@ export default function ChoosePage() {
           </div>
         </div>
 
-        <p style={{ color: "#D4AF37", letterSpacing: 4, fontSize: 11, margin: "0 0 12px" }}>QAIS TRADING ACADEMY</p>
+        <p style={{ color: "#E8B86D", letterSpacing: 4, fontSize: 11, margin: "0 0 12px" }}>QAIS TRADING ACADEMY</p>
         <h1 style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", fontWeight: 900, margin: "0 0 8px" }}>
           👋 بك مرحبياً Samer
         </h1>
@@ -77,36 +77,36 @@ export default function ChoosePage() {
           
           {/* Backtest */}
           <div onClick={() => router.push("/backtest")} style={{
-            background: "linear-gradient(145deg, #111108, #181A20)",
-            border: "1px solid #D4AF3733",
+            background: "linear-gradient(145deg, #111108, #0D0E10)",
+            border: "1px solid #E8B86D33",
             borderRadius: 16, padding: "2.5rem 2rem",
             cursor: "pointer", textAlign: "right",
             boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             transition: "border-color 0.3s",
           }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#D4AF37", margin: "0 0 12px" }}>Backtest</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#E8B86D", margin: "0 0 12px" }}>Backtest</h2>
             <p style={{ color: "#555", fontSize: 14, lineHeight: 1.75, margin: "0 0 20px" }}>
               اختبر استراتيجياتك على بيانات تاريخية حقيقية وقِس أداءك بدقة.
             </p>
-            <div style={{ color: "#D4AF37", fontSize: 13, fontWeight: 600 }}>افتح البرنامج ←</div>
+            <div style={{ color: "#E8B86D", fontSize: 13, fontWeight: 600 }}>افتح البرنامج ←</div>
           </div>
 
           {/* المحاضرات */}
           <div onClick={() => router.push("/dashboard")} style={{
-            background: "linear-gradient(145deg, #111108, #181A20)",
-            border: "1px solid #D4AF3733",
+            background: "linear-gradient(145deg, #111108, #0D0E10)",
+            border: "1px solid #E8B86D33",
             borderRadius: 16, padding: "2.5rem 2rem",
             cursor: "pointer", textAlign: "right",
             boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             transition: "border-color 0.3s",
           }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>🎓</div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#D4AF37", margin: "0 0 12px" }}>المحاضرات</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#E8B86D", margin: "0 0 12px" }}>المحاضرات</h2>
             <p style={{ color: "#555", fontSize: 14, lineHeight: 1.75, margin: "0 0 20px" }}>
               وصول كامل لمكتبة المحاضرات المسجلة، الكورسات المرتبة، والاختبارات.
             </p>
-            <div style={{ color: "#D4AF37", fontSize: 13, fontWeight: 600 }}>ابدأ التعلم ←</div>
+            <div style={{ color: "#E8B86D", fontSize: 13, fontWeight: 600 }}>ابدأ التعلم ←</div>
           </div>
 
         </div>

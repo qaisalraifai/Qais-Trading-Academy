@@ -115,8 +115,8 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
               fontSize: "0.72rem",
               fontWeight: 700,
               fontFamily: monoStack,
-              color: deltaUp ? "#4CAF50" : "#ef5350",
-              background: deltaUp ? "#4CAF5022" : "#ef535022",
+              color: deltaUp ? "#3DBB6E" : "#E5484D",
+              background: deltaUp ? "#3DBB6E22" : "#E5484D22",
             }}
           >
             {deltaUp ? "↗" : "↘"} {Math.abs(delta)}%

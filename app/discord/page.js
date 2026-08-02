@@ -21,7 +21,7 @@ export default async function DiscordPage() {
     <PageShell {...shellProfile}>
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #0d0d2a 0%, #181A20 60%)",
+      background: "radial-gradient(ellipse at top, #0d0d2a 0%, #0D0E10 60%)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",

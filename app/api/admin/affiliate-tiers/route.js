@@ -36,7 +36,7 @@ export async function POST(request) {
       code: code.trim().toLowerCase(),
       title_ar,
       badge_icon: badge_icon || "🏅",
-      color_hex: color_hex || "#D4AF37",
+      color_hex: color_hex || "#E8B86D",
       min_active_clients: Number(min_active_clients) || 0,
       signup_amount: Number(signup_amount) || 0,
       renewal_amount: Number(renewal_amount) || 0,

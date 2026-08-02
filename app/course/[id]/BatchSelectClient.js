@@ -46,7 +46,7 @@ export default function BatchSelectClient({ course, batches }) {
     <div
       style={{
         minHeight: "100vh",
-        background: "radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%)",
+        background: "radial-gradient(ellipse at top, #1A1408 0%, #0D0E10 60%)",
         color: "#fff",
         fontFamily: "'Segoe UI', sans-serif",
         direction: "rtl",
@@ -58,7 +58,7 @@ export default function BatchSelectClient({ course, batches }) {
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.75rem" }}>
           <div style={{ fontSize: 36 }}>{course.icon}</div>
           <div>
-            <p style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 2, margin: 0 }}>QAIS TRADING ACADEMY</p>
+            <p style={{ color: "#E8B86D", fontSize: 11, letterSpacing: 2, margin: 0 }}>QAIS TRADING ACADEMY</p>
             <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800 }}>{course.title}</h1>
           </div>
         </div>
@@ -74,7 +74,7 @@ export default function BatchSelectClient({ course, batches }) {
           <div
             style={{
               background: "#2a1a1a",
-              border: "1px solid #ef535044",
+              border: "1px solid #E5484D44",
               borderRadius: 12,
               padding: "1rem 1.25rem",
               color: "#ef9a9a",
@@ -100,8 +100,8 @@ export default function BatchSelectClient({ course, batches }) {
                 onClick={() => setSelectedId(batch.id)}
                 style={{
                   textAlign: "right",
-                  background: isSelected ? "linear-gradient(145deg, #1e1a08, #181A20)" : "linear-gradient(145deg, #111108, #181A20)",
-                  border: isSelected ? "1.5px solid #D4AF37" : "1px solid #D4AF3722",
+                  background: isSelected ? "linear-gradient(145deg, #1e1a08, #0D0E10)" : "linear-gradient(145deg, #111108, #0D0E10)",
+                  border: isSelected ? "1.5px solid #E8B86D" : "1px solid #E8B86D22",
                   borderRadius: 14,
                   padding: "1.1rem 1.25rem",
                   cursor: disabled ? "not-allowed" : "pointer",
@@ -118,7 +118,7 @@ export default function BatchSelectClient({ course, batches }) {
                   <div style={{ fontWeight: 700, fontSize: 15, color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                     {batch.name}
                     {disabled && (
-                      <span style={{ fontSize: 11, color: "#ef5350", background: "#2a1a1a", padding: "0.15rem 0.5rem", borderRadius: 4 }}>
+                      <span style={{ fontSize: 11, color: "#E5484D", background: "#2a1a1a", padding: "0.15rem 0.5rem", borderRadius: 4 }}>
                         مكتملة
                       </span>
                     )}
@@ -126,6 +126,7 @@ export default function BatchSelectClient({ course, batches }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.9rem", marginTop: 6, fontSize: 12.5, color: "#888" }}>
                     <span>📅 تبدأ: {formatDate(batch.start_date)}</span>
                     {batch.end_date && <span>🏁 تنتهي: {formatDate(batch.end_date)}</span>}
+                    }
                     <span>
                       🪑{" "}
                       {batch.seats_total != null ? `${batch.seats_remaining} مقعد متبقي من ${batch.seats_total}` : "مقاعد غير محدودة"}
@@ -138,7 +139,7 @@ export default function BatchSelectClient({ course, batches }) {
                     width: 22,
                     height: 22,
                     borderRadius: "50%",
-                    border: isSelected ? "6px solid #D4AF37" : "2px solid #444",
+                    border: isSelected ? "6px solid #E8B86D" : "2px solid #444",
                     flexShrink: 0,
                     background: "transparent",
                   }}
@@ -148,14 +149,15 @@ export default function BatchSelectClient({ course, batches }) {
           })}
         </div>
 
-        {error && <p style={{ color: "#ef5350", fontSize: 13.5, marginBottom: "1rem" }}>{error}</p>}
+        {error && <p style={{ color: "#E5484D", fontSize: 13.5, marginBottom: "1rem" }}>{error}</p>}
+        }
 
         <button
           onClick={handleConfirm}
           disabled={!selectedId || saving}
           style={{
             width: "100%",
-            background: !selectedId || saving ? "#3a3220" : "linear-gradient(135deg, #D4AF37, #9C7A22)",
+            background: !selectedId || saving ? "#3a3220" : "linear-gradient(135deg, #E8B86D, #D4A05A)",
             color: !selectedId || saving ? "#888" : "#000",
             border: "none",
             borderRadius: 12,

@@ -2,14 +2,14 @@
 import { glass, gold, displayStack, timeAgo } from "../styles";
 
 const dotColors = {
-  login: "#4CAF50",
-  renew: "#4CAF50",
-  payment_failed: "#ef5350",
-  suspended: "#ef5350",
+  login: "#3DBB6E",
+  renew: "#3DBB6E",
+  payment_failed: "#E5484D",
+  suspended: "#E5484D",
   note: "#888",
-  extended: "#4CAF50",
+  extended: "#3DBB6E",
   discount: "#F3C339",
-  free_activation: "#B26FE0",
+  free_activation: "#E8B86D",
 };
 
 export default function ActivityFeed({ items }) {
@@ -17,12 +17,13 @@ export default function ActivityFeed({ items }) {
     <div style={{ ...glass, padding: "1.5rem 1.6rem", flex: 1, minWidth: 260 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.1rem" }}>
         <span style={{ fontFamily: displayStack, fontSize: "1.05rem", fontWeight: 700, color: "#F0EAD8" }}>آخر العمليات</span>
-        <span style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.7rem", color: "#4CAF50", fontWeight: 600 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4CAF50", boxShadow: "0 0 6px #4CAF50" }} /> Live
+        <span style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.7rem", color: "#3DBB6E", fontWeight: 600 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3DBB6E", boxShadow: "0 0 6px #3DBB6E" }} /> Live
         </span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem", maxHeight: 300, overflowY: "auto" }}>
         {(items || []).length === 0 && <p style={{ color: "#444", fontSize: "0.8rem" }}>لا يوجد نشاط بعد</p>}
+        }
         {(items || []).map((a) => (
           <div key={a.id} style={{ display: "flex", alignItems: "flex-start", gap: "0.7rem" }}>
             <span

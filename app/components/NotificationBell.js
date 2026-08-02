@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { playBeep } from "@/lib/beep";
 
-const GOLD = "#D4AF37";
+const GOLD = "#E8B86D";
 
 function timeAgo(dateStr) {
   const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
@@ -79,6 +79,7 @@ export default function NotificationBell({ soundEnabled = true }) {
       <button onClick={toggleOpen} style={s.bellBtn} aria-label="الإشعارات">
         🔔
         {unreadCount > 0 && <span style={s.badge}>{unreadCount > 9 ? "9+" : unreadCount}</span>}
+        }
       </button>
 
       {open && (
@@ -86,10 +87,12 @@ export default function NotificationBell({ soundEnabled = true }) {
           <div style={s.dropdownHeader}>الإشعارات</div>
           <div style={s.list}>
             {items.length === 0 && <p style={s.empty}>ما في إشعارات لسا</p>}
+            }
             {items.map((n) => (
               <div key={n.id} style={s.item}>
                 <p style={s.itemTitle}>{n.title}</p>
                 {n.message && <p style={s.itemMsg}>{n.message}</p>}
+                }
                 <p style={s.itemTime}>{timeAgo(n.created_at)}</p>
               </div>
             ))}
@@ -102,12 +105,12 @@ export default function NotificationBell({ soundEnabled = true }) {
 
 const s = {
   bellBtn: { position: "relative", background: "transparent", border: "1px solid #2B2F36", borderRadius: 8, width: 40, height: 40, fontSize: "1.1rem", cursor: "pointer", color: "#EAECEF" },
-  badge: { position: "absolute", top: -4, left: -4, background: "#F6465D", color: "#fff", fontSize: "0.65rem", fontWeight: 700, borderRadius: 9, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" },
-  dropdown: { position: "absolute", top: "48px", left: 0, width: 320, maxWidth: "90vw", background: "#0d0d0d", border: "1px solid #2B2F36", borderRadius: 12, boxShadow: "0 12px 30px rgba(0,0,0,0.5)", zIndex: 50, overflow: "hidden" },
+  badge: { position: "absolute", top: -4, left: -4, background: "#E5484D", color: "#fff", fontSize: "0.65rem", fontWeight: 700, borderRadius: 9, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" },
+  dropdown: { position: "absolute", top: "48px", left: 0, width: 320, maxWidth: "90vw", background: "#0D0E10", border: "1px solid #2B2F36", borderRadius: 12, boxShadow: "0 12px 30px rgba(0,0,0,0.5)", zIndex: 50, overflow: "hidden" },
   dropdownHeader: { padding: "0.8rem 1rem", fontSize: "0.85rem", fontWeight: 700, color: GOLD, borderBottom: "1px solid #2B2F36" },
   list: { maxHeight: 360, overflowY: "auto" },
   empty: { padding: "1.2rem", color: "#555", fontSize: "0.8rem", textAlign: "center" },
-  item: { padding: "0.8rem 1rem", borderBottom: "1px solid #181A20" },
+  item: { padding: "0.8rem 1rem", borderBottom: "1px solid #0D0E10" },
   itemTitle: { fontSize: "0.83rem", color: "#EAECEF", fontWeight: 600, marginBottom: 2 },
   itemMsg: { fontSize: "0.78rem", color: "#9a9488", lineHeight: 1.5, marginBottom: 4 },
   itemTime: { fontSize: "0.68rem", color: "#555" },

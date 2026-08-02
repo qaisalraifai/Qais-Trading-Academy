@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Sparkles, RotateCcw, ChevronDown, ChevronRight, Zap, Bell, Radio, Brain, Eye, TrendingUp, TrendingDown, Target, CheckCircle2, RefreshCw, ExternalLink } from "lucide-react";
+import { Sparkles, RotateCcw, ChevronDown, ChevronRight, Zap, Bell, Radio, Brain, Eye, TrendingUp, TrendingDown, Target, CircleCheck as CheckCircle2, RefreshCw, ExternalLink } from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
 import { createClient } from "@/lib/supabase-client";
@@ -17,12 +17,12 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
    /api/market-intelligence (Yahoo Finance فعلي).
    ============================================================================ */
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GREEN = "#02C076";
-const RED = "#F6465D";
-const BLUE = "#4f7cff";
-const AMBER = "#f59e0b";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GREEN = "#3DBB6E";
+const RED = "#E5484D";
+const BLUE = "#3D8BFD";
+const AMBER = "#F5A623";
 const NEUTRAL = "#c9c9c9";
 const CHART_H = 600;
 const ANIM_MS = 450;
@@ -60,7 +60,7 @@ function fmt(n) {
    أربع جلسات كاملة (Sydney/Tokyo/London/New York). Sydney بتلف منتصف الليل
    (21:00 → 06:00 UTC) فمنعاملها كنطاق "ملفوف" في كل الحسابات تحت. */
 const SESSION_DEFS = [
-  { key: "sydney", label: "Sydney", short: "SYD", start: 21, end: 6, color: "#9b6cf0" },
+  { key: "sydney", label: "Sydney", short: "SYD", start: 21, end: 6, color: "#E8B86D" },
   { key: "tokyo", label: "Tokyo", short: "TOK", start: 0, end: 9, color: GOLD },
   { key: "london", label: "London", short: "LON", start: 7, end: 16, color: BLUE },
   { key: "newyork", label: "New York", short: "NY", start: 12, end: 21, color: GREEN },

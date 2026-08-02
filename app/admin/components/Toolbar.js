@@ -22,7 +22,7 @@ const sortOptions = [
 ];
 
 const fieldStyle = {
-  background: "#0d0d0d",
+  background: "#0D0E10",
   border: "1px solid #2B2F36",
   color: "#EAECEF",
   padding: "0.6rem 0.9rem",

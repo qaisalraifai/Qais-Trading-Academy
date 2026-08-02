@@ -48,8 +48,8 @@ function AssignmentRow({ assignment, onSubmitted }) {
   return (
     <div
       style={{
-        background: "#181A20",
-        border: "1px solid #D4AF3722",
+        background: "#0D0E10",
+        border: "1px solid #E8B86D22",
         borderRadius: 10,
         padding: "0.9rem 1.1rem",
         marginBottom: "0.7rem",
@@ -62,7 +62,7 @@ function AssignmentRow({ assignment, onSubmitted }) {
             <div style={{ color: "#aaa", fontSize: 12.5, marginTop: 4 }}>{assignment.description}</div>
           )}
           {assignment.due_date && (
-            <div style={{ color: "#D4AF37", fontSize: 12, marginTop: 4 }}>
+            <div style={{ color: "#E8B86D", fontSize: 12, marginTop: 4 }}>
               آخر موعد للتسليم: {formatDate(assignment.due_date)}
             </div>
           )}
@@ -70,8 +70,8 @@ function AssignmentRow({ assignment, onSubmitted }) {
         {isGraded && (
           <span
             style={{
-              background: "#D4AF3722",
-              color: "#D4AF37",
+              background: "#E8B86D22",
+              color: "#E8B86D",
               borderRadius: 8,
               padding: "0.3rem 0.7rem",
               fontSize: 12,
@@ -106,7 +106,7 @@ function AssignmentRow({ assignment, onSubmitted }) {
           rows={2}
           style={{
             background: "#111108",
-            border: "1px solid #D4AF3733",
+            border: "1px solid #E8B86D33",
             borderRadius: 6,
             color: "#eee",
             padding: "0.5rem",
@@ -116,11 +116,12 @@ function AssignmentRow({ assignment, onSubmitted }) {
           }}
         />
         {err && <div style={{ color: "#f66", fontSize: 12 }}>{err}</div>}
+        }
         <button
           onClick={handleSubmit}
           disabled={busy}
           style={{
-            background: "#D4AF37",
+            background: "#E8B86D",
             color: "#111",
             border: "none",
             borderRadius: 8,
@@ -162,7 +163,7 @@ export default function BatchAssignmentsPanel({ courseId }) {
     <div
       style={{
         background: "#111108",
-        border: "1px solid #D4AF3733",
+        border: "1px solid #E8B86D33",
         borderRadius: 12,
         marginBottom: "1.5rem",
         overflow: "hidden",
@@ -184,7 +185,7 @@ export default function BatchAssignmentsPanel({ courseId }) {
         }}
       >
         <span style={{ fontSize: 14, fontWeight: 800 }}>📝 واجبات الدفعة ({assignments.length})</span>
-        <span style={{ color: "#D4AF37", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
+        <span style={{ color: "#E8B86D", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
       </button>
 
       {open && (

@@ -5,11 +5,11 @@ import Link from "next/link";
 import { TrendingUp, TrendingDown, ExternalLink, BarChart3 } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GREEN = "#02C076";
-const RED = "#F6465D";
-const BLUE = "#4f7cff";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GREEN = "#3DBB6E";
+const RED = "#E5484D";
+const BLUE = "#3D8BFD";
 
 const glass = {
   background: "linear-gradient(145deg, rgba(34,37,43,0.9), rgba(20,22,26,0.92))",
@@ -149,6 +149,7 @@ export default function HistoryClient() {
       </div>
 
       {error && <div style={{ ...glass, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
+      }
 
       {/* ================= إحصائيات ================= */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
@@ -190,7 +191,7 @@ export default function HistoryClient() {
             <thead>
               <tr style={{ color: "#888", textAlign: "right" }}>
                 {[t("aiTrades.colSymbol"), t("aiTrades.colDirection"), t("aiTrades.colTimeframe"), "Confidence", "R/R", t("aiTrades.colStatus"), t("aiTrades.colDate"), ""].map((h) => (
-                  <th key={h} style={{ padding: "10px 12px", fontWeight: 700, borderBottom: "1px solid #2e2e2e" }}>{h}</th>
+                  <th key={h} style={{ padding: "10px 12px", fontWeight: 700, borderBottom: "1px solid #34373B" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -229,7 +230,7 @@ export default function HistoryClient() {
 }
 
 const inputStyle = {
-  background: "#14161a", border: "1px solid #2e2e2e", color: "#ddd",
+  background: "#141517", border: "1px solid #34373B", color: "#ddd",
   borderRadius: 6, padding: "6px 8px", fontSize: 11.5,
 };
 

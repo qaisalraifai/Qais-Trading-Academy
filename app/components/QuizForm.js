@@ -104,10 +104,10 @@ const styles = {
     backgroundColor: "#0f0f0f",
     cursor: "pointer",
   },
-  optionSelected: { border: "1px solid #02C076" },
+  optionSelected: { border: "1px solid #3DBB6E" },
   submitButton: {
     padding: "0.75rem 1.5rem",
-    backgroundColor: "#02C076",
+    backgroundColor: "#3DBB6E",
     color: "#fff",
     border: "none",
     borderRadius: "8px",
@@ -117,7 +117,7 @@ const styles = {
   },
   resultBox: { textAlign: "center", padding: "2rem", backgroundColor: "#2B2F36", borderRadius: "12px" },
   resultTitle: { marginBottom: "0.5rem" },
-  resultPercent: { fontSize: "2rem", color: "#02C076", marginBottom: "1.5rem" },
+  resultPercent: { fontSize: "2rem", color: "#3DBB6E", marginBottom: "1.5rem" },
   backButton: {
     display: "inline-block",
     padding: "0.75rem 1.5rem",

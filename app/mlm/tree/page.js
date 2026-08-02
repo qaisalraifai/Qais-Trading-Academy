@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase-client";
 import PageShell from "@/app/components/layout/PageShell";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#D4AF37";
+const GOLD = "#E8B86D";
 const BG = "#0B0E11";
 const BORDER = "#2B2F36";
 
@@ -25,7 +25,7 @@ function Node({ node, onFocus, t }) {
         padding: "0.6rem 0.9rem",
         borderRadius: 10,
         border: `1px solid ${node.isActiveMember ? GOLD + "77" : "#2A2E39"}`,
-        background: "#0d0d0d",
+        background: "#0D0E10",
         color: "#EAECEF",
         cursor: "pointer",
         textAlign: "center",
@@ -34,7 +34,7 @@ function Node({ node, onFocus, t }) {
       }}
     >
       <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>{node.username}</div>
-      <div style={{ fontSize: "0.65rem", color: node.isActiveMember ? "#4CAF50" : "#888", marginTop: 2 }}>
+      <div style={{ fontSize: "0.65rem", color: node.isActiveMember ? "#3DBB6E" : "#888", marginTop: 2 }}>
         {node.rankName || "—"}
       </div>
     </button>
@@ -134,7 +134,7 @@ function MlmTreeInner() {
       {loading ? (
         <div style={{ color: "#888" }}>{t("mlm.loading")}</div>
       ) : error ? (
-        <div style={{ color: "#F6465D" }}>{error}</div>
+        <div style={{ color: "#E5484D" }}>{error}</div>
       ) : (
         <div style={{ overflowX: "auto", paddingBottom: "2rem" }}>
           <div style={{ display: "flex", justifyContent: "center", minWidth: 600 }}>
@@ -155,6 +155,7 @@ export default function MlmTreePage() {
   return (
     <Suspense fallback={<div style={{ background: BG, color: "#888", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>...</div>}>
       <MlmTreeInner />
+    }
     </Suspense>
   );
 }

@@ -156,7 +156,7 @@ useEffect(() => {
 
       {/* Floating background orbs */}
       <div style={{ ...s.orb, width: "500px", height: "500px", top: "-100px", left: "-150px", background: "radial-gradient(circle, #C9A22722 0%, transparent 70%)" }} />
-      <div style={{ ...s.orb, width: "350px", height: "350px", top: "40%", right: "-100px", background: "radial-gradient(circle, #D4AF3718 0%, transparent 70%)" }} />
+      <div style={{ ...s.orb, width: "350px", height: "350px", top: "40%", right: "-100px", background: "radial-gradient(circle, #E8B86D18 0%, transparent 70%)" }} />
       <div style={{ ...s.orb, width: "250px", height: "250px", bottom: "10%", left: "30%", background: "radial-gradient(circle, #7A5F1412 0%, transparent 70%)" }} />
 
       {/* Header */}
@@ -292,12 +292,12 @@ onChange={(e) => f.set(e.target.value)}
   );
 }
 
-const gold = "#D4AF37";
+const gold = "#E8B86D";
 const s = {
   page: { backgroundColor: "#0B0E11", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EAECEF", overflowX: "hidden", position: "relative" },
   orb: { position: "fixed", borderRadius: "50%", pointerEvents: "none", filter: "blur(80px)", zIndex: 0 },
 
-  header: { position: "relative", zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #181A20" },
+  header: { position: "relative", zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #0D0E10" },
   logoBlock: { display: "flex", alignItems: "center", gap: "0.75rem" },
   logoImg: { height: "34px", borderRadius: "4px" },
   logoText: { fontSize: "0.95rem", fontWeight: 500, color: "#EAECEF" },
@@ -314,17 +314,17 @@ const s = {
   featureItem: { display: "flex", alignItems: "center", gap: "0.6rem", color: "#C8C0B0", fontSize: "0.88rem" },
   featureDot: { color: gold, fontSize: "0.5rem", flexShrink: 0 },
 
-  priceCard: { backgroundColor: "#0d0d0d", border: `1px solid ${gold}44`, borderRadius: "8px", padding: "2rem 2.5rem", display: "inline-block", textAlign: "center" },
+  priceCard: { backgroundColor: "#0D0E10", border: `1px solid ${gold}44`, borderRadius: "8px", padding: "2rem 2.5rem", display: "inline-block", textAlign: "center" },
   priceLabel: { fontFamily: "'JetBrains Mono', monospace", color: "#555", fontSize: "0.72rem", letterSpacing: "2px", marginBottom: "0.75rem" },
   priceRow: { display: "flex", alignItems: "baseline", gap: "0.5rem", justifyContent: "center", marginBottom: "0.75rem" },
   priceNum: { fontFamily: "'JetBrains Mono', monospace", fontSize: "3.5rem", fontWeight: 700, color: gold },
   priceCurrency: { color: "#888", fontSize: "1.1rem" },
   priceNote: { color: "#444", fontSize: "0.78rem" },
   pricePeriod: { color: "#666", fontSize: "0.85rem" },
-  priceTaxNote: { color: "#3a3a3a", fontSize: "0.7rem", marginTop: "0.5rem", lineHeight: 1.5 },
+  priceTaxNote: { color: "#26282C", fontSize: "0.7rem", marginTop: "0.5rem", lineHeight: 1.5 },
 
   formSection: { position: "relative", zIndex: 1, padding: "3rem", display: "flex", justifyContent: "center" },
-  card: { backgroundColor: "#0d0d0d", border: "1px solid #2B2F36", borderRadius: "8px", padding: "3rem 2.5rem", width: "100%", maxWidth: "500px" },
+  card: { backgroundColor: "#0D0E10", border: "1px solid #2B2F36", borderRadius: "8px", padding: "3rem 2.5rem", width: "100%", maxWidth: "500px" },
   formEyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1rem", textAlign: "center" },
   formTitle: { fontSize: "1.6rem", fontWeight: 800, color: "#EAECEF", textAlign: "center", marginBottom: "0.4rem" },
   formSub: { color: "#555", fontSize: "0.88rem", textAlign: "center", marginBottom: "2rem" },
@@ -332,11 +332,11 @@ const s = {
   form: { display: "flex", flexDirection: "column", gap: "1.25rem" },
   field: { display: "flex", flexDirection: "column", gap: "0.4rem" },
   label: { color: "#888", fontSize: "0.8rem" },
-  input: { backgroundColor: "#080808", border: "1px solid #22252B", color: "#EAECEF", padding: "0.8rem 1rem", borderRadius: "4px", fontSize: "0.95rem", outline: "none", direction: "ltr", textAlign: "right" },
+  input: { backgroundColor: "#080808", border: "1px solid #141517", color: "#EAECEF", padding: "0.8rem 1rem", borderRadius: "4px", fontSize: "0.95rem", outline: "none", direction: "ltr", textAlign: "right" },
   btn: { backgroundColor: gold, color: "#080600", padding: "1rem", borderRadius: "4px", border: "none", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer", marginTop: "0.5rem" },
-  error: { color: "#F6465D", fontSize: "0.85rem", textAlign: "center" },
+  error: { color: "#E5484D", fontSize: "0.85rem", textAlign: "center" },
   waitBox: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem", padding: "1.5rem 0" },
-  spinner: { width: "38px", height: "38px", borderRadius: "50%", border: "3px solid #22252B", borderTopColor: gold, animation: "qta-spin 0.8s linear infinite" },
+  spinner: { width: "38px", height: "38px", borderRadius: "50%", border: "3px solid #141517", borderTopColor: gold, animation: "qta-spin 0.8s linear infinite" },
   waitTitle: { color: "#EAECEF", fontSize: "1.05rem", fontWeight: 700 },
   waitText: { color: "#6E7177", fontSize: "0.88rem", lineHeight: 1.8, textAlign: "center" },
   linkText: { color: "#444", fontSize: "0.85rem", textAlign: "center", marginTop: "1.5rem" },

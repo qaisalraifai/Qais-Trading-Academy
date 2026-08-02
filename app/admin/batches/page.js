@@ -565,7 +565,7 @@ export default function AdminBatchesPage() {
           <span style={s.statLabel}>كل الدفعات</span>
         </button>
         <button style={{ ...s.statCard, ...(statusFilter === "active" ? s.statCardActive : {}) }} onClick={() => setStatusFilter("active")}>
-          <span style={{ ...s.statValue, color: "#02C076" }}>{stats.active}</span>
+          <span style={{ ...s.statValue, color: "#3DBB6E" }}>{stats.active}</span>
           <span style={s.statLabel}>نشطة</span>
         </button>
         <button style={{ ...s.statCard, ...(statusFilter === "upcoming" ? s.statCardActive : {}) }} onClick={() => setStatusFilter("upcoming")}>
@@ -655,6 +655,7 @@ export default function AdminBatchesPage() {
       </div>
 
       {error && <p style={{ ...s.errorText, margin: "0 3rem" }}>{error}</p>}
+      }
 
       {/* -------------------- المرحلة 7: Wizard إنشاء دفعة جديدة (6 خطوات) -------------------- */}
       {showForm && (
@@ -695,6 +696,7 @@ export default function AdminBatchesPage() {
                 <label style={s.label}>المدربين (اختياري، تقدري تختاري أكتر من وحد)</label>
                 <div style={s.checkboxList}>
                   {instructors.length === 0 && <p style={s.hint}>ما في مدربين متاحين.</p>}
+                  }
                   {instructors.map((i) => {
                     const checked = form.instructor_ids.includes(i.id);
                     return (
@@ -764,6 +766,7 @@ export default function AdminBatchesPage() {
             )}
 
             {error && <p style={s.errorText}>{error}</p>}
+            }
 
             <div style={s.formActions}>
               <button type="button" onClick={wizardStep === 1 ? closeForm : wizardBack} style={s.cancelBtn}>
@@ -792,6 +795,7 @@ export default function AdminBatchesPage() {
               ))}
             </select>
             {transferStudents.length === 0 && <p style={s.hint}>ما في طلاب مسجلين بهاي الدفعة حاليًا.</p>}
+            }
 
             <label style={s.label}>الدفعة الجديدة</label>
             <select style={s.input} value={transferTargetId} onChange={(e) => setTransferTargetId(e.target.value)} required>
@@ -803,10 +807,12 @@ export default function AdminBatchesPage() {
               ))}
             </select>
             {otherBatchesInCourse.length === 0 && <p style={s.hint}>ما في دفعات ثانية متاحة لنفس الدورة.</p>}
+            }
 
             <p style={s.hint}>تقدم الطالب محفوظ بالسجل ومش رح يتصفّر — بس رح تصير الدفعة الجديدة هي المرجع من هلأ وطالع.</p>
 
             {transferError && <p style={s.errorText}>{transferError}</p>}
+            }
 
             <div style={s.formActions}>
               <button type="button" onClick={closeTransfer} style={s.cancelBtn}>إلغاء</button>
@@ -840,6 +846,7 @@ export default function AdminBatchesPage() {
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "0.2rem" }}>
                           <span style={{ color: "#EAECEF", fontSize: "0.88rem", fontWeight: 600 }}>
                             {sess.title || "بث مباشر"} {sess.is_active && <span style={s.badgeLive}>🔴 نشط</span>}
+                            }
                           </span>
                           <span style={s.mono}>{fmtDateTime(sess.started_at)}</span>
                         </div>
@@ -935,6 +942,7 @@ export default function AdminBatchesPage() {
               />
 
               {announcementError && <p style={s.errorText}>{announcementError}</p>}
+              }
 
               <div style={s.formActions}>
                 <button type="button" onClick={closeAnnouncements} style={s.cancelBtn}>إغلاق</button>
@@ -954,12 +962,13 @@ export default function AdminBatchesPage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "30vh", overflowY: "auto" }}>
                 {announcements.map((a) => (
-                  <div key={a.id} style={{ background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.75rem 1rem" }}>
+                  <div key={a.id} style={{ background: "#0D0E10", border: "1px solid #222", borderRadius: "6px", padding: "0.75rem 1rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
                       <span style={{ color: "#EAECEF", fontSize: "0.86rem", fontWeight: 700 }}>{a.title}</span>
                       <span style={s.mono}>{a.recipients_count} طالب</span>
                     </div>
                     {a.message && <p style={{ color: "#999", fontSize: "0.8rem", margin: "0.35rem 0 0" }}>{a.message}</p>}
+                    }
                     <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>{fmtDateTime(a.created_at)}</p>
                   </div>
                 ))}
@@ -983,6 +992,7 @@ export default function AdminBatchesPage() {
             <p style={s.hint}>الحد الأقصى 25 ميجابايت لكل ملف.</p>
 
             {fileError && <p style={s.errorText}>{fileError}</p>}
+            }
 
             <hr style={{ border: "none", borderTop: "1px solid #222", margin: "1rem 0 0.75rem" }} />
 
@@ -993,7 +1003,7 @@ export default function AdminBatchesPage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "40vh", overflowY: "auto" }}>
                 {batchFiles.map((f) => (
-                  <div key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.65rem 0.9rem", gap: "0.5rem" }}>
+                  <div key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0D0E10", border: "1px solid #222", borderRadius: "6px", padding: "0.65rem 0.9rem", gap: "0.5rem" }}>
                     <div style={{ minWidth: 0 }}>
                       <a href={f.download_url || "#"} target="_blank" rel="noopener noreferrer" style={{ color: "#5b9bd5", fontSize: "0.85rem", fontWeight: 600, textDecoration: "none" }}>
                         📄 {f.file_name}
@@ -1025,6 +1035,7 @@ export default function AdminBatchesPage() {
             </p>
 
             {certError && <p style={s.errorText}>{certError}</p>}
+            }
 
             <hr style={{ border: "none", borderTop: "1px solid #222", margin: "0.75rem 0" }} />
 
@@ -1035,7 +1046,7 @@ export default function AdminBatchesPage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "50vh", overflowY: "auto" }}>
                 {certStudents.map((st) => (
-                  <div key={st.user_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.65rem 0.9rem", gap: "0.5rem" }}>
+                  <div key={st.user_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0D0E10", border: "1px solid #222", borderRadius: "6px", padding: "0.65rem 0.9rem", gap: "0.5rem" }}>
                     <div style={{ minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, color: "#eee" }}>{st.username}</p>
                       <p style={{ ...s.mono, margin: "0.25rem 0 0" }}>
@@ -1091,7 +1102,7 @@ export default function AdminBatchesPage() {
               const fillPct = batch.seats_total
                 ? Math.min(Math.round(((batch.seats_taken || 0) / batch.seats_total) * 100), 100)
                 : null;
-              const fillColor = batch.is_full ? "#F6465D" : fillPct != null && fillPct >= 80 ? "#d4a017" : "#02C076";
+              const fillColor = batch.is_full ? "#E5484D" : fillPct != null && fillPct >= 80 ? "#d4a017" : "#3DBB6E";
 
               return (
                 <div key={batch.id} style={{ ...s.card, ...s[`cardAccent_${status}`] }}>
@@ -1101,7 +1112,9 @@ export default function AdminBatchesPage() {
                       <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                         <span style={s[lifecycle.badge]}>{lifecycle.label}</span>
                         {batch.is_default && <span style={s.badgeDefault}>افتراضية</span>}
+                        }
                         {batch.live_session && <span style={s.badgeLive}>🔴 مباشر الآن</span>}
+                        }
                       </div>
                     </div>
                     <span style={batch.registration_status === "open" ? s.badgeOpen : s.badgeClosed}>
@@ -1131,6 +1144,7 @@ export default function AdminBatchesPage() {
                       <span style={s.mono}>
                         {batch.seats_taken}{batch.seats_total != null ? ` / ${batch.seats_total}` : " (بلا حد)"}
                         {batch.is_full && <span style={s.badgeFull}> ممتلئة</span>}
+                        }
                       </span>
                     </div>
                     {fillPct != null && (
@@ -1201,30 +1215,30 @@ export default function AdminBatchesPage() {
   );
 }
 
-const gold = "#D4AF37";
+const gold = "#E8B86D";
 const ink = "#0B0E11";
 const s = {
   page: { backgroundColor: ink, color: "#EAECEF", direction: "rtl", fontFamily: "'Inter', sans-serif", minHeight: "100vh", padding: "0 0 4rem" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2rem 3rem", borderBottom: "1px solid #181A20" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2rem 3rem", borderBottom: "1px solid #0D0E10" },
   headerSub: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.75rem", letterSpacing: "2px", marginBottom: "0.25rem" },
   headerTitle: { fontSize: "1.4rem", fontWeight: 800 },
   backBtn: { background: "none", border: "1px solid #222", color: "#999", padding: "0.6rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center" },
   addBtn: { backgroundColor: gold, color: "#000", border: "none", padding: "0.6rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 700 },
   statsBar: { display: "flex", flexWrap: "wrap", gap: "0.9rem", margin: "1.75rem 3rem 0" },
-  statCard: { display: "flex", flexDirection: "column", gap: "0.3rem", alignItems: "flex-start", backgroundColor: "#0d0d0d", border: "1px solid #181A20", borderRadius: "8px", padding: "1rem 1.3rem", minWidth: "130px", cursor: "pointer", fontFamily: "inherit", textAlign: "right" },
+  statCard: { display: "flex", flexDirection: "column", gap: "0.3rem", alignItems: "flex-start", backgroundColor: "#0D0E10", border: "1px solid #0D0E10", borderRadius: "8px", padding: "1rem 1.3rem", minWidth: "130px", cursor: "pointer", fontFamily: "inherit", textAlign: "right" },
   statCardActive: { borderColor: gold },
   statValue: { fontSize: "1.5rem", fontWeight: 800, color: "#EAECEF", fontFamily: "'JetBrains Mono', monospace" },
   statLabel: { fontSize: "0.78rem", color: "#666" },
   filterBar: { display: "flex", flexDirection: "column", gap: "0.75rem", margin: "1.5rem 3rem 0" },
   filterRow: { display: "flex", flexWrap: "wrap", gap: "1rem" },
   clearFiltersBtn: { alignSelf: "flex-start", background: "none", border: "1px solid #222", color: "#999", padding: "0.45rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" },
-  badgeActive: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#0a2a1e", color: "#02C076", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeActive: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#0a2a1e", color: "#3DBB6E", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   badgeUpcoming: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#1a2a3a", color: "#5b9bd5", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeEnded: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#181A20", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeEnded: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#0D0E10", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   cardsWrap: { margin: "1.5rem 3rem 2rem" },
   cardsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1.1rem" },
-  card: { display: "flex", flexDirection: "column", gap: "0.9rem", backgroundColor: "#0d0d0d", border: "1px solid #181A20", borderRight: "3px solid #333", borderRadius: "8px", padding: "1.3rem", transition: "border-color 0.15s ease" },
-  cardAccent_active: { borderRightColor: "#02C076" },
+  card: { display: "flex", flexDirection: "column", gap: "0.9rem", backgroundColor: "#0D0E10", border: "1px solid #0D0E10", borderRight: "3px solid #333", borderRadius: "8px", padding: "1.3rem", transition: "border-color 0.15s ease" },
+  cardAccent_active: { borderRightColor: "#3DBB6E" },
   cardAccent_upcoming: { borderRightColor: "#5b9bd5" },
   cardAccent_ended: { borderRightColor: "#555" },
   cardAccent_archived: { borderRightColor: "#333", opacity: 0.7 },
@@ -1235,42 +1249,42 @@ const s = {
   cardMetaRow: { display: "flex", gap: "1.5rem", flexWrap: "wrap" },
   cardMetaItem: { display: "flex", flexDirection: "column", gap: "0.25rem" },
   progressLabelRow: { display: "flex", justifyContent: "space-between", marginBottom: "0.4rem" },
-  progressBarBg: { width: "100%", height: "6px", backgroundColor: "#181A20", borderRadius: "999px", overflow: "hidden" },
+  progressBarBg: { width: "100%", height: "6px", backgroundColor: "#0D0E10", borderRadius: "999px", overflow: "hidden" },
   progressBarFill: { height: "100%", borderRadius: "999px", transition: "width 0.2s ease" },
-  cardActions: { display: "flex", gap: "0.4rem", flexWrap: "wrap", paddingTop: "0.6rem", borderTop: "1px solid #181A20" },
+  cardActions: { display: "flex", gap: "0.4rem", flexWrap: "wrap", paddingTop: "0.6rem", borderTop: "1px solid #0D0E10" },
   table: { width: "100%", borderCollapse: "collapse" },
-  th: { backgroundColor: "#181A20", padding: "1rem 1.25rem", textAlign: "right", fontSize: "0.78rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111", whiteSpace: "nowrap" },
-  tr: { borderBottom: "1px solid #0d0d0d" },
+  th: { backgroundColor: "#0D0E10", padding: "1rem 1.25rem", textAlign: "right", fontSize: "0.78rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111", whiteSpace: "nowrap" },
+  tr: { borderBottom: "1px solid #0D0E10" },
   td: { padding: "1rem 1.25rem", fontSize: "0.88rem", verticalAlign: "middle" },
   username: { color: "#EAECEF", fontWeight: 500 },
   mono: { fontFamily: "'JetBrains Mono', monospace", color: "#555", fontSize: "0.82rem" },
   btnEdit: { backgroundColor: "#1a2a3a", color: "#5b9bd5", border: "1px solid #2a3a5a", padding: "0.4rem 0.8rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" },
-  btnDanger: { backgroundColor: "#2a1a1a", color: "#ef5350", border: "1px solid #4a2a2a", padding: "0.4rem 0.8rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" },
+  btnDanger: { backgroundColor: "#2a1a1a", color: "#E5484D", border: "1px solid #4a2a2a", padding: "0.4rem 0.8rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem" },
   loading: { textAlign: "center", padding: "3rem", color: "#444" },
   overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "1rem" },
-  formCard: { backgroundColor: "#0d0d0d", border: `1px solid ${gold}44`, borderRadius: "8px", padding: "2rem", width: "100%", maxWidth: "480px", display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "90vh", overflowY: "auto" },
+  formCard: { backgroundColor: "#0D0E10", border: `1px solid ${gold}44`, borderRadius: "8px", padding: "2rem", width: "100%", maxWidth: "480px", display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "90vh", overflowY: "auto" },
   formTitle: { fontSize: "1.2rem", fontWeight: 700, marginBottom: "0.75rem" },
   label: { fontSize: "0.82rem", color: "#999", marginTop: "0.75rem" },
-  input: { backgroundColor: "#181A20", border: "1px solid #222", color: "#EAECEF", padding: "0.7rem 0.9rem", borderRadius: "4px", fontSize: "0.9rem", outline: "none", fontFamily: "inherit" },
+  input: { backgroundColor: "#0D0E10", border: "1px solid #222", color: "#EAECEF", padding: "0.7rem 0.9rem", borderRadius: "4px", fontSize: "0.9rem", outline: "none", fontFamily: "inherit" },
   hint: { fontSize: "0.75rem", color: "#555", marginTop: "0.15rem" },
-  errorText: { color: "#ef5350", fontSize: "0.85rem", marginTop: "0.5rem" },
+  errorText: { color: "#E5484D", fontSize: "0.85rem", marginTop: "0.5rem" },
   formActions: { display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" },
   wizardStepsBar: { display: "flex", justifyContent: "space-between", gap: "0.25rem", marginBottom: "0.5rem" },
   wizardDot: { display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem", flex: 1, opacity: 0.4, fontSize: "0.68rem", color: "#999" },
-  wizardDotActive: { opacity: 1, color: "#D4AF37" },
-  wizardDotDone: { opacity: 0.75, color: "#02C076" },
+  wizardDotActive: { opacity: 1, color: "#E8B86D" },
+  wizardDotDone: { opacity: 0.75, color: "#3DBB6E" },
   wizardDotLabel: { whiteSpace: "nowrap", fontSize: "0.62rem" },
-  reviewRow: { display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #181A20", fontSize: "0.85rem" },
+  reviewRow: { display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #0D0E10", fontSize: "0.85rem" },
   checkboxList: { display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "220px", overflowY: "auto", border: "1px solid #222", borderRadius: "6px", padding: "0.6rem" },
   checkboxRow: { display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "#EAECEF", cursor: "pointer" },
   cancelBtn: { background: "none", border: "1px solid #222", color: "#999", padding: "0.6rem 1.4rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" },
   saveBtn: { backgroundColor: gold, color: "#000", border: "none", padding: "0.6rem 1.4rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 700 },
   badgeDefault: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#1a2a3a", color: "#5b9bd5", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   badgeArchived: { marginRight: "0.5rem", fontSize: "0.68rem", backgroundColor: "#2a1a1a", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeFull: { color: "#ef5350", fontSize: "0.75rem" },
-  badgeLive: { fontSize: "0.72rem", color: "#F6465D", backgroundColor: "#2a1418", padding: "0.25rem 0.6rem", borderRadius: "3px", fontWeight: 700 },
-  btnLive: { backgroundColor: "#F6465D", color: "#fff", border: "none", padding: "0.45rem 0.85rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700, whiteSpace: "nowrap" },
-  sessionBtn: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.75rem 1rem", cursor: "pointer", width: "100%", textAlign: "right", fontFamily: "inherit" },
-  badgeOpen: { fontSize: "0.75rem", color: "#02C076", backgroundColor: "#0a2a1e", padding: "0.25rem 0.6rem", borderRadius: "3px" },
-  badgeClosed: { fontSize: "0.75rem", color: "#999", backgroundColor: "#181A20", padding: "0.25rem 0.6rem", borderRadius: "3px" },
+  badgeFull: { color: "#E5484D", fontSize: "0.75rem" },
+  badgeLive: { fontSize: "0.72rem", color: "#E5484D", backgroundColor: "#2a1418", padding: "0.25rem 0.6rem", borderRadius: "3px", fontWeight: 700 },
+  btnLive: { backgroundColor: "#E5484D", color: "#fff", border: "none", padding: "0.45rem 0.85rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700, whiteSpace: "nowrap" },
+  sessionBtn: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0D0E10", border: "1px solid #222", borderRadius: "6px", padding: "0.75rem 1rem", cursor: "pointer", width: "100%", textAlign: "right", fontFamily: "inherit" },
+  badgeOpen: { fontSize: "0.75rem", color: "#3DBB6E", backgroundColor: "#0a2a1e", padding: "0.25rem 0.6rem", borderRadius: "3px" },
+  badgeClosed: { fontSize: "0.75rem", color: "#999", backgroundColor: "#0D0E10", padding: "0.25rem 0.6rem", borderRadius: "3px" },
 };

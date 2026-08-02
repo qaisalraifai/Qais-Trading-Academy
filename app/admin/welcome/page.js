@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { gold, goldOklch, goldDeep, gradientGold, shadowGold, displayStack, fontStack, ink } from "../styles";
 
-function SparklesIcon({ size = 13, color = "#D4AF37" }) {
+function SparklesIcon({ size = 13, color = "#E8B86D" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path

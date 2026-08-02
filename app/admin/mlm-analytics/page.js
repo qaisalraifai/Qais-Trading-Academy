@@ -20,6 +20,7 @@ function StatCard({ label, value, sub, highlight }) {
       <div style={{ fontSize: "0.75rem", color: "#888", marginBottom: 6 }}>{label}</div>
       <div style={{ fontSize: "1.5rem", fontWeight: 800, color: highlight ? gold : "#EAECEF" }}>{value}</div>
       {sub && <div style={{ fontSize: "0.7rem", color: "#666", marginTop: 4 }}>{sub}</div>}
+      }
     </div>
   );
 }
@@ -70,7 +71,8 @@ export default function MlmAnalyticsPage() {
       </div>
 
       <div style={s.section}>
-        {error && <div style={{ color: "#F6465D", marginBottom: "1rem" }}>{error}</div>}
+        {error && <div style={{ color: "#E5484D", marginBottom: "1rem" }}>{error}</div>}
+        }
         {loading || !data ? (
           <div style={{ color: "#888" }}>جاري التحميل...</div>
         ) : (

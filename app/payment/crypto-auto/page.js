@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import QrCodeBox from "../components/QrCodeBox";
 
-const gold = "#D4AF37";
+const gold = "#E8B86D";
 
 export default function CryptoAutoPaymentPage() {
   const router = useRouter();
@@ -132,6 +132,7 @@ export default function CryptoAutoPaymentPage() {
 
       <div style={styles.card}>
         {step === "loading" && <p style={styles.note}>...جاري التحضير</p>}
+        }
 
         {step === "error" && (
           <>
@@ -160,7 +161,9 @@ export default function CryptoAutoPaymentPage() {
               ))}
             </div>
             {creatingPayment && <p style={styles.note}>...جاري إنشاء عملية الدفع</p>}
+            }
             {error && <p style={styles.configError}>{error}</p>}
+            }
           </>
         )}
 
@@ -207,7 +210,7 @@ export default function CryptoAutoPaymentPage() {
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#181A20",
+    backgroundColor: "#0D0E10",
     color: "#fff",
     direction: "rtl",
     fontFamily: "'Georgia', serif",
@@ -272,12 +275,12 @@ const styles = {
   spinnerIconSmall: { fontSize: "1.5rem" },
   linkBtn: { color: gold, fontSize: "0.85rem", textDecoration: "none" },
   configError: {
-    color: "#F6465D",
+    color: "#E5484D",
     fontSize: "0.78rem",
     textAlign: "center",
     lineHeight: 1.7,
-    background: "#F6465D14",
-    border: "1px solid #F6465D44",
+    background: "#E5484D14",
+    border: "1px solid #E5484D44",
     borderRadius: 6,
     padding: "0.6rem 0.9rem",
   },

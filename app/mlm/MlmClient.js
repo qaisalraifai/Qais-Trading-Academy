@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#D4AF37";
+const GOLD = "#E8B86D";
 const BG = "#0B0E11";
-const CARD = "#0d0d0d";
+const CARD = "#0D0E10";
 const BORDER = "#2B2F36";
 
 const BONUS_KEYS = {
@@ -47,7 +47,7 @@ function TreeSlot({ label, child, t }) {
     <div
       style={{
         flex: 1,
-        background: "#181A20",
+        background: "#0D0E10",
         border: `1px dashed ${child ? GOLD + "55" : "#2A2E39"}`,
         borderRadius: 12,
         padding: "1rem",
@@ -58,7 +58,7 @@ function TreeSlot({ label, child, t }) {
       {child ? (
         <>
           <div style={{ fontWeight: 700 }}>{child.username}</div>
-          <div style={{ fontSize: "0.7rem", color: child.is_active_member ? "#4CAF50" : "#888", marginTop: 4 }}>
+          <div style={{ fontSize: "0.7rem", color: child.is_active_member ? "#3DBB6E" : "#888", marginTop: 4 }}>
             {child.is_active_member ? t("mlm.active") : t("mlm.inactive")}
           </div>
         </>
@@ -178,7 +178,7 @@ export default function MlmClient({ embedded = false }) {
 
   if (error || !data) {
     return (
-      <div style={embedded ? { color: "#F6465D", direction: dir } : { background: BG, color: "#F6465D", minHeight: "100vh", padding: "3rem", direction: dir }}>
+      <div style={embedded ? { color: "#E5484D", direction: dir } : { background: BG, color: "#E5484D", minHeight: "100vh", padding: "3rem", direction: dir }}>
         {error || t("mlm.unexpectedError")}
       </div>
     );
@@ -202,7 +202,7 @@ export default function MlmClient({ embedded = false }) {
             <div style={{ fontSize: "1.4rem", fontWeight: 800, color: GOLD }}>{rank?.name_ar || t("mlm.noRank")}</div>
           </div>
           <div style={{ textAlign: "left" }}>
-            <div style={{ fontSize: "0.75rem", color: profile.isActiveMember ? "#4CAF50" : "#F6465D" }}>
+            <div style={{ fontSize: "0.75rem", color: profile.isActiveMember ? "#3DBB6E" : "#E5484D" }}>
               {profile.isActiveMember ? t("mlm.activeMembership") : t("mlm.inactiveMembership")}
             </div>
             <div style={{ fontSize: "0.7rem", color: "#666", marginTop: 2 }}>
@@ -264,7 +264,7 @@ export default function MlmClient({ embedded = false }) {
       <Card style={{ marginBottom: "1.5rem" }}>
         <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "1rem" }}>{t("mlm.kycTitle")}</div>
         {kycStatus === "verified" ? (
-          <div style={{ color: "#4CAF50" }}>{t("mlm.kycVerified")}</div>
+          <div style={{ color: "#3DBB6E" }}>{t("mlm.kycVerified")}</div>
         ) : kycStatus === "pending" ? (
           <div style={{ color: GOLD }}>{t("mlm.kycPending")}</div>
         ) : (
@@ -275,10 +275,12 @@ export default function MlmClient({ embedded = false }) {
               style={{ background: GOLD, color: "#111", border: "none", borderRadius: 8, padding: "0.5rem 1.2rem", fontWeight: 700, cursor: "pointer" }}>
               {kycUploading ? t("mlm.kycUploading") : t("mlm.kycSubmitBtn")}
             </button>
-            {kycStatus === "rejected" && <span style={{ color: "#F6465D", fontSize: "0.8rem" }}>{t("mlm.kycRejected")}</span>}
+            {kycStatus === "rejected" && <span style={{ color: "#E5484D", fontSize: "0.8rem" }}>{t("mlm.kycRejected")}</span>}
+            }
           </form>
         )}
         {kycMsg && <div style={{ marginTop: 8, fontSize: "0.8rem", color: "#aaa" }}>{kycMsg}</div>}
+        }
       </Card>
 
       {/* طلب سحب */}
@@ -292,15 +294,15 @@ export default function MlmClient({ embedded = false }) {
           <form onSubmit={submitWithdraw} style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap", alignItems: "center" }}>
             <input type="number" min="50" step="0.01" placeholder={t("mlm.amountPlaceholder")} value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
-              style={{ width: 120, padding: "0.5rem", borderRadius: 8, border: "1px solid #2A2E39", background: "#181A20", color: "#EAECEF" }} />
+              style={{ width: 120, padding: "0.5rem", borderRadius: 8, border: "1px solid #2A2E39", background: "#0D0E10", color: "#EAECEF" }} />
             <select value={withdrawMethod} onChange={(e) => setWithdrawMethod(e.target.value)}
-              style={{ padding: "0.5rem", borderRadius: 8, border: "1px solid #2A2E39", background: "#181A20", color: "#EAECEF" }}>
+              style={{ padding: "0.5rem", borderRadius: 8, border: "1px solid #2A2E39", background: "#0D0E10", color: "#EAECEF" }}>
               <option value="bank_transfer">{t("mlm.bankTransferOpt")}</option>
               <option value="e_wallet">{t("mlm.eWalletOpt")}</option>
               <option value="usdt">USDT</option>
             </select>
             <input placeholder={t("mlm.accountNumberPlaceholder")} value={withdrawDest} onChange={(e) => setWithdrawDest(e.target.value)}
-              style={{ flex: 1, minWidth: 180, padding: "0.5rem", borderRadius: 8, border: "1px solid #2A2E39", background: "#181A20", color: "#EAECEF" }} />
+              style={{ flex: 1, minWidth: 180, padding: "0.5rem", borderRadius: 8, border: "1px solid #2A2E39", background: "#0D0E10", color: "#EAECEF" }} />
             <button type="submit" disabled={withdrawBusy}
               style={{ background: GOLD, color: "#111", border: "none", borderRadius: 8, padding: "0.5rem 1.2rem", fontWeight: 700, cursor: "pointer" }}>
               {withdrawBusy ? t("mlm.sendingRequest") : t("mlm.sendRequestBtn")}
@@ -308,6 +310,7 @@ export default function MlmClient({ embedded = false }) {
           </form>
         )}
         {withdrawMsg && <div style={{ marginTop: 8, fontSize: "0.8rem", color: "#aaa" }}>{withdrawMsg}</div>}
+        }
       </Card>
 
       {/* آخر العمولات */}
@@ -324,7 +327,7 @@ export default function MlmClient({ embedded = false }) {
                   display: "flex",
                   justifyContent: "space-between",
                   padding: "0.6rem 0.8rem",
-                  background: "#181A20",
+                  background: "#0D0E10",
                   borderRadius: 8,
                   fontSize: "0.85rem",
                 }}

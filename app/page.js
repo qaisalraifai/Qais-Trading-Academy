@@ -54,7 +54,7 @@ export default function HomePage() {
       <section style={styles.hero}>
         {/* Glow orbs */}
         <GlowOrb size="600px" color="#C9A227" blur="120px" top="-100px" left="-200px" opacity={0.12} />
-        <GlowOrb size="400px" color="#D4AF37" blur="80px" top="200px" right="-100px" opacity={0.1} />
+        <GlowOrb size="400px" color="#E8B86D" blur="80px" top="200px" right="-100px" opacity={0.1} />
         <GlowOrb size="300px" color="#7A5F14" blur="60px" top="400px" left="40%" opacity={0.08} />
 
         <div style={styles.heroInner}>
@@ -216,7 +216,7 @@ export default function HomePage() {
 
       {/* CTA */}
       <section style={styles.ctaSection}>
-        <GlowOrb size="500px" color="#D4AF37" blur="100px" top="50%" left="50%" opacity={0.1} />
+        <GlowOrb size="500px" color="#E8B86D" blur="100px" top="50%" left="50%" opacity={0.1} />
         <Reveal><h2 style={styles.ctaTitle}>جاهز تبدأ؟</h2></Reveal>
         <Reveal delay={0.15}><p style={styles.ctaSub}>انضم الآن وابدأ رحلتك في عالم التداول الاحترافي</p></Reveal>
         <Reveal delay={0.3}>
@@ -242,16 +242,16 @@ export default function HomePage() {
   );
 }
 
-const gold = "#D4AF37";
+const gold = "#E8B86D";
 const goldDim = "#C9A227";
 const ink = "#0B0E11";
-const cardBg = "#0d0d0d";
+const cardBg = "#0D0E10";
 const textMuted = "#6E7177";
 const textSoft = "#EAECEF";
 
 const styles = {
   page: { backgroundColor: ink, color: textSoft, direction: "rtl", fontFamily: "'Cairo', system-ui, sans-serif", minHeight: "100vh", overflowX: "hidden" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #181A20", position: "relative", zIndex: 10 },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #0D0E10", position: "relative", zIndex: 10 },
   logoBlock: { display: "flex", alignItems: "center", gap: "0.85rem" },
   logoImg: { height: "36px", width: "auto", borderRadius: "4px" },
   logoText: { fontSize: "1rem", color: textSoft, fontWeight: 500 },
@@ -261,7 +261,7 @@ const styles = {
 
   hero: { position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", maxWidth: "1280px", margin: "0 auto", padding: "6rem 3rem 5rem", gap: "3rem", flexWrap: "wrap", minHeight: "85vh" },
   heroInner: { flex: "1 1 480px", minWidth: "320px", position: "relative", zIndex: 2 },
-  badge: { display: "inline-flex", alignItems: "center", gap: "0.5rem", border: "1px solid #22252B", borderRadius: "999px", padding: "0.4rem 1rem", fontSize: "0.8rem", color: textMuted, marginBottom: "2rem", backgroundColor: "#0d0d0d" },
+  badge: { display: "inline-flex", alignItems: "center", gap: "0.5rem", border: "1px solid #141517", borderRadius: "999px", padding: "0.4rem 1rem", fontSize: "0.8rem", color: textMuted, marginBottom: "2rem", backgroundColor: "#0D0E10" },
   badgeDot: { width: "6px", height: "6px", borderRadius: "50%", backgroundColor: gold },
   heroTitle: { fontSize: "clamp(2.5rem, 5vw, 4.5rem)", fontWeight: 900, lineHeight: 1.1, marginBottom: "1.5rem", letterSpacing: "-1px" },
   heroTitleGold: { color: gold },
@@ -277,7 +277,7 @@ const styles = {
   orbsWrap: { flex: "1 1 320px", minWidth: "280px", display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem" },
   orbsGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" },
   orbCard: { display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" },
-  orbRing: { width: "100px", height: "100px", borderRadius: "50%", border: "1px solid #22252B", display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle at 30% 30%, #1a1610 0%, #080600 100%)", boxShadow: `0 0 30px ${gold}22, inset 0 0 20px ${gold}11` },
+  orbRing: { width: "100px", height: "100px", borderRadius: "50%", border: "1px solid #141517", display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle at 30% 30%, #1a1610 0%, #080600 100%)", boxShadow: `0 0 30px ${gold}22, inset 0 0 20px ${gold}11` },
   orbInner: { width: "70px", height: "70px", borderRadius: "50%", border: `1px solid ${gold}44`, display: "flex", alignItems: "center", justifyContent: "center", background: `radial-gradient(circle, ${gold}15 0%, transparent 70%)` },
   orbLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", color: gold, letterSpacing: "1px", fontWeight: 500 },
   orbSub: { color: textMuted, fontSize: "0.72rem", textAlign: "center" },

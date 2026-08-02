@@ -10,9 +10,9 @@ const MONTHS = [
 ];
 
 const TYPE_META = {
-  start: { icon: "🚀", color: "#4CAF50", label: "بداية الدفعة" },
-  end: { icon: "🏁", color: "#EF5350", label: "نهاية الدفعة" },
-  live: { icon: "🔴", color: "#D4AF37", label: "بث مباشر" },
+  start: { icon: "🚀", color: "#3DBB6E", label: "بداية الدفعة" },
+  end: { icon: "🏁", color: "#E5484D", label: "نهاية الدفعة" },
+  live: { icon: "🔴", color: "#E8B86D", label: "بث مباشر" },
   assignment: { icon: "📝", color: "#42A5F5", label: "تسليم واجب" },
 };
 
@@ -123,7 +123,7 @@ export default function CalendarClient({ course, batch, events }) {
                       {dayEvents.length > 0 && (
                         <div style={s.dotsRow}>
                           {dayEvents.slice(0, 3).map((e, idx) => (
-                            <span key={idx} style={{ ...s.dot, background: TYPE_META[e.type]?.color || "#D4AF37" }} />
+                            <span key={idx} style={{ ...s.dot, background: TYPE_META[e.type]?.color || "#E8B86D" }} />
                           ))}
                         </div>
                       )}
@@ -139,6 +139,7 @@ export default function CalendarClient({ course, batch, events }) {
                     <div key={idx} style={s.eventRow}>
                       <span>{TYPE_META[e.type]?.icon} {e.title}</span>
                       {e.isActive && <span style={s.liveNow}>مباشر الآن</span>}
+                      }
                     </div>
                   ))}
                 </div>
@@ -171,40 +172,40 @@ export default function CalendarClient({ course, batch, events }) {
 const s = {
   page: {
     minHeight: "100vh",
-    background: "radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%)",
+    background: "radial-gradient(ellipse at top, #1A1408 0%, #0D0E10 60%)",
     color: "#fff",
     fontFamily: "'Inter', sans-serif",
     direction: "rtl",
     padding: "2rem",
   },
   header: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" },
-  headerSub: { color: "#D4AF37", fontSize: 11, letterSpacing: 2, margin: 0 },
+  headerSub: { color: "#E8B86D", fontSize: 11, letterSpacing: 2, margin: 0 },
   headerTitle: { margin: 0, fontSize: 20, fontWeight: 800 },
   backLink: { color: "#555", fontSize: 13, textDecoration: "none" },
-  empty: { color: "#777", background: "#111108", border: "1px solid #D4AF3733", borderRadius: 12, padding: "2rem", textAlign: "center" },
+  empty: { color: "#777", background: "#111108", border: "1px solid #E8B86D33", borderRadius: 12, padding: "2rem", textAlign: "center" },
   layout: { display: "flex", gap: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" },
-  calendarBox: { flex: "1 1 480px", background: "#111108", border: "1px solid #D4AF3733", borderRadius: 14, padding: "1.25rem" },
+  calendarBox: { flex: "1 1 480px", background: "#111108", border: "1px solid #E8B86D33", borderRadius: 14, padding: "1.25rem" },
   monthNav: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" },
-  navBtn: { background: "#1a1a0a", color: "#D4AF37", border: "1px solid #D4AF3744", borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: "pointer" },
+  navBtn: { background: "#1a1a0a", color: "#E8B86D", border: "1px solid #E8B86D44", borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: "pointer" },
   monthLabel: { fontWeight: 800, fontSize: 15 },
   weekRow: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: "0.4rem" },
   weekday: { textAlign: "center", color: "#888", fontSize: 11.5, fontWeight: 700 },
   daysGrid: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 },
   dayCellEmpty: { height: 46 },
   dayCell: {
-    height: 46, borderRadius: 8, background: "#181A20", border: "1px solid transparent",
+    height: 46, borderRadius: 8, background: "#0D0E10", border: "1px solid transparent",
     color: "#ccc", fontSize: 12.5, display: "flex", flexDirection: "column", alignItems: "center",
     justifyContent: "center", gap: 3, fontFamily: "inherit",
   },
-  dayCellToday: { border: "1px solid #D4AF37", color: "#D4AF37", fontWeight: 800 },
-  dayCellSelected: { background: "#D4AF3722" },
+  dayCellToday: { border: "1px solid #E8B86D", color: "#E8B86D", fontWeight: 800 },
+  dayCellSelected: { background: "#E8B86D22" },
   dotsRow: { display: "flex", gap: 2 },
   dot: { width: 5, height: 5, borderRadius: "50%" },
-  dayDetail: { marginTop: "1rem", borderTop: "1px solid #D4AF3722", paddingTop: "0.9rem" },
-  dayDetailTitle: { color: "#D4AF37", fontSize: 13, fontWeight: 800, marginBottom: "0.5rem" },
+  dayDetail: { marginTop: "1rem", borderTop: "1px solid #E8B86D22", paddingTop: "0.9rem" },
+  dayDetailTitle: { color: "#E8B86D", fontSize: 13, fontWeight: 800, marginBottom: "0.5rem" },
   eventRow: { display: "flex", justifyContent: "space-between", alignItems: "center", color: "#eee", fontSize: 13, padding: "0.4rem 0" },
-  liveNow: { background: "#D4373722", color: "#EF5350", fontSize: 10.5, fontWeight: 800, borderRadius: 6, padding: "0.2rem 0.5rem" },
-  upcomingBox: { flex: "1 1 260px", background: "#111108", border: "1px solid #D4AF3733", borderRadius: 14, padding: "1.25rem" },
-  upcomingTitle: { color: "#D4AF37", fontSize: 13, fontWeight: 800, marginBottom: "0.9rem" },
+  liveNow: { background: "#D4373722", color: "#E5484D", fontSize: 10.5, fontWeight: 800, borderRadius: 6, padding: "0.2rem 0.5rem" },
+  upcomingBox: { flex: "1 1 260px", background: "#111108", border: "1px solid #E8B86D33", borderRadius: 14, padding: "1.25rem" },
+  upcomingTitle: { color: "#E8B86D", fontSize: 13, fontWeight: 800, marginBottom: "0.9rem" },
   upcomingRow: { display: "flex", gap: "0.6rem", alignItems: "flex-start", marginBottom: "0.8rem" },
 };
