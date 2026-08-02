@@ -625,23 +625,23 @@ export default function BacktestClient({ userId, username, initialBalance, initi
     <div style={{ direction: dir }}>
       <style>{`
         :root{
-          --bg:#181A20; --panel:linear-gradient(145deg, #111108, #181A20); --panel2:#15151a;
-          --border:#D4AF3722; --border-strong:#D4AF3755; --gold:#D4AF37; --gold-dark:#9C7A22;
-          --green:#02C076; --red:#F6465D; --text:#EAECEF; --muted:#666666;
+          --bg:#0D0E10; --panel:linear-gradient(145deg, #111108, #0D0E10); --panel2:#15151a;
+          --border:#E8B86D22; --border-strong:#E8B86D55; --gold:#E8B86D; --gold-dark:#D4A05A;
+          --green:#3DBB6E; --red:#E5484D; --text:#EAECEF; --muted:#666666;
         }
-        .qta-root{ background:radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%); color:var(--text);
+        .qta-root{ background:radial-gradient(ellipse at top, #1A1408 0%, #0D0E10 60%); color:var(--text);
           font-family:'Segoe UI', Tahoma, Arial, sans-serif; direction:${dir}; padding:1.5rem; min-height:100vh; }
         .qta-container{max-width:1400px;margin:0 auto;}
         .qta-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);}
         .qta-header-left{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
         .qta-header-title{display:flex;align-items:center;gap:0.8rem;}
-        .qta-header-logo{width:46px;height:46px;border-radius:50%;border:2px solid var(--gold);box-shadow:0 0 20px #D4AF3744;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#000;font-size:1.1rem;}
+        .qta-header-logo{width:46px;height:46px;border-radius:50%;border:2px solid var(--gold);box-shadow:0 0 20px #E8B86D44;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#000;font-size:1.1rem;}
         .qta-brand{color:var(--gold);font-size:11px;letter-spacing:3px;margin:0 0 4px;}
         .qta-header-title h1{font-size:1.4rem;margin:0;font-weight:800;}
         .qta-header-title p{margin:0.25rem 0 0;color:var(--muted);font-size:0.85rem;}
         .qta-badge{display:flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:20px;font-size:0.9rem;font-weight:bold;cursor:default;border:1px solid transparent;}
-        .qta-badge-user{background:#D4AF3714;color:var(--gold);border-color:var(--border);}
-        .qta-badge-balance{background:#0f3d2c;color:var(--green);cursor:pointer;border-color:#02C07633;}
+        .qta-badge-user{background:#E8B86D14;color:var(--gold);border-color:var(--border);}
+        .qta-badge-balance{background:#0D1A12;color:var(--green);cursor:pointer;border-color:#3DBB6E33;}
         .qta-badge-balance:hover{filter:brightness(1.2);}
         .qta-btn-logout{background:transparent;border:1px solid var(--border);color:var(--muted);padding:0.5rem 1rem;border-radius:8px;cursor:pointer;font-size:0.85rem;transition:all .15s;}
         .qta-btn-logout:hover{border-color:var(--red);color:var(--red);}
@@ -658,15 +658,15 @@ export default function BacktestClient({ userId, username, initialBalance, initi
         .qta-form-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
         .qta-form-title{font-size:1rem;margin-bottom:1rem;color:#ddd;display:flex;justify-content:space-between;align-items:center;font-weight:700;}
         .qta-mode-toggle{display:flex;gap:0.4rem;}
-        .qta-mode-btn{background:#181A20;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.9rem;border-radius:8px;cursor:pointer;font-size:0.8rem;transition:all .15s;}
+        .qta-mode-btn{background:#0D0E10;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.9rem;border-radius:8px;cursor:pointer;font-size:0.8rem;transition:all .15s;}
         .qta-mode-btn.active{background:linear-gradient(135deg, var(--gold), var(--gold-dark));color:#000;font-weight:bold;border-color:var(--gold);}
         .qta-form-row{display:grid;grid-template-columns:repeat(6,1fr);gap:0.75rem;margin-bottom:0.75rem;}
         .qta-field label{display:block;color:var(--muted);font-size:0.78rem;margin-bottom:0.3rem;}
-        .qta-field input, .qta-field select{width:100%;background:#181A20;border:1px solid var(--border);color:var(--text);padding:0.55rem 0.6rem;border-radius:8px;font-size:0.9rem;}
-        .qta-field input:focus, .qta-field select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px #D4AF371a;}
-        .qta-btn-add{background:linear-gradient(135deg, var(--gold), var(--gold-dark));color:#000;border:none;border-radius:8px;font-weight:bold;font-size:0.95rem;cursor:pointer;height:38px;margin-top:1.4rem;box-shadow:0 4px 12px #D4AF3744;width:100%;}
+        .qta-field input, .qta-field select{width:100%;background:#0D0E10;border:1px solid var(--border);color:var(--text);padding:0.55rem 0.6rem;border-radius:8px;font-size:0.9rem;}
+        .qta-field input:focus, .qta-field select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px #E8B86D1a;}
+        .qta-btn-add{background:linear-gradient(135deg, var(--gold), var(--gold-dark));color:#000;border:none;border-radius:8px;font-weight:bold;font-size:0.95rem;cursor:pointer;height:38px;margin-top:1.4rem;box-shadow:0 4px 12px #E8B86D44;width:100%;}
         .qta-btn-add:hover{filter:brightness(1.1);}
-        .qta-btn-add.live{background:var(--green);box-shadow:0 4px 12px #02C07644;}
+        .qta-btn-add.live{background:var(--green);box-shadow:0 4px 12px #3DBB6E44;}
         .qta-preview-box{margin-top:0.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;border:1px solid var(--green);background:#0f1f17;border-radius:12px;padding:1rem 1.5rem;}
         .qta-preview-box.risk-high{border-color:var(--red);background:#1f0f0f;}
         .qta-preview-left{display:flex;gap:1.8rem;flex-wrap:wrap;}
@@ -689,11 +689,11 @@ export default function BacktestClient({ userId, username, initialBalance, initi
         .qta-table th, .qta-table td{padding:0.85rem 0.6rem;text-align:center;font-size:0.85rem;white-space:nowrap;}
         .qta-table th{color:var(--gold);border-bottom:1px solid var(--border);font-weight:600;font-size:0.78rem;letter-spacing:0.5px;}
         .qta-table tbody tr{border-bottom:1px solid #1a1a0f;}
-        .qta-table tbody tr:hover{background:#D4AF370d;}
+        .qta-table tbody tr:hover{background:#E8B86D0d;}
         .qta-table tbody tr.live-row{background:#101a16;}
         .qta-empty-row td{padding:3rem 0;color:var(--muted);}
         .pill{padding:0.25rem 0.6rem;border-radius:6px;font-size:0.78rem;font-weight:bold;background:#222;color:#999;}
-        .pill-win{background:#0f3d2c;color:var(--green);}
+        .pill-win{background:#0D1A12;color:var(--green);}
         .pill-loss{background:#3d0f0f;color:var(--red);}
         .pill-live{background:#1d3a2f;color:var(--green);animation:qtaPulse 1.5s infinite;}
         @keyframes qtaPulse{0%{opacity:1;}50%{opacity:0.5;}100%{opacity:1;}}
@@ -706,9 +706,9 @@ export default function BacktestClient({ userId, username, initialBalance, initi
         .qta-btn-danger:hover{border-color:var(--red);color:var(--red);}
         .qta-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:50;}
         .qta-modal-overlay.open{display:flex;}
-        .qta-modal-box{background:linear-gradient(145deg, #151007, #181A20);border:1px solid var(--border-strong);border-radius:16px;padding:1.5rem;width:340px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.6);}
+        .qta-modal-box{background:linear-gradient(145deg, #151007, #0D0E10);border:1px solid var(--border-strong);border-radius:16px;padding:1.5rem;width:340px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.6);}
         .qta-modal-box h3{margin-top:0;color:var(--gold);}
-        .qta-modal-box input{width:100%;background:#181A20;border:1px solid var(--border);color:var(--text);padding:0.6rem;border-radius:8px;margin:0.5rem 0 1rem;font-size:0.95rem;}
+        .qta-modal-box input{width:100%;background:#0D0E10;border:1px solid var(--border);color:var(--text);padding:0.6rem;border-radius:8px;margin:0.5rem 0 1rem;font-size:0.95rem;}
         .qta-modal-box input:focus{outline:none;border-color:var(--gold);}
         .qta-modal-actions{display:flex;gap:0.6rem;justify-content:flex-end;}
         .qta-modal-box small{color:var(--muted);display:block;margin-top:-0.5rem;margin-bottom:0.8rem;line-height:1.6;}

@@ -9,21 +9,21 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
    لتشغيله كصفحة مستقلة بكامل عرض الشاشة بدل تبويب داخل الداشبورد.
    ============================================================================ */
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GOLD_DARK = "#9C7A22";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GOLD_DARK = "#D4A05A";
 
 const cardStyle = {
-  background: "linear-gradient(145deg, #22252B, #181A20)",
+  background: "linear-gradient(145deg, #141517, #0D0E10)",
   border: `1px solid ${GOLD}26`,
   borderRadius: 18,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
 };
 
 const DIFFICULTY_KEYS = {
-  beginner: { labelKey: "courses.difficultyBeginner", color: "#4CAF50" },
-  intermediate: { labelKey: "courses.difficultyIntermediate", color: "#FFA726" },
-  advanced: { labelKey: "courses.difficultyAdvanced", color: "#EF5350" },
+  beginner: { labelKey: "courses.difficultyBeginner", color: "#3DBB6E" },
+  intermediate: { labelKey: "courses.difficultyIntermediate", color: "#F5A623" },
+  advanced: { labelKey: "courses.difficultyAdvanced", color: "#E5484D" },
 };
 
 const LECTURE_FILTERS = [
@@ -54,9 +54,9 @@ function formatLastWatched(dateStr, t, locale) {
 }
 
 const COURSE_COLORS = [
-  { solid: "#3DDC84", soft: "#3DDC8422", border: "#3DDC8455" },
-  { solid: "#B084F5", soft: "#B084F522", border: "#B084F555" },
-  { solid: "#4FA0F5", soft: "#4FA0F522", border: "#4FA0F555" },
+  { solid: "#3DBB6E", soft: "#3DBB6E22", border: "#3DBB6E55" },
+  { solid: "#E8B86D", soft: "#E8B86D22", border: "#E8B86D55" },
+  { solid: "#3D8BFD", soft: "#3D8BFD22", border: "#3D8BFD55" },
 ];
 
 const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced"];
@@ -238,7 +238,7 @@ function LecturesView({
                   key={b.id}
                   style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
-                    background: "#181A20", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem 1.1rem",
+                    background: "#0D0E10", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem 1.1rem",
                   }}
                 >
                   <div>
@@ -288,7 +288,7 @@ function LecturesView({
             onChange={(e) => setSearch(e.target.value)}
             style={{
               flex: "1 1 200px",
-              background: "#181A20",
+              background: "#0D0E10",
               border: `1px solid ${GOLD}33`,
               borderRadius: 10,
               padding: "0.6rem 1rem",
@@ -303,7 +303,7 @@ function LecturesView({
                 key={f.key}
                 onClick={() => setFilter(f.key)}
                 style={{
-                  background: filter === f.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#181A20",
+                  background: filter === f.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0D0E10",
                   color: filter === f.key ? "#000" : "#999",
                   border: filter === f.key ? "none" : `1px solid ${GOLD}22`,
                   borderRadius: 8,
@@ -352,8 +352,8 @@ function LecturesView({
                         key={lecture.id}
                         onClick={() => onSelect(lecture)}
                         style={{
-                          background: "#181A20",
-                          border: isCompleted ? "1px solid #4CAF5044" : `1px solid ${GOLD}22`,
+                          background: "#0D0E10",
+                          border: isCompleted ? "1px solid #3DBB6E44" : `1px solid ${GOLD}22`,
                           borderRadius: 12,
                           padding: "0.9rem 1.1rem",
                           display: "flex",
@@ -364,7 +364,7 @@ function LecturesView({
                       >
                         <div style={{
                           width: 36, height: 36, borderRadius: "50%",
-                          background: isCompleted ? "#4CAF5022" : `${GOLD}22`,
+                          background: isCompleted ? "#3DBB6E22" : `${GOLD}22`,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: 15, flexShrink: 0,
                         }}>
@@ -375,9 +375,13 @@ function LecturesView({
                           <div style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>{lecture.title}</div>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.55rem", marginTop: 4, fontSize: 11, color: "#777" }}>
                             {duration && <span>⏱ {duration}</span>}
+                            }
                             {diff && <span style={{ color: diff.color }}>🟢 {t(diff.labelKey)}</span>}
+                            }
                             {lecture.practice_type && <span>{t("courses.practiceExercise")}</span>}
+                            }
                             {lastWatched && <span>{t("courses.lastWatchedLabel", { date: lastWatched })}</span>}
+                            }
                           </div>
                           {!isCompleted && watchedPct > 0 && (
                             <div style={{ width: "100%", height: 3, background: "#1a1a0a", borderRadius: 2, overflow: "hidden", marginTop: 6 }}>
@@ -388,6 +392,7 @@ function LecturesView({
 
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
                           {lecture.progress?.favorite && <span style={{ fontSize: 13 }}>⭐</span>}
+                          }
                           <div style={{ color: GOLD, fontSize: 14 }}>←</div>
                         </div>
                       </div>
@@ -417,7 +422,7 @@ function LecturesView({
         style={{
           position: "relative",
           overflow: "hidden",
-          background: `linear-gradient(135deg, #2B2F36 0%, #181A20 60%)`,
+          background: `linear-gradient(135deg, #2B2F36 0%, #0D0E10 60%)`,
           border: `1px solid ${GOLD}33`,
           borderRadius: 16,
           padding: "1.6rem 1.8rem",
@@ -459,7 +464,7 @@ function LecturesView({
           }}
           style={{
             background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-            color: "#1a1608", fontWeight: 800, fontSize: 13,
+            color: "#1A1408", fontWeight: 800, fontSize: 13,
             padding: "0.8rem 1.4rem", borderRadius: 10, cursor: "pointer",
             display: "flex", alignItems: "center", gap: 8, zIndex: 1, whiteSpace: "nowrap",
           }}
@@ -490,7 +495,7 @@ function LecturesView({
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
-                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#181A20" }} />
+                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0D0E10" }} />
               </div>
             )}
           </div>
@@ -513,7 +518,7 @@ function LecturesView({
               onClick={() => setViewMode(v.key)}
               style={{
                 width: 34, height: 34, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-                background: viewMode === v.key ? `${GOLD}22` : "#181A20",
+                background: viewMode === v.key ? `${GOLD}22` : "#0D0E10",
                 border: viewMode === v.key ? `1px solid ${GOLD}66` : `1px solid ${GOLD}22`,
                 color: viewMode === v.key ? GOLD_LIGHT : "#666",
                 cursor: "pointer", fontSize: 14,
@@ -544,7 +549,7 @@ function LecturesView({
               key={course.id}
               onClick={() => onSelectCourse(course.id)}
               style={{
-                background: "#181A20",
+                background: "#0D0E10",
                 border: `1px solid ${course.color.border}`,
                 borderRadius: 14,
                 padding: "1.25rem",

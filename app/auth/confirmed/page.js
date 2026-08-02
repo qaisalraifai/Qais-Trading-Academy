@@ -10,7 +10,7 @@ export default function EmailConfirmedPage() {
   );
 }
 
-const gold = "#D4AF37";
+const gold = "#E8B86D";
 const s = {
   page: {
     backgroundColor: "#0B0E11",
@@ -24,7 +24,7 @@ const s = {
     padding: "2rem",
   },
   card: {
-    backgroundColor: "#0d0d0d",
+    backgroundColor: "#0D0E10",
     border: "1px solid #2B2F36",
     borderRadius: "8px",
     padding: "3rem 2.5rem",

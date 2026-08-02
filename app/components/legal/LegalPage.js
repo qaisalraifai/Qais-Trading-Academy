@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-const gold = "#D4AF37";
+const gold = "#E8B86D";
 
 /**
  * مكوّن مشترك لعرض صفحات قانونية (شروط، خصوصية، استرجاع) بلغتين
@@ -62,7 +62,7 @@ export default function LegalPage({ titleAr, titleEn, sectionsAr, sectionsEn, la
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#181A20",
+    backgroundColor: "#0D0E10",
     color: "#ddd",
     fontFamily: "'Georgia', serif",
     padding: "2rem 1.5rem 4rem",

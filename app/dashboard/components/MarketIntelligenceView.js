@@ -17,12 +17,12 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
    /api/market-intelligence (Yahoo Finance فعلي).
    ============================================================================ */
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GREEN = "#02C076";
-const RED = "#F6465D";
-const BLUE = "#4f7cff";
-const AMBER = "#f59e0b";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GREEN = "#3DBB6E";
+const RED = "#E5484D";
+const BLUE = "#3D8BFD";
+const AMBER = "#F5A623";
 const NEUTRAL = "#c9c9c9";
 const CHART_H = 600;
 const ANIM_MS = 450;
@@ -60,7 +60,7 @@ function fmt(n) {
    أربع جلسات كاملة (Sydney/Tokyo/London/New York). Sydney بتلف منتصف الليل
    (21:00 → 06:00 UTC) فمنعاملها كنطاق "ملفوف" في كل الحسابات تحت. */
 const SESSION_DEFS = [
-  { key: "sydney", label: "Sydney", short: "SYD", start: 21, end: 6, color: "#9b6cf0" },
+  { key: "sydney", label: "Sydney", short: "SYD", start: 21, end: 6, color: "#E8B86D" },
   { key: "tokyo", label: "Tokyo", short: "TOK", start: 0, end: 9, color: GOLD },
   { key: "london", label: "London", short: "LON", start: 7, end: 16, color: BLUE },
   { key: "newyork", label: "New York", short: "NY", start: 12, end: 21, color: GREEN },
@@ -491,8 +491,8 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           vertLines: { color: "rgba(255,255,255,0.04)" },
           horzLines: { color: "rgba(255,255,255,0.04)" },
         },
-        timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false, rightOffset: 16 },
-        rightPriceScale: { borderColor: "#3a3a3a" },
+        timeScale: { borderColor: "#26282C", timeVisible: true, secondsVisible: false, rightOffset: 16 },
+        rightPriceScale: { borderColor: "#26282C" },
         width: containerRef.current.clientWidth,
         height: CHART_H,
         crosshair: { mode: CrosshairMode.Normal },
@@ -812,7 +812,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           <button
             onClick={onClose}
             style={{
-              background: "#14161a",
+              background: "#141517",
               border: `1px solid ${GOLD}40`,
               color: "#ccc",
               borderRadius: 10,
@@ -840,7 +840,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         <select
           value={symbol}
           onChange={(e) => setSymbol(e.target.value)}
-          style={{ background: "#14161a", color: "#f0f0f0", border: `1px solid ${GOLD}40`, borderRadius: 8, fontSize: 13, padding: "7px 10px", fontWeight: 700, minWidth: 150 }}
+          style={{ background: "#141517", color: "#f0f0f0", border: `1px solid ${GOLD}40`, borderRadius: 8, fontSize: 13, padding: "7px 10px", fontWeight: 700, minWidth: 150 }}
         >
           {ASSETS.map((g) => (
             <optgroup key={g.group} label={g.group}>
@@ -851,7 +851,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           ))}
         </select>
 
-        <div style={{ width: 1, height: 22, background: "#2a2a2a" }} />
+        <div style={{ width: 1, height: 22, background: "#26282C" }} />
 
         <div style={{ display: "flex", gap: 4 }}>
           {TF_TOOLBAR_ORDER.filter((tf) => allCandles[tf]?.length).map((tf) => (
@@ -860,7 +860,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
               onClick={() => setDisplayTF(tf)}
               style={{
                 background: displayTF === tf ? `${GOLD}1f` : "transparent",
-                border: `1px solid ${displayTF === tf ? GOLD : "#2e2e2e"}`,
+                border: `1px solid ${displayTF === tf ? GOLD : "#34373B"}`,
                 color: displayTF === tf ? GOLD_LIGHT : "#888",
                 borderRadius: 6, padding: "6px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer",
               }}
@@ -876,25 +876,25 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           style={{
             display: "flex", alignItems: "center", gap: 6,
             background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
-            border: "none", color: "#181A20", fontWeight: 800, borderRadius: 8, padding: "8px 16px", fontSize: 12.5, cursor: "pointer",
+            border: "none", color: "#0D0E10", fontWeight: 800, borderRadius: 8, padding: "8px 16px", fontSize: 12.5, cursor: "pointer",
           }}
         >
-          <Zap size={13} fill="#181A20" />
+          <Zap size={13} fill="#0D0E10" />
           {loading ? t("radar.analyzing") : "AI Analyze"}
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#0f3d2c", border: `1px solid ${GREEN}40`, borderRadius: 20, padding: "6px 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#0D1A12", border: `1px solid ${GREEN}40`, borderRadius: 20, padding: "6px 12px" }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: GREEN }} className="qmi-dot" />
           <span style={{ fontSize: 11.5, color: "#aaa" }}>Confidence</span>
           <span style={{ fontSize: 13, fontWeight: 800, color: GREEN }}>{result?.aiConfidence ?? result?.radarScore ?? 0}%</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 20, padding: "6px 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#141517", border: "1px solid #34373B", borderRadius: 20, padding: "6px 12px" }}>
           <Radio size={12} color={BLUE} />
           <span style={{ fontSize: 12, color: "#ccc" }}>Session: <b style={{ color: "#f0f0f0" }}>{primarySession}</b></span>
         </div>
 
-        <div style={{ marginRight: "auto", display: "flex", alignItems: "center", gap: 6, background: "#14161a", border: `1px solid ${biasColor}40`, borderRadius: 20, padding: "6px 12px" }}>
+        <div style={{ marginRight: "auto", display: "flex", alignItems: "center", gap: 6, background: "#141517", border: `1px solid ${biasColor}40`, borderRadius: 20, padding: "6px 12px" }}>
           <span style={{ fontSize: 12, color: "#ccc" }}>Market Bias:</span>
           <b style={{ fontSize: 12.5, color: biasColor }}>{biasLabel}</b>
         </div>
@@ -929,7 +929,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
             <button
               onClick={resetChart}
               title={t("radar.resetChartTitle")}
-              style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #2e2e2e", color: "#aaa", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #34373B", color: "#aaa", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
             >
               <RotateCcw size={11} />
               {t("radar.resetChart")}
@@ -1010,11 +1010,11 @@ function AiSummaryCard({ summary }) {
         </div>
 
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-          <div style={{ background: "#14161a", border: `1px solid ${biasColor}40`, borderRadius: 12, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
+          <div style={{ background: "#141517", border: `1px solid ${biasColor}40`, borderRadius: 12, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
             <div style={{ fontSize: 9, color: "#888", letterSpacing: 0.4, textTransform: "uppercase" }}>Market Bias</div>
             <div style={{ fontSize: 14, fontWeight: 900, color: biasColor, marginTop: 3 }}>{biasLbl}</div>
           </div>
-          <div style={{ background: "#14161a", border: `1px solid ${confColor}40`, borderRadius: 12, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
+          <div style={{ background: "#141517", border: `1px solid ${confColor}40`, borderRadius: 12, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
             <div style={{ fontSize: 9, color: "#888", letterSpacing: 0.4, textTransform: "uppercase" }}>Overall Confidence</div>
             <div style={{ fontSize: 14, fontWeight: 900, color: confColor, marginTop: 3 }}>{confidence != null ? `${confidence}%` : "—"}</div>
           </div>
@@ -1061,7 +1061,7 @@ function LiveMarketStatusBar({ status }) {
     <div className="qmi-anim" style={{ ...glass, padding: "0.7rem 1rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
       {items.map((it) => (
         <div key={it.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 26, height: 26, borderRadius: 7, background: "#14161a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 26, height: 26, borderRadius: 7, background: "#141517", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             {it.icon}
           </div>
           <div style={{ minWidth: 0 }}>
@@ -1100,8 +1100,8 @@ function ChartInfoBar({ price, dailyChange, atr, volume, lastUpdateAt, nowTick }
         display: "flex",
         flexWrap: "wrap",
         gap: 0,
-        background: "#101114",
-        border: "1px solid #22252b",
+        background: "#0D0E10",
+        border: "1px solid #141517",
         borderRadius: 10,
         margin: "0 0.5rem 0.6rem",
         overflow: "hidden",
@@ -1114,7 +1114,7 @@ function ChartInfoBar({ price, dailyChange, atr, volume, lastUpdateAt, nowTick }
           style={{
             flex: "1 1 110px",
             padding: "7px 12px",
-            borderInlineStart: i === 0 ? "none" : "1px solid #22252b",
+            borderInlineStart: i === 0 ? "none" : "1px solid #141517",
           }}
         >
           <div style={{ fontSize: 9, color: "#666" }}>{c.label}</div>
@@ -1181,7 +1181,7 @@ function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t) {
 
     ctx.beginPath();
     ctx.arc(p.x, p.y, isC && isAnchor ? 4.2 : 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = "#181A20";
+    ctx.fillStyle = "#0D0E10";
     ctx.fill();
     ctx.lineWidth = isC && isAnchor ? 1.8 : 1.4;
     ctx.strokeStyle = isC ? GREEN : GOLD_LIGHT;
@@ -1482,7 +1482,7 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
               {isBuy ? "BUY" : "SELL"}
             </div>
             <span style={{ fontWeight: 800, fontSize: 14, color: "#f0f0f0" }}>{asset?.label || symbol}</span>
-            <span style={{ fontSize: 11.5, color: "#999", background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 6, padding: "3px 8px" }}>
+            <span style={{ fontSize: 11.5, color: "#999", background: "#141517", border: "1px solid #34373B", borderRadius: 6, padding: "3px 8px" }}>
               {syncedTrade.timeframe}
             </span>
             <span style={{ fontSize: 11.5, fontWeight: 800, color: stColor, background: `${stColor}1a`, border: `1px solid ${stColor}55`, borderRadius: 6, padding: "3px 9px" }}>
@@ -1493,7 +1493,7 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
             <button
               onClick={onCheckSynced}
               disabled={syncLoading}
-              style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #2e2e2e", color: "#aaa", borderRadius: 6, padding: "5px 10px", fontSize: 11, cursor: syncLoading ? "default" : "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #34373B", color: "#aaa", borderRadius: 6, padding: "5px 10px", fontSize: 11, cursor: syncLoading ? "default" : "pointer" }}
             >
               <RefreshCw size={11} /> {syncLoading ? t("radar.checkingPrice") : t("radar.checkPriceNow")}
             </button>
@@ -1557,7 +1557,7 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
             {isBuy ? "BUY" : "SELL"}
           </div>
           <span style={{ fontWeight: 800, fontSize: 14, color: "#f0f0f0" }}>{asset?.label || symbol}</span>
-          <span style={{ fontSize: 11.5, color: "#999", background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 6, padding: "3px 8px" }}>
+          <span style={{ fontSize: 11.5, color: "#999", background: "#141517", border: "1px solid #34373B", borderRadius: 6, padding: "3px 8px" }}>
             {timeframeLabel}
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, color: GOLD_LIGHT, background: `${GOLD}15`, border: `1px solid ${GOLD}40`, borderRadius: 6, padding: "3px 8px" }}>
@@ -1597,12 +1597,12 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
           style={{
             width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
-            border: "none", color: "#181A20", fontWeight: 900, fontSize: 14.5,
+            border: "none", color: "#0D0E10", fontWeight: 900, fontSize: 14.5,
             borderRadius: 10, padding: "13px 20px", cursor: executing ? "default" : "pointer",
             opacity: executing ? 0.7 : 1,
           }}
         >
-          <Zap size={16} fill="#181A20" />
+          <Zap size={16} fill="#0D0E10" />
           {executing ? t("radar.executing") : "🚀 Execute AI Trade"}
         </button>
       )}
@@ -1619,7 +1619,7 @@ function statusColor(status) {
 
 function TradeCardStat({ label, value, color = "#f0f0f0" }) {
   return (
-    <div style={{ background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 8, padding: "7px 10px" }}>
+    <div style={{ background: "#141517", border: "1px solid #34373B", borderRadius: 8, padding: "7px 10px" }}>
       <div style={{ fontSize: 10.5, color: "#888", marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 13.5, fontWeight: 800, color }}>{value}</div>
     </div>
@@ -1713,11 +1713,11 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
             <div
               style={{
                 width: 58, height: 58, borderRadius: "50%", flexShrink: 0,
-                background: `conic-gradient(${scoreColor} ${aiConfidence * 3.6}deg, #23262d 0deg)`,
+                background: `conic-gradient(${scoreColor} ${aiConfidence * 3.6}deg, #1A1C1F 0deg)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
-              <div style={{ width: 46, height: 46, borderRadius: "50%", background: "#181A20", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 46, height: 46, borderRadius: "50%", background: "#0D0E10", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: "#f0f0f0" }}>{aiConfidence}%</span>
               </div>
             </div>
@@ -1743,7 +1743,7 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 4, background: "#14161a", borderRadius: 8, padding: 3 }}>
+          <div style={{ display: "flex", gap: 4, background: "#141517", borderRadius: 8, padding: 3 }}>
             <button
               onClick={() => setTab("analysis")}
               style={{ flex: 1, background: tab === "analysis" ? `${GOLD}1f` : "transparent", color: tab === "analysis" ? GOLD_LIGHT : "#888", border: "none", borderRadius: 6, padding: "6px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
@@ -1830,7 +1830,7 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
 
 function MiniStat({ label, value, color }) {
   return (
-    <div style={{ background: "#14161a", borderRadius: 8, padding: "7px 9px" }}>
+    <div style={{ background: "#141517", borderRadius: 8, padding: "7px 9px" }}>
       <div style={{ fontSize: 10, color: "#777" }}>{label}</div>
       <div style={{ fontSize: 12.5, fontWeight: 800, color: color || "#f0f0f0" }}>{value}</div>
     </div>
@@ -1857,11 +1857,11 @@ function PriorityStat({ label, value, color, size = "md" }) {
   return (
     <div
       style={{
-        background: "#14161a",
+        background: "#141517",
         borderRadius: 9,
         padding: sizing.pad,
         borderInlineStart: `${sizing.borderW}px solid ${c}`,
-        border: "1px solid #1f2128",
+        border: "1px solid #1A1C1F",
         borderInlineStartWidth: sizing.borderW,
         borderInlineStartColor: c,
       }}
@@ -1907,7 +1907,7 @@ export function CurrencyHeatMapCard({ snapshot, trend = {} }) {
             const m = meta(v);
             const tm = trendMeta(ccy, m.color);
             return (
-              <div key={ccy} style={{ background: "#14161a", border: `1px solid ${m.color}33`, borderRadius: 10, padding: "8px 10px" }}>
+              <div key={ccy} style={{ background: "#141517", border: `1px solid ${m.color}33`, borderRadius: 10, padding: "8px 10px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 11, color: "#888", fontWeight: 700 }}>{ccy}</span>
                   {tm.arrow && <span style={{ fontSize: 12, fontWeight: 800, color: tm.color }}>{tm.arrow}</span>}
@@ -1964,8 +1964,8 @@ export function SessionMapCard({ sessions, nowTick }) {
             key={s.key}
             title={`${s.label} · ${String(s.start).padStart(2, "0")}:00–${String(s.end).padStart(2, "0")}:00 UTC`}
             style={{
-              display: "flex", alignItems: "center", gap: 5, background: "#14161a",
-              border: `1px solid ${s.active ? s.color : "#2a2a2a"}88`, borderRadius: 20, padding: "3px 9px",
+              display: "flex", alignItems: "center", gap: 5, background: "#141517",
+              border: `1px solid ${s.active ? s.color : "#26282C"}88`, borderRadius: 20, padding: "3px 9px",
               transition: "border-color .4s ease, background .4s ease",
             }}
           >
@@ -1977,7 +1977,7 @@ export function SessionMapCard({ sessions, nowTick }) {
 
       {/* -------- كروت الشرح: الجلسة الحالية / مستوى السيولة / التقلب / السلوك / أسلوب التداول المقترح -------- */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <div style={{ background: "#14161a", borderRadius: 8, padding: "7px 9px" }}>
+        <div style={{ background: "#141517", borderRadius: 8, padding: "7px 9px" }}>
           <div style={{ fontSize: 10, color: "#777", display: "flex", alignItems: "center", gap: 5 }}>
             <span className="qmi-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: GOLD_LIGHT, display: "inline-block" }} />
             Current Session
@@ -1988,7 +1988,7 @@ export function SessionMapCard({ sessions, nowTick }) {
         <MiniStat label="Expected Volatility" value={info.volatility} color={AMBER} />
         <MiniStat label="Typical Behaviour" value={info.behaviour} color={BLUE} />
       </div>
-      <div style={{ marginTop: 8, background: "#14161a", borderRadius: 10, padding: "9px 11px" }}>
+      <div style={{ marginTop: 8, background: "#141517", borderRadius: 10, padding: "9px 11px" }}>
         <div style={{ fontSize: 9.5, color: "#777", marginBottom: 3 }}>Recommended Trading Style</div>
         <div style={{ fontSize: 11.5, color: "#e5e5e5", fontWeight: 700, lineHeight: 1.6 }}>{info.recommendation}</div>
       </div>
@@ -2039,7 +2039,7 @@ function SessionTimelineVisual({ sessions, overlap, nowTick }) {
 
   return (
     <div>
-      <div style={{ position: "relative", height: 34, background: "#101114", borderRadius: 8, overflow: "hidden", border: "1px solid #262626" }}>
+      <div style={{ position: "relative", height: 34, background: "#0D0E10", borderRadius: 8, overflow: "hidden", border: "1px solid #262626" }}>
         {sessions.map((s) =>
           segmentsOf(s).map(([st, en], i) => (
             <div
@@ -2162,7 +2162,7 @@ function LiveOpportunitiesCard({ items, onOpen }) {
                   onClick={() => onOpen(it.symbol)}
                   style={{
                     display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "right",
-                    background: "#14161a", border: "1px solid transparent", borderRadius: 10, padding: "8px 10px",
+                    background: "#141517", border: "1px solid transparent", borderRadius: 10, padding: "8px 10px",
                     cursor: "pointer", transition: "border-color .2s ease, background .2s ease",
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${GOLD}40`)}
@@ -2176,7 +2176,7 @@ function LiveOpportunitiesCard({ items, onOpen }) {
                       <span style={{ fontSize: 12, fontWeight: 800, color: "#e5e5e5" }}>{it.symbol}</span>
                       <span style={{ fontSize: 9, fontWeight: 800, color: dirColor, background: `${dirColor}22`, borderRadius: 5, padding: "1px 6px" }}>{dirLabel}</span>
                       {it.timeframe && (
-                        <span style={{ fontSize: 8.5, fontWeight: 700, color: "#888", background: "#1c1e24", borderRadius: 5, padding: "1px 6px" }}>{it.timeframe}</span>
+                        <span style={{ fontSize: 8.5, fontWeight: 700, color: "#888", background: "#1A1C1F", borderRadius: 5, padding: "1px 6px" }}>{it.timeframe}</span>
                       )}
                     </div>
                     <div style={{ fontSize: 9.5, color: meta.color, marginTop: 2, fontWeight: 700 }}>{it.entry_status || meta.label}</div>
@@ -2282,7 +2282,7 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
                   onClick={() => onSelect(it.symbol)}
                   className="qmi-liq-row qmi-liq-body"
                   style={{
-                    background: isSelected ? `${GOLD}18` : "#14161a",
+                    background: isSelected ? `${GOLD}18` : "#141517",
                     border: `1px solid ${isSelected ? `${GOLD}80` : "transparent"}`,
                     boxShadow: isSelected ? `0 6px 18px ${GOLD}22` : "0 2px 8px rgba(0,0,0,0.18)",
                   }}
@@ -2299,7 +2299,7 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
                   <span data-label="Order Block" style={{ color: d?.ob?.eligible ? GOLD_LIGHT : "#666" }}>{obLabel}</span>
                   <span data-label="Fair Value Gap" style={{ color: fvgLabel === "Present" ? BLUE : "#666" }}>{fvgLabel}</span>
                   <span data-label="Confidence" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ width: 34, height: 5, borderRadius: 4, background: "#0e1013", overflow: "hidden", flexShrink: 0 }}>
+                    <span style={{ width: 34, height: 5, borderRadius: 4, background: "#0D0E10", overflow: "hidden", flexShrink: 0 }}>
                       <span style={{ display: "block", height: "100%", width: `${confidence}%`, background: confColor, borderRadius: 4 }} />
                     </span>
                     <span style={{ fontSize: 10.5, fontWeight: 700, color: confColor }}>{confLabel}</span>
@@ -2484,7 +2484,7 @@ function BriefingCard({ emoji, title, color, delay, confidence, children }) {
       className="qmi-anim qmi-briefing-card"
       style={{
         animationDelay: `${delay}ms`,
-        background: "#14161a",
+        background: "#141517",
         border: `1px solid ${color}33`,
         borderLeft: `3px solid ${color}`,
         borderRadius: 12,
@@ -2523,7 +2523,7 @@ function AiBriefing({ item, d }) {
 
   if (!briefing) {
     return (
-      <div style={{ marginTop: 12, background: "#14161a", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "12px 14px" }}>
+      <div style={{ marginTop: 12, background: "#141517", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "12px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
           <Sparkles size={12} color={GOLD} />
           <span style={{ fontSize: 11, fontWeight: 800, color: GOLD_LIGHT, letterSpacing: 0.3 }}>AI SUMMARY</span>
@@ -2609,7 +2609,7 @@ function AiBriefing({ item, d }) {
             <span style={{ fontSize: 18, fontWeight: 900, color: GOLD_LIGHT }}>{briefing.confidence.score}%</span>
             <span style={{ fontSize: 11, fontWeight: 800, color: BLUE }}>{briefing.confidence.label} confidence</span>
           </div>
-          <div style={{ height: 6, borderRadius: 4, background: "#0e1013", overflow: "hidden", marginBottom: 8 }}>
+          <div style={{ height: 6, borderRadius: 4, background: "#0D0E10", overflow: "hidden", marginBottom: 8 }}>
             <div
               className="qmi-conf-bar"
               style={{ height: "100%", width: `${briefing.confidence.score}%`, background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`, borderRadius: 4 }}
@@ -2719,7 +2719,7 @@ function AnalysisWorkspace({ item }) {
 
 function WorkspaceStat({ label, value, color, explain }) {
   return (
-    <div className="qmi-wstat" style={{ background: "#14161a", borderRadius: 10, padding: "10px 12px" }}>
+    <div className="qmi-wstat" style={{ background: "#141517", borderRadius: 10, padding: "10px 12px" }}>
       <div style={{ fontSize: 10, color: "#777", marginBottom: 3 }}>{label}</div>
       <div style={{ fontSize: 12.5, fontWeight: 800, color: color || "#e5e5e5", lineHeight: 1.4 }}>{value}</div>
       {explain && <div style={{ fontSize: 10.5, color: "#767b85", lineHeight: 1.55, marginTop: 4 }}>{explain}</div>}
@@ -2730,7 +2730,7 @@ function WorkspaceStat({ label, value, color, explain }) {
 /* -------------------- كرت شرح مفهوم واحد (تعليمي، بدون بيانات حيّة) -------------------- */
 function ConceptCard({ icon, title, lines, color }) {
   return (
-    <div className="qmi-concept-card" style={{ background: "#14161a", border: `1px solid ${color}33`, borderRadius: 12, padding: "12px 14px" }}>
+    <div className="qmi-concept-card" style={{ background: "#141517", border: `1px solid ${color}33`, borderRadius: 12, padding: "12px 14px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
         <span style={{ fontSize: 15 }}>{icon}</span>
         <span style={{ fontSize: 12, fontWeight: 800, color: color || "#f0f0f0" }}>{title}</span>
@@ -2789,7 +2789,7 @@ function MarketSummaryCard({ snapshot, radarItems, newsToday }) {
 
 function SummaryStat({ label, value, sub, color }) {
   return (
-    <div style={{ background: "#14161a", borderRadius: 10, padding: "10px 12px" }}>
+    <div style={{ background: "#141517", borderRadius: 10, padding: "10px 12px" }}>
       <div style={{ fontSize: 10.5, color: "#888" }}>{label}</div>
       <div style={{ fontSize: 16, fontWeight: 800, color: color || "#f0f0f0" }}>{value}</div>
       {sub && <div style={{ fontSize: 9.5, color: "#666", marginTop: 1 }}>{sub}</div>}
@@ -2821,7 +2821,7 @@ function LiveNotificationsCard({ items, onOpen }) {
             <button
               key={it.symbol}
               onClick={() => onOpen(it.symbol)}
-              style={{ display: "flex", alignItems: "center", gap: 9, background: "#14161a", border: "none", borderRadius: 10, padding: "8px 10px", cursor: "pointer", textAlign: "right" }}
+              style={{ display: "flex", alignItems: "center", gap: 9, background: "#141517", border: "none", borderRadius: 10, padding: "8px 10px", cursor: "pointer", textAlign: "right" }}
             >
               <Bell size={13} color={GOLD} />
               <div style={{ flex: 1 }}>

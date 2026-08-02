@@ -37,7 +37,7 @@ export function SubscriptionsTrendChart({ data, big = false }) {
                 {total.toLocaleString("en-US")}
               </span>
               {pctChange !== null && (
-                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: pctChange >= 0 ? "#4CAF50" : "#ef5350" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: pctChange >= 0 ? "#3DBB6E" : "#E5484D" }}>
                   {pctChange >= 0 ? "↗" : "↘"} {Math.abs(pctChange)}% مقارنة بالنصف الأول من الشهر
                 </span>
               )}
@@ -95,12 +95,13 @@ export function RevenueBarChart({ data }) {
             style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem", cursor: "default" }}
           >
             {hoverIdx === i && <span style={{ fontSize: "0.68rem", color: gold, fontFamily: monoStack }}>${d.value}</span>}
+            }
             <div
               style={{
                 width: "100%",
                 height: Math.max((d.value / max) * 80, 3),
                 borderRadius: 5,
-                background: hoverIdx === i ? `linear-gradient(180deg, ${gold}, #9C7A22)` : "linear-gradient(180deg, #D4AF3755, #D4AF3722)",
+                background: hoverIdx === i ? `linear-gradient(180deg, ${gold}, #D4A05A)` : "linear-gradient(180deg, #E8B86D55, #E8B86D22)",
                 transition: "all 250ms",
               }}
             />

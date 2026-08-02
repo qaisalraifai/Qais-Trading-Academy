@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const GOLD = "#D4AF37";
+const GOLD = "#E8B86D";
 
 export default function SelectBatchClient({ batches }) {
   const router = useRouter();
@@ -39,7 +39,7 @@ export default function SelectBatchClient({ batches }) {
       </div>
 
       {error && (
-        <p style={{ color: "#ef5350", textAlign: "center", marginBottom: "1rem", fontSize: 14 }}>{error}</p>
+        <p style={{ color: "#E5484D", textAlign: "center", marginBottom: "1rem", fontSize: 14 }}>{error}</p>
       )}
 
       {batches.length === 0 ? (
@@ -56,7 +56,7 @@ export default function SelectBatchClient({ batches }) {
                 justifyContent: "space-between",
                 alignItems: "center",
                 gap: "1rem",
-                background: "linear-gradient(145deg, #22252B, #181A20)",
+                background: "linear-gradient(145deg, #141517, #0D0E10)",
                 border: `1px solid ${GOLD}26`,
                 borderRadius: 16,
                 padding: "1.3rem 1.5rem",

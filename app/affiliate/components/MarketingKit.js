@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#D4AF37";
-const CARD = "#0d0d0d";
+const GOLD = "#E8B86D";
+const CARD = "#0D0E10";
 const BORDER = "#2B2F36";
 
 const TYPE_KEYS = { logo: "affiliate.typeLogo", banner: "affiliate.typeBanner", video: "affiliate.typeVideo", copy: "affiliate.typeCopy" };

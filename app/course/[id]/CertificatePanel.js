@@ -72,7 +72,7 @@ const styles = {
     alignItems: "center",
     gap: "0.9rem",
     background: "#111108",
-    border: "1px solid #D4AF3733",
+    border: "1px solid #E8B86D33",
     borderRadius: 12,
     padding: "1rem 1.1rem",
     marginBottom: "1.5rem",
@@ -88,12 +88,12 @@ const styles = {
   },
   barFill: {
     height: "100%",
-    background: "linear-gradient(90deg, #D4AF37, #9C7A22)",
+    background: "linear-gradient(90deg, #E8B86D, #D4A05A)",
     borderRadius: 4,
     transition: "width 0.3s ease",
   },
   btn: {
-    background: "linear-gradient(135deg, #D4AF37, #9C7A22)",
+    background: "linear-gradient(135deg, #E8B86D, #D4A05A)",
     color: "#111",
     borderRadius: 8,
     padding: "0.55rem 1rem",

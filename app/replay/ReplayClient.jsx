@@ -7,9 +7,9 @@ import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
 import WatchlistPanel from "./WatchlistPanel";
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GREEN = "#02C076";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GREEN = "#3DBB6E";
 
 /* بحث ثنائي (binary search) O(log n) لإيجاد index شمعة بوقت مطابق تماماً
    (الشموع مرتبة زمنياً دايماً). بنستخدمها بدل list.findIndex(x => x.time
@@ -29,7 +29,7 @@ function findCandleIndexByTime(candles, time) {
   }
   return -1;
 }
-const RED = "#F6465D";
+const RED = "#E5484D";
 /* ===== أدوات الرسم يلي فعلياً بينفع ينضافلها نص/كابشن (خط واحد فوق منتصف
    الأدوات الخطية، أو نص متعدد الأسطر جوا صندوق محيط للأشكال يلي إلها مساحة) -
    بالظبط متل "Add text" بتريدنغ فيو على أي أداة رسم/توضيح تقريباً.
@@ -394,7 +394,7 @@ function timeToDrawingLogicalForCandles(time, candles, stepSecondsOverride) {
 // "الافتراضي" يدوياً. هاي أضمن طريقة لأي تغيير مستقبلي بالقيم الافتراضية.
 const CHART_SETTINGS_KEY = "qta_chart_settings_v3";
 const DEFAULT_CHART_SETTINGS = {
-  bg: "#181A20",
+  bg: "#0D0E10",
   up: GREEN,
   down: RED,
   gridVisible: true,
@@ -881,7 +881,7 @@ function defaultStyleFor(type) {
     case "extendedline":
       return { color: GOLD_LIGHT, width: 1.5, extend: "both" };
     case "infoline":
-      return { color: "#4f7cff", width: 1.5, extend: "none" };
+      return { color: "#3D8BFD", width: 1.5, extend: "none" };
     case "angle":
       return { color: "#e0a63c", width: 1.5 };
     case "crossline":
@@ -903,7 +903,7 @@ function defaultStyleFor(type) {
       return { color: "#EAECEF", width: 1.5 };
     case "rectangle":
       return {
-        color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.15, midline: false, midlineColor: "#4caf50", midlineDash: true,
+        color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.15, midline: false, midlineColor: "#3DBB6E", midlineDash: true,
         textColor: "#e5e5e5", textSize: 13, textBold: false, textItalic: false, textHAlign: "center", textVAlign: "middle",
       };
     case "circle":
@@ -915,7 +915,7 @@ function defaultStyleFor(type) {
           { value: 0, color: "#787b86", enabled: true },
           { value: 0.236, color: "#f23645", enabled: true },
           { value: 0.382, color: "#ff9800", enabled: true },
-          { value: 0.5, color: "#4caf50", enabled: true },
+          { value: 0.5, color: "#3DBB6E", enabled: true },
           { value: 0.618, color: "#00bcd4", enabled: true },
           { value: 0.786, color: "#2196f3", enabled: true },
           { value: 1, color: "#787b86", enabled: true },
@@ -933,7 +933,7 @@ function defaultStyleFor(type) {
           { value: 0, color: "#787b86", enabled: true },
           { value: 0.236, color: "#f23645", enabled: false },
           { value: 0.382, color: "#ff9800", enabled: true },
-          { value: 0.5, color: "#4caf50", enabled: true },
+          { value: 0.5, color: "#3DBB6E", enabled: true },
           { value: 0.618, color: "#00bcd4", enabled: true },
           { value: 0.786, color: "#2196f3", enabled: false },
           { value: 1, color: "#787b86", enabled: true },
@@ -953,22 +953,22 @@ function defaultStyleFor(type) {
           { value: 0, color: "#787b86", enabled: true },
           { value: 0.236, color: "#f23645", enabled: true },
           { value: 0.382, color: "#ff9800", enabled: true },
-          { value: 0.5, color: "#4caf50", enabled: true },
+          { value: 0.5, color: "#3DBB6E", enabled: true },
           { value: 0.618, color: "#00bcd4", enabled: true },
           { value: 0.786, color: "#2196f3", enabled: true },
           { value: 1, color: "#787b86", enabled: true },
         ],
       };
     case "fibtimezone":
-      return { color: "#4f7cff", width: 1, dash: "dashed" };
+      return { color: "#3D8BFD", width: 1, dash: "dashed" };
     case "gannfan":
       return { color: "#e0a63c", width: 1.2 };
     case "pitchfork":
-      return { color: "#4f7cff", width: 1.5 };
+      return { color: "#3D8BFD", width: 1.5 };
     case "pricerange":
-      return { color: "#4f7cff", width: 1.5, fill: true, fillColor: "#4f7cff", fillAlpha: 0.2 };
+      return { color: "#3D8BFD", width: 1.5, fill: true, fillColor: "#3D8BFD", fillAlpha: 0.2 };
     case "daterange":
-      return { color: "#4f7cff", width: 1.5, fill: true, fillColor: "#4f7cff", fillAlpha: 0.2 };
+      return { color: "#3D8BFD", width: 1.5, fill: true, fillColor: "#3D8BFD", fillAlpha: 0.2 };
     case "position_long":
     case "position_short":
       return { targetColor: GREEN, stopColor: RED, alpha: 0.3 };
@@ -2093,7 +2093,7 @@ export default function ReplayClient({ userId }) {
         const boxX = Math.max(4, w - boxW - 6);
         ctx.fillStyle = style.color || GOLD_LIGHT;
         ctx.fillRect(boxX, y - 10, boxW, 20);
-        ctx.fillStyle = "#181A20";
+        ctx.fillStyle = "#0D0E10";
         ctx.fillText(label, boxX + 6, y + 4);
 
       } else if (d.type === "hray") {
@@ -2250,13 +2250,13 @@ export default function ReplayClient({ userId }) {
         if (style.midline) {
           const midY = y + rh / 2;
           const midPrice = (d.p1.price + d.p2.price) / 2;
-          ctx.strokeStyle = style.midlineColor || "#4caf50";
+          ctx.strokeStyle = style.midlineColor || "#3DBB6E";
           ctx.lineWidth = 1.3;
           ctx.setLineDash(style.midlineDash === false ? [] : [4, 3]);
           ctx.beginPath(); ctx.moveTo(x, midY); ctx.lineTo(x + rw, midY); ctx.stroke();
           ctx.setLineDash([]);
           ctx.font = "11px sans-serif";
-          ctx.fillStyle = style.midlineColor || "#4caf50";
+          ctx.fillStyle = style.midlineColor || "#3DBB6E";
           ctx.fillText(`50% - ${midPrice.toFixed(2)}`, x + rw + 4, midY - 3);
         }
         if (d.text) drawShapeText(ctx, d.text, x, y, rw, rh, style);
@@ -2323,7 +2323,7 @@ export default function ReplayClient({ userId }) {
           const diff = p2.price - p1.price; // مقدار حركة الموجة الأساسية A→B
           const fallbackLevels = [
             { value: 0, color: "#787b86", enabled: true }, { value: 0.236, color: "#f23645", enabled: true },
-            { value: 0.382, color: "#ff9800", enabled: true }, { value: 0.5, color: "#4caf50", enabled: true },
+            { value: 0.382, color: "#ff9800", enabled: true }, { value: 0.5, color: "#3DBB6E", enabled: true },
             { value: 0.618, color: "#00bcd4", enabled: true }, { value: 0.786, color: "#2196f3", enabled: true },
             { value: 1, color: "#787b86", enabled: true }, { value: 1.272, color: "#9c27b0", enabled: true },
             { value: 1.618, color: "#e91e63", enabled: true },
@@ -2490,7 +2490,7 @@ export default function ReplayClient({ userId }) {
         const pct = (priceDiff / d.p1.price) * 100;
         const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
         const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
-        const col = style.color || "#4f7cff";
+        const col = style.color || "#3D8BFD";
         if (style.fill !== false) { ctx.fillStyle = hexToRgba(style.fillColor || col, style.fillAlpha ?? 0.2); ctx.fillRect(x, y, rw, rh); }
         ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, rw, rh);
         ctx.fillStyle = col; ctx.font = "12px sans-serif";
@@ -2506,7 +2506,7 @@ export default function ReplayClient({ userId }) {
         const hrs = totalH % 24;
         const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
         const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
-        const col = style.color || "#4f7cff";
+        const col = style.color || "#3D8BFD";
         if (style.fill !== false) { ctx.fillStyle = hexToRgba(style.fillColor || col, style.fillAlpha ?? 0.2); ctx.fillRect(x, y, rw, rh); }
         ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, rw, rh);
         ctx.fillStyle = col; ctx.font = "12px sans-serif";
@@ -3827,7 +3827,7 @@ export default function ReplayClient({ userId }) {
           ? { visible: true, text: savedSettings.watermarkText, color: "rgba(201,162,75,0.12)", fontSize: 48, horzAlign: "center", vertAlign: "center" }
           : { visible: false },
         timeScale: {
-          borderColor: "#3a3a3a",
+          borderColor: "#26282C",
           timeVisible: true,
           secondsVisible: false,
           rightOffset: 6,
@@ -3842,7 +3842,7 @@ export default function ReplayClient({ userId }) {
           timeFormatter: formatCrosshairTime,
         },
         rightPriceScale: {
-          borderColor: "#3a3a3a",
+          borderColor: "#26282C",
           scaleMargins: { top: (savedSettings.scaleMarginTop ?? 8) / 100, bottom: (savedSettings.scaleMarginBottom ?? 8) / 100 },
           // نفس ملاحظة أعلى: عرض ثابت مطابق تماماً لعرض عمود الأسعار بشارت المقارنة
           minimumWidth: PRICE_SCALE_WIDTH,
@@ -4624,7 +4624,7 @@ export default function ReplayClient({ userId }) {
           vertLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
           horzLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
         },
-        timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false },
+        timeScale: { borderColor: "#26282C", timeVisible: true, secondsVisible: false },
         // عرض ثابت مطابق تماماً لعرض عمود الأسعار بالشارت الرئيسي (PRICE_SCALE_WIDTH)،
         // هاد هو الحل الفعلي لمشكلة "آخر شمعة فوق ما بتطابق آخر شمعة تحت بالضبط":
         // كل شارت (رئيسي/مقارنة) هو نسخة lightweight-charts منفصلة، وبدون تثبيت
@@ -4632,7 +4632,7 @@ export default function ReplayClient({ userId }) {
         // السعر تبعها (مثلاً XAUUSD أربع خانات مقابل NAS100 خمس خانات) - فمنطقة
         // رسم الشموع الفعلية ما بتضل بنفس المحاذاة بالبكسل بين اللوحتين حتى لو
         // كانت الفترة الزمنية المعروضة متطابقة 100%.
-        rightPriceScale: { borderColor: "#3a3a3a", minimumWidth: PRICE_SCALE_WIDTH },
+        rightPriceScale: { borderColor: "#26282C", minimumWidth: PRICE_SCALE_WIDTH },
         // نفس إعدادات مؤشر التقاطع بالضبط زي الشارت الرئيسي (اللون + الوضع Normal)
         // - قبل هيك ما كان في أي إعداد هون، فكان بياخد لون/سلوك افتراضي من
         // المكتبة يختلف عن الشارت الرئيسي (هاد سبب اختلاف لون المؤشر).
@@ -5896,7 +5896,7 @@ export default function ReplayClient({ userId }) {
       width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
       borderRadius: 4, cursor: disabled ? "not-allowed" : "pointer", border: "1px solid transparent",
       background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-      color: active ? "#1a1608" : disabled ? "#4a4e58" : "#b2b5be",
+      color: active ? "#1A1408" : disabled ? "#4a4e58" : "#b2b5be",
       opacity: disabled ? 0.5 : 1, flexShrink: 0,
     });
     const iconBtnClass = (active, disabled) => `tv-btn${active ? " tv-btn-active" : ""}${disabled ? " tv-btn-disabled" : ""}`;
@@ -5932,7 +5932,7 @@ export default function ReplayClient({ userId }) {
           {activeIndicators.length > 0 && (
             <span style={{
               position: "absolute", top: 1, right: 1, minWidth: 13, height: 13, borderRadius: 7,
-              background: GOLD, color: "#1a1608", fontSize: 9, fontWeight: 800,
+              background: GOLD, color: "#1A1408", fontSize: 9, fontWeight: 800,
               display: "flex", alignItems: "center", justifyContent: "center", padding: "0 2px",
             }}>{activeIndicators.length}</span>
           )}
@@ -5998,7 +5998,7 @@ export default function ReplayClient({ userId }) {
                       >
                         <span style={{
                           position: "absolute", top: 2, insetInlineStart: val ? 16 : 2, width: 14, height: 14,
-                          borderRadius: 7, background: val ? "#1a1608" : "#8b8f99", transition: "inset-inline-start 0.15s",
+                          borderRadius: 7, background: val ? "#1A1408" : "#8b8f99", transition: "inset-inline-start 0.15s",
                         }} />
                       </span>
                     </label>
@@ -6101,13 +6101,13 @@ export default function ReplayClient({ userId }) {
           style={{ ...selectStyle, minWidth: 130, padding: "0.35rem 0.5rem", fontSize: 12.5 }}
         >
           {ASSETS.map((g) => (
-            <optgroup key={g.group} label={g.group} style={{ background: "#181A20", color: GOLD_LIGHT }}>
+            <optgroup key={g.group} label={g.group} style={{ background: "#0D0E10", color: GOLD_LIGHT }}>
               {g.items.map((it) => (
                 <option
                   key={it.v}
                   value={it.v}
                   disabled={!it.yahoo}
-                  style={{ background: "#181A20", color: it.yahoo ? "#f0f0f0" : "#777" }}
+                  style={{ background: "#0D0E10", color: it.yahoo ? "#f0f0f0" : "#777" }}
                 >
                   {it.label}{!it.yahoo ? " (غير مدعوم بعد)" : ""}
                 </option>
@@ -6146,7 +6146,7 @@ export default function ReplayClient({ userId }) {
               width: 34, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
               borderRadius: 7, border: "1px solid transparent", cursor: "pointer",
               background: activeTool === id ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-              color: activeTool === id ? "#1a1608" : "#c9ccd3",
+              color: activeTool === id ? "#1A1408" : "#c9ccd3",
             }}
           >
             <ToolIcon id={id} />
@@ -6177,7 +6177,7 @@ export default function ReplayClient({ userId }) {
         justifyContent: "center", borderRadius: 4, cursor: "pointer",
         border: "1px solid transparent",
         background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-        color: active ? "#1a1608" : "#b2b5be",
+        color: active ? "#1A1408" : "#b2b5be",
         flexShrink: 0,
       };
     }
@@ -7348,7 +7348,7 @@ export default function ReplayClient({ userId }) {
             onChange={(e) => setIndicatorSearch(e.target.value)}
             placeholder="ابحثي عن أي مؤشر (بالعربي أو الانجليزي)... مثال: RSI, ماكد, بولينجر"
             style={{
-              background: "#0d0d0d", border: "1px solid #333", borderRadius: 8, color: "#eee",
+              background: "#0D0E10", border: "1px solid #333", borderRadius: 8, color: "#eee",
               padding: "0.55rem 0.7rem", fontSize: 13, marginBottom: 10, flexShrink: 0,
             }}
           />
@@ -7383,7 +7383,7 @@ export default function ReplayClient({ userId }) {
                               value={it.params[f.key]}
                               min={f.min} max={f.max} step={f.step || 1}
                               onChange={(e) => updateIndicatorParam(it.instanceId, f.key, Number(e.target.value))}
-                              style={{ width: 56, background: "#0d0d0d", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "3px 5px", fontSize: 11.5, textAlign: "center" }}
+                              style={{ width: 56, background: "#0D0E10", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "3px 5px", fontSize: 11.5, textAlign: "center" }}
                             />
                           </label>
                         ))}
@@ -7520,7 +7520,7 @@ export default function ReplayClient({ userId }) {
                         value={it.params[f.key]}
                         min={f.min} max={f.max} step={f.step || 1}
                         onChange={(e) => updateIndicatorParam(it.instanceId, f.key, Number(e.target.value))}
-                        style={{ width: 70, background: "#0d0d0d", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "5px 7px", fontSize: 12.5, textAlign: "center" }}
+                        style={{ width: 70, background: "#0D0E10", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "5px 7px", fontSize: 12.5, textAlign: "center" }}
                       />
                     </div>
                   ))}
@@ -7770,7 +7770,7 @@ export default function ReplayClient({ userId }) {
           <button
             onClick={resumeSavedSession}
             style={{
-              background: GOLD, color: "#1a1608", border: "none", borderRadius: 8,
+              background: GOLD, color: "#1A1408", border: "none", borderRadius: 8,
               padding: "10px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer",
             }}
           >
@@ -7819,12 +7819,12 @@ export default function ReplayClient({ userId }) {
     const numberInput = (val, onChange, min = 0, max = 40) => (
       <input type="number" min={min} max={max} value={val}
         onChange={(e) => onChange(Math.max(min, Math.min(max, Number(e.target.value) || 0)))}
-        style={{ width: 60, background: "#0d0d0d", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "4px 6px", fontSize: 12.5, textAlign: "center" }} />
+        style={{ width: 60, background: "#0D0E10", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "4px 6px", fontSize: 12.5, textAlign: "center" }} />
     );
     const textInput = (val, onChange, placeholder, width = 150) => (
       <input
         type="text" value={val} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        style={{ width, background: "#0d0d0d", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "4px 6px", fontSize: 12.5 }}
+        style={{ width, background: "#0D0E10", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "4px 6px", fontSize: 12.5 }}
       />
     );
     const disabledNote = (label) => (
@@ -8188,7 +8188,7 @@ export default function ReplayClient({ userId }) {
         style={{
           display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
           minWidth: 78, padding: "0.3rem 0.55rem", borderRadius: 6, cursor: disabled ? "default" : "pointer",
-          background: "#181A20cc", border: `1.5px solid ${color}`, color,
+          background: "#0D0E10cc", border: `1.5px solid ${color}`, color,
           fontFamily: "monospace, sans-serif", opacity: disabled ? 0.5 : 1,
         }}
       >
@@ -8203,7 +8203,7 @@ export default function ReplayClient({ userId }) {
       }}>
         {box("بيع", bid, RED, () => openQuickTrade("sell"))}
         <span style={{ fontSize: 11, color: "#888", padding: "0 2px" }}>{(ask - bid).toFixed(digits)}</span>
-        {box("شراء", ask, "#4f7cff", () => openQuickTrade("buy"))}
+        {box("شراء", ask, "#3D8BFD", () => openQuickTrade("buy"))}
       </div>
     );
   }
@@ -8314,7 +8314,7 @@ export default function ReplayClient({ userId }) {
       {!isFullscreen && renderTopBar()}
 
       {!supported && !error && (
-        <div style={{ color: "#f59e0b", fontSize: 13, marginBottom: "1rem" }}>
+        <div style={{ color: "#F5A623", fontSize: 13, marginBottom: "1rem" }}>
           ⚠️ هذا الأصل غير مدعوم حالياً بعرض الشموع، اختاري أصل آخر من القائمة.
         </div>
       )}
@@ -8325,7 +8325,7 @@ export default function ReplayClient({ userId }) {
       <div
         ref={chartWrapperRef}
         style={{
-          background: isFullscreen ? "#0a0a08" : "linear-gradient(145deg, #22252B, #181A20)",
+          background: isFullscreen ? "#0a0a08" : "linear-gradient(145deg, #141517, #0D0E10)",
           border: `1px solid ${GOLD}26`,
           borderRadius: isFullscreen ? 0 : 14,
           padding: isFullscreen ? "0.6rem" : "1rem",
@@ -8344,7 +8344,7 @@ export default function ReplayClient({ userId }) {
         {loading && allCandles.length === 0 && (
           <div style={{
             position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#777", fontSize: 14, zIndex: 2, background: "#181A20cc", borderRadius: 14,
+            color: "#777", fontSize: 14, zIndex: 2, background: "#0D0E10cc", borderRadius: 14,
           }}>
             ...جاري تحميل البيانات
           </div>
@@ -8416,9 +8416,9 @@ export default function ReplayClient({ userId }) {
                     pointerEvents: "none", minWidth: 70, fontFamily: "monospace, sans-serif",
                   }}
                 >
-                  <span data-role="symbol" style={{ fontSize: 10, fontWeight: 700, color: "#181A20" }} />
-                  <span data-role="price" style={{ fontSize: 13, fontWeight: 800, color: "#181A20", lineHeight: 1.2 }} />
-                  <span data-role="countdown" style={{ fontSize: 10, color: "#181A20aa", display: "none" }} />
+                  <span data-role="symbol" style={{ fontSize: 10, fontWeight: 700, color: "#0D0E10" }} />
+                  <span data-role="price" style={{ fontSize: 13, fontWeight: 800, color: "#0D0E10", lineHeight: 1.2 }} />
+                  <span data-role="countdown" style={{ fontSize: 10, color: "#0D0E10aa", display: "none" }} />
                 </div>
               </div>
             </div>
@@ -8525,7 +8525,7 @@ function Select({ label, value, onChange, options }) {
 }
 
 const selectStyle = {
-  background: "#181A20", border: "1px solid #2A2E39", color: "#eee",
+  background: "#0D0E10", border: "1px solid #2A2E39", color: "#eee",
   borderRadius: 8, padding: "0.45rem 0.6rem", fontSize: 13, minWidth: 110,
 };
 
@@ -8538,7 +8538,7 @@ function tabStyle(active) {
     padding: "0.5rem 1rem", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer",
     border: `1px solid ${GOLD}44`,
     background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-    color: active ? "#1a1608" : GOLD,
+    color: active ? "#1A1408" : GOLD,
   };
 }
 
@@ -8548,7 +8548,7 @@ function toolBtnStyle(active) {
     borderRadius: 8, cursor: "pointer",
     border: "1px solid transparent",
     background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-    color: active ? "#1a1608" : "#c8c8c8",
+    color: active ? "#1A1408" : "#c8c8c8",
     transition: "background .12s, color .12s",
     flexShrink: 0,
   };
@@ -8594,6 +8594,6 @@ const dividerGripStyle = {
 
 function btnStyle(kind) {
   const base = { padding: "0.55rem 1rem", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" };
-  if (kind === "primary") return { ...base, background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, color: "#1a1608" };
+  if (kind === "primary") return { ...base, background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, color: "#1A1408" };
   return { ...base, background: "transparent", border: `1px solid ${GOLD}44`, color: GOLD };
 }

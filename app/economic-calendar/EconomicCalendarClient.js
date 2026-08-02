@@ -9,22 +9,22 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
    لتشغيله كصفحة مستقلة بكامل عرض الشاشة بدل تبويب داخل الداشبورد.
    ============================================================================ */
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GOLD_DARK = "#9C7A22";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GOLD_DARK = "#D4A05A";
 
 const cardStyle = {
-  background: "linear-gradient(145deg, #22252B, #181A20)",
+  background: "linear-gradient(145deg, #141517, #0D0E10)",
   border: `1px solid ${GOLD}26`,
   borderRadius: 18,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
 };
 
 const IMPACT_KEYS = {
-  high: { labelKey: "calendar.impactHigh", color: "#EF5350", bg: "#EF535022", dot: "🔴" },
-  medium: { labelKey: "calendar.impactMedium", color: "#FFA726", bg: "#FFA72622", dot: "🟡" },
-  low: { labelKey: "calendar.impactLow", color: "#8BC34A", bg: "#8BC34A22", dot: "🟢" },
-  holiday: { labelKey: "calendar.impactHoliday", color: "#4FA0F5", bg: "#4FA0F522", dot: "🔵" },
+  high: { labelKey: "calendar.impactHigh", color: "#E5484D", bg: "#E5484D22", dot: "🔴" },
+  medium: { labelKey: "calendar.impactMedium", color: "#F5A623", bg: "#F5A62322", dot: "🟡" },
+  low: { labelKey: "calendar.impactLow", color: "#3DBB6E", bg: "#3DBB6E22", dot: "🟢" },
+  holiday: { labelKey: "calendar.impactHoliday", color: "#3D8BFD", bg: "#3D8BFD22", dot: "🔵" },
 };
 
 const CURRENCY_FLAGS = {
@@ -33,8 +33,8 @@ const CURRENCY_FLAGS = {
 };
 
 const DIRECTION_STYLE = {
-  up: { arrow: "⬆️", color: "#3DDC84" },
-  down: { arrow: "⬇️", color: "#EF5350" },
+  up: { arrow: "⬆️", color: "#3DBB6E" },
+  down: { arrow: "⬇️", color: "#E5484D" },
   neutral: { arrow: "➖", color: "#999" },
 };
 
@@ -69,7 +69,7 @@ function formatCountdown(diffMs, dayLabel = "يوم") {
 }
 
 const PURPLE = "#7c5cff";
-const PURPLE_LIGHT = "#B084F5";
+const PURPLE_LIGHT = "#E8B86D";
 
 /* Mini Sparkline */
 function Sparkline({ data, color, width = 60, height = 24 }) {
@@ -156,7 +156,7 @@ function CurrencyStrengthMeter({ snapshot, loading, error }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
           {values.map((v) => {
-            const color = v.value >= 68 ? "#3DDC84" : v.value >= 42 ? GOLD_LIGHT : "#EF5350";
+            const color = v.value >= 68 ? "#3DBB6E" : v.value >= 42 ? GOLD_LIGHT : "#E5484D";
             return (
               <div key={v.code}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
@@ -201,7 +201,7 @@ function MarketHeatmap({ snapshot, loading, error }) {
             const v = values.find((x) => x.sector === sector);
             if (!v || v.pct == null) {
               return (
-                <div key={sector} style={{ background: "#181A20", border: `1px solid ${GOLD}18`, borderRadius: 10, padding: "0.7rem 0.4rem", textAlign: "center" }}>
+                <div key={sector} style={{ background: "#0D0E10", border: `1px solid ${GOLD}18`, borderRadius: 10, padding: "0.7rem 0.4rem", textAlign: "center" }}>
                   <p style={{ margin: 0, fontSize: 10.5, color: "#666", fontWeight: 600 }}>{sector}</p>
                   <p style={{ margin: "5px 0 0", fontSize: 12, color: "#444" }}>--</p>
                 </div>
@@ -209,11 +209,11 @@ function MarketHeatmap({ snapshot, loading, error }) {
             }
             const up = v.pct >= 0;
             const bg = up ? `rgba(61,220,132,${Math.min(0.45, 0.15 + Math.abs(v.pct) / 8)})` : `rgba(239,83,80,${Math.min(0.45, 0.15 + Math.abs(v.pct) / 8)})`;
-            const border = up ? "#3DDC8455" : "#EF535055";
+            const border = up ? "#3DBB6E55" : "#E5484D55";
             return (
               <div key={sector} title={HEATMAP_SYMBOL_LABEL[sector]} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "0.7rem 0.4rem", textAlign: "center" }}>
                 <p style={{ margin: 0, fontSize: 10.5, color: "#ddd", fontWeight: 600 }}>{sector}</p>
-                <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 800, color: up ? "#3DDC84" : "#EF5350", direction: "ltr" }}>
+                <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 800, color: up ? "#3DBB6E" : "#E5484D", direction: "ltr" }}>
                   {up ? "+" : ""}
                   {v.pct}%
                 </p>
@@ -295,7 +295,7 @@ function PriceChart() {
                 key={t}
                 onClick={() => setTf(t)}
                 style={{
-                  background: tf === t ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#181A20",
+                  background: tf === t ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0D0E10",
                   color: tf === t ? "#000" : "#999",
                   border: tf === t ? "none" : `1px solid ${GOLD}22`,
                   borderRadius: 6,
@@ -347,7 +347,7 @@ function FearGreedGauge({ snapshot, loading, error }) {
   const { t } = useLocale();
   const value = snapshot?.fearGreed;
   const label = value == null ? null : value >= 75 ? t("calendar.fgExtremeGreed") : value >= 55 ? t("calendar.fgGreed") : value >= 45 ? t("calendar.fgNeutral") : value >= 25 ? t("calendar.fgFear") : t("calendar.fgExtremeFear");
-  const color = value == null ? "#888" : value >= 75 ? "#22c55e" : value >= 55 ? "#84cc16" : value >= 45 ? "#eab308" : value >= 25 ? "#f59e0b" : "#F6465D";
+  const color = value == null ? "#888" : value >= 75 ? "#22c55e" : value >= 55 ? "#84cc16" : value >= 45 ? "#eab308" : value >= 25 ? "#F5A623" : "#E5484D";
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
@@ -360,7 +360,7 @@ function FearGreedGauge({ snapshot, loading, error }) {
         <LiveCardStatus label={t("calendar.vixError")} />
       ) : (
         <>
-          <SemiGauge value={value} colors={["#F6465D", "#f59e0b", "#eab308", "#84cc16", "#22c55e"]} gradId="fg" />
+          <SemiGauge value={value} colors={["#E5484D", "#F5A623", "#eab308", "#84cc16", "#22c55e"]} gradId="fg" />
           <p style={{ margin: "2px 0 0", fontSize: 22, fontWeight: 800, color }}>{value}</p>
           <p style={{ margin: "2px 0 0", fontSize: 11.5, color, fontWeight: 700 }}>{label}</p>
           <p style={{ margin: "8px 0 0", fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
@@ -407,13 +407,13 @@ function EconomicSurpriseIndex({ events }) {
         <LiveCardStatus label={t("calendar.surpriseNoData")} />
       ) : (
         <>
-          <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: positive ? "#3DDC84" : "#EF5350", direction: "ltr" }}>
+          <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: positive ? "#3DBB6E" : "#E5484D", direction: "ltr" }}>
             {positive ? "+" : ""}
             {value}
           </p>
           {series.length >= 2 && (
             <div style={{ margin: "8px 0" }}>
-              <Sparkline data={series} color={positive ? "#3DDC84" : "#EF5350"} width={140} height={34} />
+              <Sparkline data={series} color={positive ? "#3DBB6E" : "#E5484D"} width={140} height={34} />
             </div>
           )}
           <p style={{ margin: 0, fontSize: 10.5, color: "#888", lineHeight: 1.6 }}>
@@ -456,12 +456,12 @@ function TechnicalAnalysisPanel({ currency }) {
   }, [currency]);
 
   const rows = data && [
-    { label: "RSI (14)", value: data.rsi ?? "--", color: data.rsi > 70 ? "#EF5350" : data.rsi < 30 ? "#3DDC84" : "#eee" },
-    { label: "MACD", value: data.macd || "--", color: data.macd === "Bullish" ? "#3DDC84" : "#EF5350" },
-    { label: "EMA 20", value: data.emaUp == null ? "--" : data.emaUp ? t("calendar.aboveEma50") : t("calendar.belowEma50"), color: data.emaUp ? "#3DDC84" : "#EF5350" },
+    { label: "RSI (14)", value: data.rsi ?? "--", color: data.rsi > 70 ? "#E5484D" : data.rsi < 30 ? "#3DBB6E" : "#eee" },
+    { label: "MACD", value: data.macd || "--", color: data.macd === "Bullish" ? "#3DBB6E" : "#E5484D" },
+    { label: "EMA 20", value: data.emaUp == null ? "--" : data.emaUp ? t("calendar.aboveEma50") : t("calendar.belowEma50"), color: data.emaUp ? "#3DBB6E" : "#E5484D" },
     { label: t("calendar.generalTrendLabel"), value: data.trend || "--", color: GOLD_LIGHT },
-    { label: t("calendar.supportLabel"), value: data.support ?? "--", color: "#4FA0F5" },
-    { label: t("calendar.resistanceLabel"), value: data.resistance ?? "--", color: "#EF5350" },
+    { label: t("calendar.supportLabel"), value: data.support ?? "--", color: "#3D8BFD" },
+    { label: t("calendar.resistanceLabel"), value: data.resistance ?? "--", color: "#E5484D" },
   ];
 
   return (
@@ -587,7 +587,7 @@ function BestOpportunitiesPanel({ events, snapshot }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              background: "#181A20",
+              background: "#0D0E10",
               border: `1px solid ${GOLD}1a`,
               borderRadius: 10,
               padding: "0.6rem 0.8rem",
@@ -613,7 +613,7 @@ function BestOpportunitiesPanel({ events, snapshot }) {
               <span style={{ fontSize: 12, fontWeight: 700, color: "#eee" }}>{o.asset}</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: o.buy ? "#3DDC84" : "#EF5350" }}>{o.buy ? t("calendar.buyLabel") : t("calendar.sellLabel")}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: o.buy ? "#3DBB6E" : "#E5484D" }}>{o.buy ? t("calendar.buyLabel") : t("calendar.sellLabel")}</span>
               <span style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: 700 }}>{o.confidence}%</span>
             </div>
           </div>
@@ -677,7 +677,7 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
           placeholder={t("calendar.searchPlaceholder")}
           style={{
             width: "100%",
-            background: "#181A20",
+            background: "#0D0E10",
             border: `1px solid ${GOLD}2a`,
             borderRadius: 9,
             padding: "0.5rem 0.8rem",
@@ -698,7 +698,7 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
                 position: "absolute",
                 top: -6,
                 right: -8,
-                background: "#EF5350",
+                background: "#E5484D",
                 color: "#fff",
                 fontSize: 8,
                 fontWeight: 800,
@@ -713,7 +713,7 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
         <select
           value={tzOffset}
           onChange={(e) => setTzOffset(Number(e.target.value))}
-          style={{ background: "#181A20", border: `1px solid ${GOLD}2a`, borderRadius: 8, padding: "0.35rem 0.5rem", color: "#ccc", fontSize: 11 }}
+          style={{ background: "#0D0E10", border: `1px solid ${GOLD}2a`, borderRadius: 8, padding: "0.35rem 0.5rem", color: "#ccc", fontSize: 11 }}
         >
           {[-5, 0, 1, 2, 3, 4].map((o) => (
             <option key={o} value={o}>
@@ -721,8 +721,8 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
             </option>
           ))}
         </select>
-        <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: marketOpen ? "#3DDC84" : "#EF5350" }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: marketOpen ? "#3DDC84" : "#EF5350" }} />
+        <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: marketOpen ? "#3DBB6E" : "#E5484D" }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: marketOpen ? "#3DBB6E" : "#E5484D" }} />
           {marketOpen ? t("calendar.marketOpen") : t("calendar.marketClosed")}
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "#888" }}>
@@ -759,11 +759,11 @@ function KPICardsRow({ todayStats, activeCurrenciesCount, opportunitiesCount, op
   const { t } = useLocale();
   const cards = [
     { label: t("calendar.kpiActiveCurrencies"), value: activeCurrenciesCount, sub: t("calendar.kpiActiveCurrenciesSub"), color: PURPLE_LIGHT, icon: "🎯" },
-    { label: t("calendar.kpiLowImpact"), value: todayStats.low, sub: t("calendar.today"), color: "#3DDC84", icon: "🟢" },
-    { label: t("calendar.kpiMediumImpact"), value: todayStats.medium, sub: t("calendar.today"), color: "#FFA726", icon: "🟡" },
-    { label: t("calendar.kpiHighImpact"), value: todayStats.high, sub: t("calendar.today"), color: "#EF5350", icon: "🔴" },
+    { label: t("calendar.kpiLowImpact"), value: todayStats.low, sub: t("calendar.today"), color: "#3DBB6E", icon: "🟢" },
+    { label: t("calendar.kpiMediumImpact"), value: todayStats.medium, sub: t("calendar.today"), color: "#F5A623", icon: "🟡" },
+    { label: t("calendar.kpiHighImpact"), value: todayStats.high, sub: t("calendar.today"), color: "#E5484D", icon: "🔴" },
     { label: t("calendar.kpiOpportunities"), value: opportunitiesReady ? opportunitiesCount : "--", sub: t("calendar.kpiOpportunitiesSub"), color: GOLD_LIGHT, icon: "💡" },
-    { label: t("calendar.kpiTodayNews"), value: todayStats.total, sub: t("calendar.kpiRemaining", { count: todayStats.upcoming }), color: "#4FA0F5", icon: "🗓️" },
+    { label: t("calendar.kpiTodayNews"), value: todayStats.total, sub: t("calendar.kpiRemaining", { count: todayStats.upcoming }), color: "#3D8BFD", icon: "🗓️" },
   ];
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "0.7rem", marginBottom: "1.1rem" }}>
@@ -799,10 +799,10 @@ function MICFooter({ tzOffset, lastUpdated }) {
     >
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         <span>
-          🟢 API Status: <span style={{ color: "#3DDC84" }}>Live</span>
+          🟢 API Status: <span style={{ color: "#3DBB6E" }}>Live</span>
         </span>
         <span>
-          🟢 Data Feed: <span style={{ color: "#3DDC84" }}>{t("calendar.footerConnected")}</span>
+          🟢 Data Feed: <span style={{ color: "#3DBB6E" }}>{t("calendar.footerConnected")}</span>
         </span>
         <span>{t("calendar.footerLastSync", { time: lastUpdated ? new Date(lastUpdated).toLocaleTimeString(locale === "ar" ? "ar-EG" : "en-US") : "--" })}</span>
         <span>
@@ -1147,7 +1147,7 @@ function CalendarView({ events, loading, isAdmin }) {
                       { label: t("calendar.actualLabel"), value: selectedEvent.actual, gold: true },
                       { label: t("calendar.countdownLabel"), value: countdown, live: true },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: "#181A20", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.6rem", textAlign: "center" }}>
+                      <div key={i} style={{ background: "#0D0E10", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.6rem", textAlign: "center" }}>
                         <p style={{ margin: 0, fontSize: 10, color: "#888" }}>{s.label}</p>
                         <p style={{
                           margin: "5px 0 0", fontSize: 14, fontWeight: 800, direction: s.live ? "ltr" : undefined,
@@ -1162,7 +1162,7 @@ function CalendarView({ events, loading, isAdmin }) {
                   {/* قوة التأثير + توزيع التأثير على الأصول */}
                   <div style={{ display: "flex", gap: "1rem", marginTop: "1rem", alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ textAlign: "center" }}>
-                      <SemiGauge value={impactPct} size={116} colors={["#3DDC84", "#FFA726", "#EF5350"]} gradId="impact" />
+                      <SemiGauge value={impactPct} size={116} colors={["#3DBB6E", "#F5A623", "#E5484D"]} gradId="impact" />
                       <p style={{ margin: "2px 0 0", fontSize: 16, fontWeight: 800, color: impact.color }}>{impactPct}%</p>
                       <p style={{ margin: 0, fontSize: 10, color: "#888" }}>{impactStrengthLabel}</p>
                     </div>
@@ -1184,7 +1184,7 @@ function CalendarView({ events, loading, isAdmin }) {
                 {/* بطاقة تحليل الذكاء الاصطناعي */}
                 <div style={{
                   ...cardStyle, padding: "1.2rem 1.4rem",
-                  background: "linear-gradient(135deg, #1a1030, #181A20)", border: "1px solid #7c5cff33",
+                  background: "linear-gradient(135deg, #1a1030, #0D0E10)", border: "1px solid #7c5cff33",
                 }}>
                   <p style={{ color: PURPLE_LIGHT, fontSize: 13, fontWeight: 700, margin: "0 0 10px" }}>{t("calendar.aiAnalysisTitle")}</p>
                   {!aiData ? (
@@ -1238,7 +1238,7 @@ function CalendarView({ events, loading, isAdmin }) {
                       key={t.key}
                       onClick={() => setAnalysisTab(t.key)}
                       style={{
-                        background: analysisTab === t.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#181A20",
+                        background: analysisTab === t.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0D0E10",
                         color: analysisTab === t.key ? "#000" : "#999",
                         border: analysisTab === t.key ? "none" : `1px solid ${GOLD}22`,
                         borderRadius: 8, padding: "0.5rem 0.9rem", fontSize: 12, fontWeight: 700, cursor: "pointer",
@@ -1256,7 +1256,7 @@ function CalendarView({ events, loading, isAdmin }) {
                         <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, margin: "0 0 0.9rem" }}>{t("calendar.scenariosTitle")}</p>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.8rem" }}>
                           {aiData.scenarios.map((sc, i) => (
-                            <div key={i} style={{ background: "#181A20", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem" }}>
+                            <div key={i} style={{ background: "#0D0E10", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem" }}>
                               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#eee" }}>{sc.title}</p>
                               <p style={{ margin: "8px 0 4px", fontSize: 20, fontWeight: 800, color: GOLD_LIGHT }}>{sc.probability}%</p>
                               <p style={{ margin: "0 0 6px", fontSize: 11, color: "#f5c542" }}>{"⭐".repeat(Math.max(1, Math.min(5, sc.stars || 1)))}</p>
@@ -1320,7 +1320,7 @@ function CalendarView({ events, loading, isAdmin }) {
                               const dir = DIRECTION_STYLE[h.direction] || DIRECTION_STYLE.neutral;
                               return (
                                 <div key={i} style={{
-                                  display: "flex", alignItems: "center", gap: 12, background: "#181A20",
+                                  display: "flex", alignItems: "center", gap: 12, background: "#0D0E10",
                                   border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.7rem 0.9rem",
                                 }}>
                                   <span style={{
@@ -1397,7 +1397,7 @@ function CalendarView({ events, loading, isAdmin }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
               <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.economicCalendarTitle")}</p>
               {nextHighImpactEvent && (
-                <span style={{ fontSize: 9.5, color: "#EF5350", fontWeight: 700, direction: "ltr" }}>
+                <span style={{ fontSize: 9.5, color: "#E5484D", fontWeight: 700, direction: "ltr" }}>
                   ⏱ {nextHighImpactCountdown || "--"}
                 </span>
               )}
@@ -1407,7 +1407,7 @@ function CalendarView({ events, loading, isAdmin }) {
               value={dayFilter}
               onChange={(e) => setDayFilter(e.target.value)}
               style={{
-                width: "100%", background: "#181A20", border: `1px solid ${GOLD}33`, borderRadius: 8,
+                width: "100%", background: "#0D0E10", border: `1px solid ${GOLD}33`, borderRadius: 8,
                 padding: "0.5rem 0.6rem", color: "#ccc", fontSize: 11.5, marginBottom: 8,
               }}
             >
@@ -1420,16 +1420,16 @@ function CalendarView({ events, loading, isAdmin }) {
             <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
               {[
                 { key: "all", labelKey: "calendar.filterAll", color: GOLD_LIGHT },
-                { key: "high", labelKey: "calendar.filterHigh", color: "#EF5350" },
-                { key: "medium", labelKey: "calendar.filterMedium", color: "#FFA726" },
-                { key: "low", labelKey: "calendar.filterLow", color: "#8BC34A" },
+                { key: "high", labelKey: "calendar.filterHigh", color: "#E5484D" },
+                { key: "medium", labelKey: "calendar.filterMedium", color: "#F5A623" },
+                { key: "low", labelKey: "calendar.filterLow", color: "#3DBB6E" },
               ].map((f) => (
                 <button
                   key={f.key}
                   onClick={() => setImpactFilter(f.key)}
                   style={{
                     flex: 1,
-                    background: impactFilter === f.key ? `${f.color}22` : "#181A20",
+                    background: impactFilter === f.key ? `${f.color}22` : "#0D0E10",
                     color: impactFilter === f.key ? f.color : "#999",
                     border: impactFilter === f.key ? `1px solid ${f.color}66` : `1px solid ${GOLD}22`,
                     borderRadius: 8, padding: "0.4rem 0.2rem", fontSize: 9.5, fontWeight: 700, cursor: "pointer",
@@ -1461,7 +1461,7 @@ function CalendarView({ events, loading, isAdmin }) {
                           key={ev.id}
                           onClick={() => setSelectedId(ev.id)}
                           style={{
-                            background: isSelected ? `${GOLD}14` : "#181A20",
+                            background: isSelected ? `${GOLD}14` : "#0D0E10",
                             border: isSelected ? `1px solid ${GOLD}66` : `1px solid ${GOLD}1a`,
                             borderRadius: 10, padding: "0.65rem 0.8rem", cursor: "pointer",
                           }}

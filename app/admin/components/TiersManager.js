@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { gold, s as baseStyles, glass, transition } from "../styles";
 
-const EMPTY = { code: "", title_ar: "", badge_icon: "🏅", color_hex: "#D4AF37", min_active_clients: 0, signup_amount: 30, renewal_amount: 8, sort_order: 0 };
+const EMPTY = { code: "", title_ar: "", badge_icon: "🏅", color_hex: "#E8B86D", min_active_clients: 0, signup_amount: 30, renewal_amount: 8, sort_order: 0 };
 
 export default function TiersManager() {
   const [tiers, setTiers] = useState([]);
@@ -120,7 +120,7 @@ export default function TiersManager() {
             <input type="number" style={styles.input} value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} />
           </Field>
         </div>
-        {error && <p style={{ color: "#F6465D", fontSize: "0.78rem", marginBottom: 8 }}>{error}</p>}
+        {error && <p style={{ color: "#E5484D", fontSize: "0.78rem", marginBottom: 8 }}>{error}</p>}
         <div style={{ display: "flex", gap: 8 }}>
           <button disabled={saving} onClick={save} style={{ ...baseStyles.btn, ...baseStyles.btnGold }}>
             {saving ? "جاري الحفظ..." : editingId ? "حفظ التعديل" : "إضافة"}
@@ -160,7 +160,7 @@ export default function TiersManager() {
                   <td style={{ ...styles.td, color: gold, fontWeight: 700 }}>${t.signup_amount}</td>
                   <td style={{ ...styles.td, color: gold, fontWeight: 700 }}>${t.renewal_amount}</td>
                   <td style={styles.td}>
-                    <span style={{ color: t.is_active ? "#4CAF50" : "#888" }}>{t.is_active ? "مفعّل" : "معطّل"}</span>
+                    <span style={{ color: t.is_active ? "#3DBB6E" : "#888" }}>{t.is_active ? "مفعّل" : "معطّل"}</span>
                   </td>
                   <td style={styles.td}>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -192,5 +192,5 @@ const styles = {
   table: { width: "100%", borderCollapse: "collapse" },
   th: { textAlign: "right", color: "#666", fontSize: "0.75rem", padding: "0.7rem", borderBottom: "1px solid #1c1c1c" },
   td: { padding: "0.7rem", fontSize: "0.85rem", color: "#C8C0B0", borderBottom: "1px solid #1c1c1c" },
-  input: { width: "100%", background: "#080808", border: "1px solid #22252B", color: "#EAECEF", padding: "0.6rem 0.8rem", borderRadius: 6, fontSize: "0.85rem" },
+  input: { width: "100%", background: "#080808", border: "1px solid #141517", color: "#EAECEF", padding: "0.6rem 0.8rem", borderRadius: 6, fontSize: "0.85rem" },
 };

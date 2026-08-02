@@ -11,15 +11,15 @@ import {
   computeTradeInsights,
 } from "@/lib/trader-dna";
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GOLD_DARK = "#9C7A22";
-const GREEN = "#02C076";
-const RED = "#F6465D";
-const BLUE = "#4FA8E0";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GOLD_DARK = "#D4A05A";
+const GREEN = "#3DBB6E";
+const RED = "#E5484D";
+const BLUE = "#3D8BFD";
 
 const cardStyle = {
-  background: "linear-gradient(145deg, #22252B, #181A20)",
+  background: "linear-gradient(145deg, #141517, #0D0E10)",
   border: `1px solid ${GOLD}26`,
   borderRadius: 18,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
@@ -111,7 +111,7 @@ function StatBlock({ icon, label, value, sub }) {
   return (
     <div
       style={{
-        background: "#15171b",
+        background: "#141517",
         border: `1px solid ${GOLD}1f`,
         borderRadius: 14,
         padding: "1rem 1.1rem",
@@ -124,6 +124,7 @@ function StatBlock({ icon, label, value, sub }) {
       </div>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>{value}</div>
       {sub && <div style={{ fontSize: 11.5, color: "#666", marginTop: 2 }}>{sub}</div>}
+      }
     </div>
   );
 }
@@ -179,7 +180,7 @@ function QuizFlow({ onFinish, onCancel }) {
                 padding: "0.85rem 1rem",
                 borderRadius: 12,
                 border: `1px solid ${selected ? GOLD : GOLD + "26"}`,
-                background: selected ? `${GOLD}1f` : "#15171b",
+                background: selected ? `${GOLD}1f` : "#141517",
                 color: "#e5e5e5",
                 fontSize: 14,
                 cursor: "pointer",
@@ -280,7 +281,9 @@ function DnaCard({ profile, insights, onRetake }) {
         <Pill>{t("traderDna.riskLabel", { value: RISK_LABELS[profile.risk_tolerance] })}</Pill>
         <Pill color={BLUE}>{SESSION_LABELS[profile.session_preference] || "—"}</Pill>
         {insights?.bestAsset && <Pill color={GREEN}>{t("traderDna.bestAssetLabel", { value: insights.bestAsset.name })}</Pill>}
+        }
         {insights?.bestSetup && <Pill color={GOLD_LIGHT}>{t("traderDna.bestSetupLabel", { value: insights.bestSetup.name })}</Pill>}
+        }
       </div>
     </div>
   );
@@ -382,6 +385,7 @@ export default function TraderDnaView({ userId: userIdProp }) {
           )}
           <QuizFlow onFinish={handleFinishQuiz} onCancel={() => setShowQuiz(false)} />
           {saving && <div style={{ color: "#9a9a9a", fontSize: 13, marginTop: 8 }}>{t("traderDna.savingResult")}</div>}
+          }
         </>
       );
     }
@@ -459,7 +463,7 @@ export default function TraderDnaView({ userId: userIdProp }) {
                   alignItems: "flex-start",
                   fontSize: 13.5,
                   color: "#d5d5d5",
-                  background: "#15171b",
+                  background: "#141517",
                   border: `1px solid ${GOLD}1f`,
                   borderRadius: 10,
                   padding: "0.75rem 0.9rem",

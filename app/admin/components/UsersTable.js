@@ -31,7 +31,7 @@ function Avatar({ user }) {
   return user.avatar_url ? (
     <img src={user.avatar_url} alt="" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: `1px solid ${gold}44` }} />
   ) : (
-    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#1c1c1c,#181A20)", border: `1px solid ${gold}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", color: gold, fontWeight: 700 }}>
+    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#1c1c1c,#0D0E10)", border: `1px solid ${gold}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", color: gold, fontWeight: 700 }}>
       {initial}
     </div>
   );
@@ -83,7 +83,7 @@ function ActionsBar({ user, onAction }) {
             style={{
               background: "none",
               border: "1px solid #222",
-              color: key === "delete" ? "#ef5350" : "#999",
+              color: key === "delete" ? "#E5484D" : "#999",
               width: 28,
               height: 28,
               minWidth: 28,
@@ -95,7 +95,7 @@ function ActionsBar({ user, onAction }) {
               justifyContent: "center",
               transition,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = key === "delete" ? "#ef5350" : gold; e.currentTarget.style.background = "#161616"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = key === "delete" ? "#E5484D" : gold; e.currentTarget.style.background = "#161616"; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#222"; e.currentTarget.style.background = "none"; }}
           >
             {icon}
@@ -119,7 +119,7 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
             <thead>
               <tr>
                 {["", "الاسم", "الرتبة", "الخطة", "البداية", "النهاية", "الأيام المتبقية", "المدفوع", "الحالة", "آخر دخول", ""].map((h, i) => (
-                  <th key={i} style={{ background: "#181A20", padding: "0.9rem 1.1rem", textAlign: "right", fontSize: "0.74rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111", whiteSpace: "nowrap" }}>
+                  <th key={i} style={{ background: "#0D0E10", padding: "0.9rem 1.1rem", textAlign: "right", fontSize: "0.74rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111", whiteSpace: "nowrap" }}>
                     {h}
                   </th>
                 ))}
@@ -133,7 +133,7 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
                   onMouseLeave={() => setHoverRow(null)}
                   onClick={() => onOpenUser(user)}
                   style={{
-                    borderBottom: "1px solid #0d0d0d",
+                    borderBottom: "1px solid #0D0E10",
                     cursor: "pointer",
                     background: hoverRow === user.id ? "rgba(201,162,75,0.045)" : "transparent",
                     transition,
@@ -143,6 +143,7 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
                   <td style={{ padding: "0.85rem 1.1rem", fontWeight: 500, color: "#EAECEF" }}>{user.username || "—"}</td>
                   <td style={{ padding: "0.85rem 1.1rem" }}>
                     {user.role === "admin" ? <PlanBadge plan="admin" /> : <span style={{ color: "#555", fontSize: "0.8rem" }}>Student</span>}
+                    }
                   </td>
                   <td style={{ padding: "0.85rem 1.1rem" }}><PlanBadge plan={user.plan} /></td>
                   <td style={{ padding: "0.85rem 1.1rem", fontFamily: monoStack, color: "#666", fontSize: "0.8rem" }}>

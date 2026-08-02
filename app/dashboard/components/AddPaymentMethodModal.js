@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GOLD_DARK = "#9C7A22";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GOLD_DARK = "#D4A05A";
 
 /*
  * مودال إضافة/تحديث طريقة الدفع — من غير ما يودّي المستخدم لصفحة الاشتراك الكاملة ($300).
@@ -88,7 +88,7 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
           maxWidth: 480,
           maxHeight: "90vh",
           overflowY: "auto",
-          background: "linear-gradient(145deg, #22252B, #181A20)",
+          background: "linear-gradient(145deg, #141517, #0D0E10)",
           border: `1px solid ${GOLD}44`,
           borderRadius: 18,
           boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
@@ -120,7 +120,7 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
             <iframe
               src={managementUrls.updatePaymentMethod}
               title="تحديث طريقة الدفع"
-              style={{ width: "100%", height: 560, border: "none", borderRadius: 12, background: "#181A20" }}
+              style={{ width: "100%", height: 560, border: "none", borderRadius: 12, background: "#0D0E10" }}
             />
           </>
         )}
@@ -132,6 +132,7 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
             </p>
             <div className="add-card-checkout-container" style={{ width: "100%", minHeight: 300 }}>
               {!paddle && <p style={{ color: "#666", fontSize: 13, textAlign: "center" }}>...جاري التحميل</p>}
+              }
             </div>
           </>
         )}
@@ -149,7 +150,7 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
                 alignItems: "center",
                 gap: 6,
                 background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                color: "#1a1608",
+                color: "#1A1408",
                 fontWeight: 800,
                 fontSize: 13,
                 padding: "0.6rem 1.3rem",

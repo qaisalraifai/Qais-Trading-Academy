@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 
-const GOLD = "#D4AF37";
+const GOLD = "#E8B86D";
 const BORDER = "#2B2F36";
 const btnGhost = {
   background: "transparent",
@@ -27,7 +27,7 @@ export default function QrCodeBox({ value, size = 180, filename = "qta-qr-code.p
       {
         width: size,
         margin: 1,
-        color: { dark: "#D4AF37", light: "#0B0E11" },
+        color: { dark: "#E8B86D", light: "#0B0E11" },
       },
       (err) => setReady(!err)
     );

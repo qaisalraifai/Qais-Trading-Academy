@@ -46,7 +46,7 @@ export default async function LecturesPage() {
     <PageShell {...shellProfile}>
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1a1608 0%, #181A20 60%)",
+      background: "radial-gradient(ellipse at top, #1A1408 0%, #0D0E10 60%)",
       color: "#fff",
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
@@ -59,14 +59,14 @@ export default async function LecturesPage() {
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <div style={{
               width: 52, height: 52, borderRadius: "50%",
-              border: "2px solid #D4AF37",
-              boxShadow: "0 0 20px #D4AF3744",
+              border: "2px solid #E8B86D",
+              boxShadow: "0 0 20px #E8B86D44",
               overflow: "hidden", flexShrink: 0,
             }}>
               <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>
             <div>
-              <p style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 3, margin: 0 }}>QAIS TRADING ACADEMY</p>
+              <p style={{ color: "#E8B86D", fontSize: 11, letterSpacing: 3, margin: 0 }}>QAIS TRADING ACADEMY</p>
               <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>البرامج التعليمية</h1>
             </div>
           </div>
@@ -84,8 +84,8 @@ export default async function LecturesPage() {
           {courseStats.map((course) => (
             <Link key={course.id} href={`/course/${course.id}`} style={{ textDecoration: "none" }}>
               <div style={{
-                background: "linear-gradient(145deg, #111108, #181A20)",
-                border: "1px solid #D4AF3733",
+                background: "linear-gradient(145deg, #111108, #0D0E10)",
+                border: "1px solid #E8B86D33",
                 borderRadius: 18,
                 padding: "1.75rem",
                 cursor: "pointer",
@@ -115,7 +115,7 @@ export default async function LecturesPage() {
 
                 {/* Progress bar */}
                 <div style={{ marginTop: "auto" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#D4AF37", marginBottom: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#E8B86D", marginBottom: 6 }}>
                     <span>التقدم</span>
                     <span>{course.progressPct}%</span>
                   </div>
@@ -123,7 +123,7 @@ export default async function LecturesPage() {
                     <div style={{
                       width: `${course.progressPct}%`,
                       height: "100%",
-                      background: "linear-gradient(90deg, #D4AF37, #e6c674)",
+                      background: "linear-gradient(90deg, #E8B86D, #e6c674)",
                       borderRadius: 5,
                       transition: "width 0.3s ease",
                     }} />
@@ -135,14 +135,14 @@ export default async function LecturesPage() {
 
                 {/* Continue button */}
                 <div style={{
-                  background: "linear-gradient(135deg, #D4AF37, #9C7A22)",
+                  background: "linear-gradient(135deg, #E8B86D, #D4A05A)",
                   color: "#000",
                   fontWeight: 700,
                   fontSize: 13,
                   textAlign: "center",
                   padding: "0.65rem",
                   borderRadius: 10,
-                  boxShadow: "0 4px 12px #D4AF3733",
+                  boxShadow: "0 4px 12px #E8B86D33",
                 }}>
                   {course.progressPct > 0 ? "متابعة" : "ابدأ الآن"}
                 </div>

@@ -153,6 +153,7 @@ export default function AffiliateClient({ embedded = false }) {
       </div>
 
       {error && <div style={s.errorBox}>{error}</div>}
+      }
 
       {status === "none" && (
         <div style={{ ...card, textAlign: "center", padding: "2.4rem 1.8rem" }} className="qta-animate-in">
@@ -176,14 +177,14 @@ export default function AffiliateClient({ embedded = false }) {
 
       {status === "rejected" && (
         <div style={card} className="qta-animate-in">
-          <p style={{ color: "#F6465D", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{STATUS_LABELS.rejected}</p>
+          <p style={{ color: "#E5484D", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{STATUS_LABELS.rejected}</p>
           <p style={{ color: "#9A9A9A", fontSize: "0.85rem" }}>{t("affiliate.rejectedText")}</p>
         </div>
       )}
 
       {status === "suspended" && (
         <div style={card} className="qta-animate-in">
-          <p style={{ color: "#F6465D", fontWeight: 700, fontSize: "0.95rem" }}>{STATUS_LABELS.suspended}</p>
+          <p style={{ color: "#E5484D", fontWeight: 700, fontSize: "0.95rem" }}>{STATUS_LABELS.suspended}</p>
         </div>
       )}
 
@@ -246,7 +247,7 @@ export default function AffiliateClient({ embedded = false }) {
 const s = {
   page: { color: "#EAECEF", padding: "2rem 1.5rem 4rem", maxWidth: 1150, margin: "0 auto" },
   pageEmbedded: { color: "#EAECEF", maxWidth: "100%" },
-  errorBox: { background: "#2a0d0d", border: "1px solid #F6465D44", color: "#F6465D", padding: "0.8rem 1rem", borderRadius: 10, marginBottom: "1.2rem", fontSize: "0.85rem" },
+  errorBox: { background: "#2a0d0d", border: "1px solid #E5484D44", color: "#E5484D", padding: "0.8rem 1rem", borderRadius: 10, marginBottom: "1.2rem", fontSize: "0.85rem" },
   select: { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,162,75,0.14)", color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 8, fontSize: "0.85rem" },
   input: { flex: 1, minWidth: 200, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,162,75,0.14)", color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 8, fontSize: "0.85rem", direction: "ltr", textAlign: "right" },
   backLink: { display: "block", textAlign: "center", color: "#666", fontSize: "0.85rem", textDecoration: "none", marginTop: "1.5rem" },

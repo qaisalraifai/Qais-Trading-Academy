@@ -98,7 +98,7 @@ export default function BatchChatPanel({ courseId }) {
     <div
       style={{
         background: "#111108",
-        border: "1px solid #D4AF3733",
+        border: "1px solid #E8B86D33",
         borderRadius: 12,
         marginBottom: "1.5rem",
         overflow: "hidden",
@@ -120,7 +120,7 @@ export default function BatchChatPanel({ courseId }) {
         }}
       >
         <span style={{ fontSize: 14, fontWeight: 800 }}>💬 دردشة الدفعة</span>
-        <span style={{ color: "#D4AF37", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
+        <span style={{ color: "#E8B86D", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
       </button>
 
       {open && (
@@ -148,8 +148,8 @@ export default function BatchChatPanel({ courseId }) {
                 <div
                   key={m.id}
                   style={{
-                    background: mine ? "#D4AF3722" : "#181A20",
-                    border: "1px solid " + (isInstructor ? "#D4AF3766" : "#2a2a2a"),
+                    background: mine ? "#E8B86D22" : "#0D0E10",
+                    border: "1px solid " + (isInstructor ? "#E8B86D66" : "#26282C"),
                     borderRadius: 10,
                     padding: "0.5rem 0.75rem",
                     maxWidth: "85%",
@@ -168,7 +168,7 @@ export default function BatchChatPanel({ courseId }) {
                       style={{
                         fontSize: 11.5,
                         fontWeight: 800,
-                        color: isInstructor ? "#D4AF37" : "#9aa",
+                        color: isInstructor ? "#E8B86D" : "#9aa",
                       }}
                     >
                       {isInstructor ? `👨‍🏫 ${m.sender_name}` : m.sender_name}
@@ -184,6 +184,7 @@ export default function BatchChatPanel({ courseId }) {
           </div>
 
           {err && <div style={{ color: "#f66", fontSize: 12, marginTop: 4 }}>{err}</div>}
+          }
 
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <textarea
@@ -194,8 +195,8 @@ export default function BatchChatPanel({ courseId }) {
               rows={1}
               style={{
                 flex: 1,
-                background: "#181A20",
-                border: "1px solid #D4AF3733",
+                background: "#0D0E10",
+                border: "1px solid #E8B86D33",
                 borderRadius: 8,
                 color: "#eee",
                 padding: "0.5rem 0.7rem",
@@ -208,7 +209,7 @@ export default function BatchChatPanel({ courseId }) {
               onClick={handleSend}
               disabled={sending || !text.trim()}
               style={{
-                background: "#D4AF37",
+                background: "#E8B86D",
                 color: "#111",
                 border: "none",
                 borderRadius: 8,

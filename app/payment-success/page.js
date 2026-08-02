@@ -85,7 +85,7 @@ export default function PaymentSuccessPage() {
   );
 }
 
-const gold = "#D4AF37";
+const gold = "#E8B86D";
 const s = {
   page: { backgroundColor: "#0B0E11", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EAECEF", display: "flex", alignItems: "center", justifyContent: "center" },
   center: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem", padding: "2rem", textAlign: "center", maxWidth: "420px" },

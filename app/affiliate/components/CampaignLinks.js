@@ -94,7 +94,8 @@ export default function CampaignLinks({ affiliateCode, siteOrigin }) {
             {saving ? "جاري الإنشاء..." : "+ إنشاء رابط"}
           </button>
         </div>
-        {error && <p style={{ color: "#F6465D", fontSize: "0.78rem", marginBottom: "1rem" }}>{error}</p>}
+        {error && <p style={{ color: "#E5484D", fontSize: "0.78rem", marginBottom: "1rem" }}>{error}</p>}
+        }
 
         {links.length === 0 ? (
           <p style={{ color: "#6E7177", fontSize: "0.82rem" }}>ما سويت أي رابط حملة لسا.</p>
@@ -116,7 +117,7 @@ export default function CampaignLinks({ affiliateCode, siteOrigin }) {
                     <span style={s.statLabel}>نقرة</span>
                   </div>
                   <div style={s.stat}>
-                    <span style={{ color: "#4CAF50", fontWeight: 800 }}>{l.conversions}</span>
+                    <span style={{ color: "#3DBB6E", fontWeight: 800 }}>{l.conversions}</span>
                     <span style={s.statLabel}>تسجيل</span>
                   </div>
                 </div>
@@ -132,7 +133,7 @@ export default function CampaignLinks({ affiliateCode, siteOrigin }) {
                   </button>
                   <button
                     onClick={() => deleteLink(l.id)}
-                    style={{ ...btnGhost, fontSize: "0.72rem", padding: "0.5rem 0.8rem", borderColor: "#F6465D55", color: "#F6465D" }}
+                    style={{ ...btnGhost, fontSize: "0.72rem", padding: "0.5rem 0.8rem", borderColor: "#E5484D55", color: "#E5484D" }}
                   >
                     حذف
                   </button>

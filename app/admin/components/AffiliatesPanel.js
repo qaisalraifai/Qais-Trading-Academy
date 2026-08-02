@@ -14,8 +14,8 @@ const STATUS_LABELS = {
 
 const STATUS_COLORS = {
   pending: "#eab308",
-  approved: "#4CAF50",
-  rejected: "#F6465D",
+  approved: "#3DBB6E",
+  rejected: "#E5484D",
   suspended: "#888",
 };
 
@@ -188,6 +188,7 @@ export default function AffiliatesPanel() {
 
       <div style={{ marginTop: "1.2rem" }}>
         {error && <div style={styles.errorBox}>{error}</div>}
+        }
 
         {loading ? (
           <p style={{ color: "#666" }}>جاري التحميل...</p>
@@ -352,9 +353,9 @@ const styles = {
   tabs: { display: "flex", gap: 8, flexWrap: "wrap" },
   tab: { padding: "0.6rem 1.1rem", borderRadius: 10, border: "1px solid #222", color: "#888", fontSize: "0.85rem", cursor: "pointer", transition },
   tabActive: { color: gold, borderColor: `${gold}66`, background: `${gold}11` },
-  errorBox: { background: "#2a0d0d", border: "1px solid #F6465D44", color: "#F6465D", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: "1.2rem", fontSize: "0.85rem" },
+  errorBox: { background: "#2a0d0d", border: "1px solid #E5484D44", color: "#E5484D", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: "1.2rem", fontSize: "0.85rem" },
   table: { width: "100%", borderCollapse: "collapse" },
   th: { textAlign: "right", color: "#666", fontSize: "0.75rem", padding: "0.7rem", borderBottom: "1px solid #1c1c1c" },
   td: { padding: "0.7rem", fontSize: "0.85rem", color: "#C8C0B0", borderBottom: "1px solid #1c1c1c" },
-  input: { width: "100%", background: "#080808", border: "1px solid #22252B", color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 6, fontSize: "0.9rem" },
+  input: { width: "100%", background: "#080808", border: "1px solid #141517", color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 6, fontSize: "0.9rem" },
 };

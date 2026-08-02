@@ -2,10 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#D4AF37";
-const CARD = "#0d0d0d";
+const GOLD = "#E8B86D";
+const CARD = "#0D0E10";
 const BORDER = "#2B2F36";
-const SLICE_COLORS = ["#D4AF37", "#7A5F14", "#D4AF37", "#6B5010", "#D4AF37", "#7A5F14", "#4a3a08"];
+const SLICE_COLORS = ["#E8B86D", "#7A5F14", "#E8B86D", "#6B5010", "#E8B86D", "#7A5F14", "#4a3a08"];
 
 export default function BonusWheel() {
   const { t } = useLocale();
@@ -75,6 +75,7 @@ export default function BonusWheel() {
       </p>
 
       {error && <p style={s.error}>{error}</p>}
+      }
 
       <div style={s.wheelWrap}>
         <div style={s.pointer} />
@@ -116,7 +117,7 @@ const s = {
   card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "1.6rem", marginBottom: "1.2rem", textAlign: "center" },
   sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD, marginBottom: "0.6rem" },
   desc: { color: "#9a9488", fontSize: "0.82rem", lineHeight: 1.6, marginBottom: "1.2rem" },
-  error: { color: "#F6465D", fontSize: "0.8rem", marginBottom: "1rem" },
+  error: { color: "#E5484D", fontSize: "0.8rem", marginBottom: "1rem" },
   wheelWrap: { position: "relative", width: 240, height: 240, margin: "0 auto 1.4rem" },
   pointer: { position: "absolute", top: -6, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderTop: "18px solid #EAECEF", zIndex: 5 },
   wheel: { width: 240, height: 240, borderRadius: "50%", position: "relative", overflow: "hidden", border: `3px solid ${GOLD}`, boxShadow: "0 0 30px rgba(201,162,75,0.25)" },

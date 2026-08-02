@@ -5,9 +5,9 @@ export default function KpiRow({ kpis }) {
   if (!kpis) return null;
   const items = [
     { label: "Revenue", value: `$${kpis.revenue.toLocaleString("en-US")}`, delta: null, color: gold },
-    { label: "Retention", value: `${kpis.retention}%`, color: "#4CAF50" },
-    { label: "Renewal Rate", value: `${kpis.renewalRate}%`, color: "#4FA8E0" },
-    { label: "Average Subscription", value: `${kpis.avgSubMonths} أشهر`, color: "#B26FE0" },
+    { label: "Retention", value: `${kpis.retention}%`, color: "#3DBB6E" },
+    { label: "Renewal Rate", value: `${kpis.renewalRate}%`, color: "#3D8BFD" },
+    { label: "Average Subscription", value: `${kpis.avgSubMonths} أشهر`, color: "#E8B86D" },
   ];
 
   return (

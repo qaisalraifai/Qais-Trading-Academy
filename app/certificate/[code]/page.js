@@ -92,7 +92,7 @@ export default async function CertificatePage({ params }) {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#0d0d0d",
+    background: "#0D0E10",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",

@@ -13,11 +13,11 @@ import AppShell from "../components/layout/AppShell";
    فقط أعيد تنظيم نفس البيانات المحسوبة أصلاً داخل كروت أوضح.
    ============================================================================ */
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GOLD_DARK = "#9C7A22";
-const GREEN = "#02C076";
-const RED = "#F6465D";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GOLD_DARK = "#D4A05A";
+const GREEN = "#3DBB6E";
+const RED = "#E5484D";
 
 const MARKETS = [
   { symbol: "EUR/USD", price: "1.0850", change: "+0.12%", up: true },
@@ -63,7 +63,7 @@ function rowToTrade(row) {
 
 /* بطاقة عامة موحّدة بالتصميم الذهبي */
 const cardStyle = {
-  background: "linear-gradient(145deg, #22252B, #181A20)",
+  background: "linear-gradient(145deg, #141517, #0D0E10)",
   border: `1px solid ${GOLD}26`,
   borderRadius: 18,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
@@ -287,7 +287,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                 justifyContent: "center",
                 fontSize: 20,
                 fontWeight: 800,
-                color: "#1a1608",
+                color: "#1A1408",
                 flexShrink: 0,
                 border: `2px solid ${GOLD}`,
               }}
@@ -300,7 +300,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                 <span
                   style={{
                     background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                    color: "#1a1608",
+                    color: "#1A1408",
                     fontSize: 10,
                     fontWeight: 800,
                     padding: "2px 8px",
@@ -315,7 +315,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                 style={{
                   marginTop: 6,
                   display: "inline-block",
-                  background: "#0f3d2c",
+                  background: "#0D1A12",
                   border: `1px solid ${GREEN}33`,
                   color: GREEN,
                   fontSize: 12,
@@ -371,7 +371,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                         justifyContent: "space-between",
                         alignItems: "center",
                         padding: "0.7rem 0.9rem",
-                        background: "#181A20",
+                        background: "#0D0E10",
                         borderRight: `3px solid ${m.up ? GREEN : RED}`,
                         borderRadius: 8,
                       }}
@@ -575,7 +575,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                         justifyContent: "space-between",
                         alignItems: "center",
                         padding: "0.7rem 0.9rem",
-                        background: "#181A20",
+                        background: "#0D0E10",
                         borderRight: `3px solid ${n.read ? "#333" : GOLD}`,
                         borderRadius: 8,
                         gap: 10,
@@ -602,7 +602,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                     href={s.href}
                     style={{
                       display: "block",
-                      background: "#181A20",
+                      background: "#0D0E10",
                       border: `1px solid ${GOLD}22`,
                       borderRadius: 12,
                       padding: "0.9rem 1rem",

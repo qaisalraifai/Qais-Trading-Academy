@@ -21,17 +21,17 @@ import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
        الفريم المعروض، لأنها مجرد مستويات سعرية مسقطة بمساحة فارغة يمين آخر شمعة.
    ============================================================================ */
 
-const GOLD = "#D4AF37";
-const GOLD_LIGHT = "#F2D57E";
-const GREEN = "#02C076";
-const RED = "#F6465D";
-const BLUE = "#4f7cff";
+const GOLD = "#E8B86D";
+const GOLD_LIGHT = "#F0C588";
+const GREEN = "#3DBB6E";
+const RED = "#E5484D";
+const BLUE = "#3D8BFD";
 const NEUTRAL = "#c9c9c9";
 const CHART_H = 560;
 const ANIM_MS = 450;
 
 const cardStyle = {
-  background: "linear-gradient(145deg, #22252B, #181A20)",
+  background: "linear-gradient(145deg, #141517, #0D0E10)",
   border: `1px solid ${GOLD}26`,
   borderRadius: 14,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
@@ -163,15 +163,15 @@ export default function QaisEngineView() {
       if (cancelled || !containerRef.current) return;
 
       const chart = createChart(containerRef.current, {
-        layout: { background: { color: "#181A20" }, textColor: "#d1d4dc" },
+        layout: { background: { color: "#0D0E10" }, textColor: "#d1d4dc" },
         grid: {
           vertLines: { color: "rgba(255,255,255,0.04)" },
           horzLines: { color: "rgba(255,255,255,0.04)" },
         },
         // rightOffset أكبر من الافتراضي عشان يفضّل فراغ كافي بعد آخر شمعة —
         // هوّن بالضبط بترتسم منطقة الـ Sequence/Trade Projection (٤/٩)
-        timeScale: { borderColor: "#3a3a3a", timeVisible: true, secondsVisible: false, rightOffset: 16 },
-        rightPriceScale: { borderColor: "#3a3a3a" },
+        timeScale: { borderColor: "#26282C", timeVisible: true, secondsVisible: false, rightOffset: 16 },
+        rightPriceScale: { borderColor: "#26282C" },
         width: containerRef.current.clientWidth,
         height: CHART_H,
         crosshair: { mode: CrosshairMode.Normal },
@@ -353,13 +353,13 @@ export default function QaisEngineView() {
           <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f0f0", letterSpacing: 0.3 }}>QAIS SK ENGINE</span>
         </div>
 
-        <div style={{ width: 1, height: 20, background: "#2a2a2a" }} />
+        <div style={{ width: 1, height: 20, background: "#26282C" }} />
 
         <select
           value={symbol}
           onChange={(e) => setSymbol(e.target.value)}
           style={{
-            background: "#181A20",
+            background: "#0D0E10",
             color: "#e5e5e5",
             border: "1px solid #333",
             borderRadius: 6,
@@ -392,7 +392,7 @@ export default function QaisEngineView() {
               }
               style={{
                 background: displayTF === tf ? `${GOLD}1f` : "transparent",
-                border: `1px solid ${displayTF === tf ? GOLD : "#2e2e2e"}`,
+                border: `1px solid ${displayTF === tf ? GOLD : "#34373B"}`,
                 color: displayTF === tf ? GOLD_LIGHT : "#888",
                 borderRadius: 6,
                 padding: "5px 10px",
@@ -415,7 +415,7 @@ export default function QaisEngineView() {
             alignItems: "center",
             gap: 5,
             background: "transparent",
-            border: "1px solid #2e2e2e",
+            border: "1px solid #34373B",
             color: "#aaa",
             borderRadius: 6,
             padding: "5px 9px",
@@ -434,7 +434,7 @@ export default function QaisEngineView() {
           style={{
             background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
             border: "none",
-            color: "#181A20",
+            color: "#0D0E10",
             fontWeight: 700,
             borderRadius: 7,
             padding: "7px 15px",
@@ -668,7 +668,7 @@ function fmt(n) {
 
 /* -------- Score Badge -------- */
 function ScoreBadge({ score, status }) {
-  const STATUS_COLOR = { green: GREEN, orange: "#f59e0b", yellow: "#eab308", red: RED, gray: "#888" };
+  const STATUS_COLOR = { green: GREEN, orange: "#F5A623", yellow: "#eab308", red: RED, gray: "#888" };
   const color = STATUS_COLOR[status] || "#888";
   return (
     <div
@@ -676,7 +676,7 @@ function ScoreBadge({ score, status }) {
         display: "flex",
         alignItems: "center",
         gap: 7,
-        background: "#14161a",
+        background: "#141517",
         border: `1px solid ${color}40`,
         borderRadius: 8,
         padding: "5px 10px",
@@ -772,7 +772,7 @@ function AnalysisPanel({ result: r }) {
           ok: r.status === "green",
           name: "STATUS",
           result: r.tradeValid ? "Valid Setup" : r.status === "orange" ? "Developing" : r.status === "yellow" ? "Approaching" : "No Setup",
-          color: r.status === "green" ? GREEN : r.status === "red" ? RED : r.status === "orange" ? "#f59e0b" : "#888",
+          color: r.status === "green" ? GREEN : r.status === "red" ? RED : r.status === "orange" ? "#F5A623" : "#888",
           detail: `QAIS Score: ${r.score}/100`,
         },
       ]
@@ -803,7 +803,7 @@ function AnalysisPanel({ result: r }) {
             <div style={{ color: "#777", fontSize: 12.5, padding: "0.5rem 0" }}>جاري تحميل التحليل...</div>
           ) : (
             rows.map((row) => (
-              <div key={row.key} style={{ borderTop: "1px solid #23262d" }}>
+              <div key={row.key} style={{ borderTop: "1px solid #1A1C1F" }}>
                 <button
                   onClick={() => setOpenRow((k) => (k === row.key ? null : row.key))}
                   style={{
@@ -915,7 +915,7 @@ function TradePlanCard({ result: r, symbol }) {
                   width: "100%",
                   background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
                   border: "none",
-                  color: "#181A20",
+                  color: "#0D0E10",
                   fontWeight: 700,
                   borderRadius: 7,
                   padding: "8px 0",

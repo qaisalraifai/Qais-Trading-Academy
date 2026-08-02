@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import QrCodeBox from "../components/QrCodeBox";
 
-const gold = "#D4AF37";
+const gold = "#E8B86D";
 
 export default function CryptoPaymentPage() {
   const router = useRouter();
@@ -127,6 +127,7 @@ export default function CryptoPaymentPage() {
 
       <div style={styles.card}>
         {step === "loading" && <p style={styles.note}>...جاري التحضير</p>}
+        }
 
         {step === "error" && (
           <>
@@ -174,6 +175,7 @@ export default function CryptoPaymentPage() {
                   <input ref={fileInputRef} type="file" accept="image/*,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} style={styles.input} />
 
                   {error && <p style={styles.configError}>{error}</p>}
+                  }
 
                   <button onClick={submitProof} disabled={submitting} style={styles.submitBtn}>
                     {submitting ? "...جاري الإرسال" : "إرسال للمراجعة"}
@@ -206,6 +208,7 @@ export default function CryptoPaymentPage() {
                 <div style={styles.spinnerIcon}>❌</div>
                 <h2 style={styles.title}>تعذّرت مراجعة الدفعة</h2>
                 {rejectionReason && <p style={styles.configError}>السبب: {rejectionReason}</p>}
+                }
                 <button
                   onClick={() => {
                     setStep("pick-network");
@@ -238,7 +241,7 @@ function groupBy(arr, key) {
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#181A20",
+    backgroundColor: "#0D0E10",
     color: "#fff",
     direction: "rtl",
     fontFamily: "'Georgia', serif",
@@ -325,12 +328,12 @@ const styles = {
   linkBtnInline: { background: "none", border: "none", color: gold, fontSize: "0.8rem", cursor: "pointer", textAlign: "center" },
   spinnerIcon: { fontSize: "3rem", marginBottom: "0.5rem" },
   configError: {
-    color: "#F6465D",
+    color: "#E5484D",
     fontSize: "0.78rem",
     textAlign: "center",
     lineHeight: 1.7,
-    background: "#F6465D14",
-    border: "1px solid #F6465D44",
+    background: "#E5484D14",
+    border: "1px solid #E5484D44",
     borderRadius: 6,
     padding: "0.6rem 0.9rem",
   },
