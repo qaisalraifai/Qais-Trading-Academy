@@ -342,6 +342,48 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       animStartRef.current = performance.now();
       setDisplayTF(analysis.sequence?.displayTF || analysis.executionTimeframe || analysis.mainTimeframe || "h1");
       setLastUpdateAt(new Date().toISOString());
+
+      // -------- تصالح فوري مع radarItems (الفصل الإضافي: منع التناقض بين اللوحتين) --------
+      // "Active Opportunities"/"Liquidity Map" بتقرأ من radarItems (آخر لقطة محفوظة
+      // بالكرون، ممكن تكون قديمة بكم دقيقة). لما نحسب تحليل حي جديد لنفس الرمز هون،
+      // لازم نحدّث فوراً صف هذا الرمز بالذات جوا radarItems بنفس القيم الحية — وإلا
+      // ممكن يظهر "SELL · Ready · 95%" تحت بينما فوق صار "WAIT" فعلياً (نفس الرمز،
+      // بس بيانات بعمرين مختلفين). باقي الرموز غير المفتوحة حالياً بتضل من الكرون
+      // لحد ما توصل دورتها الحية الخاصة فيها.
+      setRadarItems((prev) => {
+        const patched = {
+          symbol,
+          status: analysis.status,
+          score: analysis.score,
+          direction: analysis.direction,
+          price: analysis.price,
+          timeframe: analysis.timeframe,
+          reason_tags: analysis.reasonTags,
+          decision: analysis,
+          updated_at: new Date().toISOString(),
+          radar_status: analysis.radarStatus,
+          radar_score: analysis.radarScore,
+          radar_signal_label: analysis.radarSignalLabel,
+          radar_signal_strength: analysis.radarSignalStrengthLabel,
+          htf_trend: analysis.htfTrend,
+          market_structure: analysis.marketStructure,
+          bos_status: analysis.bosStatus,
+          choch_status: analysis.chochStatus,
+          fvg_status: analysis.fvgStatus,
+          liquidity_status: analysis.liquidityStatus,
+          premium_discount: analysis.premiumDiscount,
+          session: analysis.session,
+          session_label: analysis.sessionLabel,
+          entry_status: analysis.entryStatus,
+          risk_reward: analysis.riskReward,
+          why: analysis.why,
+        };
+        const idx = prev.findIndex((i) => i.symbol === symbol);
+        if (idx === -1) return [...prev, patched];
+        const next = prev.slice();
+        next[idx] = { ...next[idx], ...patched };
+        return next;
+      });
     } catch (e) {
       setError(e.message || t("radar.engineFailed"));
     } finally {
@@ -958,7 +1000,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(240px, 1fr))", gap: "1rem" }}>
         <CurrencyHeatMapCard snapshot={snapshot} trend={currencyTrend} />
         <SessionMapCard sessions={sessions} nowTick={nowTick} />
-        <LiveOpportunitiesCard items={radarItems} onOpen={openOpportunity} />
+        <LiveOpportunitiesCard items={radarItems} onOpen={openOpportunity} nowTick={nowTick} />
       </div>
 
       {/* ================= LIQUIDITY MAP + PERMANENT ANALYSIS WORKSPACE ================= */}
@@ -2115,8 +2157,9 @@ function SessionTimelineVisual({ sessions, overlap, nowTick }) {
    ============================================================================ */
 const OPP_PREVIEW_COUNT = 5;
 
-function LiveOpportunitiesCard({ items, onOpen }) {
+function LiveOpportunitiesCard({ items, onOpen, nowTick }) {
   const { t } = useLocale();
+  void nowTick; // يفرض إعادة تقييم "منذ..." كل ثانية لعرض عمر كل صف بدقة
   const [showAll, setShowAll] = useState(false);
 
   // "Active Opportunities" must only contain setups that are genuinely
@@ -2179,7 +2222,12 @@ function LiveOpportunitiesCard({ items, onOpen }) {
                         <span style={{ fontSize: 8.5, fontWeight: 700, color: "#888", background: "#1c1e24", borderRadius: 5, padding: "1px 6px" }}>{it.timeframe}</span>
                       )}
                     </div>
-                    <div style={{ fontSize: 9.5, color: meta.color, marginTop: 2, fontWeight: 700 }}>{it.entry_status || meta.label}</div>
+                    <div style={{ fontSize: 9.5, color: meta.color, marginTop: 2, fontWeight: 700 }}>
+                      {it.entry_status || meta.label}
+                      {it.updated_at && (
+                        <span style={{ color: "#666", fontWeight: 600 }}> · {relTime(it.updated_at, t)}</span>
+                      )}
+                    </div>
                   </div>
 
                   <div style={{ textAlign: "left", flexShrink: 0 }}>
