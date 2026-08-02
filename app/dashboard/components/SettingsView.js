@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
@@ -22,9 +23,9 @@ const PLAN_INFO = {
   vip: { label: "VIP", icon: "💎", color: BLUE },
 };
 
-function fmtDate(d) {
+function fmtDate(d, locale) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("ar", { year: "numeric", month: "2-digit", day: "2-digit" });
+  return new Date(d).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
 function SectionCard({ title, icon, children, style }) {
@@ -42,6 +43,7 @@ function SectionCard({ title, icon, children, style }) {
 }
 
 export default function SettingsView({ username }) {
+  const { t, locale } = useLocale();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -61,7 +63,7 @@ export default function SettingsView({ username }) {
     try {
       const res = await fetch("/api/account");
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "تعذر تحميل بيانات الحساب");
+      if (!res.ok) throw new Error(json.error || t("settings.loadError"));
       setData(json);
     } catch (e) {
       setError(e.message);
@@ -103,20 +105,20 @@ export default function SettingsView({ username }) {
       const json = await res.json();
       setCouponResult(json);
     } catch {
-      setCouponResult({ valid: false, message: "صار خطأ، جرب مرة ثانية" });
+      setCouponResult({ valid: false, message: t("settings.couponGenericError") });
     } finally {
       setCouponBusy(false);
     }
   }
 
   if (loading) {
-    return <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>...جاري تحميل بيانات الحساب</div>;
+    return <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>{t("settings.loading")}</div>;
   }
 
   if (error || !data) {
     return (
       <div style={{ ...cardStyle, padding: "3rem", textAlign: "center", color: "#666", fontSize: 14 }}>
-        تعذر تحميل بيانات الحساب. {error}
+        {t("settings.loadError")}. {error}
       </div>
     );
   }
@@ -164,10 +166,10 @@ export default function SettingsView({ username }) {
                   borderRadius: 20,
                 }}
               >
-                {isActive ? "🟢 نشط" : "🔴 غير نشط"}
+                {isActive ? t("settings.active") : t("settings.inactive")}
               </span>
             </div>
-            <p style={{ margin: 0, color: "#888", fontSize: 12 }}>وصول كامل لجميع الميزات</p>
+            <p style={{ margin: 0, color: "#888", fontSize: 12 }}>{t("settings.fullAccessDesc")}</p>
           </div>
           <div style={{ textAlign: "left" }}>
             <p style={{ margin: 0, color: "#888", fontSize: 12 }}>{username}</p>
@@ -177,8 +179,8 @@ export default function SettingsView({ username }) {
         {daysLeft !== null && (
           <div style={{ marginTop: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#999", marginBottom: 6 }}>
-              <span>ينتهي بعد {daysLeft} يوم</span>
-              <span>{fmtDate(profile.subscription_end)}</span>
+              <span>{t("settings.expiresIn", { days: daysLeft })}</span>
+              <span>{fmtDate(profile.subscription_end, locale)}</span>
             </div>
             <div style={{ width: "100%", height: 7, background: "#1a1a0a", borderRadius: 4, overflow: "hidden" }}>
               <div
@@ -194,12 +196,12 @@ export default function SettingsView({ username }) {
       </SectionCard>
 
       {/* 2. معلومات الفاتورة */}
-      <SectionCard title="معلومات الفاتورة" icon="💳">
+      <SectionCard title={t("settings.billingInfoTitle")} icon="💳">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: lastPayment?.invoice_url ? "1rem" : 0 }}>
-          <InfoField label="آخر دفعة" value={lastPayment ? `$${Number(lastPayment.amount).toFixed(2)}` : "—"} />
-          <InfoField label="طريقة الدفع" value={lastPayment?.method === "whop" ? "بطاقة عبر Whop" : lastPayment?.method || "—"} />
-          <InfoField label="تاريخ آخر دفعة" value={lastPayment ? fmtDate(lastPayment.created_at) : "—"} />
-          <InfoField label="رقم الفاتورة" value={lastPayment ? `#${String(lastPayment.id).slice(0, 8).toUpperCase()}` : "—"} />
+          <InfoField label={t("settings.lastPayment")} value={lastPayment ? `$${Number(lastPayment.amount).toFixed(2)}` : "—"} />
+          <InfoField label={t("settings.paymentMethod")} value={lastPayment?.method === "whop" ? t("settings.cardViaWhop") : lastPayment?.method || "—"} />
+          <InfoField label={t("settings.lastPaymentDate")} value={lastPayment ? fmtDate(lastPayment.created_at, locale) : "—"} />
+          <InfoField label={t("settings.invoiceNumber")} value={lastPayment ? `#${String(lastPayment.id).slice(0, 8).toUpperCase()}` : "—"} />
         </div>
         {lastPayment?.invoice_url && (
           <a
@@ -219,21 +221,21 @@ export default function SettingsView({ username }) {
               textDecoration: "none",
             }}
           >
-            <span>⬇️</span><span>تحميل الفاتورة PDF</span>
+            <span>⬇️</span><span>{t("settings.downloadInvoice")}</span>
           </a>
         )}
       </SectionCard>
 
       {/* 2.5 طريقة الدفع */}
-      <SectionCard title="طريقة الدفع" icon="💳">
+      <SectionCard title={t("settings.paymentMethodTitle")} icon="💳">
         {hasWhopMembership ? (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
             <div>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>
-                {membership?.cancelAtPeriodEnd ? "الاشتراك مجدول للإيقاف" : "بطاقتك مسجلة عبر Whop"}
+                {membership?.cancelAtPeriodEnd ? t("settings.subscriptionScheduledStop") : t("settings.cardRegisteredWhop")}
               </p>
               <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
-                تقدر تحدّث بطاقتك أو تلغي اشتراكك من صفحة طلباتك على Whop.
+                {t("settings.manageOnWhopHint")}
               </p>
             </div>
             <a
@@ -251,14 +253,14 @@ export default function SettingsView({ username }) {
                 textDecoration: "none",
               }}
             >
-              إدارة الاشتراك على Whop ↗
+              {t("settings.manageOnWhopBtn")}
             </a>
           </div>
         ) : (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
             <div>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>ما في طريقة دفع مضافة</p>
-              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>ضيف بطاقة حتى تفعّل اشتراكك وتوصل لكل الميزات.</p>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>{t("settings.noPaymentMethod")}</p>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>{t("settings.addCardHint")}</p>
             </div>
             <a
               href="/payment"
@@ -276,23 +278,21 @@ export default function SettingsView({ username }) {
                 textDecoration: "none",
               }}
             >
-              <span>➕</span><span>الاشتراك الآن</span>
+              <span>➕</span><span>{t("settings.subscribeNow")}</span>
             </a>
           </div>
         )}
       </SectionCard>
 
       {/* 3. التجديد */}
-      <SectionCard title="التجديد" icon="🔄">
+      <SectionCard title={t("settings.renewalTitle")} icon="🔄">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>
-              التجديد التلقائي {data.profile.auto_renew ? "مفعّل" : "متوقف"}
+              {data.profile.auto_renew ? t("settings.autoRenewEnabled") : t("settings.autoRenewDisabled")}
             </p>
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
-              {data.profile.auto_renew
-                ? "رح يتجدد اشتراكك تلقائياً بنهاية الفترة الحالية."
-                : "وصولك رح يستمر لحد نهاية الفترة المدفوعة الحالية، وما رح ينخصم شي بعدها."}
+              {data.profile.auto_renew ? t("settings.autoRenewOnDesc") : t("settings.autoRenewOffDesc")}
             </p>
           </div>
           <button
@@ -313,14 +313,14 @@ export default function SettingsView({ username }) {
               opacity: renewBusy ? 0.6 : 1,
             }}
           >
-            {renewBusy ? "...جاري الحفظ" : data.profile.auto_renew ? "إيقاف التجديد التلقائي" : "تشغيل التجديد التلقائي"}
+            {renewBusy ? t("settings.saving") : data.profile.auto_renew ? t("settings.disableAutoRenew") : t("settings.enableAutoRenew")}
           </button>
         </div>
 
       </SectionCard>
 
       {/* 4. تغيير الخطة */}
-      <SectionCard title="تغيير الخطة" icon="🎫">
+      <SectionCard title={t("settings.changePlanTitle")} icon="🎫">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.9rem" }}>
           {["member", "elite", "vip"].map((key) => {
             const info = PLAN_INFO[key];
@@ -351,14 +351,14 @@ export default function SettingsView({ username }) {
                       borderRadius: 20,
                     }}
                   >
-                    Current Plan
+                    {t("settings.currentPlanBadge")}
                   </span>
                 ) : (
                   <a
-                    href={`mailto:qaisalraifai@gmail.com?subject=${encodeURIComponent("طلب تغيير خطة الاشتراك")}&body=${encodeURIComponent(`بدي غيّر خطتي إلى ${info.label}`)}`}
+                    href={`mailto:qaisalraifai@gmail.com?subject=${encodeURIComponent(t("settings.changePlanEmailSubject"))}&body=${encodeURIComponent(t("settings.changePlanEmailBody", { plan: info.label }))}`}
                     style={{ display: "block", marginTop: 8, fontSize: 11, color: "#888", textDecoration: "underline" }}
                   >
-                    تواصل مع الدعم للتغيير
+                    {t("settings.contactSupportChange")}
                   </a>
                 )}
               </div>
@@ -368,9 +368,15 @@ export default function SettingsView({ username }) {
       </SectionCard>
 
       {/* 5. المزايا الحالية */}
-      <SectionCard title="مزايا الاشتراك" icon="📋">
+      <SectionCard title={t("settings.benefitsTitle")} icon="📋">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
-          {["جميع المحاضرات", "التقويم الاقتصادي", "Replay التدريب", "التقارير", "مجتمع Discord"].map((f) => (
+          {[
+            t("settings.benefitLectures"),
+            t("settings.benefitCalendar"),
+            t("settings.benefitReplay"),
+            t("settings.benefitReports"),
+            t("settings.benefitDiscord"),
+          ].map((f) => (
             <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#ccc" }}>
               <span style={{ color: GREEN }}>✅</span>
               <span>{f}</span>
@@ -380,24 +386,24 @@ export default function SettingsView({ username }) {
       </SectionCard>
 
       {/* 6. سجل المدفوعات */}
-      <SectionCard title="سجل المدفوعات" icon="📄">
+      <SectionCard title={t("settings.paymentHistoryTitle")} icon="📄">
         {payments && payments.length > 0 ? (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${GOLD}22`, color: "#888", textAlign: "right" }}>
-                  <th style={{ padding: "0.5rem", fontWeight: 600 }}>التاريخ</th>
-                  <th style={{ padding: "0.5rem", fontWeight: 600 }}>المبلغ</th>
-                  <th style={{ padding: "0.5rem", fontWeight: 600 }}>الحالة</th>
+                  <th style={{ padding: "0.5rem", fontWeight: 600 }}>{t("settings.colDate")}</th>
+                  <th style={{ padding: "0.5rem", fontWeight: 600 }}>{t("settings.colAmount")}</th>
+                  <th style={{ padding: "0.5rem", fontWeight: 600 }}>{t("settings.colStatus")}</th>
                 </tr>
               </thead>
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id} style={{ borderBottom: "1px solid #1a1a0a" }}>
-                    <td style={{ padding: "0.6rem 0.5rem", color: "#ccc" }}>{fmtDate(p.created_at)}</td>
+                    <td style={{ padding: "0.6rem 0.5rem", color: "#ccc" }}>{fmtDate(p.created_at, locale)}</td>
                     <td style={{ padding: "0.6rem 0.5rem", color: GOLD_LIGHT, fontWeight: 700 }}>${Number(p.amount).toFixed(2)}</td>
                     <td style={{ padding: "0.6rem 0.5rem", color: p.status === "paid" ? GREEN : RED }}>
-                      {p.status === "paid" ? "✅ مكتمل" : p.status === "refunded" ? "↩️ مسترجع" : "❌ فشل"}
+                      {p.status === "paid" ? t("settings.statusPaid") : p.status === "refunded" ? t("settings.statusRefunded") : t("settings.statusFailed")}
                     </td>
                   </tr>
                 ))}
@@ -405,17 +411,17 @@ export default function SettingsView({ username }) {
             </table>
           </div>
         ) : (
-          <p style={{ color: "#666", fontSize: 13, margin: 0 }}>ما في دفعات مسجلة لهلق.</p>
+          <p style={{ color: "#666", fontSize: 13, margin: 0 }}>{t("settings.noPaymentsYet")}</p>
         )}
       </SectionCard>
 
       {/* 7. كود الخصم */}
-      <SectionCard title="عندك كوبون؟" icon="🏷️">
+      <SectionCard title={t("settings.couponTitle")} icon="🏷️">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input
             value={couponCode}
             onChange={(e) => setCouponCode(e.target.value)}
-            placeholder="أدخل كود الخصم"
+            placeholder={t("settings.couponPlaceholder")}
             style={{
               flex: 1,
               minWidth: 200,
@@ -443,7 +449,7 @@ export default function SettingsView({ username }) {
               opacity: couponBusy || !couponCode.trim() ? 0.6 : 1,
             }}
           >
-            {couponBusy ? "...جاري التحقق" : "تطبيق"}
+            {couponBusy ? t("settings.couponChecking") : t("settings.couponApply")}
           </button>
         </div>
         {couponResult && (
@@ -455,7 +461,7 @@ export default function SettingsView({ username }) {
 
       {/* 8. الدعم */}
       <div style={{ ...cardStyle, padding: "1.4rem 1.6rem", textAlign: "center" }}>
-        <p style={{ margin: "0 0 10px", fontSize: 14, color: "#ccc" }}>هل تواجه مشكلة في الاشتراك؟</p>
+        <p style={{ margin: "0 0 10px", fontSize: 14, color: "#ccc" }}>{t("settings.supportQuestion")}</p>
         <a
           href="mailto:qaisalraifai@gmail.com"
           style={{
@@ -471,7 +477,7 @@ export default function SettingsView({ username }) {
             textDecoration: "none",
           }}
         >
-          <span>💬</span><span>تواصل مع الدعم</span>
+          <span>💬</span><span>{t("settings.contactSupport")}</span>
         </a>
       </div>
     </div>

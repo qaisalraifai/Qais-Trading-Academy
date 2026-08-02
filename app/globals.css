@@ -49,6 +49,13 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* i18n: font-sans بكل مكان بالتطبيق بيقرأ var(--font-arabic) — هون منعيد
+     تعريفها لتصير var(--font-en) وقت الإنجليزية، فما في داعي لمس أي كلاس
+     Tailwind موجود بأي صفحة. */
+  html.lang-en {
+    --font-arabic: var(--font-en);
+  }
+
   body {
     @apply bg-ink text-text-primary font-sans;
     background-image:

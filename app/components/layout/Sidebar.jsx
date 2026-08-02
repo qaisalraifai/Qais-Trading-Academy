@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Settings } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button, ProgressBar } from "@/app/components/ui";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import {
   NAV_ITEMS,
   FOOTER_LINKS,
@@ -23,7 +24,7 @@ function isPathActive(pathname, href) {
   return false;
 }
 
-function NavButton({ item, isActive, onNavigate }) {
+function NavButton({ item, isActive, onNavigate, t }) {
   const Icon = item.icon;
 
   return (
@@ -40,17 +41,17 @@ function NavButton({ item, isActive, onNavigate }) {
         )}
         aria-hidden
       />
-      <span className="flex-1 truncate">{item.label}</span>
+      <span className="flex-1 truncate">{t(item.labelKey)}</span>
       {item.comingSoon && (
         <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-text-muted">
-          قريباً
+          {t("common.comingSoon")}
         </span>
       )}
     </Link>
   );
 }
 
-function FooterLink({ item }) {
+function FooterLink({ item, t }) {
   const Icon = item.icon;
   const colorClass =
     item.color === "discord"
@@ -62,7 +63,7 @@ function FooterLink({ item }) {
   const content = (
     <div className={cn("nav-item group nav-item-inactive", colorClass)}>
       <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
-      <span>{item.label}</span>
+      <span>{t(item.labelKey)}</span>
     </div>
   );
 
@@ -85,6 +86,7 @@ export default function Sidebar({
   className,
 }) {
   const pathname = usePathname();
+  const { t } = useLocale();
   const VipIcon = VIP_CARD.icon;
   const HomeIcon = HOME_NAV.icon;
   const LogoutIcon = LOGOUT_ITEM.icon;
@@ -104,10 +106,10 @@ export default function Sidebar({
       <div className="mb-5 rounded-lg border border-gold-400/20 bg-gradient-to-bl from-gold-400/10 to-surface-1 p-4">
         <div className="mb-1 flex items-center gap-2 text-xs font-bold text-gold-200">
           <VipIcon className="h-[1.1rem] w-[1.1rem] animate-pulse-soft text-gold-300" aria-hidden />
-          <span>{VIP_CARD.title}</span>
+          <span>{t(VIP_CARD.titleKey)}</span>
         </div>
-        <p className="text-sm font-extrabold text-text-primary">{VIP_CARD.subtitle}</p>
-        <p className="mb-3 mt-0.5 text-[11px] text-text-muted">{VIP_CARD.description}</p>
+        <p className="text-sm font-extrabold text-text-primary">{t(VIP_CARD.subtitleKey)}</p>
+        <p className="mb-3 mt-0.5 text-[11px] text-text-muted">{t(VIP_CARD.descriptionKey)}</p>
 
         {daysLeft !== null && (
           <>
@@ -116,13 +118,15 @@ export default function Sidebar({
               size="sm"
               className="mb-2"
             />
-            <p className="mb-3 text-[11px] text-text-muted">ينتهي في {daysLeft} يوم</p>
+            <p className="mb-3 text-[11px] text-text-muted">
+              {t("subscription.expiresIn", { days: daysLeft })}
+            </p>
           </>
         )}
 
         <Link href="/settings" onClick={onNavigate}>
           <Button variant="secondary" size="sm" className="w-full" icon={Settings}>
-            إدارة الاشتراك
+            {t("nav.subscription")}
           </Button>
         </Link>
       </div>
@@ -150,18 +154,18 @@ export default function Sidebar({
         )}
       >
         <HomeIcon className="h-5 w-5 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
-        <span>{HOME_NAV.label}</span>
+        <span>{t(HOME_NAV.labelKey)}</span>
       </Link>
 
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto" aria-label="التنقل الرئيسي">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto" aria-label={t(HOME_NAV.labelKey)}>
         {visibleNavItems.map((item) => (
-          <NavButton key={item.key} item={item} isActive={isPathActive(pathname, item.href)} onNavigate={onNavigate} />
+          <NavButton key={item.key} item={item} isActive={isPathActive(pathname, item.href)} onNavigate={onNavigate} t={t} />
         ))}
       </nav>
 
       <div className="mt-4 flex flex-col gap-1 border-t border-gold-400/10 pt-4">
         {FOOTER_LINKS.map((item) => (
-          <FooterLink key={item.key} item={item} />
+          <FooterLink key={item.key} item={item} t={t} />
         ))}
         <button
           type="button"
@@ -169,7 +173,7 @@ export default function Sidebar({
           className="nav-item group nav-item-inactive w-full text-right text-text-muted hover:text-loss"
         >
           <LogoutIcon className="h-5 w-5 shrink-0 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
-          <span>{LOGOUT_ITEM.label}</span>
+          <span>{t(LOGOUT_ITEM.labelKey)}</span>
         </button>
       </div>
     </aside>

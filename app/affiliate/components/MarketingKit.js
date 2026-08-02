@@ -1,13 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
 const BORDER = "#2B2F36";
 
-const TYPE_LABELS = { logo: "شعار", banner: "بانر", video: "فيديو", copy: "نص جاهز" };
+const TYPE_KEYS = { logo: "affiliate.typeLogo", banner: "affiliate.typeBanner", video: "affiliate.typeVideo", copy: "affiliate.typeCopy" };
 
 export default function MarketingKit() {
+  const { t } = useLocale();
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,9 +24,9 @@ export default function MarketingKit() {
 
   return (
     <div style={s.card}>
-      <p style={s.sectionTitle}>📦 Marketing Kit</p>
+      <p style={s.sectionTitle}>{t("affiliate.marketingKitTitle")}</p>
       {assets.length === 0 ? (
-        <p style={s.empty}>ما في أدوات تسويقية مضافة حالياً — تابع هالقسم لاحقاً.</p>
+        <p style={s.empty}>{t("affiliate.marketingKitEmpty")}</p>
       ) : (
         <div style={s.grid}>
           {assets.map((a) => (
@@ -35,7 +37,7 @@ export default function MarketingKit() {
                 <div style={s.iconBox}>{a.type === "video" ? "🎬" : "📝"}</div>
               )}
               <p style={s.itemTitle}>{a.title}</p>
-              <p style={s.itemType}>{TYPE_LABELS[a.type] || a.type}</p>
+              <p style={s.itemType}>{TYPE_KEYS[a.type] ? t(TYPE_KEYS[a.type]) : a.type}</p>
             </a>
           ))}
         </div>

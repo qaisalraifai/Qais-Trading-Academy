@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
@@ -7,6 +8,7 @@ const BORDER = "#2B2F36";
 const SLICE_COLORS = ["#D4AF37", "#7A5F14", "#D4AF37", "#6B5010", "#D4AF37", "#7A5F14", "#4a3a08"];
 
 export default function BonusWheel() {
+  const { t } = useLocale();
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rotation, setRotation] = useState(0);
@@ -39,7 +41,7 @@ export default function BonusWheel() {
     try {
       const res = await fetch("/api/affiliate/wheel", { method: "POST" });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "حدث خطأ");
+      if (!res.ok) throw new Error(json.error || t("affiliate.genericError"));
 
       const prizes = status.prizes || [];
       const index = Math.max(0, prizes.findIndex((p) => p.label === json.prize.label));
@@ -66,10 +68,10 @@ export default function BonusWheel() {
 
   return (
     <div style={s.card}>
-      <p style={s.sectionTitle}>🎡 عجلة البونص الشهرية</p>
+      <p style={s.sectionTitle}>{t("affiliate.wheelTitle")}</p>
       <p style={s.desc}>
-        كل {status.referralsPerSpin} إحالات مدفوعة بالشهر = لفة عجلة. عندك {status.referralsCount} إحالة هالشهر
-        {status.availableSpins > 0 ? ` — وعندك ${status.availableSpins} لفة متاحة الآن!` : ` (باقي ${status.referralsToNextSpin} للفة الجاية)`}
+        {t("affiliate.wheelDesc", { perSpin: status.referralsPerSpin, count: status.referralsCount })}
+        {status.availableSpins > 0 ? t("affiliate.wheelSpinsAvailable", { n: status.availableSpins }) : t("affiliate.wheelSpinsRemaining", { n: status.referralsToNextSpin })}
       </p>
 
       {error && <p style={s.error}>{error}</p>}
@@ -100,11 +102,11 @@ export default function BonusWheel() {
       </div>
 
       <button onClick={handleSpin} disabled={spinning || status.availableSpins <= 0} style={{ ...s.btn, opacity: status.availableSpins <= 0 ? 0.4 : 1 }}>
-        {spinning ? "جاري اللف..." : status.availableSpins > 0 ? "لف العجلة 🎉" : "ما في لفات متاحة"}
+        {spinning ? t("affiliate.wheelSpinning") : status.availableSpins > 0 ? t("affiliate.wheelSpinBtn") : t("affiliate.wheelNoSpins")}
       </button>
 
       {result && !spinning && (
-        <div style={s.resultBox}>🎉 مبروك! ربحت: <strong>{result.label}</strong></div>
+        <div style={s.resultBox}>{t("affiliate.wheelWinMessage", { prize: result.label })}</div>
       )}
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase-client";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
@@ -16,10 +17,10 @@ const cardStyle = {
 };
 
 const RANGES = [
-  { key: "week", label: "أسبوع" },
-  { key: "month", label: "شهر" },
-  { key: "3months", label: "3 أشهر" },
-  { key: "all", label: "الكل" },
+  { key: "week", labelKey: "reports.rangeWeek" },
+  { key: "month", labelKey: "reports.rangeMonth" },
+  { key: "3months", labelKey: "reports.range3Months" },
+  { key: "all", labelKey: "reports.rangeAll" },
 ];
 
 function fmt(n) {
@@ -53,6 +54,7 @@ function ProgressMeter({ pct, color }) {
 }
 
 export default function ReportsView({ userId }) {
+  const { t } = useLocale();
   const [loading, setLoading] = useState(true);
   const [rangeKey, setRangeKey] = useState("all");
   const [trades, setTrades] = useState([]);
@@ -156,7 +158,7 @@ export default function ReportsView({ userId }) {
     if (completedSorted.length < 4 || decidedTrades.length < 6) {
       return {
         type: "generic",
-        text: "كمّل مشاهدة محاضراتك وسجّل صفقات أكتر عشان نقدر نوريك تحليل مخصص يربط تقدمك التعليمي بأدائك التداولي.",
+        text: t("reports.insightGeneric"),
       };
     }
 
@@ -169,7 +171,7 @@ export default function ReportsView({ userId }) {
     if (before.length < 3 || after.length < 3) {
       return {
         type: "generic",
-        text: "كمّل مشاهدة محاضراتك وسجّل صفقات أكتر عشان نقدر نوريك تحليل مخصص يربط تقدمك التعليمي بأدائك التداولي.",
+        text: t("reports.insightGeneric"),
       };
     }
 
@@ -181,23 +183,23 @@ export default function ReportsView({ userId }) {
     if (delta >= 3) {
       return {
         type: "positive",
-        text: `نسبة نجاحك التداولي تحسّنت من ${beforeWR.toFixed(0)}% إلى ${afterWR.toFixed(0)}% (+${delta.toFixed(0)} نقطة) بعد ما اجتزت نص محاضراتك المكتملة تقريباً — استمر بنفس المسار.`,
+        text: t("reports.insightPositive", { before: beforeWR.toFixed(0), after: afterWR.toFixed(0), delta: delta.toFixed(0) }),
       };
     }
     if (delta <= -3) {
       return {
         type: "neutral",
-        text: `نسبة نجاحك كانت ${beforeWR.toFixed(0)}% بالنصف الأول من رحلتك التعليمية وصارت ${afterWR.toFixed(0)}% بالنصف الثاني. جرب راجع محاضرات الجزء يلي بتحس فيه أضعف قبل ما تكمل تداول أكتر.`,
+        text: t("reports.insightDeclined", { before: beforeWR.toFixed(0), after: afterWR.toFixed(0) }),
       };
     }
     return {
       type: "neutral",
-      text: `نسبة نجاحك مستقرة تقريباً (${beforeWR.toFixed(0)}% ➜ ${afterWR.toFixed(0)}%) بين النصف الأول والثاني من رحلتك التعليمية.`,
+      text: t("reports.insightStable", { before: beforeWR.toFixed(0), after: afterWR.toFixed(0) }),
     };
-  }, [trades, eduStats.completedRows]);
+  }, [trades, eduStats.completedRows, t]);
 
   if (loading) {
-    return <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>...جاري تحميل التقرير</div>;
+    return <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>{t("reports.loading")}</div>;
   }
 
   return (
@@ -205,8 +207,8 @@ export default function ReportsView({ userId }) {
       {/* رأس الصفحة + فلتر الفترة */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.2rem", flexWrap: "wrap", gap: 10 }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#eee" }}>📋 تقريرك الشامل</div>
-          <div style={{ fontSize: 12.5, color: "#777", marginTop: 2 }}>أداء التداول والتقدم التعليمي بمكان واحد</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#eee" }}>{t("reports.title")}</div>
+          <div style={{ fontSize: 12.5, color: "#777", marginTop: 2 }}>{t("reports.subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 6, background: "#1a1c22", padding: 4, borderRadius: 10 }}>
           {RANGES.map((r) => (
@@ -220,7 +222,7 @@ export default function ReportsView({ userId }) {
                 color: rangeKey === r.key ? "#1a1608" : "#999",
               }}
             >
-              {r.label}
+              {t(r.labelKey)}
             </button>
           ))}
         </div>
@@ -239,26 +241,26 @@ export default function ReportsView({ userId }) {
       </div>
 
       {/* القسم 1: التداول */}
-      <div style={{ fontSize: 14, fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10 }}>📈 أداء التداول</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10 }}>{t("reports.tradingPerfTitle")}</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.8rem", marginBottom: "1rem" }}>
-        <StatCard label="عدد الصفقات" value={tradingStats.total} />
-        <StatCard label="نسبة النجاح" value={`${tradingStats.winRate.toFixed(1)}%`} color={tradingStats.winRate >= 50 ? GREEN : RED} />
+        <StatCard label={t("reports.totalTrades")} value={tradingStats.total} />
+        <StatCard label={t("reports.winRate")} value={`${tradingStats.winRate.toFixed(1)}%`} color={tradingStats.winRate >= 50 ? GREEN : RED} />
         <StatCard
-          label="صافي الربح/الخسارة"
+          label={t("reports.netPnl")}
           value={`${tradingStats.netPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(tradingStats.netPnL))}`}
           color={tradingStats.netPnL >= 0 ? GREEN : RED}
         />
-        <StatCard label="متوسط R:R" value={tradingStats.avgRR.toFixed(2)} />
+        <StatCard label={t("reports.avgRR")} value={tradingStats.avgRR.toFixed(2)} />
       </div>
 
       {tradingStats.assetBreakdown.length > 0 && (
         <div style={{ ...cardStyle, padding: "1rem 1.2rem", marginBottom: "1.4rem" }}>
-          <div style={{ fontSize: 12.5, color: "#999", marginBottom: 10 }}>الأداء حسب الأصل</div>
+          <div style={{ fontSize: 12.5, color: "#999", marginBottom: 10 }}>{t("reports.byAssetTitle")}</div>
           {tradingStats.assetBreakdown.map((a) => (
             <div key={a.asset} style={{ marginBottom: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#ccc", marginBottom: 4 }}>
                 <span>{a.asset}</span>
-                <span>{a.winRate.toFixed(0)}% ({a.decided} صفقة)</span>
+                <span>{a.winRate.toFixed(0)}% ({t("reports.tradesSuffix", { count: a.decided })})</span>
               </div>
               <ProgressMeter pct={a.winRate} color={a.winRate >= 50 ? GREEN : RED} />
             </div>
@@ -267,20 +269,20 @@ export default function ReportsView({ userId }) {
       )}
 
       {/* القسم 2: التعليم */}
-      <div style={{ fontSize: 14, fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10 }}>🎓 التقدم التعليمي</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10 }}>{t("reports.eduProgressTitle")}</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.8rem", marginBottom: "1rem" }}>
-        <StatCard label="المحاضرات المكتملة" value={`${eduStats.completedCount} / ${eduStats.totalLessons}`} />
-        <StatCard label="نسبة الإنجاز" value={`${eduStats.overallPct}%`} color={GOLD} />
-        <StatCard label="الساعات المكتملة" value={`${eduStats.completedHours.toFixed(1)} ساعة`} />
+        <StatCard label={t("reports.completedLectures")} value={`${eduStats.completedCount} / ${eduStats.totalLessons}`} />
+        <StatCard label={t("reports.completionRate")} value={`${eduStats.overallPct}%`} color={GOLD} />
+        <StatCard label={t("reports.completedHours")} value={t("reports.hoursSuffix", { hours: eduStats.completedHours.toFixed(1) })} />
         <StatCard
-          label="متوسط الكويزات"
+          label={t("reports.avgQuizzes")}
           value={eduStats.totalQuizzes > 0 ? `${eduStats.avgQuizPct.toFixed(0)}%` : "—"}
-          sub={eduStats.totalQuizzes > 0 ? `${eduStats.totalQuizzes} محاولة` : "ما في محاولات لسا"}
+          sub={eduStats.totalQuizzes > 0 ? t("reports.attemptsSuffix", { count: eduStats.totalQuizzes }) : t("reports.noAttemptsYet")}
         />
       </div>
       <div style={{ ...cardStyle, padding: "1rem 1.2rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#ccc", marginBottom: 6 }}>
-          <span>نسبة إنجاز المحتوى التعليمي</span>
+          <span>{t("reports.contentCompletionTitle")}</span>
           <span>{eduStats.overallPct}%</span>
         </div>
         <ProgressMeter pct={eduStats.overallPct} color={GOLD} />

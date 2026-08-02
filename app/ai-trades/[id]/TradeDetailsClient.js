@@ -6,6 +6,7 @@ import {
   TrendingUp, TrendingDown, RefreshCw, ArrowRight, CheckCircle2, XCircle,
   Layers, Waves, GitBranch, GitCommit, Box, Zap as FvgIcon, Radio, Target,
 } from "lucide-react";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
@@ -35,12 +36,13 @@ function fmt(n) {
   return n >= 100 ? n.toFixed(2) : n.toFixed(4);
 }
 
-function fmtDate(iso) {
+function fmtDate(iso, locale) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("en-GB");
+  return new Date(iso).toLocaleString(locale === "ar" ? "ar-EG" : "en-GB");
 }
 
 export default function TradeDetailsClient({ tradeId }) {
+  const { t, locale } = useLocale();
   const [trade, setTrade] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -51,14 +53,14 @@ export default function TradeDetailsClient({ tradeId }) {
     try {
       const res = await fetch(`/api/ai-trades/${tradeId}`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل تحميل الصفقة");
+      if (!res.ok) throw new Error(data.error || t("aiTrades.detailsPageLoadFailed"));
       setTrade(data.trade);
     } catch (e) {
-      setError(e.message || "فشل تحميل الصفقة");
+      setError(e.message || t("aiTrades.detailsPageLoadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [tradeId]);
+  }, [tradeId, t]);
 
   useEffect(() => {
     load();
@@ -78,10 +80,10 @@ export default function TradeDetailsClient({ tradeId }) {
   }, [tradeId]);
 
   if (loading) {
-    return <div style={{ padding: "2rem", color: "#888" }}>جارٍ التحميل...</div>;
+    return <div style={{ padding: "2rem", color: "#888" }}>{t("aiTrades.loading")}</div>;
   }
   if (error || !trade) {
-    return <div style={{ padding: "2rem", color: RED }}>{error || "الصفقة غير موجودة"}</div>;
+    return <div style={{ padding: "2rem", color: RED }}>{error || t("aiTrades.tradeNotFound")}</div>;
   }
 
   const isBuy = trade.direction === "up";
@@ -92,7 +94,7 @@ export default function TradeDetailsClient({ tradeId }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem", padding: "1.2rem", maxWidth: 980, margin: "0 auto" }}>
       <Link href="/ai-trades" style={{ display: "flex", alignItems: "center", gap: 6, color: "#999", fontSize: 12.5, textDecoration: "none", width: "fit-content" }}>
-        <ArrowRight size={14} /> رجوع لكل الصفقات
+        <ArrowRight size={14} /> {t("aiTrades.backToAllTrades")}
       </Link>
 
       {/* ================= Header ================= */}
@@ -108,7 +110,7 @@ export default function TradeDetailsClient({ tradeId }) {
               {trade.timeframe}
             </span>
             <span style={{ fontSize: 11.5, color: "#777", background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 6, padding: "3px 9px" }}>
-              Source: {trade.source}
+              {t("aiTrades.sourceLabel", { source: trade.source })}
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -127,7 +129,7 @@ export default function TradeDetailsClient({ tradeId }) {
                 disabled={checking}
                 style={{ display: "flex", alignItems: "center", gap: 6, background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, border: "none", color: "#181A20", fontWeight: 800, borderRadius: 8, padding: "7px 14px", fontSize: 12, cursor: checking ? "default" : "pointer" }}
               >
-                <RefreshCw size={12} /> {checking ? "جارٍ الفحص..." : "فحص السعر الآن"}
+                <RefreshCw size={12} /> {checking ? t("aiTrades.checking") : t("aiTrades.checkPriceNow")}
               </button>
             )}
           </div>
@@ -147,16 +149,16 @@ export default function TradeDetailsClient({ tradeId }) {
         </div>
 
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 14, fontSize: 11.5, color: "#888" }}>
-          <span>تاريخ الإنشاء: <b style={{ color: "#ccc" }}>{fmtDate(trade.created_at)}</b></span>
-          <span>آخر فحص: <b style={{ color: "#ccc" }}>{fmtDate(trade.last_checked_at)}</b> ({fmt(trade.last_checked_price)})</span>
-          {trade.closed_at && <span>تاريخ الإغلاق: <b style={{ color: "#ccc" }}>{fmtDate(trade.closed_at)}</b></span>}
+          <span>{t("aiTrades.createdDate")} <b style={{ color: "#ccc" }}>{fmtDate(trade.created_at, locale)}</b></span>
+          <span>{t("aiTrades.lastCheck")} <b style={{ color: "#ccc" }}>{fmtDate(trade.last_checked_at, locale)}</b> ({fmt(trade.last_checked_price)})</span>
+          {trade.closed_at && <span>{t("aiTrades.closedDate")} <b style={{ color: "#ccc" }}>{fmtDate(trade.closed_at, locale)}</b></span>}
         </div>
       </div>
 
       {/* ================= لماذا دخل الـ AI (Why) ================= */}
       {Array.isArray(a.why) && a.why.length > 0 && (
         <div style={{ ...glass, padding: "1.1rem 1.3rem" }}>
-          <SectionTitle icon={CheckCircle2} title="لماذا دخل QAIS AI هالصفقة" />
+          <SectionTitle icon={CheckCircle2} title={t("aiTrades.whyAiEntered")} />
           <ul style={{ margin: "10px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
             {a.why.map((w, i) => (
               <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#ddd" }}>
@@ -170,7 +172,7 @@ export default function TradeDetailsClient({ tradeId }) {
 
       {/* ================= التحليل الفني الكامل ================= */}
       <div style={{ ...glass, padding: "1.1rem 1.3rem" }}>
-        <SectionTitle icon={Layers} title="التحليل الفني الكامل" />
+        <SectionTitle icon={Layers} title={t("aiTrades.fullTechnicalAnalysis")} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginTop: 12 }}>
           <AnalysisRow icon={GitBranch} label="Market Structure" value={a.marketStructure} />
           <AnalysisRow icon={Waves} label="Liquidity" value={a.liquidityStatus} />
@@ -187,7 +189,7 @@ export default function TradeDetailsClient({ tradeId }) {
       {/* ================= منطق الدخول (Checklist) ================= */}
       {Array.isArray(a.reasonsChecklist) && a.reasonsChecklist.length > 0 && (
         <div style={{ ...glass, padding: "1.1rem 1.3rem" }}>
-          <SectionTitle icon={CheckCircle2} title="منطق الدخول (Entry Logic Checklist)" />
+          <SectionTitle icon={CheckCircle2} title={t("aiTrades.entryLogicChecklist")} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8, marginTop: 12 }}>
             {a.reasonsChecklist.map((c) => (
               <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 8, background: "#14161a", border: "1px solid #2e2e2e", borderRadius: 8, padding: "8px 10px" }}>
@@ -200,7 +202,7 @@ export default function TradeDetailsClient({ tradeId }) {
       )}
 
       <div style={{ fontSize: 11, color: "#555", textAlign: "center" }}>
-        هاي الصفقة داخلية لأغراض تعليمية — Source: QAIS AI — مش تنفيذ حقيقي عبر بروكر.
+        {t("aiTrades.internalTradeDisclaimer")}
       </div>
     </div>
   );

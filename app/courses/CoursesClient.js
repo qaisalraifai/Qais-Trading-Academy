@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 /* ============================================================================
    CoursesClient — Workspace مستقلة لـ "المحاضرات / الكورسات".
@@ -19,17 +20,17 @@ const cardStyle = {
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
 };
 
-const DIFFICULTY_LABELS = {
-  beginner: { label: "مبتدئ", color: "#4CAF50" },
-  intermediate: { label: "متوسط", color: "#FFA726" },
-  advanced: { label: "متقدم", color: "#EF5350" },
+const DIFFICULTY_KEYS = {
+  beginner: { labelKey: "courses.difficultyBeginner", color: "#4CAF50" },
+  intermediate: { labelKey: "courses.difficultyIntermediate", color: "#FFA726" },
+  advanced: { labelKey: "courses.difficultyAdvanced", color: "#EF5350" },
 };
 
 const LECTURE_FILTERS = [
-  { key: "all", label: "الكل" },
-  { key: "completed", label: "مكتملة" },
-  { key: "incomplete", label: "غير مكتملة" },
-  { key: "favorite", label: "المفضلة" },
+  { key: "all", labelKey: "courses.filterAll" },
+  { key: "completed", labelKey: "courses.filterCompleted" },
+  { key: "incomplete", labelKey: "courses.filterIncomplete" },
+  { key: "favorite", labelKey: "courses.filterFavorite" },
 ];
 
 function formatDuration(seconds) {
@@ -41,15 +42,15 @@ function formatDuration(seconds) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function formatLastWatched(dateStr) {
+function formatLastWatched(dateStr, t, locale) {
   if (!dateStr) return null;
   const date = new Date(dateStr);
   const now = new Date();
   const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return "اليوم";
-  if (diffDays === 1) return "أمس";
-  if (diffDays < 7) return `منذ ${diffDays} أيام`;
-  return date.toLocaleDateString("ar-EG", { day: "numeric", month: "short" });
+  if (diffDays === 0) return t("courses.today");
+  if (diffDays === 1) return t("courses.yesterday");
+  if (diffDays < 7) return t("courses.daysAgo", { days: diffDays });
+  return date.toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", { day: "numeric", month: "short" });
 }
 
 const COURSE_COLORS = [
@@ -59,7 +60,6 @@ const COURSE_COLORS = [
 ];
 
 const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced"];
-const DIFFICULTY_AR = { beginner: "مبتدئ", intermediate: "متوسط", advanced: "متقدم" };
 function LecturesView({
   username, currentStreak = 0,
   courses, allLectures, progressMap, loading,
@@ -67,6 +67,7 @@ function LecturesView({
   selectedLecture, onSelect, onBack,
   batchInfo, onEnrollBatch, enrolling,
 }) {
+  const { t, locale } = useLocale();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
@@ -81,9 +82,9 @@ function LecturesView({
 
       const presentDifficulties = DIFFICULTY_ORDER.filter((d) => courseLectures.some((l) => l.difficulty === d));
       let difficultyLabel = null;
-      if (presentDifficulties.length === 1) difficultyLabel = DIFFICULTY_AR[presentDifficulties[0]];
+      if (presentDifficulties.length === 1) difficultyLabel = t(DIFFICULTY_KEYS[presentDifficulties[0]].labelKey);
       else if (presentDifficulties.length > 1) {
-        difficultyLabel = `${DIFFICULTY_AR[presentDifficulties[0]]} - ${DIFFICULTY_AR[presentDifficulties[presentDifficulties.length - 1]]}`;
+        difficultyLabel = `${t(DIFFICULTY_KEYS[presentDifficulties[0]].labelKey)} - ${t(DIFFICULTY_KEYS[presentDifficulties[presentDifficulties.length - 1]].labelKey)}`;
       }
 
       return {
@@ -96,7 +97,7 @@ function LecturesView({
         color: COURSE_COLORS[index % COURSE_COLORS.length],
       };
     });
-  }, [courses, allLectures, progressMap]);
+  }, [courses, allLectures, progressMap, t]);
 
   // إحصائيات عامة للبانر
   const overallStats = useMemo(() => {
@@ -132,7 +133,7 @@ function LecturesView({
     const order = [];
     const map = new Map();
     courseLectures.forEach((lecture) => {
-      const chapterName = lecture.chapter || "عام";
+      const chapterName = lecture.chapter || t("courses.generalChapter");
       if (!map.has(chapterName)) {
         map.set(chapterName, { name: chapterName, order: lecture.chapter_order ?? 999, lectures: [] });
         order.push(chapterName);
@@ -163,7 +164,7 @@ function LecturesView({
   if (loading) {
     return (
       <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>
-        ...جاري تحميل البرامج التعليمية
+        {t("courses.loading")}
       </div>
     );
   }
@@ -180,7 +181,7 @@ function LecturesView({
             )}
           </div>
           <div onClick={onBack} style={{ color: GOLD, fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
-            ← رجوع للمحاضرات
+            {t("courses.backToLectures")}
           </div>
         </div>
 
@@ -222,14 +223,14 @@ function LecturesView({
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{selectedCourse.title}</h2>
             </div>
             <div onClick={onBackToCourses} style={{ color: GOLD, fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
-              ← البرامج التعليمية
+              {t("courses.backToProgams")}
             </div>
           </div>
           <p style={{ color: "#999", fontSize: 14, marginBottom: "1.2rem" }}>
-            اختاري الدفعة اللي بدك تنضمي فيها لهاي الدورة قبل ما تبلشي بالمحاضرات:
+            {t("courses.batchSelectPrompt")}
           </p>
           {batchInfo.batches.length === 0 ? (
-            <p style={{ color: "#666", fontSize: 14 }}>ما في دفعات متاحة للتسجيل هلأ لهاي الدورة. تواصلي معنا للمساعدة.</p>
+            <p style={{ color: "#666", fontSize: 14 }}>{t("courses.batchNoneAvailable")}</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
               {batchInfo.batches.map((b) => (
@@ -244,7 +245,7 @@ function LecturesView({
                     <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{b.name}</p>
                     <p style={{ margin: "0.3rem 0 0", color: "#666", fontSize: 12 }}>
                       {b.start_date || "—"} → {b.end_date || "—"}
-                      {b.seats_total != null && ` — ${b.seats_remaining} مقعد متاح`}
+                      {b.seats_total != null && ` — ${t("courses.batchSeatsAvailable", { seats: b.seats_remaining })}`}
                     </p>
                   </div>
                   <button
@@ -256,7 +257,7 @@ function LecturesView({
                       fontSize: 13, cursor: b.is_full ? "not-allowed" : "pointer",
                     }}
                   >
-                    {b.is_full ? "مكتملة" : enrolling ? "جاري التسجيل..." : "انضمي"}
+                    {b.is_full ? t("courses.batchFull") : enrolling ? t("courses.batchEnrolling") : t("courses.batchJoin")}
                   </button>
                 </div>
               ))}
@@ -274,7 +275,7 @@ function LecturesView({
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{selectedCourse.title}</h2>
           </div>
           <div onClick={onBackToCourses} style={{ color: GOLD, fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
-            ← البرامج التعليمية
+            {t("courses.backToProgams")}
           </div>
         </div>
 
@@ -282,7 +283,7 @@ function LecturesView({
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", marginBottom: "1.5rem" }}>
           <input
             type="text"
-            placeholder="🔍 البحث عن محاضرة..."
+            placeholder={t("courses.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
@@ -313,7 +314,7 @@ function LecturesView({
                   whiteSpace: "nowrap",
                 }}
               >
-                {f.label}
+                {t(f.labelKey)}
               </button>
             ))}
           </div>
@@ -330,7 +331,7 @@ function LecturesView({
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
                     <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>{chapter.name}</h3>
                     <span style={{ fontSize: 11, color: GOLD, fontWeight: 700 }}>
-                      {pct}% &nbsp;·&nbsp; {completed} / {total} درس
+                      {pct}% &nbsp;·&nbsp; {t("courses.lessonsCount", { completed, total })}
                     </span>
                   </div>
                   <div style={{ width: "100%", height: 5, background: "#1a1a0a", borderRadius: 3, overflow: "hidden" }}>
@@ -340,10 +341,10 @@ function LecturesView({
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
                   {chapter.filteredLectures.map((lecture) => {
-                    const diff = DIFFICULTY_LABELS[lecture.difficulty];
+                    const diff = DIFFICULTY_KEYS[lecture.difficulty];
                     const isCompleted = !!lecture.progress?.completed;
                     const watchedPct = lecture.progress?.watched_pct || 0;
-                    const lastWatched = formatLastWatched(lecture.progress?.last_watched_at);
+                    const lastWatched = formatLastWatched(lecture.progress?.last_watched_at, t, locale);
                     const duration = formatDuration(lecture.duration_seconds);
 
                     return (
@@ -374,9 +375,9 @@ function LecturesView({
                           <div style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>{lecture.title}</div>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.55rem", marginTop: 4, fontSize: 11, color: "#777" }}>
                             {duration && <span>⏱ {duration}</span>}
-                            {diff && <span style={{ color: diff.color }}>🟢 {diff.label}</span>}
-                            {lecture.practice_type && <span>🧪 تمرين تطبيقي</span>}
-                            {lastWatched && <span>📅 آخر مشاهدة: {lastWatched}</span>}
+                            {diff && <span style={{ color: diff.color }}>🟢 {t(diff.labelKey)}</span>}
+                            {lecture.practice_type && <span>{t("courses.practiceExercise")}</span>}
+                            {lastWatched && <span>{t("courses.lastWatchedLabel", { date: lastWatched })}</span>}
                           </div>
                           {!isCompleted && watchedPct > 0 && (
                             <div style={{ width: "100%", height: 3, background: "#1a1a0a", borderRadius: 2, overflow: "hidden", marginTop: 6 }}>
@@ -399,7 +400,7 @@ function LecturesView({
 
           {filteredChapters.length === 0 && (
             <div style={{ color: "#444", fontSize: 13, textAlign: "center", padding: "2rem 0" }}>
-              لا توجد نتائج مطابقة.
+              {t("courses.noMatchingResults")}
             </div>
           )}
         </div>
@@ -438,8 +439,8 @@ function LecturesView({
             🎓
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>مرحباً {username} 👋</p>
-            <p style={{ margin: "5px 0 0", color: "#999", fontSize: 13 }}>واصل رحلتك التعليمية وتعلم التداول باحترافية</p>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>{t("courses.welcomeGreeting", { name: username })}</p>
+            <p style={{ margin: "5px 0 0", color: "#999", fontSize: 13 }}>{t("courses.welcomeSubtitle")}</p>
           </div>
         </div>
 
@@ -463,7 +464,7 @@ function LecturesView({
             display: "flex", alignItems: "center", gap: 8, zIndex: 1, whiteSpace: "nowrap",
           }}
         >
-          <span>{continueLecture ? "متابعة التعلم" : "ابدأ الآن"}</span>
+          <span>{continueLecture ? t("courses.continueLearning") : t("courses.startNow")}</span>
           <span>▶️</span>
         </div>
       </div>
@@ -471,10 +472,10 @@ function LecturesView({
       {/* إحصائيات عامة */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.9rem" }}>
         {[
-          { label: "إجمالي الدروس", value: overallStats.totalLessons, icon: null },
-          { label: "الساعات المكتملة", value: `${overallStats.completedHours.toFixed(1)} ساعة`, icon: null },
-          { label: "نسبة التقدم الإجمالية", value: `${overallStats.overallPct}%`, ring: overallStats.overallPct },
-          { label: "أيام متتالية 🔥", value: `${currentStreak} يوم`, icon: null },
+          { label: t("courses.statTotalLessons"), value: overallStats.totalLessons, icon: null },
+          { label: t("courses.statCompletedHours"), value: t("courses.hoursSuffix", { hours: overallStats.completedHours.toFixed(1) }), icon: null },
+          { label: t("courses.statOverallProgress"), value: `${overallStats.overallPct}%`, ring: overallStats.overallPct },
+          { label: t("courses.statStreakDays"), value: t("courses.daysSuffix", { days: currentStreak }), icon: null },
         ].map((s, i) => (
           <div key={i} style={{ ...cardStyle, padding: "1rem 1.2rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
@@ -499,8 +500,8 @@ function LecturesView({
       {/* عنوان القسم + تبديل العرض */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 8 }}>
         <div>
-          <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>البرامج التعليمية</p>
-          <p style={{ margin: "4px 0 0", color: "#777", fontSize: 12.5 }}>اختر البرنامج الذي تريد متابعته</p>
+          <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>{t("courses.programsTitle")}</p>
+          <p style={{ margin: "4px 0 0", color: "#777", fontSize: 12.5 }}>{t("courses.programsSubtitle")}</p>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {[
@@ -535,7 +536,7 @@ function LecturesView({
       >
         {courseStats.length === 0 ? (
           <div style={{ color: "#444", fontSize: 13, textAlign: "center", padding: "2rem 0" }}>
-            لا توجد برامج تعليمية بعد
+            {t("courses.noProgramsYet")}
           </div>
         ) : (
           courseStats.map((course) => (
@@ -582,14 +583,14 @@ function LecturesView({
                   <div style={{ color: "#777", fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>{course.description}</div>
                 )}
                 <div style={{ display: "flex", gap: "0.9rem", fontSize: 11.5, color: "#999", marginTop: 8 }}>
-                  <span>📖 {course.totalLessons} درس</span>
-                  <span>⏱ {course.totalHours.toFixed(1)} ساعة</span>
+                  <span>📖 {t("courses.lessonsSuffix", { count: course.totalLessons })}</span>
+                  <span>⏱ {t("courses.hoursShort", { hours: course.totalHours.toFixed(1) })}</span>
                 </div>
               </div>
 
               <div style={{ minWidth: viewMode === "grid" ? undefined : 200, flexShrink: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: course.color.solid, marginBottom: 5 }}>
-                  <span>التقدم</span>
+                  <span>{t("courses.progressLabel")}</span>
                   <span>{course.progressPct}%</span>
                 </div>
                 <div style={{ width: "100%", minWidth: 140, height: 6, background: "#1a1a0a", borderRadius: 4, overflow: "hidden" }}>
@@ -605,10 +606,10 @@ function LecturesView({
                     padding: "0.55rem 1rem", borderRadius: 8, whiteSpace: "nowrap",
                   }}
                 >
-                  متابعة البرنامج ‹
+                  {t("courses.continueProgram")}
                 </div>
                 <div style={{ color: "#888", fontSize: 11.5, textAlign: "center", padding: "0.3rem", textDecoration: "underline", whiteSpace: "nowrap" }}>
-                  عرض المحتوى
+                  {t("courses.viewContent")}
                 </div>
               </div>
             </div>
@@ -619,10 +620,10 @@ function LecturesView({
       {/* شريط الميزات */}
       <div style={{ ...cardStyle, padding: "1.2rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem" }}>
         {[
-          { icon: "🎓", label: "شهادة معتمدة", sub: "احصل على شهادة عند إكمال جميع البرامج" },
-          { icon: "🏆", label: "اختبارات وتقييمات", sub: "اختبر معلوماتك بعد كل فصل وتابع تقدمك" },
-          { icon: "📈", label: "تطبيق عملي", sub: "طبق ما تتعلمه مباشرة على الشارت" },
-          { icon: "⭐", label: "إنجازات ومكافآت", sub: "حقق الإنجازات وارتقِ في المستويات" },
+          { icon: "🎓", label: t("courses.featureCertTitle"), sub: t("courses.featureCertSub") },
+          { icon: "🏆", label: t("courses.featureQuizTitle"), sub: t("courses.featureQuizSub") },
+          { icon: "📈", label: t("courses.featurePracticeTitle"), sub: t("courses.featurePracticeSub") },
+          { icon: "⭐", label: t("courses.featureRewardsTitle"), sub: t("courses.featureRewardsSub") },
         ].map((f, i) => (
           <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 6 }}>
             <div
@@ -644,6 +645,7 @@ function LecturesView({
 
 /* -------------------- غلاف الصفحة: يجيب البيانات ويعرض LecturesView -------------------- */
 export default function CoursesClient({ username, currentStreak = 0 }) {
+  const { t } = useLocale();
   const [courses, setCourses] = useState([]);
   const [allLectures, setAllLectures] = useState([]);
   const [progressMap, setProgressMap] = useState({});
@@ -720,7 +722,7 @@ export default function CoursesClient({ username, currentStreak = 0 }) {
     const data = await res.json();
     setEnrolling(false);
     if (!res.ok) {
-      alert(data.error || "صار خطأ بالتسجيل، حاولي مرة تانية");
+      alert(data.error || t("courses.batchEnrollError"));
       return;
     }
     await resolveBatchForCourse(selectedCourseId);

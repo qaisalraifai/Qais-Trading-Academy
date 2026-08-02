@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
 const BORDER = "#2B2F36";
 
 export default function Badges() {
+  const { t } = useLocale();
   const [badges, setBadges] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +25,7 @@ export default function Badges() {
 
   return (
     <div style={s.card}>
-      <p style={s.sectionTitle}>الإنجازات ({earnedCount}/{badges.length})</p>
+      <p style={s.sectionTitle}>{t("affiliate.achievementsTitle", { earned: earnedCount, total: badges.length })}</p>
       <div style={s.grid}>
         {badges.map((b) => (
           <div key={b.code} style={{ ...s.badge, opacity: b.earned ? 1 : 0.35 }}>

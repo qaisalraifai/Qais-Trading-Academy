@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase-client";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import {
   DNA_QUESTIONS,
   TRADER_TYPES,
@@ -129,6 +130,7 @@ function StatBlock({ icon, label, value, sub }) {
 
 /* ===================== الاختبار ===================== */
 function QuizFlow({ onFinish, onCancel }) {
+  const { t } = useLocale();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const q = DNA_QUESTIONS[step];
@@ -145,12 +147,10 @@ function QuizFlow({ onFinish, onCancel }) {
   }
 
   return (
-    <SectionCard title="اختبار شخصيتك بالتداول" icon="🧬">
+    <SectionCard title={t("traderDna.quizTitle")} icon="🧬">
       <div style={{ marginBottom: "1.2rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#9a9a9a", marginBottom: 6 }}>
-          <span>
-            سؤال {step + 1} من {DNA_QUESTIONS.length}
-          </span>
+          <span>{t("traderDna.questionOf", { current: step + 1, total: DNA_QUESTIONS.length })}</span>
           <span>{progress}%</span>
         </div>
         <div style={{ height: 6, borderRadius: 6, background: "#2b2e35", overflow: "hidden" }}>
@@ -205,7 +205,7 @@ function QuizFlow({ onFinish, onCancel }) {
             cursor: "pointer",
           }}
         >
-          {step === 0 ? "إلغاء" : "السابق"}
+          {step === 0 ? t("traderDna.cancel") : t("traderDna.previous")}
         </button>
       </div>
     </SectionCard>
@@ -214,6 +214,7 @@ function QuizFlow({ onFinish, onCancel }) {
 
 /* ===================== بطاقة الـ DNA ===================== */
 function DnaCard({ profile, insights, onRetake }) {
+  const { t } = useLocale();
   const typeInfo = TRADER_TYPES[profile.trader_type] || {};
   return (
     <div
@@ -260,32 +261,33 @@ function DnaCard({ profile, insights, onRetake }) {
             cursor: "pointer",
           }}
         >
-          🔁 إعادة الاختبار
+          {t("traderDna.retakeQuiz")}
         </button>
       </div>
 
       <p style={{ fontSize: 13, color: "#9a9a9a", lineHeight: 1.7, marginBottom: "1.3rem" }}>{typeInfo.desc}</p>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: "1.6rem", marginBottom: "1.4rem" }}>
-        <ScoreRing label="النفسية" value={profile.psychology_score} color={GOLD} />
-        <ScoreRing label="الانضباط" value={profile.discipline_score} color={GREEN} />
+        <ScoreRing label={t("traderDna.scorePsychology")} value={profile.psychology_score} color={GOLD} />
+        <ScoreRing label={t("traderDna.scoreDiscipline")} value={profile.discipline_score} color={GREEN} />
         {insights?.hasEnoughData && insights.winRate !== null && (
-          <ScoreRing label="نسبة النجاح" value={insights.winRate} color={BLUE} />
+          <ScoreRing label={t("traderDna.scoreWinRate")} value={insights.winRate} color={BLUE} />
         )}
-        <ScoreRing label="نضج البصمة" value={insights?.dnaMaturity ?? 0} color={GOLD_LIGHT} />
+        <ScoreRing label={t("traderDna.scoreMaturity")} value={insights?.dnaMaturity ?? 0} color={GOLD_LIGHT} />
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: "0.4rem" }}>
-        <Pill>مخاطرة: {RISK_LABELS[profile.risk_tolerance]}</Pill>
+        <Pill>{t("traderDna.riskLabel", { value: RISK_LABELS[profile.risk_tolerance] })}</Pill>
         <Pill color={BLUE}>{SESSION_LABELS[profile.session_preference] || "—"}</Pill>
-        {insights?.bestAsset && <Pill color={GREEN}>أفضل أصل: {insights.bestAsset.name}</Pill>}
-        {insights?.bestSetup && <Pill color={GOLD_LIGHT}>أفضل نموذج: {insights.bestSetup.name}</Pill>}
+        {insights?.bestAsset && <Pill color={GREEN}>{t("traderDna.bestAssetLabel", { value: insights.bestAsset.name })}</Pill>}
+        {insights?.bestSetup && <Pill color={GOLD_LIGHT}>{t("traderDna.bestSetupLabel", { value: insights.bestSetup.name })}</Pill>}
       </div>
     </div>
   );
 }
 
 export default function TraderDnaView({ userId: userIdProp }) {
+  const { t } = useLocale();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(userIdProp || null);
   const [profile, setProfile] = useState(null);
@@ -352,7 +354,7 @@ export default function TraderDnaView({ userId: userIdProp }) {
       setWeeklyPlanCache(scored.weeklyPlan);
       setShowQuiz(false);
     } catch (e) {
-      setError("صار خطأ بحفظ نتيجة الاختبار: " + (e.message || "غير معروف"));
+      setError(t("traderDna.saveError", { message: e.message || t("traderDna.unknownError") }));
     } finally {
       setSaving(false);
     }
@@ -368,7 +370,7 @@ export default function TraderDnaView({ userId: userIdProp }) {
   }, [profile?.answers]);
 
   if (loading) {
-    return <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>...جاري تحليل بصمتك</div>;
+    return <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>{t("traderDna.analyzing")}</div>;
   }
 
   if (showQuiz || !profile) {
@@ -379,17 +381,16 @@ export default function TraderDnaView({ userId: userIdProp }) {
             <div style={{ color: RED, fontSize: 13, marginBottom: "0.8rem" }}>{error}</div>
           )}
           <QuizFlow onFinish={handleFinishQuiz} onCancel={() => setShowQuiz(false)} />
-          {saving && <div style={{ color: "#9a9a9a", fontSize: 13, marginTop: 8 }}>...جاري حساب بصمتك</div>}
+          {saving && <div style={{ color: "#9a9a9a", fontSize: 13, marginTop: 8 }}>{t("traderDna.savingResult")}</div>}
         </>
       );
     }
     return (
       <div style={{ ...cardStyle, padding: "3rem 2rem", textAlign: "center" }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🧬</div>
-        <h3 style={{ fontSize: 19, fontWeight: 800, color: "#fff", marginBottom: 8 }}>اكتشف بصمتك كمتداول</h3>
+        <h3 style={{ fontSize: 19, fontWeight: 800, color: "#fff", marginBottom: 8 }}>{t("traderDna.introTitle")}</h3>
         <p style={{ fontSize: 13.5, color: "#9a9a9a", maxWidth: 460, margin: "0 auto 1.6rem", lineHeight: 1.8 }}>
-          اختبار قصير من {DNA_QUESTIONS.length} سؤال بيحدد نوع شخصيتك بالتداول، تحمّلك للمخاطرة، نقاط قوتك وضعفك،
-          وبيبني إلك خطة تطوير أسبوعية مبنية على نتيجتك.
+          {t("traderDna.introDesc", { count: DNA_QUESTIONS.length })}
         </p>
         <button
           onClick={() => setShowQuiz(true)}
@@ -404,7 +405,7 @@ export default function TraderDnaView({ userId: userIdProp }) {
             cursor: "pointer",
           }}
         >
-          ابدأ الاختبار الآن
+          {t("traderDna.startQuiz")}
         </button>
       </div>
     );
@@ -415,7 +416,7 @@ export default function TraderDnaView({ userId: userIdProp }) {
       <DnaCard profile={profile} insights={insights} onRetake={() => setShowQuiz(true)} />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.2rem" }}>
-        <SectionCard title="نقاط القوة" icon="💪">
+        <SectionCard title={t("traderDna.strengthsTitle")} icon="💪">
           {profile.strengths?.length ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {profile.strengths.map((s, i) => (
@@ -426,11 +427,11 @@ export default function TraderDnaView({ userId: userIdProp }) {
               ))}
             </div>
           ) : (
-            <div style={{ color: "#666", fontSize: 13 }}>لا توجد نقاط قوة بارزة بعد.</div>
+            <div style={{ color: "#666", fontSize: 13 }}>{t("traderDna.strengthsEmpty")}</div>
           )}
         </SectionCard>
 
-        <SectionCard title="نقاط الضعف" icon="⚠️">
+        <SectionCard title={t("traderDna.weaknessesTitle")} icon="⚠️">
           {profile.weaknesses?.length ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {profile.weaknesses.map((w, i) => (
@@ -441,13 +442,13 @@ export default function TraderDnaView({ userId: userIdProp }) {
               ))}
             </div>
           ) : (
-            <div style={{ color: "#666", fontSize: 13 }}>ما ظهرت نقاط ضعف واضحة، استمر هيك 👏</div>
+            <div style={{ color: "#666", fontSize: 13 }}>{t("traderDna.weaknessesEmpty")}</div>
           )}
         </SectionCard>
       </div>
 
       {weeklyPlanCache?.length > 0 && (
-        <SectionCard title="خطة تطويرك هذا الأسبوع" icon="📌">
+        <SectionCard title={t("traderDna.weeklyPlanTitle")} icon="📌">
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {weeklyPlanCache.map((item, i) => (
               <div
@@ -472,33 +473,33 @@ export default function TraderDnaView({ userId: userIdProp }) {
         </SectionCard>
       )}
 
-      <SectionCard title="أفضل بيئة تداول لك" icon="🌍">
+      <SectionCard title={t("traderDna.bestEnvTitle")} icon="🌍">
         {insights?.hasEnoughData ? (
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.9rem" }}>
-            <StatBlock icon="📊" label="نسبة النجاح الإجمالية" value={`${insights.winRate}%`} sub={`${insights.totalTrades} صفقة مسجلة`} />
+            <StatBlock icon="📊" label={t("traderDna.overallWinRate")} value={`${insights.winRate}%`} sub={t("traderDna.tradesRecorded", { count: insights.totalTrades })} />
             {insights.bestAsset && (
-              <StatBlock icon="🥇" label="أفضل أصل" value={insights.bestAsset.name} sub={`نجاح ${insights.bestAsset.winRate}% (${insights.bestAsset.sample} صفقات)`} />
+              <StatBlock icon="🥇" label={t("traderDna.bestAsset")} value={insights.bestAsset.name} sub={t("traderDna.winRateWithSample", { rate: insights.bestAsset.winRate, sample: insights.bestAsset.sample })} />
             )}
             {insights.bestSetup && (
-              <StatBlock icon="🧩" label="أفضل نموذج" value={insights.bestSetup.name} sub={`نجاح ${insights.bestSetup.winRate}% (${insights.bestSetup.sample} صفقات)`} />
+              <StatBlock icon="🧩" label={t("traderDna.bestSetup")} value={insights.bestSetup.name} sub={t("traderDna.winRateWithSample", { rate: insights.bestSetup.winRate, sample: insights.bestSetup.sample })} />
             )}
             {insights.bestSession && (
-              <StatBlock icon="🕒" label="أفضل جلسة" value={SESSION_LABELS[insights.bestSession.name] || insights.bestSession.name} sub={`نجاح ${insights.bestSession.winRate}%`} />
+              <StatBlock icon="🕒" label={t("traderDna.bestSession")} value={SESSION_LABELS[insights.bestSession.name] || insights.bestSession.name} sub={t("traderDna.winRateOnly", { rate: insights.bestSession.winRate })} />
             )}
             {insights.bestDay && (
-              <StatBlock icon="📅" label="أفضل يوم" value={insights.bestDay.name} sub={`نجاح ${insights.bestDay.winRate}%`} />
+              <StatBlock icon="📅" label={t("traderDna.bestDay")} value={insights.bestDay.name} sub={t("traderDna.winRateOnly", { rate: insights.bestDay.winRate })} />
             )}
             {insights.worstDay && (
-              <StatBlock icon="🔻" label="أضعف يوم" value={insights.worstDay.name} sub={`نجاح ${insights.worstDay.winRate}%`} />
+              <StatBlock icon="🔻" label={t("traderDna.worstDay")} value={insights.worstDay.name} sub={t("traderDna.winRateOnly", { rate: insights.worstDay.winRate })} />
             )}
           </div>
         ) : (
           <div style={{ color: "#9a9a9a", fontSize: 13.5, lineHeight: 1.8 }}>
-            لسا ما في صفقات كفاية بسجل صفقاتك عشان نحسب أفضل بيئة تداول إلك بدقة. سجّل صفقاتك من تبويب{" "}
-            <b style={{ color: GOLD }}>"الصفقات"</b> وبتتحدث هاي البيانات تلقائياً.
+            {t("traderDna.notEnoughDataBefore")}{" "}
+            <b style={{ color: GOLD }}>"{t("traderDna.tradesTabName")}"</b> {t("traderDna.notEnoughDataAfter")}
             <div style={{ marginTop: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#666", marginBottom: 4 }}>
-                <span>نضج البصمة</span>
+                <span>{t("traderDna.dnaMaturityLabel")}</span>
                 <span>{insights?.dnaMaturity ?? 0}%</span>
               </div>
               <div style={{ height: 6, borderRadius: 6, background: "#2b2e35", overflow: "hidden" }}>

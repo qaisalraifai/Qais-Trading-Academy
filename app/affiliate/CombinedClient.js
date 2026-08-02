@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import AffiliateClient from "./AffiliateClient";
 import CommissionSystemExplainer from "./components/CommissionSystemExplainer";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import {
   GOLD,
   monoStack,
@@ -12,6 +13,7 @@ import {
 } from "./components/shared";
 
 export default function CombinedClient() {
+  const { t, dir } = useLocale();
   const [tiersData, setTiersData] = useState(null);
   const [loadingTiers, setLoadingTiers] = useState(true);
 
@@ -30,7 +32,7 @@ export default function CombinedClient() {
   }, []);
 
   return (
-    <div style={s.page}>
+    <div style={{ ...s.page, direction: dir }}>
       <ShimmerStyles />
 
       <div style={{ marginBottom: "1.6rem" }}>
@@ -38,11 +40,10 @@ export default function CombinedClient() {
           QAIS TRADING ACADEMY
         </p>
         <h1 style={{ fontSize: "1.7rem", fontWeight: 800, fontFamily: displayStack, margin: 0 }}>
-          برنامج عمولة الإحالة
+          {t("affiliate.programTitle")}
         </h1>
         <p style={{ color: "#9A9A9A", fontSize: "0.85rem", marginTop: 8, lineHeight: 1.8, maxWidth: 680 }}>
-          نظام بسيط ومباشر — تدعو، صاحبك ينضم ويتعلم، وياخد كل واحد فيكم قيمته. اقرأ الشرح تحت
-          منيح قبل ما تبلّش حتى تعرف بالضبط من وين بتيجي كل عمولة.
+          {t("affiliate.programIntro")}
         </p>
       </div>
 
@@ -58,12 +59,12 @@ export default function CombinedClient() {
 
       <AffiliateClient embedded />
 
-      <a href="/dashboard" style={s.backLink}>← رجوع للوحة التحكم</a>
+      <a href="/dashboard" style={s.backLink}>{t("affiliate.backToDashboard")}</a>
     </div>
   );
 }
 
 const s = {
-  page: { direction: "rtl", color: "#EAECEF", padding: "2rem 1.5rem 4rem", maxWidth: 1150, margin: "0 auto" },
+  page: { color: "#EAECEF", padding: "2rem 1.5rem 4rem", maxWidth: 1150, margin: "0 auto" },
   backLink: { display: "block", textAlign: "center", color: "#666", fontSize: "0.85rem", textDecoration: "none", marginTop: "1.5rem" },
 };

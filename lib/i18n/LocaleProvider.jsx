@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_STORAGE_KEY, LOCALE_META, isSupportedLocale, dirFor } from "./config";
-import { createTranslator } from "./index";
+import { createTranslator, lookupRaw } from "./index";
 
 const LocaleContext = createContext(null);
 
@@ -81,6 +81,7 @@ export function LocaleProvider({ initialLocale, children }) {
       dir: dirFor(locale),
       meta: LOCALE_META[locale],
       t: createTranslator(locale),
+      raw: (key) => lookupRaw(locale, key),
       setLocale,
     }),
     [locale, setLocale]

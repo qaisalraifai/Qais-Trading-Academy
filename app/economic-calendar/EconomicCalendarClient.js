@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 /* ============================================================================
    EconomicCalendarClient — Workspace مستقلة لـ "التقويم الاقتصادي".
@@ -19,11 +20,11 @@ const cardStyle = {
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
 };
 
-const IMPACT_STYLE = {
-  high: { label: "عالي التأثير", color: "#EF5350", bg: "#EF535022", dot: "🔴" },
-  medium: { label: "متوسط", color: "#FFA726", bg: "#FFA72622", dot: "🟡" },
-  low: { label: "منخفض", color: "#8BC34A", bg: "#8BC34A22", dot: "🟢" },
-  holiday: { label: "عطلة", color: "#4FA0F5", bg: "#4FA0F522", dot: "🔵" },
+const IMPACT_KEYS = {
+  high: { labelKey: "calendar.impactHigh", color: "#EF5350", bg: "#EF535022", dot: "🔴" },
+  medium: { labelKey: "calendar.impactMedium", color: "#FFA726", bg: "#FFA72622", dot: "🟡" },
+  low: { labelKey: "calendar.impactLow", color: "#8BC34A", bg: "#8BC34A22", dot: "🟢" },
+  holiday: { labelKey: "calendar.impactHoliday", color: "#4FA0F5", bg: "#4FA0F522", dot: "🔵" },
 };
 
 const CURRENCY_FLAGS = {
@@ -37,50 +38,33 @@ const DIRECTION_STYLE = {
   neutral: { arrow: "➖", color: "#999" },
 };
 
-const STRENGTH_LABEL_AR = { strong: "قوي", medium: "متوسط", weak: "ضعيف" };
-
-const CURRENCY_ANALYSIS_INFO = {
-  USD: { name: "الدولار الأمريكي", assets: "الذهب (XAUUSD) والمؤشرات الأمريكية مثل ناسداك وS&P 500" },
-  EUR: { name: "اليورو", assets: "زوج EURUSD والمؤشرات الأوروبية" },
-  GBP: { name: "الجنيه الإسترليني", assets: "زوج GBPUSD ومؤشر FTSE" },
-  JPY: { name: "الين الياباني", assets: "زوج USDJPY ومؤشر نيكاي" },
-  CHF: { name: "الفرنك السويسري", assets: "زوج USDCHF" },
-  CAD: { name: "الدولار الكندي", assets: "زوج USDCAD وأسعار النفط" },
-  AUD: { name: "الدولار الأسترالي", assets: "زوج AUDUSD والمعادن الصناعية" },
-  NZD: { name: "الدولار النيوزيلندي", assets: "زوج NZDUSD" },
-  CNY: { name: "اليوان الصيني", assets: "الأسواق الآسيوية والذهب" },
-};
+const STRENGTH_KEYS = { strong: "calendar.strengthStrong", medium: "calendar.strengthMedium", weak: "calendar.strengthWeak" };
 
 // تحليل عام مبدئي يظهر فوراً لأي خبر إلى حين توفر التحليل التفصيلي بالذكاء الاصطناعي
-function buildFallbackAnalysis(event) {
-  const info = CURRENCY_ANALYSIS_INFO[event?.currency] || {
-    name: event?.currency || "العملة المرتبطة بالخبر",
-    assets: "الأصول والمؤشرات المرتبطة بها",
+function buildFallbackAnalysis(event, loc) {
+  const info = loc.raw(`calendar.currencyAnalysisInfo.${event?.currency}`) || {
+    name: event?.currency || loc.t("calendar.defaultCurrencyName"),
+    assets: loc.t("calendar.defaultAssets"),
   };
-  const impactLabel = event?.impact === "high" ? "مرتفع" : event?.impact === "medium" ? "متوسط" : "محدود";
+  const impactLabel =
+    event?.impact === "high" ? loc.t("calendar.impactLabelHigh") : event?.impact === "medium" ? loc.t("calendar.impactLabelMedium") : loc.t("calendar.impactLabelLimited");
 
-  return `بشكل عام، إذا جاءت قراءة "${event?.event_title || "هذا الخبر"}" أعلى من التوقعات، فغالباً ما يدعم ذلك ${info.name} ويُشكّل ضغطاً على ${info.assets}. أما إذا جاءت القراءة أقل من المتوقع، فالسيناريو المعتاد هو العكس: ضعف نسبي في ${info.name} ودعم لتلك الأصول. باعتبار هذا خبراً ${impactLabel} التأثير، يُنصح بمتابعة الحركة السعرية عن كثب وقت صدور البيانات، والانتباه لاحتمال التقلب المفاجئ خصوصاً إذا جاءت النتيجة بعيدة عن التوقعات.`;
+  return loc.t("calendar.fallbackAnalysis", {
+    eventTitle: event?.event_title || loc.t("calendar.defaultEventTitle"),
+    currencyName: info.name,
+    assets: info.assets,
+    impactLabel,
+  });
 }
 
-const GENERIC_TIPS_BEFORE = [
-  "تجنّب فتح صفقات جديدة قبل دقائق من صدور الخبر مباشرة",
-  "راقب اتساع السبريد (Spread) فقد يزيد بشكل كبير قبل الحدث",
-  "قلّل حجم اللوت إذا كنت لسا داخل صفقة قبل الخبر",
-];
-const GENERIC_TIPS_AFTER = [
-  "انتظر إغلاق الشمعة الأولى بعد الخبر قبل الدخول لتفادي الحركة الوهمية",
-  "استخدم وقف خسارة (Stop Loss) واضح نظراً لاحتمال التقلب العالي",
-  "قارن الرقم الفعلي بالتوقع لتحديد اتجاه السوق الأرجح",
-];
-
-function formatCountdown(diffMs) {
+function formatCountdown(diffMs, dayLabel = "يوم") {
   if (diffMs <= 0) return null;
   const totalSeconds = Math.floor(diffMs / 1000);
   const days = Math.floor(totalSeconds / 86400);
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  if (days > 0) return `${days} يوم ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  if (days > 0) return `${days} ${dayLabel} ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
@@ -151,6 +135,7 @@ function LiveCardStatus({ label }) {
 
 /* خريطة قوة العملات — بيانات حقيقية محسوبة من أزواج الفوركس الفعلية عبر Yahoo Finance */
 function CurrencyStrengthMeter({ snapshot, loading, error }) {
+  const { t } = useLocale();
   const values = useMemo(() => {
     if (!snapshot?.currencies) return [];
     return CCY_LIST.map((c) => ({ code: c, value: snapshot.currencies[c] }))
@@ -161,13 +146,13 @@ function CurrencyStrengthMeter({ snapshot, loading, error }) {
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>💱 خريطة قوة العملات</p>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>{t("calendar.currencyStrengthTitle")}</p>
         <span style={{ fontSize: 8.5, color: "#555" }}>Yahoo Finance</span>
       </div>
       {loading && !snapshot ? (
-        <LiveCardStatus label="⏳ جاري تحميل بيانات السوق الحية..." />
+        <LiveCardStatus label={t("calendar.loadingLiveData")} />
       ) : error && values.length === 0 ? (
-        <LiveCardStatus label="⚠️ تعذر تحميل البيانات الحية حالياً" />
+        <LiveCardStatus label={t("calendar.liveDataError")} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
           {values.map((v) => {
@@ -197,18 +182,19 @@ const HEATMAP_SYMBOL_LABEL = { Forex: "DXY", Stocks: "S&P 500", Commodities: "Go
 
 /* خريطة الحرارة للأسواق — نسبة تغيّر يومية حقيقية لرمز ممثّل بكل قطاع (Yahoo Finance) */
 function MarketHeatmap({ snapshot, loading, error }) {
+  const { t } = useLocale();
   const values = snapshot?.heatmap || [];
   const hasData = values.some((v) => v.pct != null);
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>🗺️ خريطة الحرارة للأسواق</p>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>{t("calendar.marketHeatmapTitle")}</p>
         <span style={{ fontSize: 8.5, color: "#555" }}>Yahoo Finance</span>
       </div>
       {loading && !snapshot ? (
-        <LiveCardStatus label="⏳ جاري تحميل بيانات السوق الحية..." />
+        <LiveCardStatus label={t("calendar.loadingLiveData")} />
       ) : error && !hasData ? (
-        <LiveCardStatus label="⚠️ تعذر تحميل البيانات الحية حالياً" />
+        <LiveCardStatus label={t("calendar.liveDataError")} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.55rem" }}>
           {HEATMAP_SECTORS.map((sector) => {
@@ -243,6 +229,7 @@ function MarketHeatmap({ snapshot, loading, error }) {
 /* رسم بياني لتوقع حركة الدولار مع اختيار الفترة الزمنية */
 /* رسم بياني حقيقي لحركة DXY (مؤشر الدولار) من Yahoo Finance + متوسط متحرك SMA(5) حقيقي مشتق من نفس البيانات */
 function PriceChart() {
+  const { t } = useLocale();
   const [tf, setTf] = useState("1D");
   const [chartData, setChartData] = useState(null);
   const [chartLoading, setChartLoading] = useState(true);
@@ -257,10 +244,10 @@ function PriceChart() {
       .then(({ ok, data }) => {
         if (cancelled) return;
         if (ok && data?.points?.length > 1) setChartData(data);
-        else setChartError(data?.error || "لا تتوفر بيانات كافية حالياً");
+        else setChartError(data?.error || t("calendar.notEnoughData"));
       })
       .catch(() => {
-        if (!cancelled) setChartError("تعذر الاتصال بمصدر البيانات");
+        if (!cancelled) setChartError(t("calendar.liveDataError"));
       })
       .finally(() => {
         if (!cancelled) setChartLoading(false);
@@ -298,7 +285,7 @@ function PriceChart() {
     <div style={{ ...cardStyle, padding: "1.1rem 1.3rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem", flexWrap: "wrap", gap: 8 }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>
-          📈 حركة الدولار الأمريكي (DXY) {chartData?.points?.length ? <span style={{ color: GOLD_LIGHT }}>{points[points.length - 1]?.toFixed(2)}</span> : null}
+          {t("calendar.dxyChartTitle")} {chartData?.points?.length ? <span style={{ color: GOLD_LIGHT }}>{points[points.length - 1]?.toFixed(2)}</span> : null}
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 8.5, color: "#555" }}>Yahoo Finance</span>
@@ -326,7 +313,7 @@ function PriceChart() {
       </div>
 
       {chartLoading && !chartData ? (
-        <LiveCardStatus label="⏳ جاري تحميل بيانات DXY الحية..." />
+        <LiveCardStatus label={t("calendar.loadingDxy")} />
       ) : chartError && points.length < 2 ? (
         <LiveCardStatus label={`⚠️ ${chartError}`} />
       ) : (
@@ -343,10 +330,10 @@ function PriceChart() {
           </svg>
           <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
             <span style={{ fontSize: 10.5, color: "#888" }}>
-              <span style={{ color: GOLD_LIGHT }}>●</span> السعر الفعلي
+              <span style={{ color: GOLD_LIGHT }}>●</span> {t("calendar.actualPriceLegend")}
             </span>
             <span style={{ fontSize: 10.5, color: "#888" }}>
-              <span style={{ color: PURPLE_LIGHT }}>●</span> متوسط متحرك SMA(5)
+              <span style={{ color: PURPLE_LIGHT }}>●</span> {t("calendar.smaLegend")}
             </span>
           </div>
         </>
@@ -357,26 +344,27 @@ function PriceChart() {
 
 /* مؤشر الخوف والطمع — مشتق من مؤشر VIX الحقيقي (Yahoo Finance): كل ما ارتفع VIX زاد الخوف، وكل ما انخفض زاد الطمع */
 function FearGreedGauge({ snapshot, loading, error }) {
+  const { t } = useLocale();
   const value = snapshot?.fearGreed;
-  const label = value == null ? null : value >= 75 ? "طمع شديد" : value >= 55 ? "طمع" : value >= 45 ? "محايد" : value >= 25 ? "خوف" : "خوف شديد";
+  const label = value == null ? null : value >= 75 ? t("calendar.fgExtremeGreed") : value >= 55 ? t("calendar.fgGreed") : value >= 45 ? t("calendar.fgNeutral") : value >= 25 ? t("calendar.fgFear") : t("calendar.fgExtremeFear");
   const color = value == null ? "#888" : value >= 75 ? "#22c55e" : value >= 55 ? "#84cc16" : value >= 45 ? "#eab308" : value >= 25 ? "#f59e0b" : "#F6465D";
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
-        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>😨 مؤشر الخوف والطمع</p>
+        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.fearGreedTitle")}</p>
         <span style={{ fontSize: 8.5, color: "#555" }}>VIX</span>
       </div>
       {loading && !snapshot ? (
-        <LiveCardStatus label="⏳ جاري التحميل..." />
+        <LiveCardStatus label={t("calendar.loadingGeneric")} />
       ) : value == null ? (
-        <LiveCardStatus label="⚠️ تعذر تحميل مؤشر VIX حالياً" />
+        <LiveCardStatus label={t("calendar.vixError")} />
       ) : (
         <>
           <SemiGauge value={value} colors={["#F6465D", "#f59e0b", "#eab308", "#84cc16", "#22c55e"]} gradId="fg" />
           <p style={{ margin: "2px 0 0", fontSize: 22, fontWeight: 800, color }}>{value}</p>
           <p style={{ margin: "2px 0 0", fontSize: 11.5, color, fontWeight: 700 }}>{label}</p>
           <p style={{ margin: "8px 0 0", fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
-            محسوب من مؤشر التقلب VIX ({snapshot.vix?.price ?? "--"})، وهو مقياس تقريبي وليس مؤشر CNN الرسمي.
+            {t("calendar.fearGreedNote", { vix: snapshot.vix?.price ?? "--" })}
           </p>
         </>
       )}
@@ -387,6 +375,7 @@ function FearGreedGauge({ snapshot, loading, error }) {
 /* مؤشر مفاجأة البيانات الاقتصادية — القيمة والاتجاه التاريخي محسوبان من أخبار حقيقية
    (actual مقابل forecast) المخزّنة فعلياً بقاعدة البيانات، وليست بيانات وهمية */
 function EconomicSurpriseIndex({ events }) {
+  const { t } = useLocale();
   const withActual = useMemo(
     () => events.filter((e) => e.actual && e.forecast && !isNaN(parseFloat(e.actual)) && !isNaN(parseFloat(e.forecast))),
     [events]
@@ -413,9 +402,9 @@ function EconomicSurpriseIndex({ events }) {
   const positive = value != null && value >= 0;
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
-      <p style={{ margin: "0 0 0.4rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>📊 مفاجأة البيانات الاقتصادية</p>
+      <p style={{ margin: "0 0 0.4rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.surpriseIndexTitle")}</p>
       {value == null ? (
-        <LiveCardStatus label="لا توجد أخبار صدر لها رقم فعلي بعد ضمن النطاق المعروض" />
+        <LiveCardStatus label={t("calendar.surpriseNoData")} />
       ) : (
         <>
           <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: positive ? "#3DDC84" : "#EF5350", direction: "ltr" }}>
@@ -428,9 +417,7 @@ function EconomicSurpriseIndex({ events }) {
             </div>
           )}
           <p style={{ margin: 0, fontSize: 10.5, color: "#888", lineHeight: 1.6 }}>
-            {positive
-              ? "البيانات الاقتصادية اللي صدرت جاءت بمعدّل أعلى من التوقعات، ما يدعم الدولار نسبياً."
-              : "البيانات الاقتصادية اللي صدرت جاءت بمعدّل أقل من التوقعات، ما يشكّل ضغطاً على الدولار."}
+            {positive ? t("calendar.surprisePositive") : t("calendar.surpriseNegative")}
           </p>
         </>
       )}
@@ -441,6 +428,7 @@ function EconomicSurpriseIndex({ events }) {
 /* لوحة التحليل الفني — مؤشرات RSI/MACD/EMA/دعم/مقاومة محسوبة فعلياً من شموع يومية
    حقيقية (Yahoo Finance) للرمز المرتبط بعملة الخبر المختار */
 function TechnicalAnalysisPanel({ currency }) {
+  const { t } = useLocale();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -454,10 +442,10 @@ function TechnicalAnalysisPanel({ currency }) {
       .then(({ ok, data: d }) => {
         if (cancelled) return;
         if (ok) setData(d);
-        else setError(d?.error || "تعذر حساب التحليل الفني");
+        else setError(d?.error || t("calendar.liveDataError"));
       })
       .catch(() => {
-        if (!cancelled) setError("تعذر الاتصال بمصدر البيانات");
+        if (!cancelled) setError(t("calendar.liveDataError"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -470,20 +458,20 @@ function TechnicalAnalysisPanel({ currency }) {
   const rows = data && [
     { label: "RSI (14)", value: data.rsi ?? "--", color: data.rsi > 70 ? "#EF5350" : data.rsi < 30 ? "#3DDC84" : "#eee" },
     { label: "MACD", value: data.macd || "--", color: data.macd === "Bullish" ? "#3DDC84" : "#EF5350" },
-    { label: "EMA 20", value: data.emaUp == null ? "--" : data.emaUp ? "فوق EMA 50" : "تحت EMA 50", color: data.emaUp ? "#3DDC84" : "#EF5350" },
-    { label: "الاتجاه العام", value: data.trend || "--", color: GOLD_LIGHT },
-    { label: "الدعم", value: data.support ?? "--", color: "#4FA0F5" },
-    { label: "المقاومة", value: data.resistance ?? "--", color: "#EF5350" },
+    { label: "EMA 20", value: data.emaUp == null ? "--" : data.emaUp ? t("calendar.aboveEma50") : t("calendar.belowEma50"), color: data.emaUp ? "#3DDC84" : "#EF5350" },
+    { label: t("calendar.generalTrendLabel"), value: data.trend || "--", color: GOLD_LIGHT },
+    { label: t("calendar.supportLabel"), value: data.support ?? "--", color: "#4FA0F5" },
+    { label: t("calendar.resistanceLabel"), value: data.resistance ?? "--", color: "#EF5350" },
   ];
 
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.7rem" }}>
-        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>🎯 التحليل الفني ({data?.symbol || currency})</p>
-        <span style={{ fontSize: 8.5, color: "#555" }}>يومي · Yahoo Finance</span>
+        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.technicalTitle", { symbol: data?.symbol || currency })}</p>
+        <span style={{ fontSize: 8.5, color: "#555" }}>{t("calendar.dailyYahoo")}</span>
       </div>
       {loading && !data ? (
-        <LiveCardStatus label="⏳ جاري حساب المؤشرات..." />
+        <LiveCardStatus label={t("calendar.calculatingIndicators")} />
       ) : error && !data ? (
         <LiveCardStatus label={`⚠️ ${error}`} />
       ) : (
@@ -509,23 +497,16 @@ function TechnicalAnalysisPanel({ currency }) {
   );
 }
 
-const TRADING_PLAN_ITEMS = [
-  "انتظار صدور الخبر قبل اتخاذ القرار",
-  "عدم الدخول في صفقات قبل الخبر مباشرة",
-  "إدارة رأس المال (لا يتجاوز 1% من الحساب)",
-  "تحديد وقف الخسارة (Stop Loss) بوضوح",
-  "تحديد مستوى جني الأرباح (Take Profit)",
-  "تجنّب التداول العشوائي بعد التقلب المفاجئ",
-];
-
 /* خطة التداول - Checklist تفاعلية */
 function TradingPlanChecklist() {
+  const { t, raw } = useLocale();
+  const items = raw("calendar.tradingPlanItems") || [];
   const [checked, setChecked] = useState({});
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
-      <p style={{ margin: "0 0 0.7rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>✅ Trading Plan</p>
+      <p style={{ margin: "0 0 0.7rem", fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.tradingPlanTitle")}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-        {TRADING_PLAN_ITEMS.map((item, i) => (
+        {items.map((item, i) => (
           <label
             key={i}
             style={{
@@ -558,6 +539,7 @@ const CCY_ASSET_LABEL = { USD: "DXY", EUR: "EURUSD", GBP: "GBPUSD", JPY: "USDJPY
    (نفس بيانات خريطة قوة العملات الحية) للأخبار عالية/متوسطة التأثير اليوم،
    وليست عشوائية. إشارة اتجاهية تقريبية وليست توصية استثمارية. */
 function BestOpportunitiesPanel({ events, snapshot }) {
+  const { t } = useLocale();
   const opportunities = useMemo(() => {
     if (!snapshot?.currencies) return [];
     const relevant = [...events].filter((e) => (e.impact === "high" || e.impact === "medium") && snapshot.currencies[e.currency] != null);
@@ -580,22 +562,22 @@ function BestOpportunitiesPanel({ events, snapshot }) {
   if (!snapshot) {
     return (
       <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center", color: "#666", fontSize: 12 }}>
-        ⏳ جاري تحميل بيانات السوق الحية لاستنتاج الفرص...
+        {t("calendar.bestOpportunitiesLoading")}
       </div>
     );
   }
   if (opportunities.length === 0) {
     return (
       <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center", color: "#666", fontSize: 12 }}>
-        🏆 لا توجد فرص كافية اليوم لعرضها بعد.
+        {t("calendar.bestOpportunitiesEmpty")}
       </div>
     );
   }
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
-        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>🏆 أفضل فرص التداول</p>
-        <span style={{ fontSize: 8.5, color: "#555" }}>مبني على قوة العملة الحية</span>
+        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.bestOpportunitiesTitle")}</p>
+        <span style={{ fontSize: 8.5, color: "#555" }}>{t("calendar.basedOnLiveStrength")}</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
         {opportunities.map((o, i) => (
@@ -631,19 +613,20 @@ function BestOpportunitiesPanel({ events, snapshot }) {
               <span style={{ fontSize: 12, fontWeight: 700, color: "#eee" }}>{o.asset}</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: o.buy ? "#3DDC84" : "#EF5350" }}>{o.buy ? "شراء" : "بيع"}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: o.buy ? "#3DDC84" : "#EF5350" }}>{o.buy ? t("calendar.buyLabel") : t("calendar.sellLabel")}</span>
               <span style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: 700 }}>{o.confidence}%</span>
             </div>
           </div>
         ))}
       </div>
-      <p style={{ margin: "10px 0 0", fontSize: 9.5, color: "#555" }}>* إشارة اتجاهية تقريبية مبنية على قوة حركة العملة الفعلية اليوم، وليست توصية استثمارية.</p>
+      <p style={{ margin: "10px 0 0", fontSize: 9.5, color: "#555" }}>{t("calendar.opportunitiesDisclaimer")}</p>
     </div>
   );
 }
 
 /* شريط الهيدر العلوي الجديد */
 function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh, highImpactUpcomingCount }) {
+  const { t } = useLocale();
   const marketOpen = useMemo(() => {
     const day = now.getUTCDay();
     const hour = now.getUTCHours();
@@ -683,7 +666,7 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
         </span>
         <div>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#fff" }}>Market Intelligence Center</p>
-          <p style={{ margin: 0, fontSize: 10, color: "#888" }}>التقويم الاقتصادي وتحليل تأثير الأخبار على الأسواق</p>
+          <p style={{ margin: 0, fontSize: 10, color: "#888" }}>{t("calendar.micSubtitle")}</p>
         </div>
       </div>
 
@@ -691,7 +674,7 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="🔍  ابحث عن خبر، أصل، أو مؤشر..."
+          placeholder={t("calendar.searchPlaceholder")}
           style={{
             width: "100%",
             background: "#181A20",
@@ -706,8 +689,8 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 16, cursor: "pointer" }} title="المفضلة">⭐</span>
-        <span style={{ fontSize: 16, cursor: "pointer", position: "relative" }} title="التنبيهات">
+        <span style={{ fontSize: 16, cursor: "pointer" }} title={t("calendar.favoritesTitle")}>⭐</span>
+        <span style={{ fontSize: 16, cursor: "pointer", position: "relative" }} title={t("calendar.alertsTitle")}>
           🔔
           {highImpactUpcomingCount > 0 && (
             <span
@@ -740,15 +723,15 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
         </select>
         <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: marketOpen ? "#3DDC84" : "#EF5350" }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: marketOpen ? "#3DDC84" : "#EF5350" }} />
-          {marketOpen ? "السوق مفتوح" : "السوق مغلق"}
+          {marketOpen ? t("calendar.marketOpen") : t("calendar.marketClosed")}
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "#888" }}>
           <span>
-            آخر تحديث: <span style={{ direction: "ltr", display: "inline-block" }}>{timeStr}</span>
+            {t("calendar.lastUpdateLabel", { time: "" })}<span style={{ direction: "ltr", display: "inline-block" }}>{timeStr}</span>
           </span>
           <button
             onClick={onRefresh}
-            title="تحديث"
+            title={t("calendar.refreshTitle")}
             style={{
               background: "transparent",
               border: `1px solid ${GOLD}33`,
@@ -773,13 +756,14 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
    (عملات لها أخبار عالية/متوسطة التأثير اليوم وبيانات قوة حية متوفرة لها).
    ما في Sparkline وهمي هون لأنه ما في مصدر بيانات حقيقي لتاريخ عدد الأخبار. */
 function KPICardsRow({ todayStats, activeCurrenciesCount, opportunitiesCount, opportunitiesReady }) {
+  const { t } = useLocale();
   const cards = [
-    { label: "عملات نشطة اليوم", value: activeCurrenciesCount, sub: "عملة لها خبر اليوم", color: PURPLE_LIGHT, icon: "🎯" },
-    { label: "أخبار منخفضة التأثير", value: todayStats.low, sub: "اليوم", color: "#3DDC84", icon: "🟢" },
-    { label: "أخبار متوسطة التأثير", value: todayStats.medium, sub: "اليوم", color: "#FFA726", icon: "🟡" },
-    { label: "أخبار عالية التأثير", value: todayStats.high, sub: "اليوم", color: "#EF5350", icon: "🔴" },
-    { label: "فرص التداول", value: opportunitiesReady ? opportunitiesCount : "--", sub: "مبنية على قوة العملة الحية", color: GOLD_LIGHT, icon: "💡" },
-    { label: "أخبار اليوم", value: todayStats.total, sub: `${todayStats.upcoming} متبقية`, color: "#4FA0F5", icon: "🗓️" },
+    { label: t("calendar.kpiActiveCurrencies"), value: activeCurrenciesCount, sub: t("calendar.kpiActiveCurrenciesSub"), color: PURPLE_LIGHT, icon: "🎯" },
+    { label: t("calendar.kpiLowImpact"), value: todayStats.low, sub: t("calendar.today"), color: "#3DDC84", icon: "🟢" },
+    { label: t("calendar.kpiMediumImpact"), value: todayStats.medium, sub: t("calendar.today"), color: "#FFA726", icon: "🟡" },
+    { label: t("calendar.kpiHighImpact"), value: todayStats.high, sub: t("calendar.today"), color: "#EF5350", icon: "🔴" },
+    { label: t("calendar.kpiOpportunities"), value: opportunitiesReady ? opportunitiesCount : "--", sub: t("calendar.kpiOpportunitiesSub"), color: GOLD_LIGHT, icon: "💡" },
+    { label: t("calendar.kpiTodayNews"), value: todayStats.total, sub: t("calendar.kpiRemaining", { count: todayStats.upcoming }), color: "#4FA0F5", icon: "🗓️" },
   ];
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "0.7rem", marginBottom: "1.1rem" }}>
@@ -798,6 +782,7 @@ function KPICardsRow({ todayStats, activeCurrenciesCount, opportunitiesCount, op
 
 /* تذييل الصفحة */
 function MICFooter({ tzOffset, lastUpdated }) {
+  const { t, locale } = useLocale();
   return (
     <div
       style={{
@@ -817,19 +802,20 @@ function MICFooter({ tzOffset, lastUpdated }) {
           🟢 API Status: <span style={{ color: "#3DDC84" }}>Live</span>
         </span>
         <span>
-          🟢 Data Feed: <span style={{ color: "#3DDC84" }}>متصل</span>
+          🟢 Data Feed: <span style={{ color: "#3DDC84" }}>{t("calendar.footerConnected")}</span>
         </span>
-        <span>آخر مزامنة: {lastUpdated ? new Date(lastUpdated).toLocaleTimeString("ar-EG") : "--"}</span>
+        <span>{t("calendar.footerLastSync", { time: lastUpdated ? new Date(lastUpdated).toLocaleTimeString(locale === "ar" ? "ar-EG" : "en-US") : "--" })}</span>
         <span>
-          المنطقة الزمنية: UTC{tzOffset >= 0 ? `+${tzOffset}` : tzOffset}
+          {t("calendar.footerTimezone", { offset: tzOffset >= 0 ? `+${tzOffset}` : tzOffset })}
         </span>
       </div>
-      <span>الإصدار 2.1.0</span>
+      <span>{t("calendar.footerVersion")}</span>
     </div>
   );
 }
 
 function CalendarView({ events, loading, isAdmin }) {
+  const { t, raw, locale } = useLocale();
   const [dayFilter, setDayFilter] = useState("all");
   const [impactFilter, setImpactFilter] = useState("all");
   const [selectedId, setSelectedId] = useState(null);
@@ -863,11 +849,11 @@ function CalendarView({ events, loading, isAdmin }) {
           setMarketSnapshot(data);
           setMarketSnapshotError(null);
         } else {
-          setMarketSnapshotError(data?.error || "تعذر تحميل بيانات السوق");
+          setMarketSnapshotError(data?.error || t("calendar.liveDataError"));
         }
       })
       .catch(() => {
-        if (!cancelled) setMarketSnapshotError("تعذر الاتصال بمصدر البيانات");
+        if (!cancelled) setMarketSnapshotError(t("calendar.liveDataError"));
       })
       .finally(() => {
         if (!cancelled) setMarketSnapshotLoading(false);
@@ -1035,7 +1021,7 @@ function CalendarView({ events, loading, isAdmin }) {
   }, [events, now]);
 
   const nextHighImpactCountdown = nextHighImpactEvent
-    ? formatCountdown(new Date(nextHighImpactEvent.event_datetime) - now)
+    ? formatCountdown(new Date(nextHighImpactEvent.event_datetime) - now, t("calendar.dayUnit"))
     : null;
 
   const highImpactUpcomingCount = useMemo(
@@ -1060,25 +1046,25 @@ function CalendarView({ events, loading, isAdmin }) {
 
   function formatArabicDate(dateStr) {
     const d = new Date(dateStr + "T00:00:00");
-    return d.toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "long" });
+    return d.toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", { weekday: "long", day: "numeric", month: "long" });
   }
 
   if (loading) {
     return (
       <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>
-        ...جاري تحميل التقويم الاقتصادي
+        {t("calendar.loadingCalendar")}
       </div>
     );
   }
 
-  const impact = selectedEvent ? (IMPACT_STYLE[selectedEvent.impact] || IMPACT_STYLE.low) : null;
+  const impact = selectedEvent ? (IMPACT_KEYS[selectedEvent.impact] || IMPACT_KEYS.low) : null;
   const flag = selectedEvent ? (CURRENCY_FLAGS[selectedEvent.currency] || "🌐") : null;
   const countdownMs = selectedEvent?.event_datetime ? new Date(selectedEvent.event_datetime) - now : null;
-  const countdown = countdownMs !== null ? formatCountdown(countdownMs) : null;
+  const countdown = countdownMs !== null ? formatCountdown(countdownMs, t("calendar.dayUnit")) : null;
   const aiData = selectedEvent?.ai_data || null;
 
   const impactPct = !selectedEvent ? 0 : selectedEvent.impact === "high" ? 85 : selectedEvent.impact === "medium" ? 55 : 25;
-  const impactStrengthLabel = impactPct >= 75 ? "قوي جداً" : impactPct >= 45 ? "متوسط" : "محدود";
+  const impactStrengthLabel = impactPct >= 75 ? t("calendar.impactVeryStrong") : impactPct >= 45 ? t("calendar.impactMediumStrength") : t("calendar.impactLimited");
 
   // ملاحظة: حساب عادي (وليس useMemo) عن قصد، لأنه واقع بعد شرط "if (loading) return"
   // أعلاه؛ استخدام hook هنا كان سيكسر ترتيب الـ Hooks بين الرندرات (قاعدة Hooks في React).
@@ -1127,7 +1113,7 @@ function CalendarView({ events, loading, isAdmin }) {
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", minWidth: 0 }}>
           {!selectedEvent ? (
             <div style={{ ...cardStyle, padding: "3rem", textAlign: "center", color: "#666", fontSize: 13 }}>
-              اختاري خبر من القائمة لعرض التحليل
+              {t("calendar.selectEventPrompt")}
             </div>
           ) : (
             <>
@@ -1140,7 +1126,7 @@ function CalendarView({ events, loading, isAdmin }) {
                         background: impact.bg, color: impact.color, fontSize: 11, fontWeight: 700,
                         padding: "4px 12px", borderRadius: 20, whiteSpace: "nowrap",
                       }}>
-                        {impact.dot} {impact.label}
+                        {impact.dot} {t(impact.labelKey)}
                       </span>
                       <div>
                         <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#fff" }}>
@@ -1156,10 +1142,10 @@ function CalendarView({ events, loading, isAdmin }) {
                   {/* السابق / التوقع / الفعلي / العد التنازلي */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.6rem" }}>
                     {[
-                      { label: "السابق", value: selectedEvent.previous },
-                      { label: "التوقع", value: selectedEvent.forecast },
-                      { label: "الفعلي", value: selectedEvent.actual, gold: true },
-                      { label: "العد التنازلي", value: countdown, live: true },
+                      { label: t("calendar.previousLabel"), value: selectedEvent.previous },
+                      { label: t("calendar.forecastLabel"), value: selectedEvent.forecast },
+                      { label: t("calendar.actualLabel"), value: selectedEvent.actual, gold: true },
+                      { label: t("calendar.countdownLabel"), value: countdown, live: true },
                     ].map((s, i) => (
                       <div key={i} style={{ background: "#181A20", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.6rem", textAlign: "center" }}>
                         <p style={{ margin: 0, fontSize: 10, color: "#888" }}>{s.label}</p>
@@ -1181,7 +1167,7 @@ function CalendarView({ events, loading, isAdmin }) {
                       <p style={{ margin: 0, fontSize: 10, color: "#888" }}>{impactStrengthLabel}</p>
                     </div>
                     <div style={{ flex: 1, minWidth: 160, display: "flex", flexDirection: "column", gap: 6 }}>
-                      <p style={{ margin: "0 0 2px", fontSize: 10.5, color: "#888" }}>توزيع التأثير المتوقع على الأصول</p>
+                      <p style={{ margin: "0 0 2px", fontSize: 10.5, color: "#888" }}>{t("calendar.impactDistributionTitle")}</p>
                       {assetDistribution.map((a, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ fontSize: 10, color: "#aaa", minWidth: 46 }}>{a.name}</span>
@@ -1200,17 +1186,17 @@ function CalendarView({ events, loading, isAdmin }) {
                   ...cardStyle, padding: "1.2rem 1.4rem",
                   background: "linear-gradient(135deg, #1a1030, #181A20)", border: "1px solid #7c5cff33",
                 }}>
-                  <p style={{ color: PURPLE_LIGHT, fontSize: 13, fontWeight: 700, margin: "0 0 10px" }}>🤖 تحليل الذكاء الاصطناعي</p>
+                  <p style={{ color: PURPLE_LIGHT, fontSize: 13, fontWeight: 700, margin: "0 0 10px" }}>{t("calendar.aiAnalysisTitle")}</p>
                   {!aiData ? (
                     <>
-                      <p style={{ margin: 0, fontSize: 12.5, color: "#ccc", lineHeight: 1.85 }}>{buildFallbackAnalysis(selectedEvent)}</p>
+                      <p style={{ margin: 0, fontSize: 12.5, color: "#ccc", lineHeight: 1.85 }}>{buildFallbackAnalysis(selectedEvent, { t, raw })}</p>
                       {(selectedEvent.impact === "high" || selectedEvent.impact === "medium") && (
                         <p style={{ margin: "12px 0 0", fontSize: 11, color: analyzingId === selectedEvent.id ? PURPLE_LIGHT : "#666" }}>
                           {analyzingId === selectedEvent.id
-                            ? "🤖 جاري إعداد تحليل الذكاء الاصطناعي المفصّل الآن..."
+                            ? t("calendar.aiPreparing")
                             : analysisFailedIds[selectedEvent.id]
-                            ? "⚠️ تعذر إعداد التحليل التفصيلي حالياً، رح تنعرض النتيجة تلقائياً بأقرب محاولة ناجحة."
-                            : "🤖 التحليل التفصيلي بيظهر تلقائياً خلال لحظات..."}
+                            ? t("calendar.aiFailedRetry")
+                            : t("calendar.aiComingSoon")}
                         </p>
                       )}
                     </>
@@ -1223,13 +1209,13 @@ function CalendarView({ events, loading, isAdmin }) {
                       }}>
                         <div style={{ width: 58, height: 58, borderRadius: "50%", background: "#0d0d14", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                           <span style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>{aiData.confidence}%</span>
-                          <span style={{ fontSize: 8, color: "#999" }}>ثقة</span>
+                          <span style={{ fontSize: 8, color: "#999" }}>{t("calendar.confidenceLabel")}</span>
                         </div>
                       </div>
                       <div style={{ flex: 1, minWidth: 180 }}>
                         <p style={{ margin: "0 0 4px", fontSize: 11.5, color: "#eee" }}>
-                          الاتجاه: <span style={{ color: PURPLE_LIGHT, fontWeight: 700 }}>
-                            {aiData.direction === "down" ? "سلبي" : aiData.direction === "up" ? "إيجابي" : "محايد"}
+                          {t("calendar.directionLabel")} <span style={{ color: PURPLE_LIGHT, fontWeight: 700 }}>
+                            {aiData.direction === "down" ? t("calendar.directionDown") : aiData.direction === "up" ? t("calendar.directionUp") : t("calendar.directionNeutral")}
                           </span>
                         </p>
                         <p style={{ margin: 0, fontSize: 12, color: "#ccc", lineHeight: 1.75 }}>{aiData.summary}</p>
@@ -1267,7 +1253,7 @@ function CalendarView({ events, loading, isAdmin }) {
                   <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                     {aiData?.scenarios?.length > 0 ? (
                       <div>
-                        <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, margin: "0 0 0.9rem" }}>📊 السيناريوهات المتوقعة</p>
+                        <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, margin: "0 0 0.9rem" }}>{t("calendar.scenariosTitle")}</p>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.8rem" }}>
                           {aiData.scenarios.map((sc, i) => (
                             <div key={i} style={{ background: "#181A20", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem" }}>
@@ -1281,7 +1267,7 @@ function CalendarView({ events, loading, isAdmin }) {
                       </div>
                     ) : (
                       <div style={{ padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
-                        📊 السيناريوهات المتوقعة (إيجابي / سلبي / محايد) بتظهر هون تلقائياً بمجرد اكتمال تحليل الذكاء الاصطناعي.
+                        {t("calendar.scenariosEmpty")}
                       </div>
                     )}
                   </div>
@@ -1302,7 +1288,7 @@ function CalendarView({ events, loading, isAdmin }) {
                                 <span style={{ fontSize: 11, color: "#666" }}>{a.symbol}</span>
                               </div>
                               <span style={{ fontSize: 11.5, color: dir.color, fontWeight: 700 }}>
-                                {a.direction === "up" ? "إيجابي" : a.direction === "down" ? "سلبي" : "محايد"} {STRENGTH_LABEL_AR[a.strength] || ""}
+                                {a.direction === "up" ? t("calendar.directionUp") : a.direction === "down" ? t("calendar.directionDown") : t("calendar.directionNeutral")} {STRENGTH_KEYS[a.strength] ? t(STRENGTH_KEYS[a.strength]) : ""}
                               </span>
                             </div>
                             <div style={{ height: 6, borderRadius: 6, background: "#1a1a12", overflow: "hidden" }}>
@@ -1314,7 +1300,7 @@ function CalendarView({ events, loading, isAdmin }) {
                     </div>
                   ) : (
                     <div style={{ padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
-                      لا يتوفر تحليل فني تفصيلي لهذا الخبر بعد.
+                      {t("calendar.noTechnicalYet")}
                     </div>
                   )
                 )}
@@ -1323,7 +1309,7 @@ function CalendarView({ events, loading, isAdmin }) {
                   <div>
                     {(aiData?.historical_examples || []).length === 0 ? (
                       <div style={{ padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
-                        📜 التحليل الذكي بيولّد أمثلة تاريخية تلقائياً للأخبار متوسطة وعالية التأثير — رح تظهر هون بعد أول تحديث.
+                        {t("calendar.historicalEmpty")}
                       </div>
                     ) : (
                       <>
@@ -1360,7 +1346,7 @@ function CalendarView({ events, loading, isAdmin }) {
                             })}
                         </div>
                         <p style={{ margin: "0.9rem 0 0", fontSize: 10.5, color: "#555" }}>
-                          * أمثلة توضيحية تقريبية مولّدة بالذكاء الاصطناعي لأخبار مشابهة، وليست بيانات موثّقة مضمونة الدقة.
+                          {t("calendar.historicalDisclaimer")}
                         </p>
                       </>
                     )}
@@ -1370,14 +1356,14 @@ function CalendarView({ events, loading, isAdmin }) {
                 {analysisTab === "plan" && (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.2rem" }}>
                     <div>
-                      <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#888", fontWeight: 700 }}>قبل الخبر</p>
-                      {(aiData?.tips_before?.length > 0 ? aiData.tips_before : GENERIC_TIPS_BEFORE).map((tip, i) => (
+                      <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#888", fontWeight: 700 }}>{t("calendar.beforeNewsTitle")}</p>
+                      {(aiData?.tips_before?.length > 0 ? aiData.tips_before : raw("calendar.genericTipsBefore") || []).map((tip, i) => (
                         <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#ccc" }}>❌ {tip}</p>
                       ))}
                     </div>
                     <div>
-                      <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#888", fontWeight: 700 }}>بعد الخبر</p>
-                      {(aiData?.tips_after?.length > 0 ? aiData.tips_after : GENERIC_TIPS_AFTER).map((tip, i) => (
+                      <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#888", fontWeight: 700 }}>{t("calendar.afterNewsTitle")}</p>
+                      {(aiData?.tips_after?.length > 0 ? aiData.tips_after : raw("calendar.genericTipsAfter") || []).map((tip, i) => (
                         <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#ccc" }}>✅ {tip}</p>
                       ))}
                     </div>
@@ -1409,7 +1395,7 @@ function CalendarView({ events, loading, isAdmin }) {
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div style={{ ...cardStyle, padding: "1rem 1.1rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
-              <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>📅 التقويم الاقتصادي</p>
+              <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.economicCalendarTitle")}</p>
               {nextHighImpactEvent && (
                 <span style={{ fontSize: 9.5, color: "#EF5350", fontWeight: 700, direction: "ltr" }}>
                   ⏱ {nextHighImpactCountdown || "--"}
@@ -1425,7 +1411,7 @@ function CalendarView({ events, loading, isAdmin }) {
                 padding: "0.5rem 0.6rem", color: "#ccc", fontSize: 11.5, marginBottom: 8,
               }}
             >
-              <option value="all">كل الأيام</option>
+              <option value="all">{t("calendar.allDays")}</option>
               {days.map((d) => (
                 <option key={d} value={d}>{formatArabicDate(d)}</option>
               ))}
@@ -1433,10 +1419,10 @@ function CalendarView({ events, loading, isAdmin }) {
 
             <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
               {[
-                { key: "all", label: "الكل", color: GOLD_LIGHT },
-                { key: "high", label: "🔴 عالي", color: "#EF5350" },
-                { key: "medium", label: "🟡 متوسط", color: "#FFA726" },
-                { key: "low", label: "🟢 منخفض", color: "#8BC34A" },
+                { key: "all", labelKey: "calendar.filterAll", color: GOLD_LIGHT },
+                { key: "high", labelKey: "calendar.filterHigh", color: "#EF5350" },
+                { key: "medium", labelKey: "calendar.filterMedium", color: "#FFA726" },
+                { key: "low", labelKey: "calendar.filterLow", color: "#8BC34A" },
               ].map((f) => (
                 <button
                   key={f.key}
@@ -1449,7 +1435,7 @@ function CalendarView({ events, loading, isAdmin }) {
                     borderRadius: 8, padding: "0.4rem 0.2rem", fontSize: 9.5, fontWeight: 700, cursor: "pointer",
                   }}
                 >
-                  {f.label}
+                  {t(f.labelKey)}
                 </button>
               ))}
             </div>
@@ -1457,7 +1443,7 @@ function CalendarView({ events, loading, isAdmin }) {
             <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", maxHeight: 560, overflowY: "auto", paddingLeft: 2 }}>
               {grouped.length === 0 && (
                 <div style={{ padding: "2rem 0.5rem", textAlign: "center", color: "#666", fontSize: 12 }}>
-                  لا توجد أحداث مطابقة حالياً.
+                  {t("calendar.noMatchingEvents")}
                 </div>
               )}
               {grouped.map(([date, dayEvents]) => (
@@ -1465,10 +1451,10 @@ function CalendarView({ events, loading, isAdmin }) {
                   <p style={{ color: "#666", fontSize: 11, fontWeight: 700, margin: "0 0 0.5rem" }}>{formatArabicDate(date)}</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                     {dayEvents.map((ev) => {
-                      const impactStyle = IMPACT_STYLE[ev.impact] || IMPACT_STYLE.low;
+                      const impactStyle = IMPACT_KEYS[ev.impact] || IMPACT_KEYS.low;
                       const isSelected = selectedEvent?.id === ev.id;
                       const evCountdown = ev.event_datetime && new Date(ev.event_datetime) > now
-                        ? formatCountdown(new Date(ev.event_datetime) - now)
+                        ? formatCountdown(new Date(ev.event_datetime) - now, t("calendar.dayUnit"))
                         : null;
                       return (
                         <div
@@ -1489,9 +1475,9 @@ function CalendarView({ events, loading, isAdmin }) {
                           </div>
                           <p style={{ margin: "6px 0 0", fontSize: 12, fontWeight: 700, color: "#eee", lineHeight: 1.4 }}>{ev.event_title}</p>
                           <div style={{ display: "flex", gap: "0.7rem", marginTop: 6, fontSize: 10, color: "#777", flexWrap: "wrap" }}>
-                            {ev.previous && <span>السابق: {ev.previous}</span>}
-                            {ev.forecast && <span>التوقع: {ev.forecast}</span>}
-                            {ev.actual && <span style={{ color: GOLD_LIGHT }}>الفعلي: {ev.actual}</span>}
+                            {ev.previous && <span>{t("calendar.previousShort")} {ev.previous}</span>}
+                            {ev.forecast && <span>{t("calendar.forecastShort")} {ev.forecast}</span>}
+                            {ev.actual && <span style={{ color: GOLD_LIGHT }}>{t("calendar.actualShort")} {ev.actual}</span>}
                             {!ev.actual && evCountdown && <span style={{ color: impactStyle.color, direction: "ltr" }}>⏱ {evCountdown}</span>}
                           </div>
                         </div>

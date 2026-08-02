@@ -1,15 +1,6 @@
 "use client";
 import { GOLD, BORDER, card, fmt, monoStack, displayStack, transition, btnPrimary, InfoDot } from "./shared";
-
-export const SECTIONS = [
-  { id: "how", label: "كيف يعمل" },
-  { id: "tier", label: "مستواك" },
-  { id: "link", label: "رابط الإحالة" },
-  { id: "stats", label: "الإحصائيات" },
-  { id: "referrals", label: "الإحالات" },
-  { id: "payouts", label: "المدفوعات" },
-  { id: "faq", label: "الأسئلة الشائعة" },
-];
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 function scrollTo(id) {
   const el = document.getElementById(id);
@@ -17,7 +8,17 @@ function scrollTo(id) {
 }
 
 export default function QuickSummary({ data, onShare }) {
-  const available = (data.earnings?.ready || 0) + (data.earnings?.paid ? 0 : 0);
+  const { t } = useLocale();
+  const SECTIONS = [
+    { id: "how", labelKey: "affiliate.secHow" },
+    { id: "tier", labelKey: "affiliate.secTier" },
+    { id: "link", labelKey: "affiliate.secLink" },
+    { id: "stats", labelKey: "affiliate.secStats" },
+    { id: "referrals", labelKey: "affiliate.secReferrals" },
+    { id: "payouts", labelKey: "affiliate.secPayouts" },
+    { id: "faq", labelKey: "affiliate.secFaq" },
+  ];
+
   const readyToWithdraw = data.earnings?.ready || 0;
   const pending = data.earnings?.pending || 0;
   const referralsCount = data.network?.direct || 0;
@@ -26,21 +27,21 @@ export default function QuickSummary({ data, onShare }) {
   const tierNow = data.tier?.current;
 
   const stats = [
-    { label: "إجمالي الأرباح", value: `$${fmt(data.earnings?.totalEarned)}`, tip: "كل العمولات اللي حصلت عليها من بداية اشتراكك بالبرنامج، بكل الحالات." },
-    { label: "قابلة للسحب", value: `$${fmt(readyToWithdraw)}`, highlight: true, tip: "عمولات وصلت مرحلة الجهوزية، ورح تنضم لأقرب دفعة." },
-    { label: "معلّقة", value: `$${fmt(pending)}`, tip: "عمولات جديدة لسا ما وصلت موعد الدفعة القادمة." },
-    { label: "عدد الإحالات", value: referralsCount, tip: "إجمالي الأعضاء يلي انضموا عن طريقك مباشرة." },
-    { label: "مشتركين نشطين", value: activeSubs, tip: "من إحالاتك المباشرة، عدد اللي عندهم اشتراك فعّال حالياً." },
+    { label: t("affiliate.statTotalEarnings"), value: `$${fmt(data.earnings?.totalEarned)}`, tip: t("affiliate.statTotalEarningsTip") },
+    { label: t("affiliate.statReadyToWithdraw"), value: `$${fmt(readyToWithdraw)}`, highlight: true, tip: t("affiliate.statReadyToWithdrawTip") },
+    { label: t("affiliate.statPending"), value: `$${fmt(pending)}`, tip: t("affiliate.statPendingTip") },
+    { label: t("affiliate.statReferralsCount"), value: referralsCount, tip: t("affiliate.statReferralsCountTip") },
+    { label: t("affiliate.statActiveSubs"), value: activeSubs, tip: t("affiliate.statActiveSubsTip") },
     {
-      label: "عمولتك الحالية",
+      label: t("affiliate.statCurrentCommission"),
       value: tierNow ? `$${fmt(tierNow.signup_amount)} / $${fmt(tierNow.renewal_amount)}` : "—",
-      tip: "عمولة التسجيل / عمولة التجديد الشهري بمستواك الحالي. بتزيد أوتوماتيكياً كل ما ترقّيت مستوى.",
+      tip: t("affiliate.statCurrentCommissionTip"),
     },
     {
-      label: "دخل متوقع شهرياً",
+      label: t("affiliate.statProjectedIncome"),
       value: `$${fmt(data.tier?.projectedMonthlyIncome)}`,
       highlight: true,
-      tip: "لو استمريت بنفس عدد العملاء النشطين الحاليين وبنفس مستواك، هيك دخلك المتكرر كل شهر من عمولات التجديد بس.",
+      tip: t("affiliate.statProjectedIncomeTip"),
     },
   ];
 
@@ -51,12 +52,12 @@ export default function QuickSummary({ data, onShare }) {
           <div>
             <p style={{ fontFamily: monoStack, color: GOLD, fontSize: 11, letterSpacing: 3, marginBottom: 8 }}>QAIS TRADING ACADEMY</p>
             <h1 style={{ fontSize: "1.7rem", fontWeight: 800, fontFamily: displayStack, letterSpacing: "-0.02em", marginBottom: 4 }}>
-              برنامج العمولة
+              {t("affiliate.programTitleShort")}
             </h1>
-            <p style={{ color: "#9A9A9A", fontSize: "0.85rem" }}>ملخص سريع لكل أرباحك وشبكتك بلمحة واحدة</p>
+            <p style={{ color: "#9A9A9A", fontSize: "0.85rem" }}>{t("affiliate.quickSummarySubtitle")}</p>
           </div>
           <button onClick={onShare} style={btnPrimary}>
-            🔗 مشاركة رابط الإحالة
+            {t("affiliate.shareLinkBtn")}
           </button>
         </div>
 
@@ -113,7 +114,7 @@ export default function QuickSummary({ data, onShare }) {
             onMouseEnter={(e) => (e.currentTarget.style.borderColor = GOLD)}
             onMouseLeave={(e) => (e.currentTarget.style.borderColor = BORDER)}
           >
-            {sec.label}
+            {t(sec.labelKey)}
           </button>
         ))}
       </div>

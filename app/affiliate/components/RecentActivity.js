@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { playBeep } from "@/lib/beep";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 const GOLD = "#D4AF37";
 const CARD = "#0d0d0d";
@@ -17,15 +18,16 @@ const ICONS = {
   payout: "🏦",
 };
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, t) {
   const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
-  if (diff < 60) return "الآن";
-  if (diff < 3600) return `منذ ${Math.floor(diff / 60)} دقيقة`;
-  if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`;
-  return `منذ ${Math.floor(diff / 86400)} يوم`;
+  if (diff < 60) return t("affiliate.justNow");
+  if (diff < 3600) return t("affiliate.minutesAgo", { n: Math.floor(diff / 60) });
+  if (diff < 86400) return t("affiliate.hoursAgo", { n: Math.floor(diff / 3600) });
+  return t("affiliate.daysAgoGeneric", { n: Math.floor(diff / 86400) });
 }
 
 export default function RecentActivity() {
+  const { t } = useLocale();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const lastIdRef = useRef(null);
@@ -60,15 +62,15 @@ export default function RecentActivity() {
   return (
     <div style={s.card}>
       <div style={s.header}>
-        <p style={s.sectionTitle}>آخر النشاطات</p>
+        <p style={s.sectionTitle}>{t("affiliate.recentActivityTitle")}</p>
         <span style={s.liveTag}>
           <span style={s.liveDot} /> Live
         </span>
       </div>
       {loading ? (
-        <p style={s.empty}>جاري التحميل...</p>
+        <p style={s.empty}>{t("affiliate.recentActivityLoading")}</p>
       ) : items.length === 0 ? (
-        <p style={s.empty}>ما في نشاط بعد — شارك رابطك وابدأ!</p>
+        <p style={s.empty}>{t("affiliate.recentActivityEmpty")}</p>
       ) : (
         <div style={{ maxHeight: 320, overflowY: "auto" }}>
           {items.map((n, i) => (
@@ -77,7 +79,7 @@ export default function RecentActivity() {
               <div style={{ flex: 1 }}>
                 <p style={s.title}>{n.title}</p>
                 {n.message && <p style={s.msg}>{n.message}</p>}
-                <p style={s.time}>{timeAgo(n.created_at)}</p>
+                <p style={s.time}>{timeAgo(n.created_at, t)}</p>
               </div>
             </div>
           ))}

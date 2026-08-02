@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { TrendingUp, TrendingDown, ExternalLink, BarChart3 } from "lucide-react";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 const GOLD = "#D4AF37";
 const GOLD_LIGHT = "#F2D57E";
@@ -32,14 +33,8 @@ function statusColor(status) {
   return GOLD_LIGHT;
 }
 
-const CONFIDENCE_BUCKETS = [
-  { key: "all", label: "الكل" },
-  { key: "80", label: "80%+" },
-  { key: "60", label: "60-79%" },
-  { key: "0", label: "أقل من 60%" },
-];
-
 export default function HistoryClient() {
+  const { t, locale } = useLocale();
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -52,56 +47,64 @@ export default function HistoryClient() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
+  const CONFIDENCE_BUCKETS = [
+    { key: "all", labelKey: "aiTrades.optAll" },
+    { key: "80", labelKey: "aiTrades.confBucket80" },
+    { key: "60", labelKey: "aiTrades.conf60to79" },
+    { key: "0", labelKey: "aiTrades.confBelow60" },
+  ];
+
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/ai-trades");
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "فشل تحميل السجل");
+        if (!res.ok) throw new Error(data.error || t("aiTrades.loadFailed"));
         setTrades(data.trades || []);
       } catch (e) {
-        setError(e.message || "فشل تحميل السجل");
+        setError(e.message || t("aiTrades.loadFailed"));
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const symbols = useMemo(() => Array.from(new Set(trades.map((t) => t.symbol))).sort(), [trades]);
-  const timeframes = useMemo(() => Array.from(new Set(trades.map((t) => t.timeframe))).sort(), [trades]);
+  const symbols = useMemo(() => Array.from(new Set(trades.map((tr) => tr.symbol))).sort(), [trades]);
+  const timeframes = useMemo(() => Array.from(new Set(trades.map((tr) => tr.timeframe))).sort(), [trades]);
 
   const filtered = useMemo(() => {
-    return trades.filter((t) => {
-      if (symbolFilter !== "all" && t.symbol !== symbolFilter) return false;
-      if (tfFilter !== "all" && t.timeframe !== tfFilter) return false;
-      if (dirFilter !== "all" && t.direction !== dirFilter) return false;
-      if (resultFilter === "win" && t.status !== "Closed Winner") return false;
-      if (resultFilter === "loss" && t.status !== "Stopped Out") return false;
+    return trades.filter((tr) => {
+      if (symbolFilter !== "all" && tr.symbol !== symbolFilter) return false;
+      if (tfFilter !== "all" && tr.timeframe !== tfFilter) return false;
+      if (dirFilter !== "all" && tr.direction !== dirFilter) return false;
+      if (resultFilter === "win" && tr.status !== "Closed Winner") return false;
+      if (resultFilter === "loss" && tr.status !== "Stopped Out") return false;
       if (confFilter !== "all") {
-        const c = t.confidence ?? 0;
+        const c = tr.confidence ?? 0;
         if (confFilter === "80" && c < 80) return false;
         if (confFilter === "60" && (c < 60 || c >= 80)) return false;
         if (confFilter === "0" && c >= 60) return false;
       }
-      if (dateFrom && new Date(t.created_at) < new Date(dateFrom)) return false;
-      if (dateTo && new Date(t.created_at) > new Date(`${dateTo}T23:59:59`)) return false;
+      if (dateFrom && new Date(tr.created_at) < new Date(dateFrom)) return false;
+      if (dateTo && new Date(tr.created_at) > new Date(`${dateTo}T23:59:59`)) return false;
       return true;
     });
   }, [trades, symbolFilter, tfFilter, dirFilter, resultFilter, confFilter, dateFrom, dateTo]);
 
   const stats = useMemo(() => {
-    const closed = filtered.filter((t) => CLOSED_STATUSES.includes(t.status));
-    const wins = closed.filter((t) => t.status === "Closed Winner");
-    const losses = closed.filter((t) => t.status === "Stopped Out");
+    const closed = filtered.filter((tr) => CLOSED_STATUSES.includes(tr.status));
+    const wins = closed.filter((tr) => tr.status === "Closed Winner");
+    const losses = closed.filter((tr) => tr.status === "Stopped Out");
     const winRate = closed.length ? Math.round((wins.length / closed.length) * 100) : null;
-    const rrValues = closed.map((t) => t.risk_reward).filter((v) => v != null);
+    const rrValues = closed.map((tr) => tr.risk_reward).filter((v) => v != null);
     const avgRR = rrValues.length ? (rrValues.reduce((a, b) => a + b, 0) / rrValues.length).toFixed(2) : null;
 
     const bySymbol = {};
-    closed.forEach((t) => {
-      bySymbol[t.symbol] = bySymbol[t.symbol] || { win: 0, loss: 0 };
-      if (t.status === "Closed Winner") bySymbol[t.symbol].win++;
-      else bySymbol[t.symbol].loss++;
+    closed.forEach((tr) => {
+      bySymbol[tr.symbol] = bySymbol[tr.symbol] || { win: 0, loss: 0 };
+      if (tr.status === "Closed Winner") bySymbol[tr.symbol].win++;
+      else bySymbol[tr.symbol].loss++;
     });
     let bestSymbol = null, worstSymbol = null;
     Object.entries(bySymbol).forEach(([sym, v]) => {
@@ -113,10 +116,10 @@ export default function HistoryClient() {
     });
 
     const byTF = {};
-    closed.forEach((t) => {
-      byTF[t.timeframe] = byTF[t.timeframe] || { win: 0, loss: 0 };
-      if (t.status === "Closed Winner") byTF[t.timeframe].win++;
-      else byTF[t.timeframe].loss++;
+    closed.forEach((tr) => {
+      byTF[tr.timeframe] = byTF[tr.timeframe] || { win: 0, loss: 0 };
+      if (tr.status === "Closed Winner") byTF[tr.timeframe].win++;
+      else byTF[tr.timeframe].loss++;
     });
     let bestTF = null;
     Object.entries(byTF).forEach(([tf, v]) => {
@@ -142,77 +145,77 @@ export default function HistoryClient() {
     <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem", padding: "1.2rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <BarChart3 size={20} color={GOLD} />
-        <h1 style={{ fontSize: 18, fontWeight: 900, color: "#f0f0f0", margin: 0 }}>سجل صفقات QAIS AI</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 900, color: "#f0f0f0", margin: 0 }}>{t("aiTrades.historyTitle")}</h1>
       </div>
 
       {error && <div style={{ ...glass, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
 
       {/* ================= إحصائيات ================= */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
-        <StatCard label="Total AI Trades" value={stats.totalTrades} />
-        <StatCard label="Win Rate" value={stats.winRate != null ? `${stats.winRate}%` : "—"} color={GREEN} />
-        <StatCard label="Average RR" value={stats.avgRR != null ? `${stats.avgRR}R` : "—"} color={GOLD_LIGHT} />
-        <StatCard label="Total Wins" value={stats.totalWins} color={GREEN} />
-        <StatCard label="Total Losses" value={stats.totalLosses} color={RED} />
-        <StatCard label="Best Symbol" value={stats.bestSymbol} small />
-        <StatCard label="Worst Symbol" value={stats.worstSymbol} small />
-        <StatCard label="Best Timeframe" value={stats.bestTimeframe} small />
+        <StatCard label={t("aiTrades.statTotalTrades")} value={stats.totalTrades} />
+        <StatCard label={t("aiTrades.statWinRate")} value={stats.winRate != null ? `${stats.winRate}%` : "—"} color={GREEN} />
+        <StatCard label={t("aiTrades.statAvgRR")} value={stats.avgRR != null ? `${stats.avgRR}R` : "—"} color={GOLD_LIGHT} />
+        <StatCard label={t("aiTrades.statTotalWins")} value={stats.totalWins} color={GREEN} />
+        <StatCard label={t("aiTrades.statTotalLosses")} value={stats.totalLosses} color={RED} />
+        <StatCard label={t("aiTrades.statBestSymbol")} value={stats.bestSymbol} small />
+        <StatCard label={t("aiTrades.statWorstSymbol")} value={stats.worstSymbol} small />
+        <StatCard label={t("aiTrades.statBestTimeframe")} value={stats.bestTimeframe} small />
       </div>
 
       {/* ================= الفلاتر ================= */}
       <div style={{ ...glass, padding: "0.9rem 1.1rem", display: "flex", flexWrap: "wrap", gap: 10 }}>
-        <FilterSelect label="الرمز" value={symbolFilter} onChange={setSymbolFilter} options={[{ v: "all", l: "الكل" }, ...symbols.map((s) => ({ v: s, l: s }))]} />
-        <FilterSelect label="الفريم" value={tfFilter} onChange={setTfFilter} options={[{ v: "all", l: "الكل" }, ...timeframes.map((s) => ({ v: s, l: s }))]} />
-        <FilterSelect label="الاتجاه" value={dirFilter} onChange={setDirFilter} options={[{ v: "all", l: "الكل" }, { v: "up", l: "BUY" }, { v: "down", l: "SELL" }]} />
-        <FilterSelect label="النتيجة" value={resultFilter} onChange={setResultFilter} options={[{ v: "all", l: "الكل" }, { v: "win", l: "رابحة" }, { v: "loss", l: "خاسرة" }]} />
-        <FilterSelect label="Confidence" value={confFilter} onChange={setConfFilter} options={CONFIDENCE_BUCKETS.map((b) => ({ v: b.key, l: b.label }))} />
+        <FilterSelect label={t("aiTrades.filterSymbol")} value={symbolFilter} onChange={setSymbolFilter} options={[{ v: "all", l: t("aiTrades.optAll") }, ...symbols.map((s) => ({ v: s, l: s }))]} />
+        <FilterSelect label={t("aiTrades.filterTimeframe")} value={tfFilter} onChange={setTfFilter} options={[{ v: "all", l: t("aiTrades.optAll") }, ...timeframes.map((s) => ({ v: s, l: s }))]} />
+        <FilterSelect label={t("aiTrades.filterDirection")} value={dirFilter} onChange={setDirFilter} options={[{ v: "all", l: t("aiTrades.optAll") }, { v: "up", l: "BUY" }, { v: "down", l: "SELL" }]} />
+        <FilterSelect label={t("aiTrades.filterResult")} value={resultFilter} onChange={setResultFilter} options={[{ v: "all", l: t("aiTrades.optAll") }, { v: "win", l: t("aiTrades.optWin") }, { v: "loss", l: t("aiTrades.optLoss") }]} />
+        <FilterSelect label="Confidence" value={confFilter} onChange={setConfFilter} options={CONFIDENCE_BUCKETS.map((b) => ({ v: b.key, l: t(b.labelKey) }))} />
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 10.5, color: "#888" }}>من تاريخ</label>
+          <label style={{ fontSize: 10.5, color: "#888" }}>{t("aiTrades.fromDate")}</label>
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={inputStyle} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 10.5, color: "#888" }}>إلى تاريخ</label>
+          <label style={{ fontSize: 10.5, color: "#888" }}>{t("aiTrades.toDate")}</label>
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={inputStyle} />
         </div>
       </div>
 
       {/* ================= الجدول ================= */}
       {loading ? (
-        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#888" }}>جارٍ التحميل...</div>
+        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#888" }}>{t("aiTrades.loading")}</div>
       ) : filtered.length === 0 ? (
-        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#888" }}>ما في صفقات مطابقة للفلاتر المختارة.</div>
+        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#888" }}>{t("aiTrades.noMatchingTrades")}</div>
       ) : (
         <div style={{ ...glass, padding: "0.5rem", overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
             <thead>
               <tr style={{ color: "#888", textAlign: "right" }}>
-                {["الرمز", "الاتجاه", "الفريم", "Confidence", "R/R", "الحالة", "التاريخ", ""].map((h) => (
+                {[t("aiTrades.colSymbol"), t("aiTrades.colDirection"), t("aiTrades.colTimeframe"), "Confidence", "R/R", t("aiTrades.colStatus"), t("aiTrades.colDate"), ""].map((h) => (
                   <th key={h} style={{ padding: "10px 12px", fontWeight: 700, borderBottom: "1px solid #2e2e2e" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((t) => (
-                <tr key={t.id} style={{ borderBottom: "1px solid #22242a" }}>
-                  <td style={{ padding: "9px 12px", fontWeight: 800, color: "#f0f0f0" }}>{t.symbol}</td>
+              {filtered.map((tr) => (
+                <tr key={tr.id} style={{ borderBottom: "1px solid #22242a" }}>
+                  <td style={{ padding: "9px 12px", fontWeight: 800, color: "#f0f0f0" }}>{tr.symbol}</td>
                   <td style={{ padding: "9px 12px" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: t.direction === "up" ? GREEN : RED, fontWeight: 700 }}>
-                      {t.direction === "up" ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                      {t.direction === "up" ? "BUY" : "SELL"}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: tr.direction === "up" ? GREEN : RED, fontWeight: 700 }}>
+                      {tr.direction === "up" ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                      {tr.direction === "up" ? "BUY" : "SELL"}
                     </span>
                   </td>
-                  <td style={{ padding: "9px 12px", color: "#aaa" }}>{t.timeframe}</td>
-                  <td style={{ padding: "9px 12px", color: GOLD_LIGHT, fontWeight: 700 }}>{t.confidence != null ? `${t.confidence}%` : "—"}</td>
-                  <td style={{ padding: "9px 12px", color: "#ccc" }}>{t.risk_reward != null ? `${t.risk_reward}R` : "—"}</td>
+                  <td style={{ padding: "9px 12px", color: "#aaa" }}>{tr.timeframe}</td>
+                  <td style={{ padding: "9px 12px", color: GOLD_LIGHT, fontWeight: 700 }}>{tr.confidence != null ? `${tr.confidence}%` : "—"}</td>
+                  <td style={{ padding: "9px 12px", color: "#ccc" }}>{tr.risk_reward != null ? `${tr.risk_reward}R` : "—"}</td>
                   <td style={{ padding: "9px 12px" }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: statusColor(t.status), background: `${statusColor(t.status)}1a`, border: `1px solid ${statusColor(t.status)}55`, borderRadius: 6, padding: "3px 8px" }}>
-                      {t.status}
+                    <span style={{ fontSize: 11, fontWeight: 800, color: statusColor(tr.status), background: `${statusColor(tr.status)}1a`, border: `1px solid ${statusColor(tr.status)}55`, borderRadius: 6, padding: "3px 8px" }}>
+                      {tr.status}
                     </span>
                   </td>
-                  <td style={{ padding: "9px 12px", color: "#888" }}>{new Date(t.created_at).toLocaleDateString("en-GB")}</td>
+                  <td style={{ padding: "9px 12px", color: "#888" }}>{new Date(tr.created_at).toLocaleDateString(locale === "ar" ? "ar-EG" : "en-GB")}</td>
                   <td style={{ padding: "9px 12px" }}>
-                    <Link href={`/ai-trades/${t.id}`} style={{ display: "flex", alignItems: "center", gap: 4, color: GOLD_LIGHT, fontSize: 11, textDecoration: "none" }}>
-                      التفاصيل <ExternalLink size={11} />
+                    <Link href={`/ai-trades/${tr.id}`} style={{ display: "flex", alignItems: "center", gap: 4, color: GOLD_LIGHT, fontSize: 11, textDecoration: "none" }}>
+                      {t("aiTrades.detailsLink")} <ExternalLink size={11} />
                     </Link>
                   </td>
                 </tr>

@@ -12,6 +12,7 @@ import ReferralsTable from "./components/ReferralsTable";
 import PayoutsHistory from "./components/PayoutsHistory";
 import { FaqSection, TermsSection } from "./components/FaqTerms";
 import AlertToasts from "./components/AlertToasts";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import {
   GOLD,
   BORDER,
@@ -25,15 +26,15 @@ import {
   ShimmerStyles,
 } from "./components/shared";
 
-const STATUS_LABELS = {
-  none: "لسا ما طلبت الانضمام",
-  pending: "طلبك قيد المراجعة",
-  approved: "مسوّق مفعّل",
-  rejected: "تم رفض طلبك",
-  suspended: "حسابك معلّق حالياً",
-};
-
 export default function AffiliateClient({ embedded = false }) {
+  const { t, dir } = useLocale();
+  const STATUS_LABELS = {
+    none: t("affiliate.statusNone"),
+    pending: t("affiliate.statusPending"),
+    approved: t("affiliate.statusApproved"),
+    rejected: t("affiliate.statusRejected"),
+    suspended: t("affiliate.statusSuspended"),
+  };
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -52,7 +53,7 @@ export default function AffiliateClient({ embedded = false }) {
     try {
       const res = await fetch("/api/affiliate/me");
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "حدث خطأ");
+      if (!res.ok) throw new Error(json.error || t("affiliate.genericError"));
       setData(json);
       if (json.payoutMethod) setPayoutMethod(json.payoutMethod);
     } catch (e) {
@@ -68,7 +69,7 @@ export default function AffiliateClient({ embedded = false }) {
     try {
       const res = await fetch("/api/affiliate/apply", { method: "POST" });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "حدث خطأ");
+      if (!res.ok) throw new Error(json.error || t("affiliate.genericError"));
       await load();
     } catch (e) {
       setError(e.message);
@@ -94,7 +95,7 @@ export default function AffiliateClient({ embedded = false }) {
         body: JSON.stringify({ method: payoutMethod, details }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "حدث خطأ");
+      if (!res.ok) throw new Error(json.error || t("affiliate.genericError"));
       await load();
     } catch (e) {
       setError(e.message);
@@ -106,13 +107,13 @@ export default function AffiliateClient({ embedded = false }) {
   function handleShare() {
     const link = `${siteOrigin}/r/${data?.affiliateCode}`;
     if (navigator.share) {
-      navigator.share({ title: "Qais Trading Academy", text: "انضم لأكاديمية Qais Trading عن طريق رابطي 👇", url: link }).catch(() => {});
+      navigator.share({ title: "Qais Trading Academy", text: t("affiliate.shareText"), url: link }).catch(() => {});
     } else {
       navigator.clipboard.writeText(link);
     }
   }
 
-  const pageStyle = embedded ? s.pageEmbedded : s.page;
+  const pageStyle = { ...(embedded ? s.pageEmbedded : s.page), direction: dir };
 
   if (loading) {
     return (
@@ -156,13 +157,12 @@ export default function AffiliateClient({ embedded = false }) {
       {status === "none" && (
         <div style={{ ...card, textAlign: "center", padding: "2.4rem 1.8rem" }} className="qta-animate-in">
           <p style={{ fontFamily: monoStack, color: GOLD, fontSize: 11, letterSpacing: 3, marginBottom: 10 }}>QAIS TRADING ACADEMY</p>
-          <h1 style={{ fontSize: "1.6rem", fontWeight: 800, fontFamily: displayStack, marginBottom: 12 }}>برنامج العمولة</h1>
+          <h1 style={{ fontSize: "1.6rem", fontWeight: 800, fontFamily: displayStack, marginBottom: 12 }}>{t("affiliate.programTitleShort")}</h1>
           <p style={{ color: "#B8B0A0", fontSize: "0.9rem", lineHeight: 1.9, marginBottom: "1.4rem", maxWidth: 480, margin: "0 auto 1.4rem" }}>
-            بصفتك طالب بالأكاديمية، فيك تنضم لبرنامج التسويق بالعمولة وتشارك رابطك الخاص مع أصدقائك ومتابعينك،
-            وتاخذ عمولة تسجيل لما ينضموا، وعمولة شهرية كل ما جدّدوا اشتراكهم — طول ما ضلوا مشتركين معك.
+            {t("affiliate.noneIntro")}
           </p>
           <button onClick={handleApply} disabled={applying} style={btnPrimary}>
-            {applying ? "جاري الإرسال..." : "قدّم طلب الانضمام"}
+            {applying ? t("affiliate.sending") : t("affiliate.applyBtn")}
           </button>
         </div>
       )}
@@ -170,14 +170,14 @@ export default function AffiliateClient({ embedded = false }) {
       {status === "pending" && (
         <div style={card} className="qta-animate-in">
           <p style={{ color: "#eab308", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{STATUS_LABELS.pending}</p>
-          <p style={{ color: "#9A9A9A", fontSize: "0.85rem" }}>رح نراجع طلبك ونرد عليك قريباً. تابع هاي الصفحة للتحديثات.</p>
+          <p style={{ color: "#9A9A9A", fontSize: "0.85rem" }}>{t("affiliate.pendingText")}</p>
         </div>
       )}
 
       {status === "rejected" && (
         <div style={card} className="qta-animate-in">
           <p style={{ color: "#F6465D", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{STATUS_LABELS.rejected}</p>
-          <p style={{ color: "#9A9A9A", fontSize: "0.85rem" }}>لو بتعتقد في خطأ، تواصل معنا عبر الدعم.</p>
+          <p style={{ color: "#9A9A9A", fontSize: "0.85rem" }}>{t("affiliate.rejectedText")}</p>
         </div>
       )}
 
@@ -200,30 +200,30 @@ export default function AffiliateClient({ embedded = false }) {
 
           {/* طريقة استلام العمولة */}
           <div id="payout-method" style={{ ...card, marginBottom: "1.4rem", scrollMarginTop: 90 }} className="qta-animate-in">
-            <p style={sectionEyebrow}>إعدادات الاستلام</p>
-            <h2 style={sectionTitle}>طريقة استلام العمولة</h2>
+            <p style={sectionEyebrow}>{t("affiliate.payoutSettingsEyebrow")}</p>
+            <h2 style={sectionTitle}>{t("affiliate.payoutMethodTitle")}</h2>
             <p style={{ color: "#9A9A9A", fontSize: "0.8rem", lineHeight: 1.7, margin: "0.6rem 0 1.1rem" }}>
-              التحويل حالياً يدوي لحد ما نفعّل ربط PayPal/Wise الفعلي — بس خزّن بياناتك من هلأ حتى يجهز أول ما يصير التحويل أوتوماتيك.
+              {t("affiliate.payoutMethodHint")}
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <select value={payoutMethod} onChange={(e) => setPayoutMethod(e.target.value)} style={s.select}>
                 <option value="paypal">PayPal</option>
                 <option value="wise">Wise</option>
-                <option value="bank">تحويل بنكي</option>
+                <option value="bank">{t("affiliate.bankTransfer")}</option>
               </select>
               <input
                 style={s.input}
-                placeholder={payoutMethod === "paypal" ? "إيميل PayPal" : payoutMethod === "wise" ? "رقم حساب Wise" : "تفاصيل الحساب البنكي"}
+                placeholder={payoutMethod === "paypal" ? t("affiliate.paypalEmailPlaceholder") : payoutMethod === "wise" ? t("affiliate.wiseAccountPlaceholder") : t("affiliate.bankDetailsPlaceholder")}
                 value={payoutValue}
                 onChange={(e) => setPayoutValue(e.target.value)}
               />
               <button onClick={handleSavePayout} disabled={savingPayout} style={btnPrimary}>
-                {savingPayout ? "جاري الحفظ..." : "حفظ"}
+                {savingPayout ? t("affiliate.saving") : t("affiliate.save")}
               </button>
             </div>
             {data.payoutMethod && (
               <p style={{ color: "#9A9A9A", fontSize: "0.78rem", marginTop: "0.8rem" }}>
-                محفوظ حالياً: {data.payoutMethod === "paypal" ? "PayPal" : data.payoutMethod === "wise" ? "Wise" : "تحويل بنكي"}
+                {t("affiliate.savedCurrently", { method: data.payoutMethod === "paypal" ? "PayPal" : data.payoutMethod === "wise" ? "Wise" : t("affiliate.bankTransfer") })}
                 {data.payoutDetails?.email ? ` — ${data.payoutDetails.email}` : ""}
                 {data.payoutDetails?.account ? ` — ${data.payoutDetails.account}` : ""}
               </p>
@@ -238,14 +238,14 @@ export default function AffiliateClient({ embedded = false }) {
         </>
       )}
 
-      <a href="/dashboard" style={{ ...s.backLink, display: embedded ? "none" : "block" }}>← رجوع للوحة التحكم</a>
+      <a href="/dashboard" style={{ ...s.backLink, display: embedded ? "none" : "block" }}>{t("affiliate.backToDashboard")}</a>
     </div>
   );
 }
 
 const s = {
-  page: { direction: "rtl", color: "#EAECEF", padding: "2rem 1.5rem 4rem", maxWidth: 1150, margin: "0 auto" },
-  pageEmbedded: { direction: "rtl", color: "#EAECEF", maxWidth: "100%" },
+  page: { color: "#EAECEF", padding: "2rem 1.5rem 4rem", maxWidth: 1150, margin: "0 auto" },
+  pageEmbedded: { color: "#EAECEF", maxWidth: "100%" },
   errorBox: { background: "#2a0d0d", border: "1px solid #F6465D44", color: "#F6465D", padding: "0.8rem 1rem", borderRadius: 10, marginBottom: "1.2rem", fontSize: "0.85rem" },
   select: { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,162,75,0.14)", color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 8, fontSize: "0.85rem" },
   input: { flex: 1, minWidth: 200, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,162,75,0.14)", color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 8, fontSize: "0.85rem", direction: "ltr", textAlign: "right" },

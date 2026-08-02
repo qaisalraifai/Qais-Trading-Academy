@@ -12,41 +12,41 @@ export function fmt(n) {
   return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function fmtDate(d) {
+export function fmtDate(d, locale = "ar") {
   if (!d) return "—";
   try {
-    return new Date(d).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" });
+    return new Date(d).toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", { year: "numeric", month: "short", day: "numeric" });
   } catch {
     return "—";
   }
 }
 
-export function timeAgo(dateStr) {
+export function timeAgo(dateStr, t, locale = "ar") {
   if (!dateStr) return "—";
   const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
-  if (diff < 60) return "الآن";
-  if (diff < 3600) return `منذ ${Math.floor(diff / 60)} دقيقة`;
-  if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`;
-  if (diff < 2592000) return `منذ ${Math.floor(diff / 86400)} يوم`;
-  return fmtDate(dateStr);
+  if (diff < 60) return t("affiliate.justNow");
+  if (diff < 3600) return t("affiliate.minutesAgo", { n: Math.floor(diff / 60) });
+  if (diff < 86400) return t("affiliate.hoursAgo", { n: Math.floor(diff / 3600) });
+  if (diff < 2592000) return t("affiliate.daysAgoGeneric", { n: Math.floor(diff / 86400) });
+  return fmtDate(dateStr, locale);
 }
 
 export const SUB_STATUS_LABELS = {
-  active: { label: "مشترك نشط", color: "#4CAF50" },
-  trial: { label: "فترة تجريبية", color: "#4FA8E0" },
-  expiring: { label: "قارب على الانتهاء", color: "#FF9800" },
-  expired: { label: "منتهي", color: "#8b8b8b" },
-  suspended: { label: "موقوف", color: "#F6465D" },
-  vip: { label: "VIP", color: "#B26FE0" },
-  none: { label: "بدون اشتراك", color: "#6E7177" },
+  active: { labelKey: "affiliate.subActive", color: "#4CAF50" },
+  trial: { labelKey: "affiliate.subTrial", color: "#4FA8E0" },
+  expiring: { labelKey: "affiliate.subExpiring", color: "#FF9800" },
+  expired: { labelKey: "affiliate.subExpired", color: "#8b8b8b" },
+  suspended: { labelKey: "affiliate.subSuspended", color: "#F6465D" },
+  vip: { labelKey: "affiliate.subVip", color: "#B26FE0" },
+  none: { labelKey: "affiliate.subNone", color: "#6E7177" },
 };
 
 export const COMMISSION_STATUS_LABELS = {
-  none: { label: "لا يوجد", color: "#6E7177" },
-  awaiting_lesson: { label: "بانتظار إكمال الدرس", color: "#4FA8E0" },
-  pending: { label: "معلّقة", color: "#eab308" },
-  ready: { label: "جاهزة للسحب", color: "#4CAF50" },
-  paid: { label: "مدفوعة", color: GOLD },
+  none: { labelKey: "affiliate.commNone", color: "#6E7177" },
+  awaiting_lesson: { labelKey: "affiliate.commAwaitingLesson", color: "#4FA8E0" },
+  pending: { labelKey: "affiliate.commPending", color: "#eab308" },
+  ready: { labelKey: "affiliate.commReady", color: "#4CAF50" },
+  paid: { labelKey: "affiliate.commPaid", color: GOLD },
 };
 
 // Card / layout primitives shared across affiliate sections

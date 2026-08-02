@@ -6,6 +6,7 @@ import { Sparkles, RotateCcw, ChevronDown, ChevronRight, Zap, Bell, Radio, Brain
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
 import { createClient } from "@/lib/supabase-client";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 /* ============================================================================
    MarketIntelligenceView — "Qais Market Intelligence" — لوحة القيادة الرئيسية
@@ -113,13 +114,13 @@ function hoursUntil(target, now) {
   return diff;
 }
 
-function hoursLabel(h) {
+function hoursLabel(h, t) {
   const totalMin = Math.max(0, Math.round(h * 60));
   const hh = Math.floor(totalMin / 60);
   const mm = totalMin % 60;
-  if (hh <= 0) return `${mm} د`;
-  if (mm === 0) return `${hh} س`;
-  return `${hh} س ${mm} د`;
+  if (hh <= 0) return t("radar.minShort", { n: mm });
+  if (mm === 0) return t("radar.hourShort", { n: hh });
+  return t("radar.hourMinShort", { n: hh, m: mm });
 }
 
 /* الجلسة النشطة هلأ (يلي رح تنتهي أقرب لو في أكثر من وحدة نشطة بنفس الوقت —
@@ -140,15 +141,15 @@ function getSessionTimeline(sessions) {
   return { now, current, next };
 }
 
-function relTime(iso) {
+function relTime(iso, t) {
   if (!iso) return "—";
   const diffMs = Date.now() - new Date(iso).getTime();
   const min = Math.round(diffMs / 60000);
-  if (min < 1) return "الآن";
-  if (min < 60) return `منذ ${min} د`;
+  if (min < 1) return t("radar.justNow");
+  if (min < 60) return t("radar.minutesAgo", { n: min });
   const hr = Math.round(min / 60);
-  if (hr < 24) return `منذ ${hr} س`;
-  return `منذ ${Math.round(hr / 24)} يوم`;
+  if (hr < 24) return t("radar.hoursAgo", { n: hr });
+  return t("radar.daysAgo", { n: Math.round(hr / 24) });
 }
 
 /* ============================================================================
@@ -229,6 +230,7 @@ function radarStatusMeta(it) {
 }
 
 export default function MarketIntelligenceView({ initialSymbol, embedded = false, onClose } = {}) {
+  const { t, locale, dir } = useLocale();
   const [symbol, setSymbol] = useState(initialSymbol || "XAUUSD");
   const [displayTF, setDisplayTF] = useState("h1");
   const [loading, setLoading] = useState(true);
@@ -272,15 +274,15 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
   /* تحديث ساعة الجلسات كل دقيقة */
   useEffect(() => {
-    const t = setInterval(() => setSessions(getSessionsStatus()), 60000);
-    return () => clearInterval(t);
+    const timer1 = setInterval(() => setSessions(getSessionsStatus()), 60000);
+    return () => clearInterval(timer1);
   }, []);
 
   /* نبضة حيّة كل ثانية — تُستخدم فقط للعرض (عدّاد الجلسة القادمة + تحديث "منذ...")،
      لا تلمس أي بيانات أو منطق قرار، مجرد إعادة رسم العناصر الزمنية بدقة الثانية */
   useEffect(() => {
-    const t = setInterval(() => setNowTick(Date.now()), 1000);
-    return () => clearInterval(t);
+    const timer2 = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(timer2);
   }, []);
 
   /* ===================== تشغيل QAIS SK Engine للرمز المختار ===================== */
@@ -298,7 +300,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       ]);
       const candlesByTF = { daily, h4, h1, m15, m5 };
       if (Object.values(candlesByTF).every((c) => !c || c.length < 30)) {
-        throw new Error("بيانات غير كافية من مزوّد الأسعار لهذا الرمز حالياً");
+        throw new Error(t("radar.insufficientData"));
       }
 
       let correlated = null;
@@ -321,7 +323,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       setDisplayTF(analysis.sequence?.displayTF || analysis.executionTimeframe || analysis.mainTimeframe || "h1");
       setLastUpdateAt(new Date().toISOString());
     } catch (e) {
-      setError(e.message || "فشل تشغيل محرك التحليل");
+      setError(e.message || t("radar.engineFailed"));
     } finally {
       setLoading(false);
     }
@@ -375,11 +377,11 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         body: JSON.stringify({ symbol, timeframe: TF_LABELS[displayTF] || "M15", decision: result }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل تنفيذ الصفقة");
+      if (!res.ok) throw new Error(data.error || t("radar.executeTradeFailed"));
       setExecutedTrade(data.trade);
       setSyncedTrade(data.trade);
     } catch (e) {
-      setExecuteError(e.message || "فشل تنفيذ الصفقة");
+      setExecuteError(e.message || t("radar.executeTradeFailed"));
     } finally {
       setExecuting(false);
     }
@@ -570,7 +572,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
     const seq = r.sequence;
     if (seq?.points && seq.displayTF && seq.displayTF === displayTFRef.current) {
-      drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease);
+      drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t);
       // أهداف السيكونز (TP1..TP4) — تترسم تلقائياً فور تأكيد C، بغض النظر عن
       // اكتمال شروط الصفقة الكاملة (Entry/SL) — هاي أهداف الـ QAIS SK Engine
       // الرسمية المسقطة من C مباشرة (تاسع عشر)
@@ -853,7 +855,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           }}
         >
           <Zap size={13} fill="#181A20" />
-          {loading ? "جارٍ التحليل..." : "AI Analyze"}
+          {loading ? t("radar.analyzing") : "AI Analyze"}
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#0f3d2c", border: `1px solid ${GREEN}40`, borderRadius: 20, padding: "6px 12px" }}>
@@ -901,11 +903,11 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
             </div>
             <button
               onClick={resetChart}
-              title="إعادة تعيين الشارت"
+              title={t("radar.resetChartTitle")}
               style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #2e2e2e", color: "#aaa", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
             >
               <RotateCcw size={11} />
-              إعادة تعيين
+              {t("radar.resetChart")}
             </button>
           </div>
 
@@ -1002,11 +1004,12 @@ function AiSummaryCard({ summary }) {
    كله مجمّع من radarItems (نفس /api/radar) — لا بيانات جديدة، فقط عرض مُجمّع.
    ============================================================================ */
 function LiveMarketStatusBar({ status }) {
+  const { t } = useLocale();
   const { lastScan, scanned, activeCount, strongest, weakest, biasLbl, avgConfidence } = status;
   const biasColor = biasLbl === "Bullish" ? GREEN : biasLbl === "Bearish" ? RED : "#888";
 
   const items = [
-    { label: "Last Scan", value: lastScan ? relTime(lastScan) : "—", icon: <Radio size={13} color={BLUE} /> },
+    { label: "Last Scan", value: lastScan ? relTime(lastScan, t) : "—", icon: <Radio size={13} color={BLUE} /> },
     { label: "Assets Scanned", value: scanned, icon: <Eye size={13} color={GOLD_LIGHT} /> },
     { label: "Active Opportunities", value: activeCount, icon: <Zap size={13} color={GOLD} /> },
     {
@@ -1053,6 +1056,7 @@ function LiveMarketStatusBar({ status }) {
    فقط يضيف سياق سريع). كل القيم من نفس شموع الشارت المحمّلة أصلاً.
    ============================================================================ */
 function ChartInfoBar({ price, dailyChange, atr, volume, lastUpdateAt, nowTick }) {
+  const { t } = useLocale();
   const changeColor = dailyChange == null ? "#888" : dailyChange >= 0 ? GREEN : RED;
   void nowTick; // يفرض إعادة تقييم "منذ..." كل ثانية
 
@@ -1062,7 +1066,7 @@ function ChartInfoBar({ price, dailyChange, atr, volume, lastUpdateAt, nowTick }
     { label: "ATR (14)", value: atr != null ? fmt(atr) : "—" },
     { label: "Volume", value: volume != null ? fmtVolume(volume) : "—" },
     { label: "Spread", value: "—", title: "Not provided by the data feed" },
-    { label: "Last Update", value: lastUpdateAt ? relTime(lastUpdateAt) : "—" },
+    { label: "Last Update", value: lastUpdateAt ? relTime(lastUpdateAt, t) : "—" },
   ];
 
   return (
@@ -1103,7 +1107,7 @@ function ChartInfoBar({ price, dailyChange, atr, volume, lastUpdateAt, nowTick }
    خطوط فيبوناتشي تصحيحية (القرار اعتمد بالكامل على هيكلية السوق لا على نسب
    الارتداد التقليدية).
    ============================================================================ */
-function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease) {
+function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t) {
   const { points, stage } = seq;
   const pts = [
     ["0", points.origin],
@@ -1163,7 +1167,7 @@ function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease) {
   // طالما C لسا ما تأكدت: ملاحظة صغيرة توضح إنه السيكونز قيد التكوين
   if (stage === "awaiting-c") {
     const last = pts[pts.length - 1];
-    drawPill(ctx, last.x + 46, last.y, "بانتظار تأكيد C", `${GOLD_LIGHT}`, "600 9.5px sans-serif", "left");
+    drawPill(ctx, last.x + 46, last.y, t("radar.awaitingC"), `${GOLD_LIGHT}`, "600 9.5px sans-serif", "left");
   }
 
   ctx.restore();
@@ -1435,6 +1439,7 @@ function roundRect(ctx, x, y, w, h, r) {
    للتنفيذ" — كل قيمة مسحوبة مباشرة من result (نتيجة analyzeSymbol() الجاهزة).
    ============================================================================ */
 function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, executing, executeError, onExecute, syncedTrade, syncLoading, onCheckSynced }) {
+  const { t, locale } = useLocale();
   // -------- حالة 1: فيه صفقة مفتوحة أصلاً على هاد الرمز (Chart Sync) --------
   if (syncedTrade) {
     const isBuy = syncedTrade.direction === "up";
@@ -1465,13 +1470,13 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
               disabled={syncLoading}
               style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #2e2e2e", color: "#aaa", borderRadius: 6, padding: "5px 10px", fontSize: 11, cursor: syncLoading ? "default" : "pointer" }}
             >
-              <RefreshCw size={11} /> {syncLoading ? "جارٍ الفحص..." : "فحص السعر الآن"}
+              <RefreshCw size={11} /> {syncLoading ? t("radar.checkingPrice") : t("radar.checkPriceNow")}
             </button>
             <Link
               href={`/ai-trades/${syncedTrade.id}`}
               style={{ display: "flex", alignItems: "center", gap: 5, background: `${GOLD}15`, border: `1px solid ${GOLD}40`, color: GOLD_LIGHT, borderRadius: 6, padding: "5px 10px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}
             >
-              التفاصيل الكاملة <ExternalLink size={11} />
+              {t("radar.fullDetails")} <ExternalLink size={11} />
             </Link>
           </div>
         </div>
@@ -1487,7 +1492,7 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
           <TradeCardStat label="Risk/Reward" value={syncedTrade.risk_reward != null ? `${syncedTrade.risk_reward}R` : "—"} />
         </div>
         <div style={{ marginTop: 10, fontSize: 11, color: "#777" }}>
-          آخر سعر تم فحصه: <b style={{ color: "#ccc" }}>{fmt(syncedTrade.last_checked_price)}</b>
+          {t("radar.lastCheckedPrice")} <b style={{ color: "#ccc" }}>{fmt(syncedTrade.last_checked_price)}</b>
         </div>
       </div>
     );
@@ -1534,7 +1539,7 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
             <CheckCircle2 size={11} /> Entry Status: Ready
           </span>
         </div>
-        <span style={{ fontSize: 11, color: "#777" }}>{new Date().toLocaleString("en-GB")}</span>
+        <span style={{ fontSize: 11, color: "#777" }}>{new Date().toLocaleString(locale === "ar" ? "ar-EG" : "en-GB")}</span>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10, marginBottom: 16 }}>
@@ -1558,7 +1563,7 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
             fontWeight: 800, fontSize: 13.5, borderRadius: 10, padding: "12px 20px",
           }}
         >
-          <CheckCircle2 size={16} /> تم تنفيذ الصفقة داخل الأكاديمية — Status: {executedTrade.status}
+          <CheckCircle2 size={16} /> {t("radar.tradeExecutedInAcademy")} — Status: {executedTrade.status}
         </div>
       ) : (
         <button
@@ -1573,7 +1578,7 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
           }}
         >
           <Zap size={16} fill="#181A20" />
-          {executing ? "جارٍ التنفيذ..." : "🚀 Execute AI Trade"}
+          {executing ? t("radar.executing") : "🚀 Execute AI Trade"}
         </button>
       )}
     </div>
@@ -1600,6 +1605,7 @@ function TradeCardStat({ label, value, color = "#f0f0f0" }) {
    لوحة تحليل QAIS SK Engine — يمين الشارت (٣٠٪) — كل قيمة من analyzeSymbol()
    ============================================================================ */
 function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
+  const { t } = useLocale();
   // Single source of truth: every value below reads directly from the same
   // decision object (r) that Active Opportunities / Liquidity Map / AI
   // Briefing also read — nothing here is recomputed independently anymore.
@@ -1666,7 +1672,7 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
       </div>
 
       {!r ? (
-        <div style={{ color: "#777", fontSize: 12.5, padding: "1rem 0", textAlign: "center" }}>جاري تحميل التحليل...</div>
+        <div style={{ color: "#777", fontSize: 12.5, padding: "1rem 0", textAlign: "center" }}>{t("radar.loadingAnalysis")}</div>
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -1757,7 +1763,7 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {r.reasonTags?.length > 0 && (
                 <div style={{ fontSize: 12, color: "#ccc", lineHeight: 1.7 }}>
-                  الإشارة مبنية على: <b style={{ color: GOLD_LIGHT }}>{r.reasonTags.join(" + ")}</b>
+                  {t("radar.signalBasedOn")} <b style={{ color: GOLD_LIGHT }}>{r.reasonTags.join(" + ")}</b>
                 </div>
               )}
               {(r.reasonsChecklist || []).map((c) => (
@@ -1767,7 +1773,7 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
                 </div>
               ))}
               <div style={{ fontSize: 11, color: "#777", marginTop: 6, lineHeight: 1.7 }}>
-                QAIS Quality Score: {qualityScore}/100 — {r.tradeValid ? "كل شروط الدخول اكتملت (Trend → BOS → POI → OB → Targets)." : "لسا في شرط أو أكثر ما تحقق ضمن تسلسل الفحص."}
+                QAIS Quality Score: {qualityScore}/100 — {r.tradeValid ? t("radar.allConditionsMet") : t("radar.conditionsPending")}
               </div>
             </div>
           )}
@@ -1825,6 +1831,7 @@ function PriorityStat({ label, value, color, size = "md" }) {
    كرت 1: Currency Heat Map — من /api/market-intelligence?type=snapshot
    ============================================================================ */
 export function CurrencyHeatMapCard({ snapshot, trend = {} }) {
+  const { t } = useLocale();
   const currencies = snapshot?.currencies || {};
   const entries = Object.entries(currencies)
     .filter(([, v]) => v != null)
@@ -1838,17 +1845,17 @@ export function CurrencyHeatMapCard({ snapshot, trend = {} }) {
 
   // اتجاه حقيقي مبني على فرق آخر سنابشوتين حيّين (لا شي مصطنع) — trend[ccy] تُحسب بـ loadSnapshot أعلى بالمكوّن الأب
   function trendMeta(ccy, color) {
-    const t = trend[ccy];
-    if (t === "up") return { arrow: "↑", text: "Strength increasing", color: GREEN };
-    if (t === "down") return { arrow: "↓", text: "Losing strength", color: RED };
-    if (t === "flat") return { arrow: "→", text: "Holding steady", color: "#888" };
+    const trendVal = trend[ccy];
+    if (trendVal === "up") return { arrow: "↑", text: "Strength increasing", color: GREEN };
+    if (trendVal === "down") return { arrow: "↓", text: "Losing strength", color: RED };
+    if (trendVal === "flat") return { arrow: "→", text: "Holding steady", color: "#888" };
     return { arrow: "", text: "", color };
   }
 
   return (
     <CardShell title="Currency Heat Map" icon="🔥">
       {entries.length === 0 ? (
-        <EmptyNote text="جاري تحميل قوة العملات..." />
+        <EmptyNote text={t("radar.loadingCurrencyStrength")} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {entries.map(([ccy, v]) => {
@@ -1876,6 +1883,7 @@ export function CurrencyHeatMapCard({ snapshot, trend = {} }) {
    كرت 2: Session Map — محسوب من الوقت الحالي (UTC)
    ============================================================================ */
 export function SessionMapCard({ sessions, nowTick }) {
+  const { t } = useLocale();
   const { next } = useMemo(() => getSessionTimeline(sessions), [sessions]);
   const overlap = useMemo(() => getActiveOverlap(sessions), [sessions]);
   const activeSessions = sessions.filter((s) => s.active);
@@ -1951,7 +1959,7 @@ export function SessionMapCard({ sessions, nowTick }) {
               border: `1px solid ${GOLD}40`, borderRadius: 20, padding: "2px 9px", fontVariantNumeric: "tabular-nums",
             }}
           >
-            {liveCountdown || hoursLabel(next.startsIn)}
+            {liveCountdown || hoursLabel(next.startsIn, t)}
           </span>
         </div>
       )}
@@ -2063,6 +2071,7 @@ function SessionTimelineVisual({ sessions, overlap, nowTick }) {
 const OPP_PREVIEW_COUNT = 5;
 
 function LiveOpportunitiesCard({ items, onOpen }) {
+  const { t } = useLocale();
   const [showAll, setShowAll] = useState(false);
 
   // "Active Opportunities" must only contain setups that are genuinely
@@ -2085,7 +2094,7 @@ function LiveOpportunitiesCard({ items, onOpen }) {
   return (
     <CardShell title="Active Opportunities" icon="⚡">
       {items.length === 0 ? (
-        <EmptyNote text="لا توجد أصول مراقبة بعد" />
+        <EmptyNote text={t("radar.noMonitoredAssets")} />
       ) : sorted.length === 0 ? (
         <EmptyNote text="No actionable setups right now — the engine is still scanning." />
       ) : (
@@ -2160,6 +2169,7 @@ function LiveOpportunitiesCard({ items, onOpen }) {
    /api/radar (decision كامل لكل رمز مراقَب).
    ============================================================================ */
 export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8 }) {
+  const { t } = useLocale();
   const sorted = useMemo(
     () =>
       [...items]
@@ -2190,7 +2200,7 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
         </div>
 
         {sorted.length === 0 ? (
-          <EmptyNote text="بانتظار أول دورة تحليل من المحرك" />
+          <EmptyNote text={t("radar.waitingFirstCycle")} />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             <div className="qmi-liq-row qmi-liq-head">
@@ -2575,11 +2585,12 @@ function AiBriefing({ item, d }) {
 
 /* -------------------- Analysis Workspace: دائم، بيتحدث بس لما تتغير الأصل المختار -------------------- */
 function AnalysisWorkspace({ item }) {
+  const { t } = useLocale();
   if (!item) {
     return (
       <div className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
         <SectionHeader icon="🧠" title="Analysis Workspace" subtitle="Click any asset in the Liquidity Map above to load its full breakdown here." />
-        <EmptyNote text="لا يوجد أصل محدد بعد" />
+        <EmptyNote text={t("radar.noAssetSelected")} />
       </div>
     );
   }
@@ -2704,6 +2715,7 @@ function SectionHeader({ icon, title, subtitle }) {
    Market Summary
    ============================================================================ */
 function MarketSummaryCard({ snapshot, radarItems, newsToday }) {
+  const { t } = useLocale();
   const currencies = snapshot?.currencies || {};
   const entries = Object.entries(currencies).filter(([, v]) => v != null);
   const strongest = entries.length ? entries.reduce((a, b) => (b[1] > a[1] ? b : a)) : null;
@@ -2720,7 +2732,7 @@ function MarketSummaryCard({ snapshot, radarItems, newsToday }) {
   return (
     <CardShell title="Market Summary" icon="📊">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
-        <SummaryStat label="Overall Bias" value={biasLabel} sub={total ? `${biasPct}% confidence` : "لا بيانات كافية"} color={biasColor} />
+        <SummaryStat label="Overall Bias" value={biasLabel} sub={total ? `${biasPct}% confidence` : t("radar.notEnoughDataShort")} color={biasColor} />
         <SummaryStat label="Strongest Currency" value={strongest ? strongest[0] : "—"} sub={strongest ? `${strongest[1]}` : ""} color={GREEN} />
         <SummaryStat label="Weakest Currency" value={weakest ? weakest[0] : "—"} sub={weakest ? `${weakest[1]}` : ""} color={RED} />
         <SummaryStat label="Active Opportunities" value={active.length} sub="Live from QAIS Radar" color={GOLD_LIGHT} />
@@ -2744,6 +2756,7 @@ function SummaryStat({ label, value, sub, color }) {
    Live Notifications
    ============================================================================ */
 function LiveNotificationsCard({ items, onOpen }) {
+  const { t } = useLocale();
   const notifs = useMemo(
     () =>
       [...items]
@@ -2756,7 +2769,7 @@ function LiveNotificationsCard({ items, onOpen }) {
   return (
     <CardShell title="Live Notifications" icon="🔔">
       {notifs.length === 0 ? (
-        <EmptyNote text="لا توجد إشعارات جديدة حالياً" />
+        <EmptyNote text={t("radar.noNewNotifications")} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {notifs.map((it) => (
@@ -2770,7 +2783,7 @@ function LiveNotificationsCard({ items, onOpen }) {
                 <div style={{ fontSize: 11.5, color: "#e5e5e5", fontWeight: 700 }}>
                   New Opportunity — {it.symbol} <span style={{ color: it.direction === "up" ? GREEN : RED }}>{it.direction === "up" ? "BUY" : "SELL"}</span>
                 </div>
-                <div style={{ fontSize: 10, color: "#888" }}>{it.radar_score ?? it.score}% Confidence · {relTime(it.updated_at)}</div>
+                <div style={{ fontSize: 10, color: "#888" }}>{it.radar_score ?? it.score}% Confidence · {relTime(it.updated_at, t)}</div>
               </div>
             </button>
           ))}

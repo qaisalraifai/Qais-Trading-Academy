@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import AppShell from "../components/layout/AppShell";
 
 /* ============================================================================
@@ -25,17 +26,18 @@ const MARKETS = [
   { symbol: "BTC/USD", price: "43,250", change: "+2.15%", up: true },
 ];
 
-/* اختصارات لكل الـ Workspaces المستقلة — نفس الأدوات اللي كانت تبويبات قبل هيك */
-const SHORTCUTS = [
-  { href: "/trading-radar", icon: "📡", label: "Trading Radar", desc: "Heat Map, Liquidity, Session Map والفرص اللحظية" },
-  { href: "/replay", icon: "🎯", label: "Replay التدريب", desc: "تدرّب على بيانات سابقة مع AI Coach" },
-  { href: "/economic-calendar", icon: "📅", label: "التقويم الاقتصادي", desc: "الأخبار المؤثرة على السوق أول بأول" },
-  { href: "/courses", icon: "🎓", label: "المحاضرات", desc: "أكمل رحلتك التعليمية بالأكاديمية" },
-  { href: "/live-sessions", icon: "🔴", label: "البث المباشر", desc: "جلسات تداول حية مع المدربين" },
-  { href: "/backtest", icon: "📊", label: "الصفقات", desc: "سجل وتابع صفقاتك بالتفصيل" },
-  { href: "/reports", icon: "📋", label: "التقارير", desc: "تحليل أداءك الكامل كمتداول" },
-  { href: "/trader-dna", icon: "🧬", label: "بصمتك كمتداول", desc: "نقاط قوتك وأخطاؤك المتكررة" },
-  { href: "/affiliate", icon: "🔗", label: "برنامج العمولة", desc: "رابط الإحالة، عمولاتك، وشرح النظام بالتفصيل" },
+/* اختصارات لكل الـ Workspaces المستقلة — نفس الأدوات اللي كانت تبويبات قبل هيك
+   labelKey بيرجع لنفس مفاتيح nav.* (اسم الأداة موحّد بكل مكان بالمنصة) */
+const SHORTCUTS_META = [
+  { href: "/trading-radar", icon: "📡", labelKey: "nav.radar", descKey: "dashboard.shortcuts.radar" },
+  { href: "/replay", icon: "🎯", labelKey: "nav.replay", descKey: "dashboard.shortcuts.replay" },
+  { href: "/economic-calendar", icon: "📅", labelKey: "nav.calendar", descKey: "dashboard.shortcuts.calendar" },
+  { href: "/courses", icon: "🎓", labelKey: "nav.lectures", descKey: "dashboard.shortcuts.lectures" },
+  { href: "/live-sessions", icon: "🔴", labelKey: "nav.live", descKey: "dashboard.shortcuts.live" },
+  { href: "/backtest", icon: "📊", labelKey: "nav.trades", descKey: "dashboard.shortcuts.trades" },
+  { href: "/reports", icon: "📋", labelKey: "nav.reports", descKey: "dashboard.shortcuts.reports" },
+  { href: "/trader-dna", icon: "🧬", labelKey: "nav.traderDna", descKey: "dashboard.shortcuts.traderDna" },
+  { href: "/affiliate", icon: "🔗", labelKey: "nav.affiliateNetwork", descKey: "dashboard.shortcuts.affiliateNetwork" },
 ];
 
 function fmt(n) {
@@ -92,7 +94,7 @@ function FlagBadge({ children }) {
 }
 
 /* زر "Open Workspace →" موحّد لكل الكروت */
-function OpenWorkspaceLink({ href, label = "Open Workspace" }) {
+function OpenWorkspaceLink({ href, label }) {
   return (
     <Link
       href={href}
@@ -119,6 +121,7 @@ function SectionTitle({ children }) {
 }
 
 export default function DashboardClient({ username, isAdmin = false, subscriptionEnd = null, currentStreak = 0 }) {
+  const { t } = useLocale();
   const [trades, setTrades] = useState([]);
   const [rawTrades, setRawTrades] = useState([]);
   const [balance, setBalance] = useState(3000);
@@ -307,7 +310,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                   VIP
                 </span>
               </div>
-              <p style={{ color: "#888", fontSize: 12, margin: "3px 0 0" }}>متداول محترف</p>
+              <p style={{ color: "#888", fontSize: 12, margin: "3px 0 0" }}>{t("dashboard.role")}</p>
               <div
                 style={{
                   marginTop: 6,
@@ -328,15 +331,15 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
 
           <div style={{ textAlign: "right", display: "flex", alignItems: "center", gap: 10 }}>
             <div>
-              <p style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>مرحباً بك {username}، 👋</p>
-              <p style={{ color: "#555", fontSize: 13, margin: "4px 0 0" }}>نظرة عامة على أدائك في التداول</p>
+              <p style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>{t("dashboard.greeting", { name: username })}</p>
+              <p style={{ color: "#555", fontSize: 13, margin: "4px 0 0" }}>{t("dashboard.subtitle")}</p>
             </div>
             <span style={{ fontSize: 22 }}>✨</span>
           </div>
         </div>
 
         {loading ? (
-          <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>...جاري تحميل بياناتك</div>
+          <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>{t("dashboard.loadingData")}</div>
         ) : (
           <>
             {/* ============ AI Daily Summary ============ */}
@@ -344,12 +347,15 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
               <SectionTitle>🧠 AI Daily Summary</SectionTitle>
               <p style={{ color: "#ccc", fontSize: 13, lineHeight: 1.9, margin: 0 }}>
                 {total === 0
-                  ? "لسا ما سجّلت صفقات — افتح Trading Radar لمتابعة الفرص اللحظية وابدأ ببناء سجلّك."
-                  : `أداؤك هالشهر ${monthPnL >= 0 ? "إيجابي" : "سلبي"} بمقدار ${monthPnL >= 0 ? "$" : "-$"}${fmt(
-                      Math.abs(monthPnL)
-                    )}، ونسبة نجاحك الحالية ${winRate}% على ${total} صفقة. افتح Trading Radar لمتابعة تحليل QAIS SK Engine اللحظي قبل أي دخول جديد.`}
+                  ? t("dashboard.aiSummaryEmpty")
+                  : t("dashboard.aiSummaryText", {
+                      sign: monthPnL >= 0 ? t("dashboard.aiSummaryPositive") : t("dashboard.aiSummaryNegative"),
+                      amount: `${monthPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(monthPnL))}`,
+                      rate: winRate,
+                      total,
+                    })}
               </p>
-              <OpenWorkspaceLink href="/trading-radar" label="Open Workspace" />
+              <OpenWorkspaceLink href="/trading-radar" label={t("dashboard.openWorkspace")} />
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem", marginBottom: "1.4rem" }}>
@@ -376,17 +382,16 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                     </div>
                   ))}
                 </div>
-                <OpenWorkspaceLink href="/trading-radar" />
+                <OpenWorkspaceLink href="/trading-radar" label={t("dashboard.openWorkspace")} />
               </div>
 
               {/* ============ Today's Signals ============ */}
               <div style={{ ...cardStyle, padding: "1.3rem" }}>
                 <SectionTitle>👀 Today's Signals</SectionTitle>
                 <p style={{ color: "#ccc", fontSize: 13, lineHeight: 1.9, margin: 0 }}>
-                  الفرص اللحظية وإشارات الدخول بتتحدّث بشكل مباشر داخل Trading Radar — Heat Map، Liquidity، وSession Map كلها
-                  بمكان واحد.
+                  {t("dashboard.todaySignalsDesc")}
                 </p>
-                <OpenWorkspaceLink href="/trading-radar" />
+                <OpenWorkspaceLink href="/trading-radar" label={t("dashboard.openWorkspace")} />
               </div>
             </div>
 
@@ -394,39 +399,39 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
               {/* ============ Quick Stats ============ */}
               {[
                 {
-                  label: "ربح الشهر",
+                  label: t("dashboard.statMonthProfit"),
                   value: `${monthPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(monthPnL))}`,
                   icon: "💵",
                   color: monthPnL >= 0 ? GREEN : RED,
-                  sub: `${monthPnL >= 0 ? "+" : ""}${balance ? ((monthPnL / balance) * 100).toFixed(2) : "0.00"}% من رأس المال`,
+                  sub: t("dashboard.statMonthProfitSub", { pct: `${monthPnL >= 0 ? "+" : ""}${balance ? ((monthPnL / balance) * 100).toFixed(2) : "0.00"}` }),
                 },
                 {
-                  label: "رأس المال الحالي",
+                  label: t("dashboard.statCurrentCapital"),
                   value: `$${fmt(balance)}`,
                   icon: "💼",
                   color: GOLD_LIGHT,
-                  sub: `بداية من $${fmt(startingCapital)}`,
+                  sub: t("dashboard.statCurrentCapitalSub", { amount: `$${fmt(startingCapital)}` }),
                 },
                 {
-                  label: "صافي الربح/الخسارة",
+                  label: t("dashboard.statNetPnl"),
                   value: `${netPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(netPnL))}`,
                   icon: "📈",
                   color: netPnL >= 0 ? GREEN : RED,
-                  sub: `${netPnL >= 0 ? "+" : ""}${startingCapital ? ((netPnL / startingCapital) * 100).toFixed(2) : "0.00"}% من رأس مال البداية`,
+                  sub: t("dashboard.statNetPnlSub", { pct: `${netPnL >= 0 ? "+" : ""}${startingCapital ? ((netPnL / startingCapital) * 100).toFixed(2) : "0.00"}` }),
                 },
                 {
-                  label: "نسبة النجاح",
+                  label: t("dashboard.statWinRate"),
                   value: `${winRate}%`,
                   icon: "🎯",
                   color: "#fff",
-                  sub: "الهدف القادم: 70%",
+                  sub: t("dashboard.statWinRateSub"),
                 },
                 {
-                  label: "إجمالي الصفقات",
+                  label: t("dashboard.statTotalTrades"),
                   value: total,
                   icon: "📷",
                   color: "#fff",
-                  sub: `${openTrades} صفقة مفتوحة`,
+                  sub: t("dashboard.statOpenTradesSub", { count: openTrades }),
                 },
               ].map((s, i) => (
                 <div key={i} style={{ ...cardStyle, padding: "1rem" }}>
@@ -443,16 +448,16 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "0.9rem", marginBottom: "1.4rem", alignItems: "stretch" }}>
               <div style={{ ...cardStyle, padding: "1.3rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: 8 }}>
-                  <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: 0 }}>📈 الأداء</p>
+                  <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: 0 }}>{t("dashboard.performanceTitle")}</p>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#888", fontSize: 11 }}>
-                      <span style={{ width: 9, height: 9, borderRadius: 3, background: GOLD_LIGHT, display: "inline-block" }} /> الرصيد
+                      <span style={{ width: 9, height: 9, borderRadius: 3, background: GOLD_LIGHT, display: "inline-block" }} /> {t("dashboard.performanceBalance")}
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#888", fontSize: 11 }}>
-                      <span style={{ width: 9, height: 9, borderRadius: 3, background: GREEN, display: "inline-block" }} /> الربح
+                      <span style={{ width: 9, height: 9, borderRadius: 3, background: GREEN, display: "inline-block" }} /> {t("dashboard.performanceProfit")}
                     </span>
-                    <div style={{ background: "#111", border: `1px solid ${GOLD}33`, color: "#aaa", fontSize: 11, padding: "0.35rem 0.8rem", borderRadius: 20 }}>تفصيلي ⌄</div>
-                    <div style={{ background: `${GOLD}18`, border: `1px solid ${GOLD}44`, color: GOLD_LIGHT, fontSize: 11, fontWeight: 700, padding: "0.35rem 0.8rem", borderRadius: 20 }}>12 شهر</div>
+                    <div style={{ background: "#111", border: `1px solid ${GOLD}33`, color: "#aaa", fontSize: 11, padding: "0.35rem 0.8rem", borderRadius: 20 }}>{t("dashboard.performanceDetailed")}</div>
+                    <div style={{ background: `${GOLD}18`, border: `1px solid ${GOLD}44`, color: GOLD_LIGHT, fontSize: 11, fontWeight: 700, padding: "0.35rem 0.8rem", borderRadius: 20 }}>{t("dashboard.performance12Months")}</div>
                   </div>
                 </div>
                 {chartPoints.length > 1 ? (
@@ -463,19 +468,19 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                   </svg>
                 ) : (
                   <div style={{ height: 190, display: "flex", alignItems: "center", justifyContent: "center", color: "#444", fontSize: 12 }}>
-                    لا توجد بيانات كافية بعد — ضيف صفقات من صفحة الباك تيست
+                    {t("dashboard.performanceNoData")}
                   </div>
                 )}
               </div>
 
               <div style={{ ...cardStyle, padding: "1.3rem", display: "flex", flexDirection: "column" }}>
-                <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: "0 0 0.9rem" }}>⚡ ملخص سريع</p>
+                <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: "0 0 0.9rem" }}>{t("dashboard.quickSummaryTitle")}</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem", flex: 1 }}>
                   {[
-                    { label: "أفضل صفقة", value: `$${fmt(bestTrade)}`, color: GREEN, icon: "🏆" },
-                    { label: "أسوأ صفقة", value: `$${fmt(worstTrade)}`, color: RED, icon: "🛡️" },
-                    { label: "متوسط الربح", value: `$${fmt(avgWin)}`, color: GREEN, icon: "📈" },
-                    { label: "متوسط الخسارة", value: `$${fmt(avgLoss)}`, color: RED, icon: "📉" },
+                    { label: t("dashboard.bestTrade"), value: `$${fmt(bestTrade)}`, color: GREEN, icon: "🏆" },
+                    { label: t("dashboard.worstTrade"), value: `$${fmt(worstTrade)}`, color: RED, icon: "🛡️" },
+                    { label: t("dashboard.avgWin"), value: `$${fmt(avgWin)}`, color: GREEN, icon: "📈" },
+                    { label: t("dashboard.avgLoss"), value: `$${fmt(avgLoss)}`, color: RED, icon: "📉" },
                   ].map((row, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < 3 ? "1px solid #1a1a0f" : "none", paddingBottom: "0.6rem" }}>
                       <div>
@@ -486,7 +491,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                     </div>
                   ))}
                 </div>
-                <OpenWorkspaceLink href="/reports" label="عرض التقرير الكامل" />
+                <OpenWorkspaceLink href="/reports" label={t("dashboard.viewFullReport")} />
               </div>
             </div>
 
@@ -498,7 +503,14 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                   <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 480 }}>
                     <thead>
                       <tr>
-                        {["الأصل", "الاتجاه", "الحجم", "الدخول", "الخروج", "التاريخ"].map((h) => (
+                        {[
+                          t("dashboard.recentActivityAsset"),
+                          t("dashboard.recentActivityDirection"),
+                          t("dashboard.recentActivityLot"),
+                          t("dashboard.recentActivityEntry"),
+                          t("dashboard.recentActivityExit"),
+                          t("dashboard.recentActivityDate"),
+                        ].map((h) => (
                           <th key={h} style={{ color: "#666", fontSize: 11, padding: "0.6rem", borderBottom: "1px solid #1a1a0a", textAlign: "center" }}>
                             {h}
                           </th>
@@ -511,27 +523,27 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                           <td colSpan={6} style={{ textAlign: "center", color: "#444", padding: "2.2rem 0" }}>
                             📈
                             <br />
-                            لا توجد صفقات حتى الآن
+                            {t("dashboard.recentActivityEmpty1")}
                             <br />
-                            ابدأ التداول لرؤية صفقاتك هنا
+                            {t("dashboard.recentActivityEmpty2")}
                           </td>
                         </tr>
                       ) : (
-                        recentTrades.map((t) => (
-                          <tr key={t.id}>
-                            <td style={cellStyle}>{t.asset}</td>
-                            <td style={{ ...cellStyle, color: t.direction === "buy" ? GREEN : RED }}>{t.direction === "buy" ? "▲ شراء" : "▼ بيع"}</td>
-                            <td style={cellStyle}>{t.lot}</td>
-                            <td style={cellStyle}>{t.entry}</td>
-                            <td style={cellStyle}>{t.tp}</td>
-                            <td style={cellStyle}>{t.date}</td>
+                        recentTrades.map((t2) => (
+                          <tr key={t2.id}>
+                            <td style={cellStyle}>{t2.asset}</td>
+                            <td style={{ ...cellStyle, color: t2.direction === "buy" ? GREEN : RED }}>{t2.direction === "buy" ? t("dashboard.buy") : t("dashboard.sell")}</td>
+                            <td style={cellStyle}>{t2.lot}</td>
+                            <td style={cellStyle}>{t2.entry}</td>
+                            <td style={cellStyle}>{t2.tp}</td>
+                            <td style={cellStyle}>{t2.date}</td>
                           </tr>
                         ))
                       )}
                     </tbody>
                   </table>
                 </div>
-                <OpenWorkspaceLink href="/backtest" label="عرض جميع الصفقات" />
+                <OpenWorkspaceLink href="/backtest" label={t("dashboard.viewAllTrades")} />
               </div>
 
               {/* ============ Continue Learning ============ */}
@@ -539,10 +551,10 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                 <SectionTitle>🎓 Continue Learning</SectionTitle>
                 <p style={{ color: "#ccc", fontSize: 13, lineHeight: 1.9, margin: 0, flex: 1 }}>
                   {currentStreak > 0
-                    ? `عندك ${currentStreak} يوم متتالي 🔥 — كمّل رحلتك التعليمية وحافظ على تتابعك.`
-                    : "تابع محاضراتك وابنِ أساسك بالتحليل الفني والإدارة المالية من صفحة المحاضرات."}
+                    ? t("dashboard.streakText", { days: currentStreak })
+                    : t("dashboard.noStreakText")}
                 </p>
-                <OpenWorkspaceLink href="/courses" />
+                <OpenWorkspaceLink href="/courses" label={t("dashboard.openWorkspace")} />
               </div>
             </div>
 
@@ -550,9 +562,9 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
             <div style={{ ...cardStyle, padding: "1.3rem", marginBottom: "1.4rem" }}>
               <SectionTitle>🔔 Latest Notifications</SectionTitle>
               {notifLoading ? (
-                <p style={{ color: "#555", fontSize: 12, margin: 0 }}>...جاري التحميل</p>
+                <p style={{ color: "#555", fontSize: 12, margin: 0 }}>{t("dashboard.notificationsLoading")}</p>
               ) : notifications.length === 0 ? (
-                <p style={{ color: "#555", fontSize: 12, margin: 0 }}>لا يوجد إشعارات جديدة حالياً.</p>
+                <p style={{ color: "#555", fontSize: 12, margin: 0 }}>{t("dashboard.notificationsEmpty")}</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
                   {notifications.map((n) => (
@@ -582,9 +594,9 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
 
             {/* ============ Shortcuts ============ */}
             <div style={{ ...cardStyle, padding: "1.3rem" }}>
-              <SectionTitle>🚀 اختصارات إلى الأدوات</SectionTitle>
+              <SectionTitle>{t("dashboard.shortcutsTitle")}</SectionTitle>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.8rem" }}>
-                {SHORTCUTS.map((s) => (
+                {SHORTCUTS_META.map((s) => (
                   <Link
                     key={s.href}
                     href={s.href}
@@ -600,12 +612,12 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                       <span style={{ fontSize: 17 }}>{s.icon}</span>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{s.label}</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{t(s.labelKey)}</span>
                       {s.href === "/live-sessions" && liveSession && (
-                        <span style={{ fontSize: 9, fontWeight: 800, color: RED, border: `1px solid ${RED}55`, borderRadius: 20, padding: "1px 6px" }}>● مباشر الآن</span>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: RED, border: `1px solid ${RED}55`, borderRadius: 20, padding: "1px 6px" }}>{t("dashboard.liveNow")}</span>
                       )}
                     </div>
-                    <p style={{ margin: 0, fontSize: 11.5, color: "#777", lineHeight: 1.6 }}>{s.desc}</p>
+                    <p style={{ margin: 0, fontSize: 11.5, color: "#777", lineHeight: 1.6 }}>{t(s.descKey)}</p>
                   </Link>
                 ))}
               </div>
