@@ -166,8 +166,7 @@ export default function PaymentsPanel() {
         ))}
       </div>
 
-      {error && <div style={{ color: "#E5484D", marginBottom: "1rem" }}>{error}</div>}
-      }
+      {error && <div style={{ color: "#ef5350", marginBottom: "1rem" }}>{error}</div>}
       {loading ? (
         <div style={{ color: "#888" }}>...جاري التحميل</div>
       ) : (
@@ -270,7 +269,6 @@ export default function PaymentsPanel() {
                       <div style={{ fontWeight: 700 }}>{w.network} · {w.currency}</div>
                       <div style={{ color: "#aaa", fontSize: "0.8rem", fontFamily: "monospace", marginTop: "0.2rem" }}>{w.address}</div>
                       {w.label && <div style={{ color: "#555", fontSize: "0.75rem", marginTop: "0.2rem" }}>{w.label}</div>}
-                      }
                     </div>
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                       <button onClick={() => toggleWallet(w.id, !w.is_active)} style={{ ...s.btn, ...(w.is_active ? s.btnGold : {}) }}>
@@ -281,7 +279,6 @@ export default function PaymentsPanel() {
                   </div>
                 ))}
                 {wallets.length === 0 && <div style={{ color: "#666" }}>ما في محافظ مضافة بعد.</div>}
-                }
               </div>
             </div>
           )}
@@ -326,7 +323,7 @@ export default function PaymentsPanel() {
       {toast && (
         <div style={{
           position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)",
-          background: toast.isError ? "#E5484D" : gold, color: "#111", padding: "0.7rem 1.4rem",
+          background: toast.isError ? "#F6465D" : gold, color: "#111", padding: "0.7rem 1.4rem",
           borderRadius: 10, fontWeight: 700, fontSize: "0.85rem", zIndex: 999,
         }}>
           {toast.msg}

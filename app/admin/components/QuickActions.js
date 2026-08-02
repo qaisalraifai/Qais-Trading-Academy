@@ -12,7 +12,7 @@ const menuItems = [
 ];
 
 const inputStyle = {
-  background: "#0D0E10",
+  background: "#0d0d0d",
   border: "1px solid #222",
   color: "#eee",
   padding: "0.6rem 0.8rem",
@@ -31,7 +31,7 @@ function Modal({ title, onClose, onSubmit, children, submitLabel = "تأكيد" 
         <h3 style={{ margin: "0 0 1.1rem", fontSize: "1rem", color: "#EAECEF" }}>{title}</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>{children}</div>
         <div style={{ display: "flex", gap: "0.6rem", marginTop: "1.3rem" }}>
-          <button onClick={onSubmit} style={{ background: `linear-gradient(135deg, ${gold}, #D4A05A)`, color: "#000", border: "none", padding: "0.6rem 1.2rem", borderRadius: 10, fontWeight: 700, cursor: "pointer", flex: 1 }}>
+          <button onClick={onSubmit} style={{ background: `linear-gradient(135deg, ${gold}, #9C7A22)`, color: "#000", border: "none", padding: "0.6rem 1.2rem", borderRadius: 10, fontWeight: 700, cursor: "pointer", flex: 1 }}>
             {submitLabel}
           </button>
           <button onClick={onClose} style={{ background: "none", border: "1px solid #222", color: "#999", padding: "0.6rem 1.2rem", borderRadius: 10, cursor: "pointer" }}>
@@ -89,7 +89,7 @@ export default function QuickActions({ users, onAddUser, onNotifyBroadcast, onCr
             width: 56,
             height: 56,
             borderRadius: "50%",
-            background: `linear-gradient(135deg, ${gold}, #D4A05A)`,
+            background: `linear-gradient(135deg, ${gold}, #9C7A22)`,
             border: "none",
             color: "#000",
             fontSize: "1.6rem",
@@ -110,8 +110,6 @@ export default function QuickActions({ users, onAddUser, onNotifyBroadcast, onCr
           <input placeholder="كلمة المرور" type="password" style={inputStyle} onChange={set("password")} />
           <select style={inputStyle} onChange={set("plan")} defaultValue="member">
             {["trial", "member", "vip", "elite"].map((p) => <option key={p} value={p}>{p}</option>)}
-            )
-            }
           </select>
         </Modal>
       )}
@@ -121,8 +119,6 @@ export default function QuickActions({ users, onAddUser, onNotifyBroadcast, onCr
           <select style={inputStyle} onChange={set("userId")} defaultValue="">
             <option value="" disabled>اختر المستخدم</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
-            )
-            }
           </select>
           <input placeholder="عدد الأيام (مثلاً 30)" type="number" style={inputStyle} onChange={set("days")} />
         </Modal>
@@ -140,8 +136,6 @@ export default function QuickActions({ users, onAddUser, onNotifyBroadcast, onCr
           <select style={inputStyle} onChange={set("userId")} defaultValue="">
             <option value="" disabled>اختر المستخدم</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
-            )
-            }
           </select>
           <input placeholder="عدد الأيام" type="number" style={inputStyle} onChange={set("days")} />
         </Modal>
@@ -152,8 +146,6 @@ export default function QuickActions({ users, onAddUser, onNotifyBroadcast, onCr
           <select style={inputStyle} onChange={set("userId")} defaultValue="">
             <option value="" disabled>اختر المستخدم</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
-            )
-            }
           </select>
           <input placeholder="نسبة الخصم %" type="number" style={inputStyle} onChange={set("percent")} />
         </Modal>
