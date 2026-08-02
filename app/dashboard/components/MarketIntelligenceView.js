@@ -303,17 +303,37 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         throw new Error(t("radar.insufficientData"));
       }
 
+      // SMT (توثيق RADAR الجديد، الفصل ٥/٦: "SMT مؤكد على 1H أو 15M") — نجيب
+      // الفريمين للأصل المترابط عشان المحرك يقدر يفحصهم بالترتيب (H1 أولاً)
       let correlated = null;
       const corrSymbol = getCorrelatedSymbol(symbol);
       if (corrSymbol) {
         const corrYahoo = getAssetByValue(corrSymbol)?.yahoo || YAHOO_OVERRIDE[corrSymbol];
         if (corrYahoo) {
-          const corrH1 = await fetchCandles(corrYahoo, "1h", 300);
-          if (corrH1?.length >= 30) correlated = { symbol: corrSymbol, candlesByTF: { h1: corrH1 } };
+          const [corrH1, corrM15] = await Promise.all([
+            fetchCandles(corrYahoo, "1h", 300),
+            fetchCandles(corrYahoo, "15min", 300),
+          ]);
+          if (corrH1?.length >= 30 || corrM15?.length >= 30) {
+            correlated = { symbol: corrSymbol, candlesByTF: { h1: corrH1 || [], m15: corrM15 || [] } };
+          }
         }
       }
 
-      const analysis = analyzeSymbol({ symbol, candlesByTF, correlated });
+      // فلتر الأخبار الاقتصادية (الفصل ٩) — ما بيوقف الصفحة لو فشل الطلب، بس
+      // بيمنع اعتماد الصفقة لو في خبر مهم قريب فعلاً
+      let newsBlocked = null;
+      try {
+        const newsRes = await fetch(`/api/economic-events/news-block?symbols=${encodeURIComponent(symbol)}`);
+        if (newsRes.ok) {
+          const newsData = await newsRes.json();
+          newsBlocked = newsData?.blocked?.[symbol] || null;
+        }
+      } catch {
+        // فشل جلب الأخبار لا يوقف التحليل — بس ما في فلترة أخبار لهالمرة
+      }
+
+      const analysis = analyzeSymbol({ symbol, candlesByTF, correlated, newsBlocked });
       if (analysis.error) throw new Error(analysis.error);
 
       setAllCandles(candlesByTF);
@@ -708,6 +728,11 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         ? `${qualitySetups} high-quality setup${qualitySetups === 1 ? "" : "s"} ${qualitySetups === 1 ? "is" : "are"} currently forming above 80% confidence.`
         : "No high-quality setups (80%+ confidence) are currently forming — the engine is still scanning."
     );
+    // فلتر الأخبار (الفصل ٩) — تحذير واضح لو أقوى فرصة حالياً محجوبة بسبب خبر مهم قريب
+    const leadNewsBlock = leadAsset?.decision?.newsBlock;
+    if (leadNewsBlock) {
+      lines.push(`⚠ ${leadAssetSymbol} entries are on hold — a high-impact ${leadNewsBlock.currency} event ("${leadNewsBlock.title}") is within the news-safety window.`);
+    }
 
     return { lines, confidence: marketStatus.avgConfidence, biasLbl: marketStatus.biasLbl };
   }, [snapshot, radarItems, marketStatus]);
@@ -1697,6 +1722,26 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
               </div>
             </div>
           </div>
+
+          {r.newsBlock && (
+            <div
+              style={{
+                display: "flex", alignItems: "flex-start", gap: 8,
+                background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.4)",
+                borderRadius: 8, padding: "8px 10px",
+              }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1 }}>⚠️</span>
+              <div style={{ fontSize: 11.5, color: "#f5a3a3", lineHeight: 1.6 }}>
+                <b style={{ color: "#ff6b6b" }}>News Block ({r.newsBlock.currency})</b> — {r.newsBlock.title}
+                {" — "}
+                {r.newsBlock.minutesFromNow >= 0
+                  ? `in ${r.newsBlock.minutesFromNow} min`
+                  : `${Math.abs(r.newsBlock.minutesFromNow)} min ago`}
+                . No new entries until the news-safety window clears.
+              </div>
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: 4, background: "#14161a", borderRadius: 8, padding: 3 }}>
             <button

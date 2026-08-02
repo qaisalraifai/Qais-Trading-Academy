@@ -3,7 +3,8 @@ import { createNotification } from "@/lib/notifications";
 import { fetchYahooCandles } from "@/lib/yahoo-candles";
 import { getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
-import { DEFAULT_RADAR_SYMBOLS, RADAR_TIMEFRAMES, CANDLE_COUNT } from "@/lib/qais/config";
+import { DEFAULT_RADAR_SYMBOLS, RADAR_TIMEFRAMES, CANDLE_COUNT, getSymbolCurrencies, NEWS_BLOCK_WINDOW_MINUTES } from "@/lib/qais/config";
+import { getActiveNewsBlock } from "@/lib/economic-calendar";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -59,6 +60,18 @@ export async function GET(request) {
   const results = [];
   const errors = [];
 
+  // فلتر الأخبار (الفصل ٩) — نكاش النتيجة حسب مجموعة العملات، عشان رموز كتير
+  // بنفس العملة (مثلاً كل أزواج USD) ما تسأل قاعدة البيانات كل وحدة لحالها
+  const newsBlockCache = new Map();
+  async function getNewsBlockFor(symbol) {
+    const currencies = getSymbolCurrencies(symbol);
+    const key = currencies.slice().sort().join("|");
+    if (!newsBlockCache.has(key)) {
+      newsBlockCache.set(key, await getActiveNewsBlock(currencies, NEWS_BLOCK_WINDOW_MINUTES));
+    }
+    return newsBlockCache.get(key);
+  }
+
   for (const symbol of symbols) {
     try {
       const candlesByTF = await getCandles(symbol);
@@ -75,7 +88,8 @@ export async function GET(request) {
       }
 
       const previousState = prevBySymbol[symbol] || null;
-      const result = analyzeSymbol({ symbol, candlesByTF, correlated, previousState });
+      const newsBlocked = await getNewsBlockFor(symbol);
+      const result = analyzeSymbol({ symbol, candlesByTF, correlated, previousState, newsBlocked });
 
       if (result.error) {
         errors.push({ symbol, error: result.error });
