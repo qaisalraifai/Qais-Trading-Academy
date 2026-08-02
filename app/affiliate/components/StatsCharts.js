@@ -150,11 +150,11 @@ export default function StatsCharts({ funnel, series }) {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.8rem", marginBottom: "1.2rem" }}>
               <div style={{ background: "rgba(76,175,80,0.05)", border: "1px solid rgba(76,175,80,0.25)", borderRadius: 12, padding: "1rem", textAlign: "center" }}>
                 <p style={{ color: "#9A9A9A", fontSize: "0.72rem", marginBottom: 6 }}>معدل الاحتفاظ بالعملاء</p>
-                <p style={{ color: "#3DBB6E", fontSize: "1.2rem", fontWeight: 800, fontFamily: monoStack }}>{growth.retentionRate}%</p>
+                <p style={{ color: "#4CAF50", fontSize: "1.2rem", fontWeight: 800, fontFamily: monoStack }}>{growth.retentionRate}%</p>
               </div>
               <div style={{ background: "rgba(246,70,93,0.05)", border: "1px solid rgba(246,70,93,0.25)", borderRadius: 12, padding: "1rem", textAlign: "center" }}>
                 <p style={{ color: "#9A9A9A", fontSize: "0.72rem", marginBottom: 6 }}>معدل إلغاء العملاء</p>
-                <p style={{ color: "#E5484D", fontSize: "1.2rem", fontWeight: 800, fontFamily: monoStack }}>{growth.churnRate}%</p>
+                <p style={{ color: "#F6465D", fontSize: "1.2rem", fontWeight: 800, fontFamily: monoStack }}>{growth.churnRate}%</p>
               </div>
             </div>
 
@@ -163,7 +163,7 @@ export default function StatsCharts({ funnel, series }) {
                 <p style={{ fontWeight: 700, fontSize: "0.88rem", color: "#EAECEF", marginBottom: "0.9rem" }}>
                   العملاء النشطون — آخر 30 يوم
                 </p>
-                <EarningsBarChart rows={growth.activeClientsSeries} color="#3D8BFD" valuePrefix="" />
+                <EarningsBarChart rows={growth.activeClientsSeries} color="#4FA8E0" valuePrefix="" />
               </>
             )}
           </div>

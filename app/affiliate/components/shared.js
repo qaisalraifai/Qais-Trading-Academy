@@ -32,20 +32,20 @@ export function timeAgo(dateStr, t, locale = "ar") {
 }
 
 export const SUB_STATUS_LABELS = {
-  active: { labelKey: "affiliate.subActive", color: "#3DBB6E" },
-  trial: { labelKey: "affiliate.subTrial", color: "#3D8BFD" },
+  active: { labelKey: "affiliate.subActive", color: "#4CAF50" },
+  trial: { labelKey: "affiliate.subTrial", color: "#4FA8E0" },
   expiring: { labelKey: "affiliate.subExpiring", color: "#FF9800" },
   expired: { labelKey: "affiliate.subExpired", color: "#8b8b8b" },
-  suspended: { labelKey: "affiliate.subSuspended", color: "#E5484D" },
-  vip: { labelKey: "affiliate.subVip", color: "#E8B86D" },
+  suspended: { labelKey: "affiliate.subSuspended", color: "#F6465D" },
+  vip: { labelKey: "affiliate.subVip", color: "#B26FE0" },
   none: { labelKey: "affiliate.subNone", color: "#6E7177" },
 };
 
 export const COMMISSION_STATUS_LABELS = {
   none: { labelKey: "affiliate.commNone", color: "#6E7177" },
-  awaiting_lesson: { labelKey: "affiliate.commAwaitingLesson", color: "#3D8BFD" },
+  awaiting_lesson: { labelKey: "affiliate.commAwaitingLesson", color: "#4FA8E0" },
   pending: { labelKey: "affiliate.commPending", color: "#eab308" },
-  ready: { labelKey: "affiliate.commReady", color: "#3DBB6E" },
+  ready: { labelKey: "affiliate.commReady", color: "#4CAF50" },
   paid: { labelKey: "affiliate.commPaid", color: GOLD },
 };
 
@@ -76,7 +76,7 @@ const tipStyles = {
     bottom: "calc(100% + 8px)",
     right: "50%",
     transform: "translateX(50%)",
-    background: "#26282C",
+    background: "#1a1a1a",
     border: `1px solid ${BORDER}`,
     color: "#C8C0B0",
     fontSize: "0.7rem",
@@ -147,7 +147,6 @@ export function EmptyState({ icon = "📭", title, desc }) {
       <div style={{ fontSize: "2rem", marginBottom: 10, opacity: 0.7 }}>{icon}</div>
       <p style={{ color: "#C8C0B0", fontWeight: 700, fontSize: "0.9rem", marginBottom: 4 }}>{title}</p>
       {desc && <p style={{ color: "#6E7177", fontSize: "0.78rem" }}>{desc}</p>}
-      }
     </div>
   );
 }

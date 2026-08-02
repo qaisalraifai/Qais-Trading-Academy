@@ -173,9 +173,7 @@ export default function BatchDetailPage() {
           <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.4rem" }}>
             <span style={statusMeta.badge}>{statusMeta.label}</span>
             {batch.is_default && <span style={s.badgeDefault}>افتراضية</span>}
-            }
             {batch.live_session && <span style={s.badgeLive}>🔴 مباشر الآن</span>}
-            }
             <span style={batch.registration_status === "open" ? s.badgeOpen : s.badgeClosed}>
               {batch.registration_status === "open" ? "التسجيل مفتوح" : "التسجيل مغلق"}
             </span>
@@ -204,7 +202,6 @@ export default function BatchDetailPage() {
           >
             {t.label}
             {!t.ready && <span style={s.tabSoon}>قريبًا</span>}
-            }
           </button>
         ))}
       </nav>
@@ -264,7 +261,7 @@ function OverviewTab({ batch, instructors }) {
         </span>
         {fillPct != null && (
           <div style={s.progressBarBg}>
-            <div style={{ ...s.progressBarFill, width: `${fillPct}%`, backgroundColor: batch.is_full ? "#E5484D" : "#3DBB6E" }} />
+            <div style={{ ...s.progressBarFill, width: `${fillPct}%`, backgroundColor: batch.is_full ? "#F6465D" : "#02C076" }} />
           </div>
         )}
       </div>
@@ -360,7 +357,6 @@ function StudentsTab({ batchId, batch, onTransferred }) {
           </button>
         </form>
         {transferError && <p style={s.errorText}>{transferError}</p>}
-        }
         <p style={s.hint}>تقدم الطالب محفوظ ومش رح يتصفّر — بس رح تصير الدفعة الجديدة هي المرجع من هلأ وطالع.</p>
       </div>
 
@@ -379,8 +375,6 @@ function StudentsTab({ batchId, batch, onTransferred }) {
           <table style={s.table}>
             <thead>
               <tr>{["الطالب", "البريد", "تاريخ التسجيل"].map((h, i) => <th key={i} style={s.th}>{h}</th>)}</tr>
-              )
-              }
             </thead>
             <tbody>
               {students.map((st) => (
@@ -435,8 +429,6 @@ function LiveAttendanceTab({ batchId }) {
           <table style={s.table}>
             <thead>
               <tr>{["الطالب", "الحالة", "أول دخول", "آخر ظهور"].map((h, i) => <th key={i} style={s.th}>{h}</th>)}</tr>
-              )
-              }
             </thead>
             <tbody>
               {detail.students.map((st) => (
@@ -468,7 +460,6 @@ function LiveAttendanceTab({ batchId }) {
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "0.2rem" }}>
                 <span style={{ color: "#EAECEF", fontSize: "0.88rem", fontWeight: 600 }}>
                   {sess.title || "بث مباشر"} {sess.is_active && <span style={s.badgeLive}>🔴 نشط</span>}
-                  }
                 </span>
                 <span style={s.mono}>{fmtDateTime(sess.started_at)}</span>
               </div>
@@ -572,7 +563,7 @@ function AssignmentsTab({ batchId }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#0D0E10", border: "1px solid #222", borderRadius: "6px", padding: "1rem" }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "1rem" }}>
           <label style={s.label}>عنوان الواجب</label>
           <input style={s.input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
 
@@ -591,7 +582,6 @@ function AssignmentsTab({ batchId }) {
           </select>
 
           {error && <p style={s.errorText}>{error}</p>}
-          }
           <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
             <button type="button" onClick={() => setShowForm(false)} style={s.cancelBtn}>إلغاء</button>
             <button type="submit" disabled={saving} style={s.saveBtn}>{saving ? "جاري الحفظ..." : "حفظ"}</button>
@@ -612,7 +602,6 @@ function AssignmentsTab({ batchId }) {
                   {a.title} {a.course ? <span style={s.badgeDefault}>{a.course.icon} {a.course.title}</span> : <span style={s.badgeShared}>عام</span>}
                 </p>
                 {a.description && <p style={{ color: "#999", fontSize: "0.8rem", margin: "0.3rem 0 0" }}>{a.description}</p>}
-                }
                 <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>
                   {a.due_date ? `موعد التسليم: ${a.due_date}` : "بدون موعد محدد"} — {a.submitted_count} تسليم ({a.graded_count} مقيّم)
                 </p>
@@ -678,13 +667,12 @@ function SubmissionsPanel({ assignment, onClose }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
           {submissions.map((sub) => (
-            <div key={sub.id} style={{ background: "#0D0E10", border: "1px solid #222", borderRadius: "6px", padding: "0.85rem 1rem" }}>
+            <div key={sub.id} style={{ background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.85rem 1rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem", flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0 }}>
                   <span style={s.username}>{sub.username}</span> <span style={s.mono}>— {sub.email}</span>
                   <p style={{ ...s.mono, margin: "0.3rem 0 0" }}>سلّم بتاريخ {fmtDateTime(sub.submitted_at)}</p>
                   {sub.note && <p style={{ color: "#ccc", fontSize: "0.82rem", margin: "0.4rem 0 0" }}>{sub.note}</p>}
-                  }
                   {sub.file_path && (
                     <a href={sub.download_url || "#"} target="_blank" rel="noopener noreferrer" style={{ ...s.fileLink, display: "inline-block", marginTop: "0.4rem" }}>
                       📄 {sub.file_name || "الملف المرفوع"}
@@ -795,7 +783,6 @@ function CalendarTab({ batchId, batch }) {
                   <div>
                     <p style={{ margin: 0, fontSize: "0.86rem", fontWeight: 600, color: "#EAECEF" }}>
                       {ev.title} {ev.isActive && <span style={s.badgeLive}>🔴 نشط</span>}
-                      }
                     </p>
                     <p style={{ ...s.mono, margin: "0.2rem 0 0" }}>{meta.label}</p>
                   </div>
@@ -1012,7 +999,6 @@ function QuizzesTab({ batchId }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
         <h3 style={{ ...s.cardTitle, margin: 0 }}>اختبارات الدفعة</h3>
         {selectedLinkId && <button onClick={openAddForm} style={s.saveBtn}>+ اختبار جديد</button>}
-        }
       </div>
 
       {loadingCourses ? (
@@ -1033,7 +1019,7 @@ function QuizzesTab({ batchId }) {
           )}
 
           {showForm && (
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#0D0E10", border: "1px solid #222", borderRadius: "6px", padding: "1rem" }}>
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "1rem" }}>
               <label style={s.label}>عنوان الاختبار</label>
               <input style={s.input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
 
@@ -1047,7 +1033,6 @@ function QuizzesTab({ batchId }) {
               </select>
 
               {error && <p style={s.errorText}>{error}</p>}
-              }
               <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
                 <button type="button" onClick={() => setShowForm(false)} style={s.cancelBtn}>إلغاء</button>
                 <button type="submit" disabled={saving} style={s.saveBtn}>{saving ? "جاري الحفظ..." : "حفظ"}</button>
@@ -1173,7 +1158,7 @@ function QuestionsPanel({ quiz, onClose }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "560px", marginBottom: "1rem", background: "#0D0E10", border: "1px solid #222", borderRadius: "6px", padding: "1rem" }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "560px", marginBottom: "1rem", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "1rem" }}>
           <label style={s.label}>نص السؤال</label>
           <textarea style={{ ...s.input, minHeight: "60px", resize: "vertical", fontFamily: "inherit" }} value={form.question_text} onChange={(e) => setForm({ ...form, question_text: e.target.value })} required />
 
@@ -1197,7 +1182,6 @@ function QuestionsPanel({ quiz, onClose }) {
           )}
 
           {error && <p style={s.errorText}>{error}</p>}
-          }
           <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
             <button type="button" onClick={() => setShowForm(false)} style={s.cancelBtn}>إلغاء</button>
             <button type="submit" disabled={saving} style={s.saveBtn}>{saving ? "جاري الحفظ..." : "حفظ"}</button>
@@ -1212,7 +1196,7 @@ function QuestionsPanel({ quiz, onClose }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           {questions.map((q, idx) => (
-            <div key={q.id} style={{ background: "#0D0E10", border: "1px solid #222", borderRadius: "6px", padding: "0.85rem 1rem" }}>
+            <div key={q.id} style={{ background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.85rem 1rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem" }}>
                 <p style={{ margin: 0, fontSize: "0.86rem", fontWeight: 600, color: "#EAECEF" }}>{idx + 1}. {q.question_text}</p>
                 <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0 }}>
@@ -1222,7 +1206,7 @@ function QuestionsPanel({ quiz, onClose }) {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: "0.5rem" }}>
                 {q.options.map((opt, i) => (
-                  <span key={i} style={{ fontSize: "0.8rem", color: i === q.correct_option_index ? "#3DBB6E" : "#999" }}>
+                  <span key={i} style={{ fontSize: "0.8rem", color: i === q.correct_option_index ? "#02C076" : "#999" }}>
                     {i === q.correct_option_index ? "✓ " : "— "}{opt}
                   </span>
                 ))}
@@ -1256,7 +1240,6 @@ function AttemptsPanel({ quiz, onClose }) {
       <button onClick={onClose} style={s.cancelBtn}>← رجوع لكل الاختبارات</button>
       <h3 style={{ ...s.cardTitle, marginTop: "0.75rem" }}>نتائج "{quiz.title}"</h3>
       {avgPercent != null && <p style={s.hint}>{attempts.length} محاولة — متوسط النتيجة {avgPercent}%</p>}
-      }
       <hr style={s.hr} />
       {loading ? (
         <p style={s.loading}>جاري التحميل...</p>
@@ -1266,8 +1249,6 @@ function AttemptsPanel({ quiz, onClose }) {
         <table style={s.table}>
           <thead>
             <tr>{["الطالب", "النتيجة", "النسبة", "تاريخ المحاولة"].map((h, i) => <th key={i} style={s.th}>{h}</th>)}</tr>
-            )
-            }
           </thead>
           <tbody>
             {attempts.map((a) => (
@@ -1475,7 +1456,6 @@ function FilesTab({ batchId }) {
         </label>
       </div>
       {error && <p style={s.errorText}>{error}</p>}
-      }
       <hr style={s.hr} />
 
       {batchCourses.length > 1 && files.length > 0 && (
@@ -1575,7 +1555,6 @@ function AnnouncementsTab({ batchId }) {
           ))}
         </select>
         {error && <p style={s.errorText}>{error}</p>}
-        }
         <button type="submit" disabled={sending} style={{ ...s.saveBtn, alignSelf: "flex-start", marginTop: "0.5rem" }}>
           {sending ? "جاري الإرسال..." : "إرسال للدفعة"}
         </button>
@@ -1594,9 +1573,7 @@ function AnnouncementsTab({ batchId }) {
               <div style={{ minWidth: 0 }}>
                 <span style={{ color: "#EAECEF", fontSize: "0.86rem", fontWeight: 700 }}>{a.title}</span>
                 {a.course && <span style={{ ...s.badgeDefault, marginRight: "0.4rem" }}>{a.course.icon} {a.course.title}</span>}
-                }
                 {a.message && <p style={{ color: "#999", fontSize: "0.8rem", margin: "0.35rem 0 0" }}>{a.message}</p>}
-                }
                 <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>{fmtDateTime(a.created_at)}</p>
               </div>
               <span style={s.mono}>{a.recipients_count} طالب</span>
@@ -1654,7 +1631,6 @@ function CertificatesTab({ batchId }) {
       <h3 style={s.cardTitle}>شهادات الدفعة</h3>
       <p style={s.hint}>الشهادة بتصدر تلقائيًا للطالب لما يخلّص 100% من محاضرات دفعته، أو تقدري تصدريها يدويًا بغض النظر عن نسبته.</p>
       {error && <p style={s.errorText}>{error}</p>}
-      }
       <hr style={s.hr} />
       {loading ? (
         <p style={s.loading}>جاري التحميل...</p>
@@ -1669,7 +1645,6 @@ function CertificatesTab({ batchId }) {
                 <p style={{ ...s.mono, margin: "0.25rem 0 0" }}>
                   {st.progress.completed}/{st.progress.total} محاضرة ({st.progress.percent}%)
                   {st.certificate && <> — {st.certificate.is_automatic ? "صادرة تلقائيًا" : "صادرة يدويًا"} بتاريخ {fmtDateTime(st.certificate.issued_at)}</>}
-                  }
                 </p>
               </div>
               {st.certificate ? (
@@ -1738,7 +1713,6 @@ function SettingsTab({ batch, instructors, onSaved, onAction, router }) {
           <label style={s.label}>المدربين (اختياري، تقدري تختاري أكتر من وحد)</label>
           <div style={s.checkboxList}>
             {instructors.length === 0 && <p style={s.hint}>ما في مدربين متاحين.</p>}
-            }
             {instructors.map((i) => {
               const checked = form.instructor_ids.includes(i.id);
               return (
@@ -1774,7 +1748,6 @@ function SettingsTab({ batch, instructors, onSaved, onAction, router }) {
           <input type="number" min="1" style={s.input} value={form.seats_total} onChange={(e) => setForm({ ...form, seats_total: e.target.value })} placeholder="اتركيه فاضي = بدون حد أقصى" />
 
           {error && <p style={s.errorText}>{error}</p>}
-          }
           <button type="submit" disabled={saving} style={{ ...s.saveBtn, alignSelf: "flex-start", marginTop: "0.5rem" }}>
             {saving ? "جاري الحفظ..." : "حفظ التعديلات"}
           </button>
@@ -1808,64 +1781,63 @@ function SettingsTab({ batch, instructors, onSaved, onAction, router }) {
           )}
         </div>
         {batch.is_default && <p style={s.hint}>هاي الدفعة الافتراضية للدورة — ما فيها تتحذف ولا تتأرشف.</p>}
-        }
       </div>
     </div>
   );
 }
 
-const gold = "#E8B86D";
+const gold = "#D4AF37";
 const ink = "#0B0E11";
 const s = {
   page: { backgroundColor: ink, color: "#EAECEF", direction: "rtl", fontFamily: "'Inter', sans-serif", minHeight: "100vh", padding: "0 0 4rem" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "2rem 3rem 1rem", borderBottom: "1px solid #0D0E10" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "2rem 3rem 1rem", borderBottom: "1px solid #181A20" },
   headerBack: { color: "#999", fontSize: "0.8rem", textDecoration: "none" },
   headerTitle: { fontSize: "1.5rem", fontWeight: 800, margin: "0.5rem 0 0" },
   tabsBar: { display: "flex", gap: "0.3rem", flexWrap: "wrap", padding: "1rem 3rem 0" },
-  tabBtn: { background: "none", border: "1px solid #0D0E10", color: "#999", padding: "0.55rem 1rem", borderRadius: "6px 6px 0 0", cursor: "pointer", fontSize: "0.82rem", fontFamily: "inherit", display: "flex", alignItems: "center", gap: "0.4rem" },
+  tabBtn: { background: "none", border: "1px solid #181A20", color: "#999", padding: "0.55rem 1rem", borderRadius: "6px 6px 0 0", cursor: "pointer", fontSize: "0.82rem", fontFamily: "inherit", display: "flex", alignItems: "center", gap: "0.4rem" },
   tabBtnActive: { color: gold, borderColor: gold, backgroundColor: "#12100a" },
   tabBtnDisabled: { opacity: 0.5, cursor: "default" },
-  tabSoon: { fontSize: "0.62rem", color: "#666", backgroundColor: "#0D0E10", padding: "0.1rem 0.4rem", borderRadius: "3px" },
-  tabBody: { padding: "1.5rem 3rem 2rem", borderTop: "1px solid #0D0E10" },
+  tabSoon: { fontSize: "0.62rem", color: "#666", backgroundColor: "#181A20", padding: "0.1rem 0.4rem", borderRadius: "3px" },
+  tabBody: { padding: "1.5rem 3rem 2rem", borderTop: "1px solid #181A20" },
   overviewGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" },
-  overviewCard: { display: "flex", flexDirection: "column", gap: "0.4rem", backgroundColor: "#0D0E10", border: "1px solid #0D0E10", borderRadius: "8px", padding: "1.1rem 1.3rem" },
+  overviewCard: { display: "flex", flexDirection: "column", gap: "0.4rem", backgroundColor: "#0d0d0d", border: "1px solid #181A20", borderRadius: "8px", padding: "1.1rem 1.3rem" },
   overviewValue: { fontSize: "1rem", fontWeight: 600, color: "#EAECEF" },
-  card: { backgroundColor: "#0D0E10", border: "1px solid #0D0E10", borderRadius: "8px", padding: "1.3rem" },
+  card: { backgroundColor: "#0d0d0d", border: "1px solid #181A20", borderRadius: "8px", padding: "1.3rem" },
   cardTitle: { fontSize: "1rem", fontWeight: 700, margin: "0 0 0.75rem" },
   hr: { border: "none", borderTop: "1px solid #222", margin: "1rem 0 0.75rem" },
   statLabel: { fontSize: "0.78rem", color: "#666" },
-  progressBarBg: { width: "100%", height: "6px", backgroundColor: "#0D0E10", borderRadius: "999px", overflow: "hidden", marginTop: "0.3rem" },
+  progressBarBg: { width: "100%", height: "6px", backgroundColor: "#181A20", borderRadius: "999px", overflow: "hidden", marginTop: "0.3rem" },
   progressBarFill: { height: "100%", borderRadius: "999px" },
   table: { width: "100%", borderCollapse: "collapse" },
-  th: { backgroundColor: "#0D0E10", padding: "0.85rem 1rem", textAlign: "right", fontSize: "0.76rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111", whiteSpace: "nowrap" },
-  tr: { borderBottom: "1px solid #0D0E10" },
+  th: { backgroundColor: "#181A20", padding: "0.85rem 1rem", textAlign: "right", fontSize: "0.76rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111", whiteSpace: "nowrap" },
+  tr: { borderBottom: "1px solid #0d0d0d" },
   td: { padding: "0.85rem 1rem", fontSize: "0.86rem", verticalAlign: "middle" },
   username: { color: "#EAECEF", fontWeight: 500 },
   mono: { fontFamily: "'JetBrains Mono', monospace", color: "#555", fontSize: "0.8rem" },
   label: { fontSize: "0.82rem", color: "#999", marginTop: "0.5rem" },
-  input: { backgroundColor: "#0D0E10", border: "1px solid #222", color: "#EAECEF", padding: "0.65rem 0.9rem", borderRadius: "4px", fontSize: "0.88rem", outline: "none", fontFamily: "inherit" },
+  input: { backgroundColor: "#181A20", border: "1px solid #222", color: "#EAECEF", padding: "0.65rem 0.9rem", borderRadius: "4px", fontSize: "0.88rem", outline: "none", fontFamily: "inherit" },
   checkboxList: { display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "220px", overflowY: "auto", border: "1px solid #222", borderRadius: "6px", padding: "0.6rem" },
   checkboxRow: { display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "#EAECEF", cursor: "pointer" },
-  moveBtn: { background: "#0D0E10", border: "1px solid #222", color: "#999", width: "22px", height: "18px", fontSize: "0.6rem", cursor: "pointer", borderRadius: "3px", lineHeight: 1 },
+  moveBtn: { background: "#181A20", border: "1px solid #222", color: "#999", width: "22px", height: "18px", fontSize: "0.6rem", cursor: "pointer", borderRadius: "3px", lineHeight: 1 },
   hint: { fontSize: "0.75rem", color: "#555", marginTop: "0.15rem" },
-  errorText: { color: "#E5484D", fontSize: "0.85rem", marginTop: "0.5rem" },
+  errorText: { color: "#ef5350", fontSize: "0.85rem", marginTop: "0.5rem" },
   loading: { textAlign: "center", padding: "2rem", color: "#444" },
   saveBtn: { backgroundColor: gold, color: "#000", border: "none", padding: "0.55rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700 },
   cancelBtn: { background: "none", border: "1px solid #222", color: "#999", padding: "0.5rem 1rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.8rem" },
   btnEdit: { backgroundColor: "#1a2a3a", color: "#5b9bd5", border: "1px solid #2a3a5a", padding: "0.45rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.8rem" },
-  btnDanger: { backgroundColor: "#2a1a1a", color: "#E5484D", border: "1px solid #4a2a2a", padding: "0.45rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.8rem" },
-  btnLive: { backgroundColor: "#E5484D", color: "#fff", border: "none", padding: "0.55rem 1.1rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700, whiteSpace: "nowrap" },
+  btnDanger: { backgroundColor: "#2a1a1a", color: "#ef5350", border: "1px solid #4a2a2a", padding: "0.45rem 0.9rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.8rem" },
+  btnLive: { backgroundColor: "#F6465D", color: "#fff", border: "none", padding: "0.55rem 1.1rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700, whiteSpace: "nowrap" },
   badgeDefault: { fontSize: "0.68rem", backgroundColor: "#1a2a3a", color: "#5b9bd5", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeShared: { fontSize: "0.68rem", backgroundColor: "#0D0E10", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeActive: { fontSize: "0.68rem", backgroundColor: "#0a2a1e", color: "#3DBB6E", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeShared: { fontSize: "0.68rem", backgroundColor: "#181A20", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeActive: { fontSize: "0.68rem", backgroundColor: "#0a2a1e", color: "#02C076", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   badgeUpcoming: { fontSize: "0.68rem", backgroundColor: "#1a2a3a", color: "#5b9bd5", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeEnded: { fontSize: "0.68rem", backgroundColor: "#0D0E10", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeEnded: { fontSize: "0.68rem", backgroundColor: "#181A20", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
   badgeArchived: { fontSize: "0.68rem", backgroundColor: "#2a1a1a", color: "#999", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeLive: { fontSize: "0.68rem", color: "#E5484D", backgroundColor: "#2a1418", padding: "0.15rem 0.5rem", borderRadius: "3px", fontWeight: 700 },
-  badgeOpen: { fontSize: "0.68rem", color: "#3DBB6E", backgroundColor: "#0a2a1e", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeClosed: { fontSize: "0.68rem", color: "#999", backgroundColor: "#0D0E10", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  sessionBtn: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0D0E10", border: "1px solid #222", borderRadius: "6px", padding: "0.75rem 1rem", cursor: "pointer", width: "100%", textAlign: "right", fontFamily: "inherit" },
-  rowItem: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0D0E10", border: "1px solid #222", borderRadius: "6px", padding: "0.65rem 0.9rem", gap: "0.5rem" },
+  badgeLive: { fontSize: "0.68rem", color: "#F6465D", backgroundColor: "#2a1418", padding: "0.15rem 0.5rem", borderRadius: "3px", fontWeight: 700 },
+  badgeOpen: { fontSize: "0.68rem", color: "#02C076", backgroundColor: "#0a2a1e", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeClosed: { fontSize: "0.68rem", color: "#999", backgroundColor: "#181A20", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  sessionBtn: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.75rem 1rem", cursor: "pointer", width: "100%", textAlign: "right", fontFamily: "inherit" },
+  rowItem: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181A20", border: "1px solid #222", borderRadius: "6px", padding: "0.65rem 0.9rem", gap: "0.5rem" },
   fileLink: { color: "#5b9bd5", fontSize: "0.85rem", fontWeight: 600, textDecoration: "none" },
   backBtn: { color: "#999", fontSize: "0.85rem", textDecoration: "none", margin: "0 3rem" },
 };

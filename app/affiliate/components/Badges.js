@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#E8B86D";
-const CARD = "#0D0E10";
+const GOLD = "#D4AF37";
+const CARD = "#0d0d0d";
 const BORDER = "#2B2F36";
 
 export default function Badges() {

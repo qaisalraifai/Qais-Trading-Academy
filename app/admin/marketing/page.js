@@ -84,14 +84,11 @@ export default function AdminMarketingPage() {
       </p>
 
       {error && <div style={s.error}>{error}</div>}
-      }
 
       <form onSubmit={handleAdd} style={s.form}>
         <input style={s.input} placeholder="العنوان" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         <select style={s.input} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
           {TYPES.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
-          )
-          }
         </select>
         <input style={s.input} placeholder="رابط الملف (file_url)" value={form.file_url} onChange={(e) => setForm({ ...form, file_url: e.target.value })} />
         <input style={s.input} placeholder="رابط صورة مصغّرة (اختياري)" value={form.thumbnail_url} onChange={(e) => setForm({ ...form, thumbnail_url: e.target.value })} />
@@ -112,7 +109,6 @@ export default function AdminMarketingPage() {
             </div>
           ))}
           {assets.length === 0 && <p style={{ color: "#555" }}>ما في ملفات لسا.</p>}
-          }
         </div>
       )}
     </div>
@@ -123,14 +119,14 @@ const s = {
   page: { minHeight: "100vh", background: "#0B0E11", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EAECEF", padding: "2.5rem 1.5rem", maxWidth: 1000, margin: "0 auto" },
   title: { fontSize: "1.6rem", fontWeight: 800, marginBottom: 6, color: gold },
   sub: { color: "#8a8378", fontSize: "0.88rem", marginBottom: "1.8rem", lineHeight: 1.7 },
-  error: { background: "#2a0d0d", border: "1px solid #E5484D44", color: "#E5484D", padding: "0.7rem 1rem", borderRadius: 8, marginBottom: "1rem", fontSize: "0.85rem" },
-  form: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.7rem", background: "#0D0E10", border: "1px solid #2B2F36", borderRadius: 12, padding: "1.2rem", marginBottom: "2rem" },
+  error: { background: "#2a0d0d", border: "1px solid #F6465D44", color: "#F6465D", padding: "0.7rem 1rem", borderRadius: 8, marginBottom: "1rem", fontSize: "0.85rem" },
+  form: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.7rem", background: "#0d0d0d", border: "1px solid #2B2F36", borderRadius: 12, padding: "1.2rem", marginBottom: "2rem" },
   input: { background: "#080808", border: "1px solid #2B2F36", color: "#EAECEF", padding: "0.7rem 0.9rem", borderRadius: 6, fontSize: "0.85rem" },
   btn: { background: gold, color: "#080600", border: "none", padding: "0.7rem 1.2rem", borderRadius: 6, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", gridColumn: "1 / -1" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1rem" },
-  card: { background: "#0D0E10", border: "1px solid #2B2F36", borderRadius: 10, padding: "1.1rem" },
+  card: { background: "#0d0d0d", border: "1px solid #2B2F36", borderRadius: 10, padding: "1.1rem" },
   cardTitle: { fontWeight: 700, fontSize: "0.9rem", marginBottom: 4 },
   cardType: { color: "#6E7177", fontSize: "0.75rem", marginBottom: 10 },
   link: { color: gold, fontSize: "0.8rem", textDecoration: "none", display: "block", marginBottom: 10 },
-  deleteBtn: { background: "transparent", border: "1px solid #E5484D55", color: "#E5484D", padding: "0.4rem 0.8rem", borderRadius: 6, fontSize: "0.75rem", cursor: "pointer" },
+  deleteBtn: { background: "transparent", border: "1px solid #F6465D55", color: "#F6465D", padding: "0.4rem 0.8rem", borderRadius: 6, fontSize: "0.75rem", cursor: "pointer" },
 };

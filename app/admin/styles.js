@@ -1,11 +1,11 @@
 // تصميم فخم مطابق لنظام Aureus: أسود+ذهبي، خطوط Sora/Inter/JetBrains Mono،
 // زجاج (glass) بتشبع لوني، وظلال فخمة (luxe/gold). كل الألوان مركزية هون.
 //
-// ملاحظة مهمة: `gold` تبقى hex عادي (#E8B86D) عن قصد — كذا كل مكان بالكود
+// ملاحظة مهمة: `gold` تبقى hex عادي (#D4AF37) عن قصد — كذا كل مكان بالكود
 // القديم بيعمل `${gold}55` أو `gold + "44"` (ألفا بصيغة hex) بضل شغال متل
 // ما هو. التدرجات/الظلال الجديدة (OKLCH) منفصلة بتوكنز جديدة تحت.
 
-export const gold = "#E8B86D";
+export const gold = "#D4AF37";
 export const goldLight = "#E4C97A";
 export const ink = "#0B0E11";
 export const panel = "#0b0b0a";
@@ -18,21 +18,21 @@ export const goldSoft = "oklch(0.88 0.09 90)";
 export const goldDeep = "oklch(0.66 0.14 78)";
 
 export const statusColors = {
-  active: "#3DBB6E",
+  active: "#4CAF50",
   expiring: "#FF9800",
   expired: "#8b8b8b",
-  vip: "#E8B86D",
-  trial: "#3D8BFD",
+  vip: "#B26FE0",
+  trial: "#4FA8E0",
   suspended: "#555555",
 };
 
 export const planColors = {
   owner: { bg: "#3a2a0044", fg: "#F3C339", border: "#F3C33955" },
-  admin: { bg: "#2a1a3a44", fg: "#E8B86D", border: "#E8B86D55" },
-  vip: { bg: "#1a2a3a44", fg: "#3D8BFD", border: "#3D8BFD55" },
+  admin: { bg: "#2a1a3a44", fg: "#B26FE0", border: "#B26FE055" },
+  vip: { bg: "#1a2a3a44", fg: "#4FA8E0", border: "#4FA8E055" },
   elite: { bg: "#3a2a0044", fg: gold, border: gold + "55" },
   member: { bg: "#1c1c1c", fg: "#9a9a9a", border: "#2A2E39" },
-  trial: { bg: "#12242f", fg: "#3D8BFD", border: "#1c3d4f" },
+  trial: { bg: "#12242f", fg: "#4FA8E0", border: "#1c3d4f" },
 };
 
 // خلفية الصفحة: نفس التدرج الأساسي + شعاعين ذهبيين خافتين (Ambient glow) متل Aureus
@@ -87,7 +87,7 @@ export const s = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "2rem 3rem",
-    borderBottom: "1px solid #0D0E10",
+    borderBottom: "1px solid #181A20",
     flexWrap: "wrap",
     gap: "1rem",
   },
@@ -138,7 +138,7 @@ export const s = {
     fontWeight: 700,
     boxShadow: shadowGold,
   },
-  btnDanger: { borderColor: "#4a2a2a", color: "#E5484D" },
+  btnDanger: { borderColor: "#4a2a2a", color: "#ef5350" },
 };
 
 export function daysLeftColor(days) {

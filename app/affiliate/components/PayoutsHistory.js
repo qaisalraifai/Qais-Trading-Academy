@@ -3,8 +3,8 @@ import { GOLD, BORDER, card, sectionTitle, sectionEyebrow, monoStack, fmt, fmtDa
 
 const PAYOUT_STATUS_LABELS = {
   awaiting_transfer: { label: "بانتظار التحويل", color: "#eab308" },
-  paid: { label: "تم الدفع", color: "#3DBB6E" },
-  failed: { label: "فشل التحويل", color: "#E5484D" },
+  paid: { label: "تم الدفع", color: "#4CAF50" },
+  failed: { label: "فشل التحويل", color: "#F6465D" },
 };
 
 const METHOD_LABELS = { paypal: "PayPal", wise: "Wise", bank: "تحويل بنكي" };

@@ -1,8 +1,8 @@
 "use client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#E8B86D";
-const CARD = "#0D0E10";
+const GOLD = "#D4AF37";
+const CARD = "#0d0d0d";
 const BORDER = "#2B2F36";
 
 export default function TreeAndCommissionsExplainer() {
@@ -23,7 +23,7 @@ export default function TreeAndCommissionsExplainer() {
       </div>
 
       {/* شرح الشجرة الثنائية ببساطة */}
-      <div style={{ background: "#0D0E10", borderRadius: 12, padding: "1.2rem 1.4rem", marginBottom: "1.5rem" }}>
+      <div style={{ background: "#181A20", borderRadius: 12, padding: "1.2rem 1.4rem", marginBottom: "1.5rem" }}>
         <div style={{ fontWeight: 700, marginBottom: 8, fontSize: "0.9rem" }}>{t("affiliate.treeIdeaTitle")}</div>
         <div style={{ fontSize: "0.85rem", color: "#bbb", lineHeight: 2 }}>{t("affiliate.treeIdeaText")}</div>
       </div>
@@ -32,7 +32,7 @@ export default function TreeAndCommissionsExplainer() {
       <div style={{ fontWeight: 700, marginBottom: "0.8rem", fontSize: "0.9rem" }}>{t("affiliate.treeEightSourcesTitle")}</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.8rem", marginBottom: "1.6rem" }}>
         {BONUS_ITEMS.map((b) => (
-          <div key={b.title} style={{ background: "#0D0E10", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "0.9rem 1rem" }}>
+          <div key={b.title} style={{ background: "#181A20", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "0.9rem 1rem" }}>
             <div style={{ fontSize: "1.1rem", marginBottom: 4 }}>{b.icon} <span style={{ fontWeight: 700, fontSize: "0.85rem" }}>{b.title}</span></div>
             <div style={{ fontSize: "0.75rem", color: "#888", lineHeight: 1.6 }}>{b.desc}</div>
           </div>
@@ -44,12 +44,11 @@ export default function TreeAndCommissionsExplainer() {
       <div style={{ display: "flex", gap: "0.6rem", overflowX: "auto", paddingBottom: 4 }}>
         {RANKS.map((r, i) => (
           <div key={r.name} style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
-            <div style={{ background: "#0D0E10", border: `1px solid ${GOLD}44`, borderRadius: 10, padding: "0.7rem 1rem", textAlign: "center", minWidth: 130 }}>
+            <div style={{ background: "#181A20", border: `1px solid ${GOLD}44`, borderRadius: 10, padding: "0.7rem 1rem", textAlign: "center", minWidth: 130 }}>
               <div style={{ fontWeight: 700, color: GOLD, fontSize: "0.85rem" }}>{r.name}</div>
               <div style={{ fontSize: "0.7rem", color: "#888", marginTop: 2 }}>{r.req}</div>
             </div>
             {i < RANKS.length - 1 && <div style={{ color: "#444" }}>←</div>}
-            }
           </div>
         ))}
       </div>

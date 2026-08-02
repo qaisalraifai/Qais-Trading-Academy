@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { playBeep } from "@/lib/beep";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#E8B86D";
-const CARD = "#0D0E10";
+const GOLD = "#D4AF37";
+const CARD = "#0d0d0d";
 const BORDER = "#2B2F36";
 
 const ICONS = {
@@ -74,12 +74,11 @@ export default function RecentActivity() {
       ) : (
         <div style={{ maxHeight: 320, overflowY: "auto" }}>
           {items.map((n, i) => (
-            <div key={n.id} style={{ ...s.row, borderBottom: i < items.length - 1 ? `1px solid #0D0E10` : "none" }}>
+            <div key={n.id} style={{ ...s.row, borderBottom: i < items.length - 1 ? `1px solid #181A20` : "none" }}>
               <span style={s.icon}>{ICONS[n.type] || "⚪"}</span>
               <div style={{ flex: 1 }}>
                 <p style={s.title}>{n.title}</p>
                 {n.message && <p style={s.msg}>{n.message}</p>}
-                }
                 <p style={s.time}>{timeAgo(n.created_at, t)}</p>
               </div>
             </div>
@@ -94,8 +93,8 @@ const s = {
   card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "1.6rem", marginBottom: "1.2rem" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" },
   sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD },
-  liveTag: { display: "flex", alignItems: "center", gap: 5, fontSize: "0.7rem", color: "#3DBB6E" },
-  liveDot: { width: 6, height: 6, borderRadius: "50%", background: "#3DBB6E", boxShadow: "0 0 6px #3DBB6E" },
+  liveTag: { display: "flex", alignItems: "center", gap: 5, fontSize: "0.7rem", color: "#4CAF50" },
+  liveDot: { width: 6, height: 6, borderRadius: "50%", background: "#4CAF50", boxShadow: "0 0 6px #4CAF50" },
   empty: { color: "#555", fontSize: "0.85rem" },
   row: { display: "flex", gap: 10, padding: "0.7rem 0" },
   icon: { fontSize: "1rem" },

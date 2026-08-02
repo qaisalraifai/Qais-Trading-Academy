@@ -80,7 +80,6 @@ function StatPill({ big, small, sub, color = GOLD }) {
       <p style={{ fontFamily: monoStack, fontSize: 26, fontWeight: 800, color, marginBottom: 4 }}>{big}</p>
       <p style={{ fontSize: 13, fontWeight: 700, color: "#EAECEF", marginBottom: 2 }}>{small}</p>
       {sub && <p style={{ fontSize: 11.5, color: "#8A8A8A", lineHeight: 1.6 }}>{sub}</p>}
-      }
     </div>
   );
 }
@@ -166,7 +165,7 @@ export default function CommissionSystemExplainer({ tiers }) {
 
       {/* تنويه مهم: الشرط */}
       <div style={{ ...card, marginBottom: "1rem", border: "1px solid rgba(79,168,224,0.4)", background: "rgba(79,168,224,0.05)" }} className="qta-animate-in">
-        <p style={{ ...sectionEyebrow, color: "#3D8BFD" }}>مهم</p>
+        <p style={{ ...sectionEyebrow, color: "#4FA8E0" }}>مهم</p>
         <h2 style={sectionTitle}>عمولة التسجيل مش أوتوماتيكية</h2>
         <ul style={{ margin: "0.8rem 0 0", paddingRight: 18, color: "#B8C4CC", fontSize: 12.8, lineHeight: 2 }}>
           <li>لازم الشخص يلي دعوته يكمّل <b style={{ color: "#EAECEF" }}>أول درس فعلياً</b> قبل ما تستحق عمولة التسجيل.</li>
@@ -227,7 +226,7 @@ export default function CommissionSystemExplainer({ tiers }) {
 
       {/* بصراحة تامة */}
       <div style={{ ...card, marginBottom: "1rem", border: "1px solid rgba(246,70,93,0.3)", background: "rgba(246,70,93,0.04)" }} className="qta-animate-in">
-        <p style={{ ...sectionEyebrow, color: "#E5484D" }}>بصراحة تامة</p>
+        <p style={{ ...sectionEyebrow, color: "#F6465D" }}>بصراحة تامة</p>
         <h2 style={sectionTitle}>هاي أمثلة حساب، مش وعد بدخل</h2>
         <ul style={{ margin: "0.8rem 0 0", paddingRight: 18, color: "#C9AEB0", fontSize: 12.5, lineHeight: 1.95 }}>
           <li>كل الأرقام فوق حساب رياضي بسيط على افتراض معيّن — مش أرقام مضمونة لكل شخص.</li>

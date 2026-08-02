@@ -89,7 +89,7 @@ export default function UserDrawer({ userId, onClose, onAction, fetchDetail }) {
         ) : (
           <>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0 1rem" }}>
-              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#1c1c1c,#0D0E10)", border: `2px solid ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", color: gold, fontWeight: 700, overflow: "hidden" }}>
+              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#1c1c1c,#181A20)", border: `2px solid ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", color: gold, fontWeight: 700, overflow: "hidden" }}>
                 {p.avatar_url ? <img src={p.avatar_url} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (p.username || "?").charAt(0).toUpperCase()}
               </div>
               <div style={{ fontSize: "1.05rem", fontWeight: 700 }}>{p.username}</div>
@@ -100,12 +100,10 @@ export default function UserDrawer({ userId, onClose, onAction, fetchDetail }) {
             {editing ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 {["username", "email", "phone", "country"].map((f) => (
-                  <input key={f} placeholder={f} value={form[f] || ""} onChange={(e) => setForm({ ...form, [f]: e.target.value })} style={{ background: "#0D0E10", border: "1px solid #222", color: "#eee", padding: "0.5rem 0.7rem", borderRadius: 8, fontSize: "0.85rem" }} />
+                  <input key={f} placeholder={f} value={form[f] || ""} onChange={(e) => setForm({ ...form, [f]: e.target.value })} style={{ background: "#0d0d0d", border: "1px solid #222", color: "#eee", padding: "0.5rem 0.7rem", borderRadius: 8, fontSize: "0.85rem" }} />
                 ))}
-                <select value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })} style={{ background: "#0D0E10", border: "1px solid #222", color: "#eee", padding: "0.5rem 0.7rem", borderRadius: 8, fontSize: "0.85rem" }}>
+                <select value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })} style={{ background: "#0d0d0d", border: "1px solid #222", color: "#eee", padding: "0.5rem 0.7rem", borderRadius: 8, fontSize: "0.85rem" }}>
                   {["trial", "member", "vip", "elite"].map((pl) => <option key={pl} value={pl}>{pl}</option>)}
-                  )
-                  }
                 </select>
               </div>
             ) : (
@@ -130,15 +128,14 @@ export default function UserDrawer({ userId, onClose, onAction, fetchDetail }) {
             {data.payments?.length ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                 {data.payments.slice(0, 8).map((pay) => (
-                  <div key={pay.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", padding: "0.4rem 0", borderBottom: "1px solid #0D0E10" }}>
+                  <div key={pay.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", padding: "0.4rem 0", borderBottom: "1px solid #181A20" }}>
                     <span style={{ color: "#999" }}>{new Date(pay.created_at).toLocaleDateString("ar")}</span>
-                    <span style={{ color: pay.status === "paid" ? "#3DBB6E" : "#E5484D" }}>{pay.status}</span>
+                    <span style={{ color: pay.status === "paid" ? "#4CAF50" : "#ef5350" }}>{pay.status}</span>
                     <span style={{ fontFamily: monoStack, color: gold }}>${Number(pay.amount).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
             ) : <p style={{ color: "#444", fontSize: "0.8rem" }}>لا يوجد دفعات مسجلة</p>}
-            }
 
             <SectionDivider>Timeline</SectionDivider>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem", maxHeight: 220, overflowY: "auto" }}>
@@ -151,7 +148,6 @@ export default function UserDrawer({ userId, onClose, onAction, fetchDetail }) {
                   </div>
                 </div>
               )) : <p style={{ color: "#444", fontSize: "0.8rem" }}>لا يوجد أنشطة مسجلة</p>}
-              }
             </div>
 
             <SectionDivider>Actions</SectionDivider>
@@ -160,7 +156,7 @@ export default function UserDrawer({ userId, onClose, onAction, fetchDetail }) {
                 <>
                   <button
                     onClick={async () => { await onAction("save_edit", p, form); setEditing(false); }}
-                    style={{ background: `linear-gradient(135deg, ${gold}, #D4A05A)`, color: "#000", border: "none", padding: "0.55rem 1.1rem", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: "0.82rem" }}
+                    style={{ background: `linear-gradient(135deg, ${gold}, #9C7A22)`, color: "#000", border: "none", padding: "0.55rem 1.1rem", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: "0.82rem" }}
                   >
                     حفظ
                   </button>
@@ -170,10 +166,10 @@ export default function UserDrawer({ userId, onClose, onAction, fetchDetail }) {
                 <>
                   <button onClick={() => setEditing(true)} style={actionBtnStyle()}>✏ Edit</button>
                   {p.role !== "admin" && (
-                    <button onClick={() => onAction("activate_free", p)} style={actionBtnStyle("#3DBB6E")}>🎁 تفعيل مجاني</button>
+                    <button onClick={() => onAction("activate_free", p)} style={actionBtnStyle("#4CAF50")}>🎁 تفعيل مجاني</button>
                   )}
                   <button onClick={() => onAction(p.suspended ? "unsuspend" : "suspend", p)} style={actionBtnStyle("#FF9800")}>{p.suspended ? "✅ رفع الإيقاف" : "🚫 Suspend"}</button>
-                  <button onClick={() => onAction("delete", p)} style={actionBtnStyle("#E5484D")}>🗑 Delete</button>
+                  <button onClick={() => onAction("delete", p)} style={actionBtnStyle("#ef5350")}>🗑 Delete</button>
                 </>
               )}
             </div>
