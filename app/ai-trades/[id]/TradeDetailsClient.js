@@ -2,10 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  TrendingUp, TrendingDown, RefreshCw, ArrowRight, CheckCircle2, XCircle,
-  Layers, Waves, GitBranch, GitCommit, Box, Zap as FvgIcon, Radio, Target,
-} from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, ArrowRight, CircleCheck as CheckCircle2, Circle as XCircle, Layers, Waves, GitBranch, GitCommitVertical as GitCommit, Box, Zap as FvgIcon, Radio, Target } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 const GOLD = "#E8B86D";
