@@ -241,6 +241,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
   const [snapshot, setSnapshot] = useState(null);
   const [radarItems, setRadarItems] = useState([]);
+  const [openTradeSymbols, setOpenTradeSymbols] = useState(() => new Set());
   const [newsToday, setNewsToday] = useState({ high: 0 });
   const [sessions, setSessions] = useState(getSessionsStatus());
   const [selectedLiqSymbol, setSelectedLiqSymbol] = useState(null);
@@ -497,6 +498,21 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     } catch {}
   }, []);
 
+  // "Active Opportunities" بتعتمد بس على radarItems (لقطة الكرون) بمعزل عن أي
+  // صفقة مفتوحة فعلياً — هيك ممكن يظهر رمز كـ"Ready" باتجاه معاكس تماماً لصفقة
+  // شغّالة عليه هلق (Chart Sync بيعرض هاي الصفقة المقفلة، مش الفرصة الجديدة،
+  // فبيحس الطالب إنو "ضغط BUY وفتحله SELL"). هون منجيب كل الرموز يلي عندها
+  // صفقة مفتوحة عشان نستثنيها/نميّزها من الفرص "الجاهزة للتنفيذ".
+  const loadOpenTrades = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ai-trades");
+      const data = await res.json();
+      const OPEN_STATUSES = ["Open", "Running", "TP1 Hit", "TP2 Hit", "TP3 Hit", "TP4 Hit"];
+      const symbols = new Set((data.trades || []).filter((t) => OPEN_STATUSES.includes(t.status)).map((t) => t.symbol));
+      setOpenTradeSymbols(symbols);
+    } catch {}
+  }, []);
+
   const loadNews = useCallback(async () => {
     try {
       const supabase = createClient();
@@ -513,12 +529,14 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   useEffect(() => {
     loadSnapshot();
     loadRadar();
+    loadOpenTrades();
     loadNews();
     const t1 = setInterval(loadSnapshot, 120000);
     const t2 = setInterval(loadRadar, 60000);
+    const t2b = setInterval(loadOpenTrades, 60000);
     const t3 = setInterval(loadNews, 300000);
-    return () => { clearInterval(t1); clearInterval(t2); clearInterval(t3); };
-  }, [loadSnapshot, loadRadar, loadNews]);
+    return () => { clearInterval(t1); clearInterval(t2); clearInterval(t2b); clearInterval(t3); };
+  }, [loadSnapshot, loadRadar, loadOpenTrades, loadNews]);
 
   /* ===================== إنشاء الشارت مرة وحدة ===================== */
   useEffect(() => {
@@ -1000,7 +1018,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(240px, 1fr))", gap: "1rem" }}>
         <CurrencyHeatMapCard snapshot={snapshot} trend={currencyTrend} />
         <SessionMapCard sessions={sessions} nowTick={nowTick} />
-        <LiveOpportunitiesCard items={radarItems} onOpen={openOpportunity} nowTick={nowTick} />
+        <LiveOpportunitiesCard items={radarItems} openTradeSymbols={openTradeSymbols} onOpen={openOpportunity} nowTick={nowTick} />
       </div>
 
       {/* ================= LIQUIDITY MAP + PERMANENT ANALYSIS WORKSPACE ================= */}
@@ -2157,7 +2175,7 @@ function SessionTimelineVisual({ sessions, overlap, nowTick }) {
    ============================================================================ */
 const OPP_PREVIEW_COUNT = 5;
 
-function LiveOpportunitiesCard({ items, onOpen, nowTick }) {
+function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
   const { t } = useLocale();
   void nowTick; // يفرض إعادة تقييم "منذ..." كل ثانية لعرض عمر كل صف بدقة
   const [showAll, setShowAll] = useState(false);
@@ -2167,14 +2185,20 @@ function LiveOpportunitiesCard({ items, onOpen, nowTick }) {
   // field the Analysis Panel and every other card read). Everything else is
   // still forming and gets shown as Building/Watching/Monitoring further
   // down — never mislabeled as a ready opportunity.
-  const { ready, forming } = useMemo(() => {
+  //
+  // رمز عليه صفقة QAIS AI مفتوحة فعلياً بيتنقل لقائمة منفصلة (openPositions)
+  // بدل ما يظهر كفرصة "جاهزة" جديدة — هيك ما بيصير التعارض (يشوف الطالب
+  // BUY جاهزة، يضغط، ويلاقي صفقة SELL شغّالة من قبل بدل ما ينفّذ اللي شافه).
+  const { ready, forming, openPositions } = useMemo(() => {
     const order = { green: 0, blue: 1, orange: 2, red: 3, yellow: 4, gray: 5 };
     const byScore = (a, b) =>
       (order[a.radar_status] ?? 9) - (order[b.radar_status] ?? 9) || (b.radar_score ?? b.score ?? 0) - (a.radar_score ?? a.score ?? 0);
-    const ready = items.filter((i) => i.entry_status === "Ready").sort(byScore);
-    const forming = items.filter((i) => i.entry_status !== "Ready").sort(byScore);
-    return { ready, forming };
-  }, [items]);
+    const hasOpenTrade = (i) => openTradeSymbols?.has(i.symbol);
+    const ready = items.filter((i) => i.entry_status === "Ready" && !hasOpenTrade(i)).sort(byScore);
+    const forming = items.filter((i) => i.entry_status !== "Ready" && !hasOpenTrade(i)).sort(byScore);
+    const openPositions = items.filter(hasOpenTrade).sort(byScore);
+    return { ready, forming, openPositions };
+  }, [items, openTradeSymbols]);
 
   const sorted = ready.length ? ready : forming; // fall back to showing forming setups only when nothing is ready yet
   const visible = showAll ? sorted : sorted.slice(0, OPP_PREVIEW_COUNT);
@@ -2190,6 +2214,11 @@ function LiveOpportunitiesCard({ items, onOpen, nowTick }) {
           {!ready.length && (
             <div style={{ fontSize: 10.5, color: GOLD_LIGHT, marginBottom: 8, fontWeight: 700 }}>
               No setup is fully confirmed yet — showing what's currently forming.
+            </div>
+          )}
+          {openPositions.length > 0 && (
+            <div style={{ fontSize: 10.5, color: "#888", marginBottom: 8 }}>
+              {openPositions.length} symbol{openPositions.length > 1 ? "s" : ""} already {"have"} an open trade — hidden from new opportunities until closed.
             </div>
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
