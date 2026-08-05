@@ -1196,11 +1196,15 @@ function ChartInfoBar({ price, dailyChange, atr, volume, lastUpdateAt, nowTick }
    ============================================================================ */
 function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t) {
   const { points, stage } = seq;
+  // لو انلغت السيكونز (نقطة B انكسرت)، ما لازم نوصل الخط لـC ولا نرسمها
+  // إطلاقاً — هيك كان عم يصير: نقطة B مكسورة فعلياً بس الخط عم يوصل لـC
+  // وكأنو الإعداد لسا حي، وهاد مضلّل تماماً.
+  const includeC = stage !== "invalidated" && points.C;
   const pts = [
     ["0", points.origin],
     ["A", points.A],
     ["B", points.B],
-    ...(points.C ? [["C", points.C]] : []),
+    ...(includeC ? [["C", points.C]] : []),
   ]
     .map(([label, p]) => (p ? { label, x: timeToX(p.time), y: priceToY(p.price) } : null))
     .filter((p) => p && p.x != null && p.y != null);
