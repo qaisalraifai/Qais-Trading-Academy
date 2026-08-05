@@ -57,6 +57,26 @@ export async function GET(request) {
     return candleCache.get(symbol);
   }
 
+  // -------- جلب مسبق بالتوازي (مهم بعد زيادة عدد الشموع لكل فريم من 300
+  // لـ5000 لمطابقة الشارت الحي): لو جبنا شموع كل رمز الواحد ورا التاني جوا
+  // الحلقة تحت زي ما كان قبل، ٦٠ ثانية (maxDuration) ممكن ما تكفي مع عدد
+  // رموز أكبر. هون بنجيب الكل مع بعض دفعة وحدة (شامل رموز الـSMT
+  // المترابطة)، وبعدين الحلقة تحت بتقرأ من الكاش مباشرة بدون أي انتظار شبكة
+  // إضافي. --------
+  const symbolsToPrefetch = new Set(symbols);
+  for (const s of symbols) {
+    const corr = getCorrelatedSymbol(s);
+    if (corr) symbolsToPrefetch.add(corr);
+  }
+  // تجميع بالتوازي بس بدفعات محدودة (٤ بالمرة) — أسرع بكتير من وحدة وحدة
+  // بدون ما نضرب حد معدّل طلبات يوهو (Yahoo rate limit) بإطلاق عشرات
+  // الطلبات دفعة وحدة لو الرموز كتار.
+  const prefetchList = [...symbolsToPrefetch];
+  const BATCH_SIZE = 4;
+  for (let i = 0; i < prefetchList.length; i += BATCH_SIZE) {
+    await Promise.all(prefetchList.slice(i, i + BATCH_SIZE).map((s) => getCandles(s)));
+  }
+
   const results = [];
   const errors = [];
 
