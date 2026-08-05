@@ -707,7 +707,9 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     if (!chart) return;
     chart.timeScale().fitContent();
     chart.timeScale().scrollToRealTime();
-    scheduleDraw();
+    // ملاحظة: مافي داعي لاستدعاء رسم يدوي هون — حلقة الـ rAF المستمرة
+    // (paintLoop) بترسم كل فريم طول عمر الشارت وبتلتقط هاد التغيير تلقائياً
+    // بالفريم التالي مباشرة.
   }
 
   function openOpportunity(sym) {
