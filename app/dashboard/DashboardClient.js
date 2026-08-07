@@ -312,8 +312,8 @@ export default function DashboardClient({
                   >
                     <defs>
                       <linearGradient id="qtaBal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0" stopColor="#5FA8E8" stopOpacity="0.22" />
-                        <stop offset="1" stopColor="#5FA8E8" stopOpacity="0" />
+                        <stop offset="0" stopColor="#7C4DFF" stopOpacity="0.22" />
+                        <stop offset="1" stopColor="#7C4DFF" stopOpacity="0" />
                       </linearGradient>
                     </defs>
                     {[0.25, 0.5, 0.75].map((f) => (
@@ -323,7 +323,7 @@ export default function DashboardClient({
                         y1={chartH * f}
                         x2={chartW}
                         y2={chartH * f}
-                        stroke="#1B2438"
+                        stroke="#1E1836"
                         strokeWidth="1"
                         vectorEffect="non-scaling-stroke"
                       />
@@ -332,7 +332,7 @@ export default function DashboardClient({
                     <path
                       d={balPath}
                       fill="none"
-                      stroke="#5FA8E8"
+                      stroke="#7C4DFF"
                       strokeWidth="1.6"
                       strokeLinejoin="round"
                       vectorEffect="non-scaling-stroke"
@@ -340,7 +340,7 @@ export default function DashboardClient({
                     <path
                       d={pnlPath}
                       fill="none"
-                      stroke="#1FBF87"
+                      stroke="#10E5A0"
                       strokeWidth="1.2"
                       strokeDasharray="4 3"
                       strokeLinejoin="round"

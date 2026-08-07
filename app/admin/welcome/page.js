@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { gold, goldOklch, goldDeep, gradientGold, shadowGold, displayStack, fontStack, ink } from "../styles";
 
-function SparklesIcon({ size = 13, color = "#C9A860" }) {
+function SparklesIcon({ size = 13, color = "#DCD4F7" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
@@ -34,7 +34,7 @@ export default function AdminWelcomePage() {
         minHeight: "100vh",
         overflow: "hidden",
         backgroundColor: ink,
-        color: "#EDF1F8",
+        color: "#F5F3FF",
         direction: "rtl",
         fontFamily: fontStack,
       }}
@@ -94,7 +94,7 @@ export default function AdminWelcomePage() {
             padding: "0.3rem 0.9rem",
             fontSize: "11px",
             letterSpacing: "2px",
-            color: "#5D6880",
+            color: "#6E6690",
             fontFamily: "'JetBrains Mono', monospace",
           }}
         >
@@ -129,7 +129,7 @@ export default function AdminWelcomePage() {
           style={{
             margin: "1.25rem auto 0",
             maxWidth: "32rem",
-            color: "#5D6880",
+            color: "#6E6690",
             fontSize: "1.05rem",
             lineHeight: 1.8,
           }}
@@ -149,7 +149,7 @@ export default function AdminWelcomePage() {
               padding: "0 1.4rem",
               borderRadius: 3,
               backgroundImage: gradientGold,
-              color: "#111726",
+              color: "#141024",
               fontWeight: 700,
               fontSize: "0.95rem",
               textDecoration: "none",

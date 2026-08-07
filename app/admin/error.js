@@ -17,7 +17,7 @@ export default function AdminError({ error, reset }) {
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: ink,
-        color: "#EDF1F8",
+        color: "#F5F3FF",
         direction: "rtl",
         fontFamily: fontStack,
         padding: "1.5rem",
@@ -31,7 +31,7 @@ export default function AdminError({ error, reset }) {
         <h1 style={{ fontFamily: displayStack, fontSize: "1.3rem", fontWeight: 700 }}>
           حصل خطأ غير متوقع
         </h1>
-        <p style={{ marginTop: "0.5rem", color: "#5D6880", fontSize: "0.9rem", lineHeight: 1.7 }}>
+        <p style={{ marginTop: "0.5rem", color: "#6E6690", fontSize: "0.9rem", lineHeight: 1.7 }}>
           في مشكلة صارت من طرفنا. جرّب تحدّث الصفحة أو ارجع للوحة التحكم.
         </p>
         <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: "center", gap: "0.6rem" }}>
@@ -45,7 +45,7 @@ export default function AdminError({ error, reset }) {
               padding: "0 1.3rem",
               borderRadius: 3,
               backgroundImage: gradientGold,
-              color: "#111726",
+              color: "#141024",
               border: "none",
               fontWeight: 700,
               fontSize: "0.9rem",
@@ -65,8 +65,8 @@ export default function AdminError({ error, reset }) {
               height: "2.6rem",
               padding: "0 1.3rem",
               borderRadius: 3,
-              border: "1px solid #26314A",
-              color: "#EDF1F8",
+              border: "1px solid #2A2145",
+              color: "#F5F3FF",
               fontSize: "0.9rem",
               textDecoration: "none",
             }}

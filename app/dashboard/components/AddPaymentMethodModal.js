@@ -1,9 +1,10 @@
 "use client";
+import { MessageCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const GOLD = "#C9A860";
-const GOLD_LIGHT = "#E4CD95";
-const GOLD_DARK = "#9C7F42";
+const GOLD = "#DCD4F7";
+const GOLD_LIGHT = "#F5F3FF";
+const GOLD_DARK = "#8A7CB8";
 
 /*
  * مودال إضافة/تحديث طريقة الدفع — من غير ما يودّي المستخدم لصفحة الاشتراك الكاملة ($300).
@@ -88,8 +89,8 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
           maxWidth: 480,
           maxHeight: "90vh",
           overflowY: "auto",
-          background: "#111726",
-          border: `1px solid #3E5478`,
+          background: "#141024",
+          border: `1px solid #3D2F63`,
           borderRadius: 0,
           boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
           padding: "1.6rem",
@@ -102,7 +103,7 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
             style={{
               background: "transparent",
               border: "none",
-              color: "#5D6880",
+              color: "#6E6690",
               fontSize: 18,
               cursor: "pointer",
               lineHeight: 1,
@@ -114,31 +115,31 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
 
         {useIframe && (
           <>
-            <p style={{ fontSize: 12, color: "#5D6880", margin: "0 0 12px" }}>
+            <p style={{ fontSize: 12, color: "#6E6690", margin: "0 0 12px" }}>
               حدّث بطاقتك مباشرة عبر صفحة Paddle الآمنة — ما رح ينخصم أي مبلغ.
             </p>
             <iframe
               src={managementUrls.updatePaymentMethod}
               title="تحديث طريقة الدفع"
-              style={{ width: "100%", height: 560, border: "none", borderRadius: 0, background: "#0C1220" }}
+              style={{ width: "100%", height: 560, border: "none", borderRadius: 0, background: "#0E0A1A" }}
             />
           </>
         )}
 
         {useInlineCheckout && (
           <>
-            <p style={{ fontSize: 12, color: "#5D6880", margin: "0 0 12px" }}>
+            <p style={{ fontSize: 12, color: "#6E6690", margin: "0 0 12px" }}>
               سجّل بطاقتك بأمان — هاي خطوة توثيق فقط بدون رسوم $300 الاشتراك.
             </p>
             <div className="add-card-checkout-container" style={{ width: "100%", minHeight: 300 }}>
-              {!paddle && <p style={{ color: "#5D6880", fontSize: 13, textAlign: "center" }}>...جاري التحميل</p>}
+              {!paddle && <p style={{ color: "#6E6690", fontSize: 13, textAlign: "center" }}>...جاري التحميل</p>}
             </div>
           </>
         )}
 
         {!useIframe && !useInlineCheckout && (
           <div style={{ textAlign: "center", padding: "1rem 0" }}>
-            <p style={{ fontSize: 13, color: "#93A0B8", lineHeight: 1.8, margin: "0 0 16px" }}>
+            <p style={{ fontSize: 13, color: "#A79FC4", lineHeight: 1.8, margin: "0 0 16px" }}>
               ما في طريقة دفع مسجلة عندك لهلق، وإضافة بطاقة لوحدها (من غير اشتراك) لسا مش متاحة تلقائياً من هون.
               تواصل مع فريق الدعم وبيسجلولك بطاقتك يدوياً.
             </p>
@@ -149,7 +150,7 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
                 alignItems: "center",
                 gap: 6,
                 background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                color: "#101828",
+                color: "#120B24",
                 fontWeight: 800,
                 fontSize: 13,
                 padding: "0.6rem 1.3rem",
@@ -157,7 +158,7 @@ export default function AddPaymentMethodModal({ open, onClose, managementUrls })
                 textDecoration: "none",
               }}
             >
-              <span>💬</span><span>تواصل مع الدعم</span>
+              <span><MessageCircle size={14} aria-hidden /></span><span>تواصل مع الدعم</span>
             </a>
           </div>
         )}

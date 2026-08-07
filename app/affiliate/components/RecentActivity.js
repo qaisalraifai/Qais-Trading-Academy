@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { playBeep } from "@/lib/beep";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#C9A860";
-const CARD = "#080B14";
-const BORDER = "#1E2941";
+const GOLD = "#DCD4F7";
+const CARD = "#0A0614";
+const BORDER = "#241C3E";
 
 const ICONS = {
   commission: "💰",
@@ -74,7 +74,7 @@ export default function RecentActivity() {
       ) : (
         <div style={{ maxHeight: 320, overflowY: "auto" }}>
           {items.map((n, i) => (
-            <div key={n.id} style={{ ...s.row, borderBottom: i < items.length - 1 ? `1px solid #111726` : "none" }}>
+            <div key={n.id} style={{ ...s.row, borderBottom: i < items.length - 1 ? `1px solid #141024` : "none" }}>
               <span style={s.icon}>{ICONS[n.type] || "⚪"}</span>
               <div style={{ flex: 1 }}>
                 <p style={s.title}>{n.title}</p>
@@ -93,12 +93,12 @@ const s = {
   card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 0, padding: "1.6rem", marginBottom: "1.2rem" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" },
   sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD },
-  liveTag: { display: "flex", alignItems: "center", gap: 5, fontSize: "0.7rem", color: "#1FBF87" },
-  liveDot: { width: 6, height: 6, borderRadius: "50%", background: "#1FBF87", boxShadow: "0 0 6px #1FBF87" },
-  empty: { color: "#3E4761", fontSize: "0.85rem" },
+  liveTag: { display: "flex", alignItems: "center", gap: 5, fontSize: "0.7rem", color: "#10E5A0" },
+  liveDot: { width: 6, height: 6, borderRadius: "50%", background: "#10E5A0", boxShadow: "0 0 6px #10E5A0" },
+  empty: { color: "#4A4368", fontSize: "0.85rem" },
   row: { display: "flex", gap: 10, padding: "0.7rem 0" },
   icon: { fontSize: "1rem" },
-  title: { fontSize: "0.85rem", color: "#EDF1F8", fontWeight: 600 },
-  msg: { fontSize: "0.78rem", color: "#93A0B8", marginTop: 2, lineHeight: 1.5 },
-  time: { fontSize: "0.7rem", color: "#3E4761", marginTop: 3 },
+  title: { fontSize: "0.85rem", color: "#F5F3FF", fontWeight: 600 },
+  msg: { fontSize: "0.78rem", color: "#A79FC4", marginTop: 2, lineHeight: 1.5 },
+  time: { fontSize: "0.7rem", color: "#4A4368", marginTop: 3 },
 };

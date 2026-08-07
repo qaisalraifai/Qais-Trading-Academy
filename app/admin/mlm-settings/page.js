@@ -89,11 +89,11 @@ export default function MlmSettingsPage() {
         </div>
 
         {error && (
-          <div style={{ color: "#E8495F", marginBottom: "1rem", fontSize: "0.85rem" }}>{error}</div>
+          <div style={{ color: "#FF453A", marginBottom: "1rem", fontSize: "0.85rem" }}>{error}</div>
         )}
 
         {loading ? (
-          <div style={{ color: "#5D6880", padding: "2rem 0" }}>جاري التحميل...</div>
+          <div style={{ color: "#6E6690", padding: "2rem 0" }}>جاري التحميل...</div>
         ) : (
           <div style={{ display: "grid", gap: "1rem", maxWidth: 640 }}>
             {settings.map((row) => (
@@ -111,7 +111,7 @@ export default function MlmSettingsPage() {
               >
                 <div>
                   <div style={{ fontWeight: 700, marginBottom: 4 }}>{row.label_ar}</div>
-                  <div style={{ fontSize: "0.75rem", color: "#5D6880", fontFamily: "monospace" }}>{row.key}</div>
+                  <div style={{ fontSize: "0.75rem", color: "#6E6690", fontFamily: "monospace" }}>{row.key}</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
                   <input
@@ -123,9 +123,9 @@ export default function MlmSettingsPage() {
                       width: 100,
                       padding: "0.5rem 0.7rem",
                       borderRadius: 3,
-                      border: "1px solid #26314A",
-                      background: "#080B14",
-                      color: "#EDF1F8",
+                      border: "1px solid #2A2145",
+                      background: "#0A0614",
+                      color: "#F5F3FF",
                       textAlign: "center",
                       fontFamily: "monospace",
                     }}
@@ -135,7 +135,7 @@ export default function MlmSettingsPage() {
                     disabled={savingKey === row.key || Number(drafts[row.key]) === Number(row.value)}
                     style={{
                       background: gold,
-                      color: "#111726",
+                      color: "#141024",
                       border: "none",
                       borderRadius: 3,
                       padding: "0.55rem 1.1rem",
@@ -153,7 +153,7 @@ export default function MlmSettingsPage() {
           </div>
         )}
 
-        <div style={{ marginTop: "2rem", fontSize: "0.8rem", color: "#5D6880", maxWidth: 640, lineHeight: 1.8 }}>نسبة Infinity Bonus وآلية توزيع Leadership Pool لسا مبنية على افتراضات
+        <div style={{ marginTop: "2rem", fontSize: "0.8rem", color: "#6E6690", maxWidth: 640, lineHeight: 1.8 }}>نسبة Infinity Bonus وآلية توزيع Leadership Pool لسا مبنية على افتراضات
           مبدئية (مو محددة حرفيًا بخطة المشروع) — راجعيها قبل تفعيل مبالغ حقيقية.
         </div>
       </div>

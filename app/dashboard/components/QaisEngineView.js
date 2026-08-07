@@ -21,18 +21,18 @@ import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
        الفريم المعروض، لأنها مجرد مستويات سعرية مسقطة بمساحة فارغة يمين آخر شمعة.
    ============================================================================ */
 
-const GOLD = "#C9A860";
-const GOLD_LIGHT = "#E4CD95";
-const GREEN = "#1FBF87";
-const RED = "#E8495F";
-const BLUE = "#5FA8E8";
-const NEUTRAL = "#EDF1F8";
+const GOLD = "#DCD4F7";
+const GOLD_LIGHT = "#F5F3FF";
+const GREEN = "#10E5A0";
+const RED = "#FF453A";
+const BLUE = "#7C4DFF";
+const NEUTRAL = "#F5F3FF";
 const CHART_H = 560;
 const ANIM_MS = 450;
 
 const cardStyle = {
-  background: "#111726",
-  border: `1px solid #26314A`,
+  background: "#141024",
+  border: `1px solid #2A2145`,
   borderRadius: 0,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
 };
@@ -163,15 +163,15 @@ export default function QaisEngineView() {
       if (cancelled || !containerRef.current) return;
 
       const chart = createChart(containerRef.current, {
-        layout: { background: { color: "#0C1220" }, textColor: "#93A0B8" },
+        layout: { background: { color: "#0E0A1A" }, textColor: "#A79FC4" },
         grid: {
           vertLines: { color: "rgba(255,255,255,0.04)" },
           horzLines: { color: "rgba(255,255,255,0.04)" },
         },
         // rightOffset أكبر من الافتراضي عشان يفضّل فراغ كافي بعد آخر شمعة —
         // هوّن بالضبط بترتسم منطقة الـ Sequence/Trade Projection (٤/٩)
-        timeScale: { borderColor: "#26314A", timeVisible: true, secondsVisible: false, rightOffset: 16 },
-        rightPriceScale: { borderColor: "#26314A" },
+        timeScale: { borderColor: "#2A2145", timeVisible: true, secondsVisible: false, rightOffset: 16 },
+        rightPriceScale: { borderColor: "#2A2145" },
         width: containerRef.current.clientWidth,
         height: CHART_H,
         crosshair: { mode: CrosshairMode.Normal },
@@ -318,8 +318,8 @@ export default function QaisEngineView() {
     if (poi) {
       const lo = poi.from ?? poi.level;
       const hi = poi.to ?? poi.level;
-      if (lo != null) add(lo, `#3E5478`, `POI ${poi.type}`);
-      if (hi != null && hi !== lo) add(hi, `#3E5478`, `POI ${poi.type}`);
+      if (lo != null) add(lo, `#3D2F63`, `POI ${poi.type}`);
+      if (hi != null && hi !== lo) add(hi, `#3D2F63`, `POI ${poi.type}`);
     }
     if (r.ob?.eligible && r.ob.status !== "Invalid" && !r.tradeValid) {
       add(r.ob.levels.mt, `${NEUTRAL}88`, `MT (${r.ob.status})`);
@@ -350,18 +350,18 @@ export default function QaisEngineView() {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Sparkles size={15} color={GOLD} />
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#EDF1F8", letterSpacing: 0.3 }}>QAIS SK ENGINE</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#F5F3FF", letterSpacing: 0.3 }}>QAIS SK ENGINE</span>
         </div>
 
-        <div style={{ width: 1, height: 20, background: "#26314A" }} />
+        <div style={{ width: 1, height: 20, background: "#2A2145" }} />
 
         <select
           value={symbol}
           onChange={(e) => setSymbol(e.target.value)}
           style={{
-            background: "#0C1220",
-            color: "#EDF1F8",
-            border: "1px solid #26314A",
+            background: "#0E0A1A",
+            color: "#F5F3FF",
+            border: "1px solid #2A2145",
             borderRadius: 3,
             fontSize: 12.5,
             padding: "5px 8px",
@@ -391,9 +391,9 @@ export default function QaisEngineView() {
                   : ""
               }
               style={{
-                background: displayTF === tf ? `#26314A` : "transparent",
-                border: `1px solid ${displayTF === tf ? GOLD : "#1E2941"}`,
-                color: displayTF === tf ? GOLD_LIGHT : "#5D6880",
+                background: displayTF === tf ? `#2A2145` : "transparent",
+                border: `1px solid ${displayTF === tf ? GOLD : "#241C3E"}`,
+                color: displayTF === tf ? GOLD_LIGHT : "#6E6690",
                 borderRadius: 3,
                 padding: "5px 10px",
                 fontSize: 11.5,
@@ -415,7 +415,7 @@ export default function QaisEngineView() {
             alignItems: "center",
             gap: 5,
             background: "transparent",
-            border: "1px solid #1E2941",
+            border: "1px solid #241C3E",
             color: "#aaa",
             borderRadius: 3,
             padding: "5px 9px",
@@ -434,7 +434,7 @@ export default function QaisEngineView() {
           style={{
             background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
             border: "none",
-            color: "#0C1220",
+            color: "#0E0A1A",
             fontWeight: 700,
             borderRadius: 3,
             padding: "7px 15px",
@@ -487,7 +487,7 @@ function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease) {
   ctx.globalAlpha = ease;
 
   // خط الحركة A→B→C (رفيع، ذهبي خافت)
-  ctx.strokeStyle = `#3E5478`;
+  ctx.strokeStyle = `#3D2F63`;
   ctx.lineWidth = 1.3;
   ctx.beginPath();
   ctx.moveTo(ax, ay);
@@ -506,7 +506,7 @@ function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease) {
     ctx.fillStyle = GOLD_LIGHT;
     ctx.fill();
     ctx.font = "600 10px sans-serif";
-    ctx.fillStyle = "#EDF1F8";
+    ctx.fillStyle = "#F5F3FF";
     ctx.fillText(label, x - 3, y - 8);
   });
 
@@ -564,7 +564,7 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
   ctx.globalAlpha = ease;
 
   // العمود الرأسي الرفيع اللي يوصل بين آخر شمعة ومنطقة المسقط
-  ctx.strokeStyle = `#3E5478`;
+  ctx.strokeStyle = `#3D2F63`;
   ctx.lineWidth = 1;
   ctx.setLineDash([2, 3]);
   ctx.beginPath();
@@ -643,10 +643,10 @@ function drawLevelTick(ctx, x, y, color, title, line1, line2, glow) {
   ctx.fillStyle = color;
   ctx.fillText(title, boxX + 8, boxY + 12);
   ctx.font = "500 9.5px sans-serif";
-  ctx.fillStyle = "#EDF1F8";
+  ctx.fillStyle = "#F5F3FF";
   if (line1) ctx.fillText(line1, boxX + 8, boxY + 25);
   if (line2) {
-    ctx.fillStyle = "#93A0B8";
+    ctx.fillStyle = "#A79FC4";
     ctx.fillText(line2, boxX + 8, boxY + 37);
   }
 }
@@ -668,23 +668,23 @@ function fmt(n) {
 
 /* -------- Score Badge -------- */
 function ScoreBadge({ score, status }) {
-  const STATUS_COLOR = { green: GREEN, orange: "#E0A44A", yellow: "#E0A44A", red: RED, gray: "#5D6880" };
-  const color = STATUS_COLOR[status] || "#5D6880";
+  const STATUS_COLOR = { green: GREEN, orange: "#F0A13C", yellow: "#F0A13C", red: RED, gray: "#6E6690" };
+  const color = STATUS_COLOR[status] || "#6E6690";
   return (
     <div
       style={{
         display: "flex",
         alignItems: "center",
         gap: 7,
-        background: "#111726",
+        background: "#141024",
         border: `1px solid ${color}40`,
         borderRadius: 3,
         padding: "5px 10px",
       }}
     >
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: color }} />
-      <span style={{ fontSize: 10.5, color: "#5D6880" }}>QAIS Score</span>
-      <span style={{ fontSize: 13, fontWeight: 700, color: "#EDF1F8" }}>{score}/100</span>
+      <span style={{ fontSize: 10.5, color: "#6E6690" }}>QAIS Score</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: "#F5F3FF" }}>{score}/100</span>
     </div>
   );
 }
@@ -705,7 +705,7 @@ function AnalysisPanel({ result: r }) {
           ok: r.direction != null,
           name: "TREND",
           result: r.direction === "up" ? "Bullish" : r.direction === "down" ? "Bearish" : "—",
-          color: r.direction === "up" ? GREEN : r.direction === "down" ? RED : "#5D6880",
+          color: r.direction === "up" ? GREEN : r.direction === "down" ? RED : "#6E6690",
           detail: "الاتجاه المعتمد من External Structure/الفريم الأعلى — ما بيتغيّر إلا بعد MSS كامل.",
         },
         {
@@ -748,7 +748,7 @@ function AnalysisPanel({ result: r }) {
           ok: !!r.smt?.valid,
           name: "SMT",
           result: r.smt?.valid ? "Confirmed" : "Not Confirmed",
-          color: r.smt?.valid ? GREEN : "#5D6880",
+          color: r.smt?.valid ? GREEN : "#6E6690",
           detail: r.smt?.symbolB ? `مقارنة مع: ${r.smt.symbolB} — ${r.smt.strength || ""}` : r.smt?.reason || "لا يوجد أصل مترابط معروف لهذا الرمز.",
         },
         {
@@ -756,7 +756,7 @@ function AnalysisPanel({ result: r }) {
           ok: !!ob?.eligible && ob.status !== "Invalid",
           name: "OB",
           result: ob?.eligible ? ob.status : "Not Formed",
-          color: ob?.status === "Strong" || ob?.status === "Normal" ? GREEN : ob?.status === "Weak" ? "#E0A44A" : "#5D6880",
+          color: ob?.status === "Strong" || ob?.status === "Normal" ? GREEN : ob?.status === "Weak" ? "#F0A13C" : "#6E6690",
           detail: r.executionTimeframe ? `${TF_LABELS[r.executionTimeframe]} • ${ob?.direction === "up" ? "صاعد" : "هابط"}` : ob?.reason || "",
         },
         {
@@ -764,7 +764,7 @@ function AnalysisPanel({ result: r }) {
           ok: !!r.tradeValid,
           name: "ENTRY MODEL",
           result: r.executionTimeframe ? `${TF_LABELS[r.executionTimeframe]} ${ob?.direction === "up" ? "Bullish" : "Bearish"} OB` : "—",
-          color: r.tradeValid ? GREEN : "#5D6880",
+          color: r.tradeValid ? GREEN : "#6E6690",
           detail: r.tradeValid ? "كل شروط الدخول اكتملت." : "لسا في شرط أو أكثر ما تحقق — راجع الصفوف فوق.",
         },
         {
@@ -772,7 +772,7 @@ function AnalysisPanel({ result: r }) {
           ok: r.status === "green",
           name: "STATUS",
           result: r.tradeValid ? "Valid Setup" : r.status === "orange" ? "Developing" : r.status === "yellow" ? "Approaching" : "No Setup",
-          color: r.status === "green" ? GREEN : r.status === "red" ? RED : r.status === "orange" ? "#E0A44A" : "#5D6880",
+          color: r.status === "green" ? GREEN : r.status === "red" ? RED : r.status === "orange" ? "#F0A13C" : "#6E6690",
           detail: `QAIS Score: ${r.score}/100`,
         },
       ]
@@ -793,17 +793,17 @@ function AnalysisPanel({ result: r }) {
           cursor: "pointer",
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#EDF1F8" }}>التحليل — QAIS Decision Engine</span>
-        {open ? <ChevronDown size={16} color={GOLD} /> : <ChevronRight size={16} color="#5D6880" />}
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#F5F3FF" }}>التحليل — QAIS Decision Engine</span>
+        {open ? <ChevronDown size={16} color={GOLD} /> : <ChevronRight size={16} color="#6E6690" />}
       </button>
 
       {open && (
         <div style={{ padding: "0 1.1rem 0.9rem" }}>
           {!r ? (
-            <div style={{ color: "#5D6880", fontSize: 12.5, padding: "0.5rem 0" }}>جاري تحميل التحليل...</div>
+            <div style={{ color: "#6E6690", fontSize: 12.5, padding: "0.5rem 0" }}>جاري تحميل التحليل...</div>
           ) : (
             rows.map((row) => (
-              <div key={row.key} style={{ borderTop: "1px solid #111726" }}>
+              <div key={row.key} style={{ borderTop: "1px solid #141024" }}>
                 <button
                   onClick={() => setOpenRow((k) => (k === row.key ? null : row.key))}
                   style={{
@@ -818,17 +818,17 @@ function AnalysisPanel({ result: r }) {
                     textAlign: "right",
                   }}
                 >
-                  <span style={{ color: row.ok ? GREEN : "#3E4761", fontSize: 13 }}>{row.ok ? "✓" : "○"}</span>
+                  <span style={{ color: row.ok ? GREEN : "#4A4368", fontSize: 13 }}>{row.ok ? "✓" : "○"}</span>
                   <span style={{ fontSize: 12.5, color: "#ddd", flex: 1 }}>{row.name}</span>
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: row.color }}>{row.result}</span>
                   <ChevronRight
                     size={13}
-                    color="#3E4761"
+                    color="#4A4368"
                     style={{ transform: openRow === row.key ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}
                   />
                 </button>
                 {openRow === row.key && row.detail && (
-                  <div style={{ fontSize: 11.5, color: "#5D6880", lineHeight: 1.6, padding: "0 22px 10px" }}>{row.detail}</div>
+                  <div style={{ fontSize: 11.5, color: "#6E6690", lineHeight: 1.6, padding: "0 22px 10px" }}>{row.detail}</div>
                 )}
               </div>
             ))
@@ -883,11 +883,11 @@ function TradePlanCard({ result: r, symbol }) {
           cursor: "pointer",
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#EDF1F8", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#F5F3FF", display: "flex", alignItems: "center", gap: 8 }}>
           SEQUENCE PROJECTION
           {ready && <span style={{ width: 6, height: 6, borderRadius: "50%", background: GREEN }} />}
         </span>
-        {open ? <ChevronDown size={16} color={GOLD} /> : <ChevronRight size={16} color="#5D6880" />}
+        {open ? <ChevronDown size={16} color={GOLD} /> : <ChevronRight size={16} color="#6E6690" />}
       </button>
 
       {open && (
@@ -915,7 +915,7 @@ function TradePlanCard({ result: r, symbol }) {
                   width: "100%",
                   background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
                   border: "none",
-                  color: "#0C1220",
+                  color: "#0E0A1A",
                   fontWeight: 700,
                   borderRadius: 3,
                   padding: "8px 0",
@@ -926,7 +926,7 @@ function TradePlanCard({ result: r, symbol }) {
               </button>
             </>
           ) : (
-            <div style={{ fontSize: 11.5, color: "#5D6880", lineHeight: 1.7, padding: "4px 0" }}>
+            <div style={{ fontSize: 11.5, color: "#6E6690", lineHeight: 1.7, padding: "4px 0" }}>
               لسا ما اكتمل الإعداد — رح تظهر Entry وStop Loss والأهداف تلقائياً (على الشارت وهون) لما تتحقق كل شروط الدخول (تاسعاً).
             </div>
           )}
@@ -943,12 +943,12 @@ function PlanRow({ label, value, color, strong }) {
         display: "flex",
         justifyContent: "space-between",
         padding: "5px 0",
-        borderBottom: "1px solid #182033",
+        borderBottom: "1px solid #1C1630",
         background: strong ? `${GREEN}14` : "transparent",
       }}
     >
-      <span style={{ fontSize: 11.5, color: "#5D6880" }}>{label}</span>
-      <span style={{ fontSize: 12.5, fontWeight: 700, color: color || "#EDF1F8" }}>{value}</span>
+      <span style={{ fontSize: 11.5, color: "#6E6690" }}>{label}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 700, color: color || "#F5F3FF" }}>{value}</span>
     </div>
   );
 }

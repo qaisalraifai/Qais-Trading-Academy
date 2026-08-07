@@ -23,9 +23,9 @@ const styles = {
   button: {
     padding: "0.5rem 1rem",
     borderRadius: "3px",
-    border: "1px solid #26314A",
+    border: "1px solid #2A2145",
     backgroundColor: "transparent",
-    color: "#93A0B8",
+    color: "#A79FC4",
     cursor: "pointer",
   },
 };

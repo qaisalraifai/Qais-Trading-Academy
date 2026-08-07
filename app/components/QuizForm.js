@@ -89,7 +89,7 @@ export default function QuizForm({ quizId, questions, studentId }) {
 
 const styles = {
   questionBox: {
-    backgroundColor: "#1E2941",
+    backgroundColor: "#241C3E",
     padding: "1rem",
     borderRadius: "3px",
     marginBottom: "1rem",
@@ -101,13 +101,13 @@ const styles = {
     alignItems: "center",
     padding: "0.5rem",
     borderRadius: "3px",
-    backgroundColor: "#080B14",
+    backgroundColor: "#0A0614",
     cursor: "pointer",
   },
-  optionSelected: { border: "1px solid #1FBF87" },
+  optionSelected: { border: "1px solid #10E5A0" },
   submitButton: {
     padding: "0.75rem 1.5rem",
-    backgroundColor: "#1FBF87",
+    backgroundColor: "#10E5A0",
     color: "#fff",
     border: "none",
     borderRadius: "3px",
@@ -115,13 +115,13 @@ const styles = {
     fontWeight: "bold",
     width: "100%",
   },
-  resultBox: { textAlign: "center", padding: "2rem", backgroundColor: "#1E2941", borderRadius: "0px" },
+  resultBox: { textAlign: "center", padding: "2rem", backgroundColor: "#241C3E", borderRadius: "0px" },
   resultTitle: { marginBottom: "0.5rem" },
-  resultPercent: { fontSize: "2rem", color: "#1FBF87", marginBottom: "1.5rem" },
+  resultPercent: { fontSize: "2rem", color: "#10E5A0", marginBottom: "1.5rem" },
   backButton: {
     display: "inline-block",
     padding: "0.75rem 1.5rem",
-    backgroundColor: "#5FA8E8",
+    backgroundColor: "#7C4DFF",
     color: "#fff",
     borderRadius: "3px",
     textDecoration: "none",

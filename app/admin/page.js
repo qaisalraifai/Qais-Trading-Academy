@@ -262,14 +262,14 @@ export default function AdminPage() {
       <>
       {/* الإحصائيات */}
       <div style={{ ...s.section, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
-        <StatCard icon="👥" label="إجمالي المستخدمين" value={cards?.totalUsers ?? 0} color={gold} sparkline={trend} sub="آخر 30 يوم" />
-        <StatCard icon="🟢" label="نشطون الآن" value={cards?.activeNow ?? 0} color="#1FBF87" sub="آخر 15 دقيقة" />
-        <StatCard icon="💎" label="أعضاء VIP" value={cards?.vipCount ?? 0} color="#B26FE0" />
-        <StatCard icon="📈" label="معدل التجديد" value={cards?.renewalRate ?? 0} suffix="%" color="#5FA8E8" />
-        <StatCard icon="💰" label="الإيرادات الشهرية" value={cards?.monthlyRevenue ?? 0} prefix="$" color={gold} />
-        <StatCard icon="💵" label="الإيرادات الكلية" value={cards?.totalRevenue ?? 0} prefix="$" color={gold} />
+ <StatCard icon="" label="إجمالي المستخدمين" value={cards?.totalUsers ?? 0} color={gold} sparkline={trend} sub="آخر 30 يوم" />
+ <StatCard icon="" label="نشطون الآن" value={cards?.activeNow ?? 0} color="#10E5A0" sub="آخر 15 دقيقة" />
+ <StatCard icon="" label="أعضاء VIP" value={cards?.vipCount ?? 0} color="#B26FE0" />
+ <StatCard icon="" label="معدل التجديد" value={cards?.renewalRate ?? 0} suffix="%" color="#7C4DFF" />
+ <StatCard icon="" label="الإيرادات الشهرية" value={cards?.monthlyRevenue ?? 0} prefix="$" color={gold} />
+ <StatCard icon="" label="الإيرادات الكلية" value={cards?.totalRevenue ?? 0} prefix="$" color={gold} />
         <StatCard icon="⌛" label="تنتهي خلال 7 أيام" value={cards?.expiringSoon ?? 0} color="#FF9800" />
-        <StatCard icon="❌" label="اشتراكات منتهية" value={cards?.expiredCount ?? 0} color="#5D6880" />
+ <StatCard icon="" label="اشتراكات منتهية" value={cards?.expiredCount ?? 0} color="#6E6690" />
       </div>
 
       <div style={s.divider} />
@@ -337,8 +337,8 @@ export default function AdminPage() {
         <div style={{
           position: "fixed", bottom: 28, right: 28, zIndex: 300,
           ...glass, padding: "0.8rem 1.3rem",
-          color: toast.isError ? "#E8495F" : "#1FBF87",
-          borderColor: toast.isError ? "#E8495F55" : "#1FBF8755",
+          color: toast.isError ? "#FF453A" : "#10E5A0",
+          borderColor: toast.isError ? "#FF453A55" : "#10E5A055",
           fontSize: "0.85rem", transition,
         }}>
           {toast.msg}

@@ -36,7 +36,7 @@ function EarningsBarChart({ rows, color = GOLD, valuePrefix = "$" }) {
           />
         ))}
         {!hasData && (
-          <text x={width / 2} y={height / 2} textAnchor="middle" fill="#3E4761" fontSize="12">
+          <text x={width / 2} y={height / 2} textAnchor="middle" fill="#4A4368" fontSize="12">
             ما في بيانات مسجّلة بهاي الفترة بعد
           </text>
         )}
@@ -61,7 +61,7 @@ function EarningsBarChart({ rows, color = GOLD, valuePrefix = "$" }) {
                 x={x + barW / 2}
                 y={height - padding.bottom + 16}
                 textAnchor="middle"
-                fill="#5D6880"
+                fill="#6E6690"
                 fontSize="9"
                 fontFamily="monospace"
               >
@@ -101,19 +101,19 @@ export default function StatsCharts({ funnel, series }) {
       <div style={card} className="qta-animate-in">
         <p style={sectionEyebrow}>الأداء</p>
         <h2 style={sectionTitle}>الإحصائيات</h2>
-        <p style={{ color: "#93A0B8", fontSize: "0.82rem", marginBottom: "1.2rem" }}>تابع أداء رابطك وأرباحك على مر الوقت.</p>
+        <p style={{ color: "#A79FC4", fontSize: "0.82rem", marginBottom: "1.2rem" }}>تابع أداء رابطك وأرباحك على مر الوقت.</p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.8rem", marginBottom: "1.4rem" }}>
           {funnelStats.map((st) => (
             <div key={st.label} style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${BORDER}`, borderRadius: 0, padding: "1rem", textAlign: "center" }}>
-              <p style={{ color: "#93A0B8", fontSize: "0.72rem", marginBottom: 6 }}>{st.label}</p>
+              <p style={{ color: "#A79FC4", fontSize: "0.72rem", marginBottom: 6 }}>{st.label}</p>
               <p style={{ color: GOLD, fontSize: "1.2rem", fontWeight: 800, fontFamily: monoStack }}>{st.value}</p>
             </div>
           ))}
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.6rem", marginBottom: "0.9rem" }}>
-          <p style={{ fontWeight: 700, fontSize: "0.88rem", color: "#EDF1F8" }}>
+          <p style={{ fontWeight: 700, fontSize: "0.88rem", color: "#F5F3FF" }}>
             الأرباح — إجمالي الفترة: <span style={{ color: GOLD, fontFamily: monoStack }}>${fmt(totalForPeriod)}</span>
           </p>
           <div style={{ display: "flex", gap: 6, background: "rgba(255,255,255,0.02)", border: `1px solid ${BORDER}`, borderRadius: 3, padding: 4 }}>
@@ -124,7 +124,7 @@ export default function StatsCharts({ funnel, series }) {
                 style={{
                   border: "none",
                   background: period === p.key ? GOLD : "transparent",
-                  color: period === p.key ? "#111726" : "#93A0B8",
+                  color: period === p.key ? "#141024" : "#A79FC4",
                   fontWeight: 700,
                   fontSize: "0.75rem",
                   padding: "0.4rem 0.9rem",
@@ -140,7 +140,7 @@ export default function StatsCharts({ funnel, series }) {
         </div>
 
         {rows.length === 0 ? (
-          <EmptyState icon="📈" title="ما في بيانات كفاية بعد" desc="ابدأ شارك رابطك وبتظهر أرباحك هون." />
+ <EmptyState icon="" title="ما في بيانات كفاية بعد" desc="ابدأ شارك رابطك وبتظهر أرباحك هون." />
         ) : (
           <EarningsBarChart rows={rows} />
         )}
@@ -149,21 +149,21 @@ export default function StatsCharts({ funnel, series }) {
           <div style={{ marginTop: "1.8rem", paddingTop: "1.4rem", borderTop: `1px solid ${BORDER}` }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.8rem", marginBottom: "1.2rem" }}>
               <div style={{ background: "rgba(76,175,80,0.05)", border: "1px solid rgba(76,175,80,0.25)", borderRadius: 0, padding: "1rem", textAlign: "center" }}>
-                <p style={{ color: "#93A0B8", fontSize: "0.72rem", marginBottom: 6 }}>معدل الاحتفاظ بالعملاء</p>
-                <p style={{ color: "#1FBF87", fontSize: "1.2rem", fontWeight: 800, fontFamily: monoStack }}>{growth.retentionRate}%</p>
+                <p style={{ color: "#A79FC4", fontSize: "0.72rem", marginBottom: 6 }}>معدل الاحتفاظ بالعملاء</p>
+                <p style={{ color: "#10E5A0", fontSize: "1.2rem", fontWeight: 800, fontFamily: monoStack }}>{growth.retentionRate}%</p>
               </div>
               <div style={{ background: "rgba(246,70,93,0.05)", border: "1px solid rgba(246,70,93,0.25)", borderRadius: 0, padding: "1rem", textAlign: "center" }}>
-                <p style={{ color: "#93A0B8", fontSize: "0.72rem", marginBottom: 6 }}>معدل إلغاء العملاء</p>
-                <p style={{ color: "#E8495F", fontSize: "1.2rem", fontWeight: 800, fontFamily: monoStack }}>{growth.churnRate}%</p>
+                <p style={{ color: "#A79FC4", fontSize: "0.72rem", marginBottom: 6 }}>معدل إلغاء العملاء</p>
+                <p style={{ color: "#FF453A", fontSize: "1.2rem", fontWeight: 800, fontFamily: monoStack }}>{growth.churnRate}%</p>
               </div>
             </div>
 
             {growth.activeClientsSeries?.length > 0 && (
               <>
-                <p style={{ fontWeight: 700, fontSize: "0.88rem", color: "#EDF1F8", marginBottom: "0.9rem" }}>
+                <p style={{ fontWeight: 700, fontSize: "0.88rem", color: "#F5F3FF", marginBottom: "0.9rem" }}>
                   العملاء النشطون — آخر 30 يوم
                 </p>
-                <EarningsBarChart rows={growth.activeClientsSeries} color="#5FA8E8" valuePrefix="" />
+                <EarningsBarChart rows={growth.activeClientsSeries} color="#7C4DFF" valuePrefix="" />
               </>
             )}
           </div>

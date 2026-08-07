@@ -2,9 +2,9 @@
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#C9A860";
-const CARD = "#080B14";
-const BORDER = "#1E2941";
+const GOLD = "#DCD4F7";
+const CARD = "#0A0614";
+const BORDER = "#241C3E";
 
 function fmt(n) {
   return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -62,8 +62,8 @@ export default function Leaderboard() {
 const s = {
   card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 0, padding: "1.6rem", marginBottom: "1.2rem" },
   sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD, marginBottom: "0.7rem" },
-  myRank: { color: "#93A0B8", fontSize: "0.85rem", marginBottom: "1rem" },
+  myRank: { color: "#A79FC4", fontSize: "0.85rem", marginBottom: "1rem" },
   table: { width: "100%", borderCollapse: "collapse" },
-  th: { textAlign: "right", color: "#5D6880", fontSize: "0.75rem", padding: "0.6rem", borderBottom: `1px solid ${BORDER}` },
-  td: { padding: "0.6rem", fontSize: "0.85rem", color: "#93A0B8", borderBottom: `1px solid ${BORDER}` },
+  th: { textAlign: "right", color: "#6E6690", fontSize: "0.75rem", padding: "0.6rem", borderBottom: `1px solid ${BORDER}` },
+  td: { padding: "0.6rem", fontSize: "0.85rem", color: "#A79FC4", borderBottom: `1px solid ${BORDER}` },
 };

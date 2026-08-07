@@ -1,5 +1,6 @@
 "use client";
 
+import { BarChart3, Trash2, User } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
@@ -8,7 +9,7 @@ import { initUserSettingsSync } from "@/lib/user-settings-sync";
 /* ===================== قائمة الأصول ===================== */
 const ASSETS = [
   {
-    group: "المعادن (متابعة مباشرة مدعومة ✅ مجاناً)",
+ group:"المعادن (متابعة مباشرة مدعومة مجاناً)",
     items: [
       { v: "XAUUSD", label: "(ذهب) XAUUSD", mult: 100, source: "goldapi", sourceSymbol: "XAU" },
       { v: "XAGUSD", label: "(فضة) XAGUSD", mult: 5000, source: "goldapi", sourceSymbol: "XAG" },
@@ -18,7 +19,7 @@ const ASSETS = [
     ],
   },
   {
-    group: "فوركس (متابعة مباشرة مدعومة ✅ مجاناً)",
+ group:"فوركس (متابعة مباشرة مدعومة مجاناً)",
     items: [
       { v: "EURUSD", label: "EUR/USD", mult: 100000, source: "yahoo", sourceSymbol: "EURUSD=X" },
       { v: "GBPUSD", label: "GBP/USD", mult: 100000, source: "yahoo", sourceSymbol: "GBPUSD=X" },
@@ -33,7 +34,7 @@ const ASSETS = [
     ],
   },
   {
-    group: "كريبتو (متابعة مباشرة مدعومة ✅)",
+ group:"كريبتو (متابعة مباشرة مدعومة)",
     items: [
       { v: "BTCUSD", label: "Bitcoin (BTC/USD)", mult: 1, source: "finnhub", sourceSymbol: "BINANCE:BTCUSDT" },
       { v: "ETHUSD", label: "Ethereum (ETH/USD)", mult: 1, source: "finnhub", sourceSymbol: "BINANCE:ETHUSDT" },
@@ -46,13 +47,13 @@ const ASSETS = [
   {
     group: "مؤشرات وأسهم",
     items: [
-      { v: "US30", label: "US30 (داو جونز) - مباشر ✅", mult: 1, source: "yahoo", sourceSymbol: "YM=F" },
-      { v: "NAS100", label: "NAS100 (ناسداك) - مباشر ✅", mult: 1, source: "yahoo", sourceSymbol: "NQ=F" },
-      { v: "SPX500", label: "SPX500 (S&P 500) - مباشر ✅", mult: 1, source: "yahoo", sourceSymbol: "ES=F" },
-      { v: "AAPL", label: "Apple (AAPL) - مباشر ✅", mult: 1, source: "finnhub", sourceSymbol: "AAPL" },
-      { v: "TSLA", label: "Tesla (TSLA) - مباشر ✅", mult: 1, source: "finnhub", sourceSymbol: "TSLA" },
-      { v: "MSFT", label: "Microsoft (MSFT) - مباشر ✅", mult: 1, source: "finnhub", sourceSymbol: "MSFT" },
-      { v: "AMZN", label: "Amazon (AMZN) - مباشر ✅", mult: 1, source: "finnhub", sourceSymbol: "AMZN" },
+ { v:"US30", label:"US30 (داو جونز) - مباشر", mult: 1, source:"yahoo", sourceSymbol:"YM=F" },
+ { v:"NAS100", label:"NAS100 (ناسداك) - مباشر", mult: 1, source:"yahoo", sourceSymbol:"NQ=F" },
+ { v:"SPX500", label:"SPX500 (S&P 500) - مباشر", mult: 1, source:"yahoo", sourceSymbol:"ES=F" },
+ { v:"AAPL", label:"Apple (AAPL) - مباشر", mult: 1, source:"finnhub", sourceSymbol:"AAPL" },
+ { v:"TSLA", label:"Tesla (TSLA) - مباشر", mult: 1, source:"finnhub", sourceSymbol:"TSLA" },
+ { v:"MSFT", label:"Microsoft (MSFT) - مباشر", mult: 1, source:"finnhub", sourceSymbol:"MSFT" },
+ { v:"AMZN", label:"Amazon (AMZN) - مباشر", mult: 1, source:"finnhub", sourceSymbol:"AMZN" },
     ],
   },
   {
@@ -625,23 +626,23 @@ export default function BacktestClient({ userId, username, initialBalance, initi
     <div style={{ direction: dir }}>
       <style>{`
         :root{
-          --bg:#0C1220; --panel:#111726; --panel2:#111726;
-          --border:#26314A; --border-strong:#3E5478; --gold:#C9A860; --gold-dark:#9C7F42;
-          --green:#1FBF87; --red:#E8495F; --text:#EDF1F8; --muted:#5D6880;
+          --bg:#0E0A1A; --panel:#141024; --panel2:#141024;
+          --border:#2A2145; --border-strong:#3D2F63; --gold:#DCD4F7; --gold-dark:#8A7CB8;
+          --green:#10E5A0; --red:#FF453A; --text:#F5F3FF; --muted:#6E6690;
         }
-        .qta-root{ background:radial-gradient(ellipse at top, #101828 0%, #0C1220 60%); color:var(--text);
+        .qta-root{ background:radial-gradient(ellipse at top, #120B24 0%, #0E0A1A 60%); color:var(--text);
           font-family:'Segoe UI', Tahoma, Arial, sans-serif; direction:${dir}; padding:1.5rem; min-height:100vh; }
         .qta-container{max-width:1400px;margin:0 auto;}
         .qta-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);}
         .qta-header-left{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
         .qta-header-title{display:flex;align-items:center;gap:0.8rem;}
-        .qta-header-logo{width:46px;height:46px;border-radius:50%;border:2px solid var(--gold);box-shadow:0 0 20px #3E5478;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#000;font-size:1.1rem;}
+        .qta-header-logo{width:46px;height:46px;border-radius:50%;border:2px solid var(--gold);box-shadow:0 0 20px #3D2F63;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#000;font-size:1.1rem;}
         .qta-brand{color:var(--gold);font-size:11px;letter-spacing:3px;margin:0 0 4px;}
         .qta-header-title h1{font-size:1.4rem;margin:0;font-weight:800;}
         .qta-header-title p{margin:0.25rem 0 0;color:var(--muted);font-size:0.85rem;}
         .qta-badge{display:flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:20px;font-size:0.9rem;font-weight:bold;cursor:default;border:1px solid transparent;}
-        .qta-badge-user{background:#26314A;color:var(--gold);border-color:var(--border);}
-        .qta-badge-balance{background:#111726;color:var(--green);cursor:pointer;border-color:#1FBF8733;}
+        .qta-badge-user{background:#2A2145;color:var(--gold);border-color:var(--border);}
+        .qta-badge-balance{background:#141024;color:var(--green);cursor:pointer;border-color:#10E5A033;}
         .qta-badge-balance:hover{filter:brightness(1.2);}
         .qta-btn-logout{background:transparent;border:1px solid var(--border);color:var(--muted);padding:0.5rem 1rem;border-radius:3px;cursor:pointer;font-size:0.85rem;transition:all .15s;}
         .qta-btn-logout:hover{border-color:var(--red);color:var(--red);}
@@ -658,17 +659,17 @@ export default function BacktestClient({ userId, username, initialBalance, initi
         .qta-form-box{background:var(--panel);border:1px solid var(--border);border-radius:0px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
         .qta-form-title{font-size:1rem;margin-bottom:1rem;color:#ddd;display:flex;justify-content:space-between;align-items:center;font-weight:700;}
         .qta-mode-toggle{display:flex;gap:0.4rem;}
-        .qta-mode-btn{background:#0C1220;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.9rem;border-radius:3px;cursor:pointer;font-size:0.8rem;transition:all .15s;}
+        .qta-mode-btn{background:#0E0A1A;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.9rem;border-radius:3px;cursor:pointer;font-size:0.8rem;transition:all .15s;}
         .qta-mode-btn.active{background:linear-gradient(135deg, var(--gold), var(--gold-dark));color:#000;font-weight:bold;border-color:var(--gold);}
         .qta-form-row{display:grid;grid-template-columns:repeat(6,1fr);gap:0.75rem;margin-bottom:0.75rem;}
         .qta-field label{display:block;color:var(--muted);font-size:0.78rem;margin-bottom:0.3rem;}
-        .qta-field input, .qta-field select{width:100%;background:#0C1220;border:1px solid var(--border);color:var(--text);padding:0.55rem 0.6rem;border-radius:3px;font-size:0.9rem;}
-        .qta-field input:focus, .qta-field select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px #26314A;}
-        .qta-btn-add{background:linear-gradient(135deg, var(--gold), var(--gold-dark));color:#000;border:none;border-radius:3px;font-weight:bold;font-size:0.95rem;cursor:pointer;height:38px;margin-top:1.4rem;box-shadow:0 4px 12px #3E5478;width:100%;}
+        .qta-field input, .qta-field select{width:100%;background:#0E0A1A;border:1px solid var(--border);color:var(--text);padding:0.55rem 0.6rem;border-radius:3px;font-size:0.9rem;}
+        .qta-field input:focus, .qta-field select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px #2A2145;}
+        .qta-btn-add{background:linear-gradient(135deg, var(--gold), var(--gold-dark));color:#000;border:none;border-radius:3px;font-weight:bold;font-size:0.95rem;cursor:pointer;height:38px;margin-top:1.4rem;box-shadow:0 4px 12px #3D2F63;width:100%;}
         .qta-btn-add:hover{filter:brightness(1.1);}
-        .qta-btn-add.live{background:var(--green);box-shadow:0 4px 12px #1FBF8744;}
-        .qta-preview-box{margin-top:0.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;border:1px solid var(--green);background:#111726;border-radius:0px;padding:1rem 1.5rem;}
-        .qta-preview-box.risk-high{border-color:var(--red);background:#111726;}
+        .qta-btn-add.live{background:var(--green);box-shadow:0 4px 12px #10E5A044;}
+        .qta-preview-box{margin-top:0.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;border:1px solid var(--green);background:#141024;border-radius:0px;padding:1rem 1.5rem;}
+        .qta-preview-box.risk-high{border-color:var(--red);background:#141024;}
         .qta-preview-left{display:flex;gap:1.8rem;flex-wrap:wrap;}
         .qta-preview-item{text-align:center;}
         .qta-preview-item .l{color:var(--muted);font-size:0.75rem;display:block;margin-bottom:0.2rem;}
@@ -688,14 +689,14 @@ export default function BacktestClient({ userId, username, initialBalance, initi
         .qta-table{width:100%;border-collapse:collapse;min-width:1100px;}
         .qta-table th, .qta-table td{padding:0.85rem 0.6rem;text-align:center;font-size:0.85rem;white-space:nowrap;}
         .qta-table th{color:var(--gold);border-bottom:1px solid var(--border);font-weight:600;font-size:0.78rem;letter-spacing:0.5px;}
-        .qta-table tbody tr{border-bottom:1px solid #1B2438;}
-        .qta-table tbody tr:hover{background:#26314A;}
-        .qta-table tbody tr.live-row{background:#111726;}
+        .qta-table tbody tr{border-bottom:1px solid #1E1836;}
+        .qta-table tbody tr:hover{background:#2A2145;}
+        .qta-table tbody tr.live-row{background:#141024;}
         .qta-empty-row td{padding:3rem 0;color:var(--muted);}
-        .pill{padding:0.25rem 0.6rem;border-radius:3px;font-size:0.78rem;font-weight:bold;background:#1B2438;color:#93A0B8;}
-        .pill-win{background:#111726;color:var(--green);}
-        .pill-loss{background:#1E2941;color:var(--red);}
-        .pill-live{background:#182033;color:var(--green);animation:qtaPulse 1.5s infinite;}
+        .pill{padding:0.25rem 0.6rem;border-radius:3px;font-size:0.78rem;font-weight:bold;background:#1E1836;color:#A79FC4;}
+        .pill-win{background:#141024;color:var(--green);}
+        .pill-loss{background:#241C3E;color:var(--red);}
+        .pill-live{background:#1C1630;color:var(--green);animation:qtaPulse 1.5s infinite;}
         @keyframes qtaPulse{0%{opacity:1;}50%{opacity:0.5;}100%{opacity:1;}}
         .pill-buy{color:var(--green);}
         .pill-sell{color:var(--red);}
@@ -706,9 +707,9 @@ export default function BacktestClient({ userId, username, initialBalance, initi
         .qta-btn-danger:hover{border-color:var(--red);color:var(--red);}
         .qta-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:50;}
         .qta-modal-overlay.open{display:flex;}
-        .qta-modal-box{background:#111726;border:1px solid var(--border-strong);border-radius:0px;padding:1.5rem;width:340px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.6);}
+        .qta-modal-box{background:#141024;border:1px solid var(--border-strong);border-radius:0px;padding:1.5rem;width:340px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.6);}
         .qta-modal-box h3{margin-top:0;color:var(--gold);}
-        .qta-modal-box input{width:100%;background:#0C1220;border:1px solid var(--border);color:var(--text);padding:0.6rem;border-radius:3px;margin:0.5rem 0 1rem;font-size:0.95rem;}
+        .qta-modal-box input{width:100%;background:#0E0A1A;border:1px solid var(--border);color:var(--text);padding:0.6rem;border-radius:3px;margin:0.5rem 0 1rem;font-size:0.95rem;}
         .qta-modal-box input:focus{outline:none;border-color:var(--gold);}
         .qta-modal-actions{display:flex;gap:0.6rem;justify-content:flex-end;}
         .qta-modal-box small{color:var(--muted);display:block;margin-top:-0.5rem;margin-bottom:0.8rem;line-height:1.6;}
@@ -723,13 +724,13 @@ export default function BacktestClient({ userId, username, initialBalance, initi
           <div className="qta-header">
             <div className="qta-header-left">
               <button className="qta-btn-logout" onClick={handleLogout}>{t("backtest.logout")}</button>
-              <div className="qta-badge qta-badge-user">👤 <span>{username}</span></div>
+              <div className="qta-badge qta-badge-user"><User size={14} aria-hidden /><span>{username}</span></div>
               <div className="qta-badge qta-badge-balance" onClick={openBalanceModal} title={t("backtest.editBalanceHint")}>${fmtBalance(balance)} ✎
               </div>
               <button className="qta-btn-settings" onClick={openSettingsModal} title={t("backtest.marketSettingsHint")}>{t("backtest.marketSettings")}</button>
             </div>
             <div className="qta-header-title">
-              <div className="qta-header-logo">📊</div>
+              <div className="qta-header-logo"><BarChart3 size={14} aria-hidden /></div>
               <div style={{ textAlign: dir === "rtl" ? "right" : "left" }}>
                 <p className="qta-brand">QAIS TRADING ACADEMY</p>
                 <h1>{t("backtest.pageTitle")}</h1>
@@ -922,7 +923,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
                         <td>{t2.setup || "—"}</td>
                         <td>{t2.reason || "—"}</td>
                         <td><span className={resultPillClass(t2)}>{resultPillText(t2)}</span></td>
-                        <td><button className="qta-del-btn" onClick={() => deleteTrade(t2.id)}>🗑</button></td>
+                        <td><button className="qta-del-btn" onClick={() => deleteTrade(t2.id)}><Trash2 size={14} aria-hidden /></button></td>
                       </tr>
                     );
                   })

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Settings } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button, Module, OrbitRing } from "@/app/components/ui";
+import Logo from "@/app/components/brand/Logo";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { NAV_ITEMS, FOOTER_LINKS, HOME_NAV, VIP_CARD, LOGOUT_ITEM } from "./navigation";
 import { isPathActive } from "./NavRail";
@@ -87,18 +88,8 @@ export default function Sidebar({ isAdmin, daysLeft, onNavigate, onLogout, class
       )}
     >
       {/* الهوية */}
-      <div className="mb-4 flex items-center gap-2.5 px-1">
-        <img
-          src="/logo.jpg"
-          alt="QTA"
-          className="h-9 w-9 shrink-0 rounded-sm border border-edge-lit object-cover"
-        />
-        <div className="min-w-0">
-          <p className="text-micro uppercase text-text-muted">Qais Trading</p>
-          <p className="font-num text-caption font-semibold tracking-wide text-text-primary">
-            ACADEMY
-          </p>
-        </div>
+      <div className="mb-4 px-1">
+        <Logo size={32} withWordmark />
       </div>
 
       {/* مركز القيادة — الوجهة الأساسية */}

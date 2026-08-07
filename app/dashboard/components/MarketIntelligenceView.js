@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Sparkles, RotateCcw, ChevronDown, ChevronRight, Zap, Bell, Radio, Brain, Eye, TrendingUp, TrendingDown, Target, CircleCheck as CheckCircle2, RefreshCw, ExternalLink } from "lucide-react";
+import { AlertTriangle, Bell, Brain, ChevronDown, ChevronRight, CircleCheck as CheckCircle2, Crown, ExternalLink, Eye, Radio, RefreshCw, RotateCcw, Sparkles, Target, TrendingDown, TrendingUp, Zap } from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
 import { createClient } from "@/lib/supabase-client";
@@ -17,19 +17,19 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
    /api/market-intelligence (Yahoo Finance فعلي).
    ============================================================================ */
 
-const GOLD = "#C9A860";
-const GOLD_LIGHT = "#E4CD95";
-const GREEN = "#1FBF87";
-const RED = "#E8495F";
-const BLUE = "#5FA8E8";
-const AMBER = "#E0A44A";
-const NEUTRAL = "#EDF1F8";
+const GOLD = "#DCD4F7";
+const GOLD_LIGHT = "#F5F3FF";
+const GREEN = "#10E5A0";
+const RED = "#FF453A";
+const BLUE = "#7C4DFF";
+const AMBER = "#F0A13C";
+const NEUTRAL = "#F5F3FF";
 const CHART_H = 600;
 const ANIM_MS = 450;
 
 const glass = {
-  background: "#111726",
-  border: `1px solid #26314A`,
+  background: "#141024",
+  border: `1px solid #2A2145`,
   borderRadius: 0,
   boxShadow: "0 8px 30px rgba(0,0,0,0.4)",
   backdropFilter: "blur(10px)",
@@ -60,7 +60,7 @@ function fmt(n) {
    أربع جلسات كاملة (Sydney/Tokyo/London/New York). Sydney بتلف منتصف الليل
    (21:00 → 06:00 UTC) فمنعاملها كنطاق "ملفوف" في كل الحسابات تحت. */
 const SESSION_DEFS = [
-  { key: "sydney", label: "Sydney", short: "SYD", start: 21, end: 6, color: "#C9A860" },
+  { key: "sydney", label: "Sydney", short: "SYD", start: 21, end: 6, color: "#DCD4F7" },
   { key: "tokyo", label: "Tokyo", short: "TOK", start: 0, end: 9, color: GOLD },
   { key: "london", label: "London", short: "LON", start: 7, end: 16, color: BLUE },
   { key: "newyork", label: "New York", short: "NY", start: 12, end: 21, color: GREEN },
@@ -75,11 +75,11 @@ const OVERLAP_DEFS = [
 
 /* محتوى تعليمي ثابت لكل جلسة — هاد يلي بيتعبى بكروت الشرح تحت الخط الزمني */
 const SESSION_INFO = {
-  sydney: { liquidity: "Low", volatility: "Low", behaviour: "Quiet, narrow ranges", recommendation: "Avoid new trend trades — wait for Tokyo/London to build direction." },
-  tokyo: { liquidity: "Medium", volatility: "Medium", behaviour: "Asia range building", recommendation: "Trade the range and fade extremes; save breakouts for London." },
-  london: { liquidity: "Very High", volatility: "High", behaviour: "Trend Expansion", recommendation: "Trade pullbacks with the trend." },
-  newyork: { liquidity: "High", volatility: "High", behaviour: "News-driven continuation or reversal", recommendation: "Watch US news releases; follow or fade the London trend with confirmation." },
-  off: { liquidity: "Very Low", volatility: "Very Low", behaviour: "Thin, illiquid, wider spreads", recommendation: "Avoid opening new trades — wait for a major session to open." },
+  sydney: { liquidity: "radar.levelLow", volatility: "radar.levelLow", behaviour: "radar.behQuiet", recommendation: "radar.recSydney" },
+  tokyo: { liquidity: "radar.levelMedium", volatility: "radar.levelMedium", behaviour: "radar.behAsiaRange", recommendation: "radar.recTokyo" },
+  london: { liquidity: "radar.levelVeryHigh", volatility: "radar.levelHigh", behaviour: "radar.behTrendExpansion", recommendation: "radar.recLondon" },
+  newyork: { liquidity: "radar.levelHigh", volatility: "radar.levelHigh", behaviour: "radar.behNewsDriven", recommendation: "radar.recNewYork" },
+  off: { liquidity: "radar.levelVeryLow", volatility: "radar.levelVeryLow", behaviour: "radar.behThin", recommendation: "radar.recOff" },
 };
 
 /* هل الساعة h ضمن نطاق الجلسة s؟ بيدعم النطاقات الملفوفة لمنتصف الليل (start > end) */
@@ -104,7 +104,7 @@ export function getPrimarySession(sessions) {
   if (overlap) return `${overlap.label} Overlap`;
   const active = sessions.find((s) => s.active);
   if (active) return active.label;
-  return "Off-Hours";
+  return _t("radar.sessionOff");
 }
 
 /* فرق الوقت (بالساعات) من now لغاية target، بيلف لليوم التالي لو الفرق سالب */
@@ -118,9 +118,9 @@ function hoursLabel(h, t) {
   const totalMin = Math.max(0, Math.round(h * 60));
   const hh = Math.floor(totalMin / 60);
   const mm = totalMin % 60;
-  if (hh <= 0) return t("radar.minShort", { n: mm });
-  if (mm === 0) return t("radar.hourShort", { n: hh });
-  return t("radar.hourMinShort", { n: hh, m: mm });
+  if (hh <= 0) return _t("radar.minShort", { n: mm });
+  if (mm === 0) return _t("radar.hourShort", { n: hh });
+  return _t("radar.hourMinShort", { n: hh, m: mm });
 }
 
 /* الجلسة النشطة هلأ (يلي رح تنتهي أقرب لو في أكثر من وحدة نشطة بنفس الوقت —
@@ -145,11 +145,11 @@ function relTime(iso, t) {
   if (!iso) return "—";
   const diffMs = Date.now() - new Date(iso).getTime();
   const min = Math.round(diffMs / 60000);
-  if (min < 1) return t("radar.justNow");
-  if (min < 60) return t("radar.minutesAgo", { n: min });
+  if (min < 1) return _t("radar.justNow");
+  if (min < 60) return _t("radar.minutesAgo", { n: min });
   const hr = Math.round(min / 60);
-  if (hr < 24) return t("radar.hoursAgo", { n: hr });
-  return t("radar.daysAgo", { n: Math.round(hr / 24) });
+  if (hr < 24) return _t("radar.hoursAgo", { n: hr });
+  return _t("radar.daysAgo", { n: Math.round(hr / 24) });
 }
 
 /* ============================================================================
@@ -219,18 +219,19 @@ function countdownLabel(hoursFraction) {
 /* ألوان/تسميات نظام radar_status v2 — نفس القيم يلي بيرجعها المحرك (lib/qais/decision.js) بدون أي تغيير */
 function radarStatusMeta(it) {
   const MAP = {
-    green: { color: GREEN, label: it?.radar_signal_label || "Strong Buy" },
-    blue: { color: BLUE, label: it?.radar_signal_label || "Buy Setup" },
-    yellow: { color: "#E0A44A", label: it?.radar_signal_label || "Neutral / Waiting" },
-    orange: { color: AMBER, label: it?.radar_signal_label || "Sell Setup" },
-    red: { color: RED, label: it?.radar_signal_label || "Strong Sell" },
-    gray: { color: "#5D6880", label: it?.radar_signal_label || "No Setup" },
+    green: { color: GREEN, label: it?.radar_signal_label || _t("radar.strongBuy") },
+    blue: { color: BLUE, label: it?.radar_signal_label || _t("radar.buySetup") },
+    yellow: { color: "#F0A13C", label: it?.radar_signal_label || _t("radar.neutralWaiting") },
+    orange: { color: AMBER, label: it?.radar_signal_label || _t("radar.sellSetup") },
+    red: { color: RED, label: it?.radar_signal_label || _t("radar.strongSell") },
+    gray: { color: "#6E6690", label: it?.radar_signal_label || _t("radar.noSetup") },
   };
   return MAP[it?.radar_status] || MAP.gray;
 }
 
 export default function MarketIntelligenceView({ initialSymbol, embedded = false, onClose } = {}) {
   const { t, locale, dir } = useLocale();
+  setRadarTranslator(t);
   const [symbol, setSymbol] = useState(initialSymbol || "XAUUSD");
   const [displayTF, setDisplayTF] = useState("h1");
   const [loading, setLoading] = useState(true);
@@ -345,7 +346,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       setLastUpdateAt(new Date().toISOString());
 
       // -------- تصالح فوري مع radarItems (الفصل الإضافي: منع التناقض بين اللوحتين) --------
-      // "Active Opportunities"/"Liquidity Map" بتقرأ من radarItems (آخر لقطة محفوظة
+      // t("radar.activeOpportunities")/t("radar.liquidityMap") بتقرأ من radarItems (آخر لقطة محفوظة
       // بالكرون، ممكن تكون قديمة بكم دقيقة). لما نحسب تحليل حي جديد لنفس الرمز هون،
       // لازم نحدّث فوراً صف هذا الرمز بالذات جوا radarItems بنفس القيم الحية — وإلا
       // ممكن يظهر "SELL · Ready · 95%" تحت بينما فوق صار "WAIT" فعلياً (نفس الرمز،
@@ -498,7 +499,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     } catch {}
   }, []);
 
-  // "Active Opportunities" بتعتمد بس على radarItems (لقطة الكرون) بمعزل عن أي
+  // t("radar.activeOpportunities") بتعتمد بس على radarItems (لقطة الكرون) بمعزل عن أي
   // صفقة مفتوحة فعلياً — هيك ممكن يظهر رمز كـ"Ready" باتجاه معاكس تماماً لصفقة
   // شغّالة عليه هلق (Chart Sync بيعرض هاي الصفقة المقفلة، مش الفرصة الجديدة،
   // فبيحس الطالب إنو "ضغط BUY وفتحله SELL"). هون منجيب كل الرموز يلي عندها
@@ -507,7 +508,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     try {
       const res = await fetch("/api/ai-trades");
       const data = await res.json();
-      const OPEN_STATUSES = ["Open", "Running", "TP1 Hit", "TP2 Hit", "TP3 Hit", "TP4 Hit"];
+      const OPEN_STATUSES = ["Open", t("radar.running"), "TP1 Hit", "TP2 Hit", "TP3 Hit", "TP4 Hit"];
       const symbols = new Set((data.trades || []).filter((t) => OPEN_STATUSES.includes(t.status)).map((t) => t.symbol));
       setOpenTradeSymbols(symbols);
     } catch {}
@@ -546,13 +547,13 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       if (cancelled || !containerRef.current) return;
 
       const chart = createChart(containerRef.current, {
-        layout: { background: { color: "transparent" }, textColor: "#93A0B8" },
+        layout: { background: { color: "transparent" }, textColor: "#A79FC4" },
         grid: {
           vertLines: { color: "rgba(255,255,255,0.04)" },
           horzLines: { color: "rgba(255,255,255,0.04)" },
         },
-        timeScale: { borderColor: "#1E2941", timeVisible: true, secondsVisible: false, rightOffset: 16 },
-        rightPriceScale: { borderColor: "#1E2941" },
+        timeScale: { borderColor: "#241C3E", timeVisible: true, secondsVisible: false, rightOffset: 16 },
+        rightPriceScale: { borderColor: "#241C3E" },
         width: containerRef.current.clientWidth,
         height: CHART_H,
         crosshair: { mode: CrosshairMode.Normal },
@@ -694,8 +695,8 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     if (poi) {
       const lo = poi.from ?? poi.level;
       const hi = poi.to ?? poi.level;
-      if (lo != null) add(lo, `#3E5478`, `POI ${poi.type}`);
-      if (hi != null && hi !== lo) add(hi, `#3E5478`, `POI ${poi.type}`);
+      if (lo != null) add(lo, `#3D2F63`, `POI ${poi.type}`);
+      if (hi != null && hi !== lo) add(hi, `#3D2F63`, `POI ${poi.type}`);
     }
     if (r.ob?.eligible && r.ob.status !== "Invalid" && !r.tradeValid) {
       add(r.ob.levels.mt, `${NEUTRAL}88`, `MT (${r.ob.status})`);
@@ -723,7 +724,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   // the exact field Active Opportunities/Liquidity Map compare against too.
   const signal = result?.signal ?? null;
   const biasLabel = result?.direction === "up" ? "Bullish" : result?.direction === "down" ? "Bearish" : "—";
-  const biasColor = result?.direction === "up" ? GREEN : result?.direction === "down" ? RED : "#5D6880";
+  const biasColor = result?.direction === "up" ? GREEN : result?.direction === "down" ? RED : "#6E6690";
 
   /* -------- Chart Info Bar — كل القيم مشتقة من نفس الشموع المحمّلة فعلاً بالشارت -------- */
   const dailyCandles = allCandles.daily;
@@ -774,7 +775,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     const lines = [];
     lines.push(
       marketStatus.biasLbl === "Neutral"
-        ? "The market is mixed right now, without a clear dominant bias across watched assets."
+        ? t("radar.mixedMarket")
         : `The market remains ${marketStatus.biasLbl.toLowerCase()} overall across watched assets.`
     );
     if (leadAsset) {
@@ -807,11 +808,11 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         @keyframes qmiPulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
         .qmi-dot { animation: qmiPulse 1.8s ease-in-out infinite; }
         .qmi-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-        .qmi-scroll::-webkit-scrollbar-thumb { background: #26314A; border-radius: 3px; }
+        .qmi-scroll::-webkit-scrollbar-thumb { background: #2A2145; border-radius: 3px; }
         .qmi-concept-card { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
-        .qmi-concept-card:hover { transform: translateY(-2px); background: #111726; }
+        .qmi-concept-card:hover { transform: translateY(-2px); background: #141024; }
         .qmi-briefing-card { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
-        .qmi-briefing-card:hover { transform: translateY(-2px); background: #111726; }
+        .qmi-briefing-card:hover { transform: translateY(-2px); background: #141024; }
         @keyframes qmiBarGrow { from { width: 0%; } }
         .qmi-conf-bar { animation: qmiBarGrow 0.9s ease both; }
 
@@ -819,7 +820,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         .qmi-summary-card:hover { box-shadow: 0 10px 34px rgba(212,175,55,0.14); }
 
         .qmi-wstat { transition: transform .18s ease, background .18s ease, box-shadow .18s ease; border: 1px solid transparent; }
-        .qmi-wstat:hover { transform: translateY(-2px); background: #111726; border-color: #26314A; box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
+        .qmi-wstat:hover { transform: translateY(-2px); background: #141024; border-color: #2A2145; box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
 
         .qmi-liq-row {
           display: grid;
@@ -829,7 +830,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           padding: 10px 12px;
           font-size: 11.5px;
         }
-        .qmi-liq-head { color: #5D6880; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; padding: 0 12px; }
+        .qmi-liq-head { color: #6E6690; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; padding: 0 12px; }
         .qmi-liq-body {
           width: 100%;
           text-align: right;
@@ -837,7 +838,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           border-radius: 3px;
           transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
         }
-        .qmi-liq-body:hover { transform: translateY(-2px); border-color: #3E5478 !important; box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+        .qmi-liq-body:hover { transform: translateY(-2px); border-color: #3D2F63 !important; box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
         .qmi-liq-body span[data-label] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         @media (max-width: 900px) {
@@ -856,7 +857,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
             content: attr(data-label);
             font-size: 8.5px;
             font-weight: 700;
-            color: #5D6880;
+            color: #6E6690;
             text-transform: uppercase;
             letter-spacing: 0.3px;
           }
@@ -865,18 +866,18 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
       {/* ================= HEADER ================= */}
       <div className="qmi-anim" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 20 }}>👑</span>
+        <span style={{ fontSize: 20 }}><Crown size={14} aria-hidden /></span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 19, fontWeight: 800, color: "#EDF1F8" }}>Qais Market Intelligence — Full Analysis</div>
-          <div style={{ fontSize: 11.5, color: "#5D6880" }}>Powered by QAIS SK Engine</div>
+          <div style={{ fontSize: 19, fontWeight: 800, color: "#F5F3FF" }}>Qais Market Intelligence — Full Analysis</div>
+          <div style={{ fontSize: 11.5, color: "#6E6690" }}>{t("radar.poweredBy")}</div>
         </div>
         {embedded && onClose && (
           <button
             onClick={onClose}
             style={{
-              background: "#111726",
-              border: `1px solid #3E5478`,
-              color: "#93A0B8",
+              background: "#141024",
+              border: `1px solid #3D2F63`,
+              color: "#A79FC4",
               borderRadius: 3,
               width: 34,
               height: 34,
@@ -884,7 +885,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
               fontSize: 16,
               lineHeight: 1,
             }}
-            title="Close"
+            title={t("radar.close")}
           >
             ✕
           </button>
@@ -902,7 +903,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         <select
           value={symbol}
           onChange={(e) => setSymbol(e.target.value)}
-          style={{ background: "#111726", color: "#EDF1F8", border: `1px solid #3E5478`, borderRadius: 3, fontSize: 13, padding: "7px 10px", fontWeight: 700, minWidth: 150 }}
+          style={{ background: "#141024", color: "#F5F3FF", border: `1px solid #3D2F63`, borderRadius: 3, fontSize: 13, padding: "7px 10px", fontWeight: 700, minWidth: 150 }}
         >
           {ASSETS.map((g) => (
             <optgroup key={g.group} label={g.group}>
@@ -913,7 +914,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           ))}
         </select>
 
-        <div style={{ width: 1, height: 22, background: "#182033" }} />
+        <div style={{ width: 1, height: 22, background: "#1C1630" }} />
 
         <div style={{ display: "flex", gap: 4 }}>
           {TF_TOOLBAR_ORDER.filter((tf) => allCandles[tf]?.length).map((tf) => (
@@ -921,9 +922,9 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
               key={tf}
               onClick={() => setDisplayTF(tf)}
               style={{
-                background: displayTF === tf ? `#26314A` : "transparent",
-                border: `1px solid ${displayTF === tf ? GOLD : "#182033"}`,
-                color: displayTF === tf ? GOLD_LIGHT : "#5D6880",
+                background: displayTF === tf ? `#2A2145` : "transparent",
+                border: `1px solid ${displayTF === tf ? GOLD : "#1C1630"}`,
+                color: displayTF === tf ? GOLD_LIGHT : "#6E6690",
                 borderRadius: 3, padding: "6px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer",
               }}
             >
@@ -938,26 +939,26 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           style={{
             display: "flex", alignItems: "center", gap: 6,
             background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
-            border: "none", color: "#111726", fontWeight: 800, borderRadius: 3, padding: "8px 16px", fontSize: 12.5, cursor: "pointer",
+            border: "none", color: "#141024", fontWeight: 800, borderRadius: 3, padding: "8px 16px", fontSize: 12.5, cursor: "pointer",
           }}
         >
-          <Zap size={13} fill="#111726" />
-          {loading ? t("radar.analyzing") : "AI Analyze"}
+          <Zap size={13} fill="#141024" />
+          {loading ? t("radar.analyzing") : t("radar.aiAnalyze")}
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#182033", border: `1px solid ${GREEN}40`, borderRadius: 20, padding: "6px 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#1C1630", border: `1px solid ${GREEN}40`, borderRadius: 20, padding: "6px 12px" }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: GREEN }} className="qmi-dot" />
-          <span style={{ fontSize: 11.5, color: "#aaa" }}>Confidence</span>
+          <span style={{ fontSize: 11.5, color: "#aaa" }}>{t("radar.confidence")}</span>
           <span style={{ fontSize: 13, fontWeight: 800, color: GREEN }}>{result?.aiConfidence ?? result?.radarScore ?? 0}%</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#111726", border: "1px solid #182033", borderRadius: 20, padding: "6px 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#141024", border: "1px solid #1C1630", borderRadius: 20, padding: "6px 12px" }}>
           <Radio size={12} color={BLUE} />
-          <span style={{ fontSize: 12, color: "#93A0B8" }}>Session: <b style={{ color: "#EDF1F8" }}>{primarySession}</b></span>
+          <span style={{ fontSize: 12, color: "#A79FC4" }}>{t("radar.sessionLabel")}<b style={{ color: "#F5F3FF" }}>{primarySession}</b></span>
         </div>
 
-        <div style={{ marginRight: "auto", display: "flex", alignItems: "center", gap: 6, background: "#111726", border: `1px solid ${biasColor}40`, borderRadius: 20, padding: "6px 12px" }}>
-          <span style={{ fontSize: 12, color: "#93A0B8" }}>Market Bias:</span>
+        <div style={{ marginRight: "auto", display: "flex", alignItems: "center", gap: 6, background: "#141024", border: `1px solid ${biasColor}40`, borderRadius: 20, padding: "6px 12px" }}>
+          <span style={{ fontSize: 12, color: "#A79FC4" }}>{t("radar.marketBiasLabel")}</span>
           <b style={{ fontSize: 12.5, color: biasColor }}>{biasLabel}</b>
         </div>
       </div>
@@ -985,13 +986,13 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         <div ref={chartCardRef} style={{ ...glass, padding: "0.6rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.3rem 0.5rem 0.6rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: "#EDF1F8" }}>{asset?.label || symbol}</span>
-              {result?.price != null && <span style={{ fontSize: 12.5, color: "#93A0B8" }}>{fmt(result.price)}</span>}
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#F5F3FF" }}>{asset?.label || symbol}</span>
+              {result?.price != null && <span style={{ fontSize: 12.5, color: "#A79FC4" }}>{fmt(result.price)}</span>}
             </div>
             <button
               onClick={resetChart}
               title={t("radar.resetChartTitle")}
-              style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #182033", color: "#aaa", borderRadius: 3, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #1C1630", color: "#aaa", borderRadius: 3, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
             >
               <RotateCcw size={11} />
               {t("radar.resetChart")}
@@ -1040,9 +1041,10 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
    لفقرة قصيرة مفهومة بلمحة، بدل ما يضطر المستخدم يقرأ كل قسم لحاله.
    ============================================================================ */
 function AiSummaryCard({ summary }) {
+  const { t } = useLocale();
   const { lines, confidence, biasLbl } = summary;
-  const biasColor = biasLbl === "Bullish" ? GREEN : biasLbl === "Bearish" ? RED : "#5D6880";
-  const confColor = confidence == null ? "#5D6880" : confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : AMBER;
+  const biasColor = biasLbl === "Bullish" ? GREEN : biasLbl === "Bearish" ? RED : "#6E6690";
+  const confColor = confidence == null ? "#6E6690" : confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : AMBER;
 
   return (
     <div
@@ -1052,18 +1054,18 @@ function AiSummaryCard({ summary }) {
         padding: "1.1rem 1.3rem",
         position: "relative",
         overflow: "hidden",
-        border: `1px solid #26314A`,
+        border: `1px solid #2A2145`,
         background: `linear-gradient(135deg, rgba(212,175,55,0.09), rgba(20,22,26,0.94) 55%)`,
       }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flex: "1 1 320px", minWidth: 260 }}>
-          <span style={{ fontSize: 22, lineHeight: 1 }}>🧠</span>
+          <span style={{ fontSize: 22, lineHeight: 1 }}><Brain size={14} aria-hidden /></span>
           <div>
-            <div style={{ fontSize: 14.5, fontWeight: 900, color: "#EDF1F8", letterSpacing: 0.2 }}>Today&apos;s AI Summary</div>
+            <div style={{ fontSize: 14.5, fontWeight: 900, color: "#F5F3FF", letterSpacing: 0.2 }}>Today&apos;s AI Summary</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
               {lines.map((l, i) => (
-                <div key={i} style={{ fontSize: 12.5, color: "#EDF1F8", lineHeight: 1.75 }}>
+                <div key={i} style={{ fontSize: 12.5, color: "#F5F3FF", lineHeight: 1.75 }}>
                   {l}
                 </div>
               ))}
@@ -1072,12 +1074,12 @@ function AiSummaryCard({ summary }) {
         </div>
 
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-          <div style={{ background: "#111726", border: `1px solid ${biasColor}40`, borderRadius: 0, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
-            <div style={{ fontSize: 9, color: "#5D6880", letterSpacing: 0.4, textTransform: "uppercase" }}>Market Bias</div>
+          <div style={{ background: "#141024", border: `1px solid ${biasColor}40`, borderRadius: 0, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
+            <div style={{ fontSize: 9, color: "#6E6690", letterSpacing: 0.4, textTransform: "uppercase" }}>{t("radar.marketBias")}</div>
             <div style={{ fontSize: 14, fontWeight: 900, color: biasColor, marginTop: 3 }}>{biasLbl}</div>
           </div>
-          <div style={{ background: "#111726", border: `1px solid ${confColor}40`, borderRadius: 0, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
-            <div style={{ fontSize: 9, color: "#5D6880", letterSpacing: 0.4, textTransform: "uppercase" }}>Overall Confidence</div>
+          <div style={{ background: "#141024", border: `1px solid ${confColor}40`, borderRadius: 0, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
+            <div style={{ fontSize: 9, color: "#6E6690", letterSpacing: 0.4, textTransform: "uppercase" }}>{t("radar.overallConfidence")}</div>
             <div style={{ fontSize: 14, fontWeight: 900, color: confColor, marginTop: 3 }}>{confidence != null ? `${confidence}%` : "—"}</div>
           </div>
         </div>
@@ -1093,27 +1095,27 @@ function AiSummaryCard({ summary }) {
 function LiveMarketStatusBar({ status }) {
   const { t } = useLocale();
   const { lastScan, scanned, activeCount, strongest, weakest, biasLbl, avgConfidence } = status;
-  const biasColor = biasLbl === "Bullish" ? GREEN : biasLbl === "Bearish" ? RED : "#5D6880";
+  const biasColor = biasLbl === "Bullish" ? GREEN : biasLbl === "Bearish" ? RED : "#6E6690";
 
   const items = [
-    { label: "Last Scan", value: lastScan ? relTime(lastScan, t) : "—", icon: <Radio size={13} color={BLUE} /> },
-    { label: "Assets Scanned", value: scanned, icon: <Eye size={13} color={GOLD_LIGHT} /> },
-    { label: "Active Opportunities", value: activeCount, icon: <Zap size={13} color={GOLD} /> },
+    { label: t("radar.lastScan"), value: lastScan ? relTime(lastScan, t) : "—", icon: <Radio size={13} color={BLUE} /> },
+    { label: t("radar.assetsScanned"), value: scanned, icon: <Eye size={13} color={GOLD_LIGHT} /> },
+    { label: t("radar.activeOpportunities"), value: activeCount, icon: <Zap size={13} color={GOLD} /> },
     {
-      label: "Strongest Asset",
+      label: t("radar.strongestAsset"),
       value: strongest ? `${strongest.symbol} · ${strongest.radar_score ?? strongest.score}%` : "—",
       icon: <TrendingUp size={13} color={GREEN} />,
       color: GREEN,
     },
     {
-      label: "Weakest Asset",
+      label: t("radar.weakestAsset"),
       value: weakest ? `${weakest.symbol} · ${weakest.radar_score ?? weakest.score}%` : "—",
       icon: <TrendingDown size={13} color={RED} />,
       color: RED,
     },
-    { label: "Market Bias", value: biasLbl, icon: <Target size={13} color={biasColor} />, color: biasColor },
+    { label: t("radar.marketBias"), value: biasLbl, icon: <Target size={13} color={biasColor} />, color: biasColor },
     {
-      label: "Market Confidence",
+      label: t("radar.marketConfidence"),
       value: avgConfidence != null ? `${avgConfidence}%` : "—",
       icon: <Brain size={13} color={GOLD} />,
     },
@@ -1123,12 +1125,12 @@ function LiveMarketStatusBar({ status }) {
     <div className="qmi-anim" style={{ ...glass, padding: "0.7rem 1rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
       {items.map((it) => (
         <div key={it.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 26, height: 26, borderRadius: 3, background: "#111726", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 26, height: 26, borderRadius: 3, background: "#141024", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             {it.icon}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 9.5, color: "#5D6880", whiteSpace: "nowrap" }}>{it.label}</div>
-            <div style={{ fontSize: 12.5, fontWeight: 800, color: it.color || "#EDF1F8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: 9.5, color: "#6E6690", whiteSpace: "nowrap" }}>{it.label}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: it.color || "#F5F3FF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {it.value}
             </div>
           </div>
@@ -1144,16 +1146,16 @@ function LiveMarketStatusBar({ status }) {
    ============================================================================ */
 function ChartInfoBar({ price, dailyChange, atr, volume, lastUpdateAt, nowTick }) {
   const { t } = useLocale();
-  const changeColor = dailyChange == null ? "#5D6880" : dailyChange >= 0 ? GREEN : RED;
+  const changeColor = dailyChange == null ? "#6E6690" : dailyChange >= 0 ? GREEN : RED;
   void nowTick; // يفرض إعادة تقييم "منذ..." كل ثانية
 
   const cells = [
-    { label: "Price", value: fmt(price) },
-    { label: "Daily Change", value: fmtPct(dailyChange), color: changeColor },
+    { label: t("radar.price"), value: fmt(price) },
+    { label: t("radar.dailyChange"), value: fmtPct(dailyChange), color: changeColor },
     { label: "ATR (14)", value: atr != null ? fmt(atr) : "—" },
-    { label: "Volume", value: volume != null ? fmtVolume(volume) : "—" },
-    { label: "Spread", value: "—", title: "Not provided by the data feed" },
-    { label: "Last Update", value: lastUpdateAt ? relTime(lastUpdateAt, t) : "—" },
+    { label: t("radar.volume"), value: volume != null ? fmtVolume(volume) : "—" },
+    { label: t("radar.spread"), value: "—", title: t("radar.notProvided") },
+    { label: t("radar.lastUpdate"), value: lastUpdateAt ? relTime(lastUpdateAt, t) : "—" },
   ];
 
   return (
@@ -1162,8 +1164,8 @@ function ChartInfoBar({ price, dailyChange, atr, volume, lastUpdateAt, nowTick }
         display: "flex",
         flexWrap: "wrap",
         gap: 0,
-        background: "#0C1220",
-        border: "1px solid #182033",
+        background: "#0E0A1A",
+        border: "1px solid #1C1630",
         borderRadius: 3,
         margin: "0 0.5rem 0.6rem",
         overflow: "hidden",
@@ -1176,11 +1178,11 @@ function ChartInfoBar({ price, dailyChange, atr, volume, lastUpdateAt, nowTick }
           style={{
             flex: "1 1 110px",
             padding: "7px 12px",
-            borderInlineStart: i === 0 ? "none" : "1px solid #182033",
+            borderInlineStart: i === 0 ? "none" : "1px solid #1C1630",
           }}
         >
-          <div style={{ fontSize: 9, color: "#5D6880" }}>{c.label}</div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: c.color || "#EDF1F8" }}>{c.value}</div>
+          <div style={{ fontSize: 9, color: "#6E6690" }}>{c.label}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: c.color || "#F5F3FF" }}>{c.value}</div>
         </div>
       ))}
     </div>
@@ -1215,7 +1217,7 @@ function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t) {
   ctx.globalAlpha = ease;
 
   // الخط الواصل 0→A→B→(C)
-  ctx.strokeStyle = stage === "confirmed" ? `#3E5478` : `#3E5478`;
+  ctx.strokeStyle = stage === "confirmed" ? `#3D2F63` : `#3D2F63`;
   ctx.lineWidth = 1.3;
   if (stage !== "confirmed") ctx.setLineDash([4, 3]); // خط متقطع طالما C لسا ما تأكدت (قيد التكوين)
   ctx.beginPath();
@@ -1247,7 +1249,7 @@ function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t) {
 
     ctx.beginPath();
     ctx.arc(p.x, p.y, isC && isAnchor ? 4.2 : 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = "#111726";
+    ctx.fillStyle = "#141024";
     ctx.fill();
     ctx.lineWidth = isC && isAnchor ? 1.8 : 1.4;
     ctx.strokeStyle = isC ? GREEN : GOLD_LIGHT;
@@ -1258,7 +1260,7 @@ function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t) {
   // طالما C لسا ما تأكدت: ملاحظة صغيرة توضح إنه السيكونز قيد التكوين
   if (stage === "awaiting-c") {
     const last = pts[pts.length - 1];
-    drawPill(ctx, last.x + 46, last.y, t("radar.awaitingC"), `${GOLD_LIGHT}`, "600 9.5px sans-serif", "left");
+    drawPill(ctx, last.x + 46, last.y, _t("radar.awaitingC"), `${GOLD_LIGHT}`, "600 9.5px sans-serif", "left");
   }
 
   ctx.restore();
@@ -1396,7 +1398,7 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
 
   const rows = [
     { y: entryY, color: GOLD_LIGHT, dash: [2, 3], lines: ["ENTRY", fmt(r.entry)] },
-    { y: slY, color: RED, dash: [2, 3], lines: [`SL · ${r.slSource === "SMT" ? "SMT" : "OB Invalidation"}`, fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`] },
+    { y: slY, color: RED, dash: [2, 3], lines: [`SL · ${r.slSource === "SMT" ? "SMT" : _t("radar.obInvalidation")}`, fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`] },
   ];
   targets.forEach((t) => {
     const y = priceToY(t.price);
@@ -1442,7 +1444,7 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
   // لحد أبعد هدف، لإعطاء إحساس بصري بمسار/زخم الحركة المتوقعة
   const farthest = sorted[sorted.length - 1];
   if (farthest) {
-    ctx.strokeStyle = `#26314A`;
+    ctx.strokeStyle = `#2A2145`;
     ctx.lineWidth = 1;
     ctx.setLineDash([1, 4]);
     ctx.beginPath();
@@ -1502,7 +1504,7 @@ function drawEdgeBox(ctx, edgeX, y, lines, color, glow) {
   ctx.fillStyle = color;
   ctx.fillText(lines[0], boxX + padX, boxY + 11);
   ctx.font = "500 9.5px sans-serif";
-  ctx.fillStyle = "#93A0B8";
+  ctx.fillStyle = "#A79FC4";
   for (let i = 1; i < lines.length; i++) {
     ctx.fillText(lines[i], boxX + padX, boxY + 11 + lineH * i);
   }
@@ -1539,7 +1541,7 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
     return (
       <div
         className="qmi-anim"
-        style={{ ...glass, border: `1.5px solid #3E5478`, boxShadow: `0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px #26314A`, padding: "1rem 1.2rem" }}
+        style={{ ...glass, border: `1.5px solid #3D2F63`, boxShadow: `0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px #2A2145`, padding: "1rem 1.2rem" }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -1547,8 +1549,8 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
               {isBuy ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
               {isBuy ? "BUY" : "SELL"}
             </div>
-            <span style={{ fontWeight: 800, fontSize: 14, color: "#EDF1F8" }}>{asset?.label || symbol}</span>
-            <span style={{ fontSize: 11.5, color: "#93A0B8", background: "#111726", border: "1px solid #182033", borderRadius: 3, padding: "3px 8px" }}>
+            <span style={{ fontWeight: 800, fontSize: 14, color: "#F5F3FF" }}>{asset?.label || symbol}</span>
+            <span style={{ fontSize: 11.5, color: "#A79FC4", background: "#141024", border: "1px solid #1C1630", borderRadius: 3, padding: "3px 8px" }}>
               {syncedTrade.timeframe}
             </span>
             <span style={{ fontSize: 11.5, fontWeight: 800, color: stColor, background: `${stColor}1a`, border: `1px solid ${stColor}55`, borderRadius: 3, padding: "3px 9px" }}>
@@ -1559,13 +1561,13 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
             <button
               onClick={onCheckSynced}
               disabled={syncLoading}
-              style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #182033", color: "#aaa", borderRadius: 3, padding: "5px 10px", fontSize: 11, cursor: syncLoading ? "default" : "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #1C1630", color: "#aaa", borderRadius: 3, padding: "5px 10px", fontSize: 11, cursor: syncLoading ? "default" : "pointer" }}
             >
               <RefreshCw size={11} /> {syncLoading ? t("radar.checkingPrice") : t("radar.checkPriceNow")}
             </button>
             <Link
               href={`/ai-trades/${syncedTrade.id}`}
-              style={{ display: "flex", alignItems: "center", gap: 5, background: `#26314A`, border: `1px solid #3E5478`, color: GOLD_LIGHT, borderRadius: 3, padding: "5px 10px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}
+              style={{ display: "flex", alignItems: "center", gap: 5, background: `#2A2145`, border: `1px solid #3D2F63`, color: GOLD_LIGHT, borderRadius: 3, padding: "5px 10px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}
             >
               {t("radar.fullDetails")} <ExternalLink size={11} />
             </Link>
@@ -1573,17 +1575,17 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10 }}>
-          <TradeCardStat label="Confidence" value={syncedTrade.confidence != null ? `${syncedTrade.confidence}%` : "—"} color={GOLD_LIGHT} />
-          <TradeCardStat label="Entry" value={fmt(syncedTrade.entry)} />
-          <TradeCardStat label="Stop Loss" value={fmt(syncedTrade.stop_loss)} color={RED} />
+          <TradeCardStat label={t("radar.confidence")} value={syncedTrade.confidence != null ? `${syncedTrade.confidence}%` : "—"} color={GOLD_LIGHT} />
+          <TradeCardStat label={t("radar.entry")} value={fmt(syncedTrade.entry)} />
+          <TradeCardStat label={t("radar.stopLoss")} value={fmt(syncedTrade.stop_loss)} color={RED} />
           <TradeCardStat label="TP1" value={fmt(syncedTrade.tp1)} color={GREEN} />
           <TradeCardStat label="TP2" value={fmt(syncedTrade.tp2)} color={GREEN} />
           <TradeCardStat label="TP3" value={fmt(syncedTrade.tp3)} color={BLUE} />
           <TradeCardStat label="TP4" value={fmt(syncedTrade.tp4)} color={BLUE} />
-          <TradeCardStat label="Risk/Reward" value={syncedTrade.risk_reward != null ? `${syncedTrade.risk_reward}R` : "—"} />
+          <TradeCardStat label={t("radar.riskReward")} value={syncedTrade.risk_reward != null ? `${syncedTrade.risk_reward}R` : "—"} />
         </div>
-        <div style={{ marginTop: 10, fontSize: 11, color: "#5D6880" }}>
-          {t("radar.lastCheckedPrice")} <b style={{ color: "#93A0B8" }}>{fmt(syncedTrade.last_checked_price)}</b>
+        <div style={{ marginTop: 10, fontSize: 11, color: "#6E6690" }}>
+          {t("radar.lastCheckedPrice")} <b style={{ color: "#A79FC4" }}>{fmt(syncedTrade.last_checked_price)}</b>
         </div>
       </div>
     );
@@ -1605,8 +1607,8 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
       className="qmi-anim"
       style={{
         ...glass,
-        border: `1.5px solid #3E5478`,
-        boxShadow: `0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px #26314A`,
+        border: `1.5px solid #3D2F63`,
+        boxShadow: `0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px #2A2145`,
         padding: "1rem 1.2rem",
       }}
     >
@@ -1622,26 +1624,25 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
             {isBuy ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
             {isBuy ? "BUY" : "SELL"}
           </div>
-          <span style={{ fontWeight: 800, fontSize: 14, color: "#EDF1F8" }}>{asset?.label || symbol}</span>
-          <span style={{ fontSize: 11.5, color: "#93A0B8", background: "#111726", border: "1px solid #182033", borderRadius: 3, padding: "3px 8px" }}>
+          <span style={{ fontWeight: 800, fontSize: 14, color: "#F5F3FF" }}>{asset?.label || symbol}</span>
+          <span style={{ fontSize: 11.5, color: "#A79FC4", background: "#141024", border: "1px solid #1C1630", borderRadius: 3, padding: "3px 8px" }}>
             {timeframeLabel}
           </span>
-          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, color: GOLD_LIGHT, background: `#26314A`, border: `1px solid #3E5478`, borderRadius: 3, padding: "3px 8px" }}>
-            <CheckCircle2 size={11} /> Entry Status: Ready
-          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, color: GOLD_LIGHT, background: `#2A2145`, border: `1px solid #3D2F63`, borderRadius: 3, padding: "3px 8px" }}>
+            <CheckCircle2 size={11} />{t("radar.entryStatusReady")}</span>
         </div>
-        <span style={{ fontSize: 11, color: "#5D6880" }}>{new Date().toLocaleString(locale === "ar" ? "ar-EG" : "en-GB")}</span>
+        <span style={{ fontSize: 11, color: "#6E6690" }}>{new Date().toLocaleString(locale === "ar" ? "ar-EG" : "en-GB")}</span>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10, marginBottom: 16 }}>
-        <TradeCardStat label="Confidence" value={`${r.aiConfidence ?? r.radarScore ?? 0}%`} color={GOLD_LIGHT} />
-        <TradeCardStat label="Entry" value={fmt(r.entry)} />
-        <TradeCardStat label="Stop Loss" value={fmt(r.stopLoss)} color={RED} />
+        <TradeCardStat label={t("radar.confidence")} value={`${r.aiConfidence ?? r.radarScore ?? 0}%`} color={GOLD_LIGHT} />
+        <TradeCardStat label={t("radar.entry")} value={fmt(r.entry)} />
+        <TradeCardStat label={t("radar.stopLoss")} value={fmt(r.stopLoss)} color={RED} />
         <TradeCardStat label="TP1" value={fmt(tps[0])} color={GREEN} />
         <TradeCardStat label="TP2" value={fmt(tps[1])} color={GREEN} />
         <TradeCardStat label="TP3" value={fmt(tps[2])} color={BLUE} />
         <TradeCardStat label="TP4" value={fmt(tps[3])} color={BLUE} />
-        <TradeCardStat label="Risk/Reward" value={r.riskReward != null ? `${r.riskReward}R` : "—"} />
+        <TradeCardStat label={t("radar.riskReward")} value={r.riskReward != null ? `${r.riskReward}R` : "—"} />
       </div>
 
       {executeError && <div style={{ color: RED, fontSize: 12, marginBottom: 10 }}>{executeError}</div>}
@@ -1663,13 +1664,13 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
           style={{
             width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
-            border: "none", color: "#111726", fontWeight: 900, fontSize: 14.5,
+            border: "none", color: "#141024", fontWeight: 900, fontSize: 14.5,
             borderRadius: 3, padding: "13px 20px", cursor: executing ? "default" : "pointer",
             opacity: executing ? 0.7 : 1,
           }}
         >
-          <Zap size={16} fill="#111726" />
-          {executing ? t("radar.executing") : "Execute AI Trade"}
+          <Zap size={16} fill="#141024" />
+          {executing ? t("radar.executing") : t("radar.executeTrade")}
         </button>
       )}
     </div>
@@ -1679,14 +1680,14 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
 function statusColor(status) {
   if (status === "Closed Winner") return GREEN;
   if (status === "Stopped Out") return RED;
-  if (status === "Open") return "#93A0B8";
+  if (status === "Open") return "#A79FC4";
   return GOLD_LIGHT; // Running / TPx Hit
 }
 
-function TradeCardStat({ label, value, color = "#EDF1F8" }) {
+function TradeCardStat({ label, value, color = "#F5F3FF" }) {
   return (
-    <div style={{ background: "#111726", border: "1px solid #182033", borderRadius: 3, padding: "7px 10px" }}>
-      <div style={{ fontSize: 10.5, color: "#5D6880", marginBottom: 2 }}>{label}</div>
+    <div style={{ background: "#141024", border: "1px solid #1C1630", borderRadius: 3, padding: "7px 10px" }}>
+      <div style={{ fontSize: 10.5, color: "#6E6690", marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 13.5, fontWeight: 800, color }}>{value}</div>
     </div>
   );
@@ -1700,25 +1701,25 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
   // Single source of truth: every value below reads directly from the same
   // decision object (r) that Active Opportunities / Liquidity Map / AI
   // Briefing also read — nothing here is recomputed independently anymore.
-  const STATUS_COLOR = { green: GREEN, blue: BLUE, orange: AMBER, yellow: "#E0A44A", red: RED, gray: "#5D6880" };
-  const scoreColor = STATUS_COLOR[r?.radarStatus] || "#5D6880";
+  const STATUS_COLOR = { green: GREEN, blue: BLUE, orange: AMBER, yellow: "#F0A13C", red: RED, gray: "#6E6690" };
+  const scoreColor = STATUS_COLOR[r?.radarStatus] || "#6E6690";
   // Quality Score = how complete the setup is. AI Confidence = how likely it is to play out.
   // Shown separately and labeled — see decision.js for the full definitions.
   const qualityScore = r?.qualityScore ?? r?.score ?? 0;
   const aiConfidence = r?.aiConfidence ?? r?.radarScore ?? 0;
-  const signalColor = signal === "BUY" ? GREEN : signal === "SELL" ? RED : "#5D6880";
+  const signalColor = signal === "BUY" ? GREEN : signal === "SELL" ? RED : "#6E6690";
 
   const htfTrend = r?.htfTrend ?? (r?.context?.weekly?.trend || r?.structureLadder?.[0]?.trend || r?.direction);
-  const marketStructure = r?.marketStructure || (r?.direction === "up" ? "HH / HL" : r?.direction === "down" ? "LH / LL" : "—");
+  const marketStructure = r?.marketStructure || (r?.direction === "up" ? t("radar.hhHl") : r?.direction === "down" ? t("radar.lhLl") : "—");
   const bosOk = r?.bosStatus === "Detected";
   const chochOk = r?.chochStatus === "Detected";
-  const liquidityLabel = r?.liquidityStatus || "Not Swept";
+  const liquidityLabel = r?.liquidityStatus || t("radar.notSwept");
   const premiumDiscount = r?.premiumDiscount || "—";
-  const volume = r?.volumeConfirmed ? "High" : r?.ob?.eligible ? "Medium" : "Low";
+  const volume = r?.volumeConfirmed ? t("radar.levelHigh") : r?.ob?.eligible ? t("radar.levelMedium") : t("radar.levelLow");
   // entryStatus and signalStrength come straight from the engine — both are
   // gated by the same tradeValid boolean as `signal`, so they can never say
-  // "Ready" / "Strong" while signal says WAIT.
-  const entryStatus = r?.entryStatus || "Monitoring";
+  // "Ready" / t("radar.strong") while signal says WAIT.
+  const entryStatus = r?.entryStatus || t("radar.monitoring");
   const signalStrength = r?.radarSignalStrengthLabel || "—";
   const lastTarget = r?.targets?.[r.targets.length - 1];
   const rr = lastTarget && r?.entry != null && r?.stopLoss != null
@@ -1728,48 +1729,48 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
   // -------- تسلسل الأهمية البصرية (نفس القيم المحسوبة فوق تماماً، فقط إعادة تنظيم للعرض) --------
   // Tier 1: أهم شي يشوفه المتداول أول ثانية — Signal / Confidence / Current Status / Session
   const tier1 = [
-    { label: "Signal", value: signal || "—", color: signalColor },
-    { label: "AI Confidence", value: `${aiConfidence}%`, color: scoreColor },
-    { label: "Quality Score", value: `${qualityScore}%`, color: qualityScore >= 80 ? GREEN : qualityScore >= 50 ? GOLD_LIGHT : "#5D6880" },
-    { label: "Current Status", value: entryStatus, color: entryStatus === "Ready" ? GREEN : GOLD_LIGHT },
-    { label: "Session", value: primarySession, color: BLUE },
+    { label: t("radar.signal"), value: signal || "—", color: signalColor },
+    { label: t("radar.aiConfidence"), value: `${aiConfidence}%`, color: scoreColor },
+    { label: t("radar.qualityScore"), value: `${qualityScore}%`, color: qualityScore >= 80 ? GREEN : qualityScore >= 50 ? GOLD_LIGHT : "#6E6690" },
+    { label: t("radar.currentStatus"), value: entryStatus, color: entryStatus === "Ready" ? GREEN : GOLD_LIGHT },
+    { label: t("radar.session"), value: primarySession, color: BLUE },
   ];
   // Tier 2: اتجاه وهيكلية السوق
   const tier2 = [
-    { label: "Trend", value: r?.direction === "up" ? "Bullish" : r?.direction === "down" ? "Bearish" : "—", color: r?.direction === "up" ? GREEN : r?.direction === "down" ? RED : "#5D6880" },
-    { label: "HTF Trend", value: htfTrend === "up" ? "Bullish" : htfTrend === "down" ? "Bearish" : "—", color: htfTrend === "up" ? GREEN : htfTrend === "down" ? RED : "#5D6880" },
-    { label: "Market Structure", value: marketStructure },
-    { label: "Liquidity", value: liquidityLabel },
+    { label: t("radar.trend"), value: r?.direction === "up" ? "Bullish" : r?.direction === "down" ? "Bearish" : "—", color: r?.direction === "up" ? GREEN : r?.direction === "down" ? RED : "#6E6690" },
+    { label: t("radar.htfTrend"), value: htfTrend === "up" ? "Bullish" : htfTrend === "down" ? "Bearish" : "—", color: htfTrend === "up" ? GREEN : htfTrend === "down" ? RED : "#6E6690" },
+    { label: t("radar.marketStructure"), value: marketStructure },
+    { label: t("radar.liquidity"), value: liquidityLabel },
   ];
   // Tier 3: تفاصيل الأكشن السعري
   const tier3 = [
-    { label: "Order Block", value: r?.ob?.eligible ? `${r.ob.status} ${r.direction === "up" ? "Bullish" : "Bearish"} OB` : "Not Formed" },
-    { label: "Fair Value Gap", value: r?.ob?.fvgExists ? "Open" : "None" },
-    { label: "CHOCH", value: chochOk ? "Confirmed" : "Pending", color: chochOk ? GREEN : "#5D6880" },
-    { label: "BOS", value: bosOk ? "Confirmed" : "Pending", color: bosOk ? GREEN : "#5D6880" },
+    { label: t("radar.orderBlock"), value: r?.ob?.eligible ? `${r.ob.status} ${r.direction === "up" ? "Bullish" : "Bearish"} OB` : t("radar.notFormed") },
+    { label: t("radar.fvg"), value: r?.ob?.fvgExists ? "Open" : "None" },
+    { label: "CHOCH", value: chochOk ? t("radar.confirmed") : t("radar.pending"), color: chochOk ? GREEN : "#6E6690" },
+    { label: "BOS", value: bosOk ? t("radar.confirmed") : t("radar.pending"), color: bosOk ? GREEN : "#6E6690" },
   ];
   // معلومات إضافية (Premium/Discount, Volume, Signal Strength) — نفس القيم القديمة، منعرضها ضمن تير 3 كصف ثاني
   const tier3b = [
-    { label: "Premium/Discount", value: premiumDiscount },
-    { label: "Volume", value: volume },
-    { label: "Signal Strength", value: signalStrength },
+    { label: t("radar.premiumDiscount"), value: premiumDiscount },
+    { label: t("radar.volume"), value: volume },
+    { label: t("radar.signalStrength"), value: signalStrength },
   ];
 
   return (
     <div style={{ ...glass, padding: "1rem", display: "flex", flexDirection: "column", gap: 12, maxHeight: CHART_H + 56, overflowY: "auto" }} className="qmi-scroll">
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Sparkles size={14} color={GOLD} />
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: "#EDF1F8", letterSpacing: 0.3 }}>QAIS SK ENGINE ANALYSIS</span>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: "#F5F3FF", letterSpacing: 0.3 }}>{t("radar.skAnalysis")}</span>
       </div>
 
       {!r ? (
-        <div style={{ color: "#5D6880", fontSize: 12.5, padding: "1rem 0", textAlign: "center" }}>{t("radar.loadingAnalysis")}</div>
+        <div style={{ color: "#6E6690", fontSize: 12.5, padding: "1rem 0", textAlign: "center" }}>{t("radar.loadingAnalysis")}</div>
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#EDF1F8" }}>{r.symbol}</div>
-              <div style={{ fontSize: 11, color: "#5D6880" }}>{fmt(r.price)}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#F5F3FF" }}>{r.symbol}</div>
+              <div style={{ fontSize: 11, color: "#6E6690" }}>{fmt(r.price)}</div>
             </div>
             {signal && (
               <span style={{ background: `${signalColor}22`, border: `1px solid ${signalColor}`, color: signalColor, fontWeight: 800, fontSize: 13, borderRadius: 3, padding: "6px 14px" }}>
@@ -1779,12 +1780,12 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
             <div
               style={{
                 width: 58, height: 58, borderRadius: "50%", flexShrink: 0,
-                background: `conic-gradient(${scoreColor} ${aiConfidence * 3.6}deg, #182033 0deg)`,
+                background: `conic-gradient(${scoreColor} ${aiConfidence * 3.6}deg, #1C1630 0deg)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
-              <div style={{ width: 46, height: 46, borderRadius: "50%", background: "#111726", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: "#EDF1F8" }}>{aiConfidence}%</span>
+              <div style={{ width: 46, height: 46, borderRadius: "50%", background: "#141024", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#F5F3FF" }}>{aiConfidence}%</span>
               </div>
             </div>
           </div>
@@ -1797,9 +1798,9 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
                 borderRadius: 3, padding: "8px 10px",
               }}
             >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>⚠️</span>
-              <div style={{ fontSize: 11.5, color: "#E8495F", lineHeight: 1.6 }}>
-                <b style={{ color: "#E8495F" }}>News Block ({r.newsBlock.currency})</b> — {r.newsBlock.title}
+              <span style={{ fontSize: 14, lineHeight: 1 }}><AlertTriangle size={14} aria-hidden /></span>
+              <div style={{ fontSize: 11.5, color: "#FF453A", lineHeight: 1.6 }}>
+                <b style={{ color: "#FF453A" }}>News Block ({r.newsBlock.currency})</b> — {r.newsBlock.title}
                 {" — "}
                 {r.newsBlock.minutesFromNow >= 0
                   ? `in ${r.newsBlock.minutesFromNow} min`
@@ -1809,16 +1810,14 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 4, background: "#111726", borderRadius: 3, padding: 3 }}>
+          <div style={{ display: "flex", gap: 4, background: "#141024", borderRadius: 3, padding: 3 }}>
             <button
               onClick={() => setTab("analysis")}
-              style={{ flex: 1, background: tab === "analysis" ? `#26314A` : "transparent", color: tab === "analysis" ? GOLD_LIGHT : "#5D6880", border: "none", borderRadius: 3, padding: "6px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-            >
-              Analysis
-            </button>
+              style={{ flex: 1, background: tab === "analysis" ? `#2A2145` : "transparent", color: tab === "analysis" ? GOLD_LIGHT : "#6E6690", border: "none", borderRadius: 3, padding: "6px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >{t("radar.analysis")}</button>
             <button
               onClick={() => setTab("why")}
-              style={{ flex: 1, background: tab === "why" ? `#26314A` : "transparent", color: tab === "why" ? GOLD_LIGHT : "#5D6880", border: "none", borderRadius: 3, padding: "6px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+              style={{ flex: 1, background: tab === "why" ? `#2A2145` : "transparent", color: tab === "why" ? GOLD_LIGHT : "#6E6690", border: "none", borderRadius: 3, padding: "6px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
             >
               Why This Trade?
             </button>
@@ -1828,7 +1827,7 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {/* -------- Tier 1: الأهم — يُقرأ خلال ثانية واحدة -------- */}
               <div>
-                <TierLabel text="Key Signal" />
+                <TierLabel text={t("radar.keySignal")} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {tier1.map((it) => (
                     <PriorityStat key={it.label} label={it.label} value={it.value} color={it.color} size="lg" />
@@ -1848,7 +1847,7 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
 
               {/* -------- Tier 3: تفاصيل الأكشن السعري -------- */}
               <div>
-                <TierLabel text="Price Action Detail" />
+                <TierLabel text={t("radar.priceActionDetail")} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                   {tier3.map((it) => (
                     <PriorityStat key={it.label} label={it.label} value={it.value} color={it.color} size="sm" />
@@ -1861,29 +1860,29 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
 
               {/* -------- أخيراً: مستويات الصفقة -------- */}
               <div>
-                <TierLabel text="Trade Levels" />
+                <TierLabel text={t("radar.tradeLevels")} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <MiniStat label="Entry Zone" value={fmt(r.entry)} color={GOLD_LIGHT} />
-                  <MiniStat label="Stop Loss" value={fmt(r.stopLoss)} color={RED} />
-                  <MiniStat label="Take Profit" value={lastTarget ? fmt(lastTarget.price) : "—"} color={GREEN} />
-                  <MiniStat label="RR Ratio" value={rr ? `1 : ${rr.toFixed(1)}` : "—"} color={BLUE} />
+                  <MiniStat label={t("radar.entryZone")} value={fmt(r.entry)} color={GOLD_LIGHT} />
+                  <MiniStat label={t("radar.stopLoss")} value={fmt(r.stopLoss)} color={RED} />
+                  <MiniStat label={t("radar.takeProfit")} value={lastTarget ? fmt(lastTarget.price) : "—"} color={GREEN} />
+                  <MiniStat label={t("radar.rrRatio")} value={rr ? `1 : ${rr.toFixed(1)}` : "—"} color={BLUE} />
                 </div>
               </div>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {r.reasonTags?.length > 0 && (
-                <div style={{ fontSize: 12, color: "#93A0B8", lineHeight: 1.7 }}>
+                <div style={{ fontSize: 12, color: "#A79FC4", lineHeight: 1.7 }}>
                   {t("radar.signalBasedOn")} <b style={{ color: GOLD_LIGHT }}>{r.reasonTags.join(" + ")}</b>
                 </div>
               )}
               {(r.reasonsChecklist || []).map((c) => (
-                <div key={c.key} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: c.ok ? "#ddd" : "#5D6880" }}>
-                  <span style={{ color: c.ok ? GREEN : "#3E4761" }}>{c.ok ? "✓" : "○"}</span>
+                <div key={c.key} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: c.ok ? "#ddd" : "#6E6690" }}>
+                  <span style={{ color: c.ok ? GREEN : "#4A4368" }}>{c.ok ? "✓" : "○"}</span>
                   <span>{c.label}</span>
                 </div>
               ))}
-              <div style={{ fontSize: 11, color: "#5D6880", marginTop: 6, lineHeight: 1.7 }}>
+              <div style={{ fontSize: 11, color: "#6E6690", marginTop: 6, lineHeight: 1.7 }}>
                 QAIS Quality Score: {qualityScore}/100 — {r.tradeValid ? t("radar.allConditionsMet") : t("radar.conditionsPending")}
               </div>
             </div>
@@ -1896,9 +1895,9 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
 
 function MiniStat({ label, value, color }) {
   return (
-    <div style={{ background: "#111726", borderRadius: 3, padding: "7px 9px" }}>
-      <div style={{ fontSize: 10, color: "#5D6880" }}>{label}</div>
-      <div style={{ fontSize: 12.5, fontWeight: 800, color: color || "#EDF1F8" }}>{value}</div>
+    <div style={{ background: "#141024", borderRadius: 3, padding: "7px 9px" }}>
+      <div style={{ fontSize: 10, color: "#6E6690" }}>{label}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 800, color: color || "#F5F3FF" }}>{value}</div>
     </div>
   );
 }
@@ -1906,7 +1905,7 @@ function MiniStat({ label, value, color }) {
 /* عنوان صغير لكل مجموعة أهمية داخل لوحة التحليل — يفصل بصرياً بين المستويات */
 function TierLabel({ text }) {
   return (
-    <div style={{ fontSize: 9.5, fontWeight: 800, color: "#5D6880", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 6 }}>
+    <div style={{ fontSize: 9.5, fontWeight: 800, color: "#6E6690", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 6 }}>
       {text}
     </div>
   );
@@ -1919,21 +1918,21 @@ function PriorityStat({ label, value, color, size = "md" }) {
     md: { pad: "8px 10px", labelSize: 9.5, valueSize: 12.5, borderW: 2 },
     sm: { pad: "6px 9px", labelSize: 9, valueSize: 11, borderW: 2 },
   }[size];
-  const c = color || "#5D6880";
+  const c = color || "#6E6690";
   return (
     <div
       style={{
-        background: "#111726",
+        background: "#141024",
         borderRadius: 3,
         padding: sizing.pad,
         borderInlineStart: `${sizing.borderW}px solid ${c}`,
-        border: "1px solid #111726",
+        border: "1px solid #141024",
         borderInlineStartWidth: sizing.borderW,
         borderInlineStartColor: c,
       }}
     >
-      <div style={{ fontSize: sizing.labelSize, color: "#5D6880", fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: sizing.valueSize, fontWeight: 800, color: size === "sm" ? "#93A0B8" : c }}>{value}</div>
+      <div style={{ fontSize: sizing.labelSize, color: "#6E6690", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: sizing.valueSize, fontWeight: 800, color: size === "sm" ? "#A79FC4" : c }}>{value}</div>
     </div>
   );
 }
@@ -1949,22 +1948,22 @@ export function CurrencyHeatMapCard({ snapshot, trend = {} }) {
     .sort((a, b) => b[1] - a[1]);
 
   function meta(v) {
-    if (v >= 65) return { label: "Strong", color: GREEN };
+    if (v >= 65) return { label: t("radar.strong"), color: GREEN };
     if (v <= 40) return { label: "Weak", color: RED };
-    return { label: "Neutral", color: "#5D6880" };
+    return { label: "Neutral", color: "#6E6690" };
   }
 
   // اتجاه حقيقي مبني على فرق آخر سنابشوتين حيّين (لا شي مصطنع) — trend[ccy] تُحسب بـ loadSnapshot أعلى بالمكوّن الأب
   function trendMeta(ccy, color) {
     const trendVal = trend[ccy];
-    if (trendVal === "up") return { arrow: "↑", text: "Strength increasing", color: GREEN };
-    if (trendVal === "down") return { arrow: "↓", text: "Losing strength", color: RED };
-    if (trendVal === "flat") return { arrow: "→", text: "Holding steady", color: "#5D6880" };
+    if (trendVal === "up") return { arrow: "↑", text: t("radar.strengthIncreasing"), color: GREEN };
+    if (trendVal === "down") return { arrow: "↓", text: t("radar.losingStrength"), color: RED };
+    if (trendVal === "flat") return { arrow: "→", text: t("radar.holdingSteady"), color: "#6E6690" };
     return { arrow: "", text: "", color };
   }
 
   return (
-    <CardShell title="Currency Heat Map" icon="🔥">
+    <CardShell title={t("radar.currencyHeatMap")} icon="🔥">
       {entries.length === 0 ? (
         <EmptyNote text={t("radar.loadingCurrencyStrength")} />
       ) : (
@@ -1973,9 +1972,9 @@ export function CurrencyHeatMapCard({ snapshot, trend = {} }) {
             const m = meta(v);
             const tm = trendMeta(ccy, m.color);
             return (
-              <div key={ccy} style={{ background: "#111726", border: `1px solid ${m.color}33`, borderRadius: 3, padding: "8px 10px" }}>
+              <div key={ccy} style={{ background: "#141024", border: `1px solid ${m.color}33`, borderRadius: 3, padding: "8px 10px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 11, color: "#5D6880", fontWeight: 700 }}>{ccy}</span>
+                  <span style={{ fontSize: 11, color: "#6E6690", fontWeight: 700 }}>{ccy}</span>
                   {tm.arrow && <span style={{ fontSize: 12, fontWeight: 800, color: tm.color }}>{tm.arrow}</span>}
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: m.color }}>{v}</div>
@@ -1999,9 +1998,9 @@ export function SessionMapCard({ sessions, nowTick }) {
   const overlap = useMemo(() => getActiveOverlap(sessions), [sessions]);
   const activeSessions = sessions.filter((s) => s.active);
 
-  const currentLabel = overlap ? `${overlap.label} Overlap` : activeSessions[0]?.label || "Off-Hours";
+  const currentLabel = overlap ? `${overlap.label} Overlap` : activeSessions[0]?.label || t("radar.sessionOff");
   const info = overlap
-    ? { liquidity: overlap.liquidity, volatility: "Very High", behaviour: "Trend Expansion / Breakouts", recommendation: "The busiest window of the day — best conditions for breakout and trend-continuation trades." }
+    ? { liquidity: overlap.liquidity, volatility: t("radar.levelVeryHigh"), behaviour: t("radar.behTrendBreakouts"), recommendation: "The busiest window of the day — best conditions for breakout and trend-continuation trades." }
     : SESSION_INFO[activeSessions[0]?.key] || SESSION_INFO.off;
 
   // عدّاد تنازلي حي بدقة الثانية لأقرب جلسة قادمة — نفس next.startsIn (بالساعات)، محسوب هون
@@ -2017,8 +2016,8 @@ export function SessionMapCard({ sessions, nowTick }) {
   }, [next, nowTick]);
 
   return (
-    <CardShell title="Session Map" icon="🕐">
-      <div style={{ fontSize: 10.5, color: "#5D6880", marginBottom: 10, lineHeight: 1.6 }}>
+    <CardShell title={t("radar.sessionMap")} icon="🕐">
+      <div style={{ fontSize: 10.5, color: "#6E6690", marginBottom: 10, lineHeight: 1.6 }}>
         A live 24-hour view of the four major FX sessions. The white line is right now — watch for the gold-striped zone, that's when two sessions overlap and liquidity is highest.
       </div>
 
@@ -2030,44 +2029,41 @@ export function SessionMapCard({ sessions, nowTick }) {
             key={s.key}
             title={`${s.label} · ${String(s.start).padStart(2, "0")}:00–${String(s.end).padStart(2, "0")}:00 UTC`}
             style={{
-              display: "flex", alignItems: "center", gap: 5, background: "#111726",
-              border: `1px solid ${s.active ? s.color : "#182033"}88`, borderRadius: 20, padding: "3px 9px",
+              display: "flex", alignItems: "center", gap: 5, background: "#141024",
+              border: `1px solid ${s.active ? s.color : "#1C1630"}88`, borderRadius: 20, padding: "3px 9px",
               transition: "border-color .4s ease, background .4s ease",
             }}
           >
-            <span className={s.active ? "qmi-dot" : ""} style={{ width: 6, height: 6, borderRadius: "50%", background: s.active ? s.color : "#3E4761" }} />
-            <span style={{ fontSize: 10, color: s.active ? "#EDF1F8" : "#5D6880", fontWeight: s.active ? 800 : 600 }}>{s.label}</span>
+            <span className={s.active ? "qmi-dot" : ""} style={{ width: 6, height: 6, borderRadius: "50%", background: s.active ? s.color : "#4A4368" }} />
+            <span style={{ fontSize: 10, color: s.active ? "#F5F3FF" : "#6E6690", fontWeight: s.active ? 800 : 600 }}>{s.label}</span>
           </div>
         ))}
       </div>
 
       {/* -------- كروت الشرح: الجلسة الحالية / مستوى السيولة / التقلب / السلوك / أسلوب التداول المقترح -------- */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <div style={{ background: "#111726", borderRadius: 3, padding: "7px 9px" }}>
-          <div style={{ fontSize: 10, color: "#5D6880", display: "flex", alignItems: "center", gap: 5 }}>
-            <span className="qmi-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: GOLD_LIGHT, display: "inline-block" }} />
-            Current Session
-          </div>
+        <div style={{ background: "#141024", borderRadius: 3, padding: "7px 9px" }}>
+          <div style={{ fontSize: 10, color: "#6E6690", display: "flex", alignItems: "center", gap: 5 }}>
+            <span className="qmi-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: GOLD_LIGHT, display: "inline-block" }} />{t("radar.currentSession")}</div>
           <div style={{ fontSize: 12.5, fontWeight: 800, color: GOLD_LIGHT }}>{currentLabel}</div>
         </div>
-        <MiniStat label="Liquidity Level" value={info.liquidity} color={GREEN} />
-        <MiniStat label="Expected Volatility" value={info.volatility} color={AMBER} />
-        <MiniStat label="Typical Behaviour" value={info.behaviour} color={BLUE} />
+        <MiniStat label={t("radar.liquidityLevel")} value={t(info.liquidity)} color={GREEN} />
+        <MiniStat label={t("radar.expectedVolatility")} value={t(info.volatility)} color={AMBER} />
+        <MiniStat label={t("radar.typicalBehaviour")} value={t(info.behaviour)} color={BLUE} />
       </div>
-      <div style={{ marginTop: 8, background: "#111726", borderRadius: 3, padding: "9px 11px" }}>
-        <div style={{ fontSize: 9.5, color: "#5D6880", marginBottom: 3 }}>Recommended Trading Style</div>
-        <div style={{ fontSize: 11.5, color: "#EDF1F8", fontWeight: 700, lineHeight: 1.6 }}>{info.recommendation}</div>
+      <div style={{ marginTop: 8, background: "#141024", borderRadius: 3, padding: "9px 11px" }}>
+        <div style={{ fontSize: 9.5, color: "#6E6690", marginBottom: 3 }}>{t("radar.recommendedStyle")}</div>
+        <div style={{ fontSize: 11.5, color: "#F5F3FF", fontWeight: 700, lineHeight: 1.6 }}>{t(info.recommendation)}</div>
       </div>
 
       {next && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10, paddingTop: 8, borderTop: "1px solid #ffffff10" }}>
-          <span style={{ fontSize: 10.5, color: "#5D6880" }}>
-            Next session: <b style={{ color: "#93A0B8" }}>{next.label}</b>
+          <span style={{ fontSize: 10.5, color: "#6E6690" }}>{t("radar.nextSession")}<b style={{ color: "#A79FC4" }}>{next.label}</b>
           </span>
           <span
             style={{
-              fontSize: 11, fontWeight: 800, color: GOLD_LIGHT, background: `#26314A`,
-              border: `1px solid #3E5478`, borderRadius: 20, padding: "2px 9px", fontVariantNumeric: "tabular-nums",
+              fontSize: 11, fontWeight: 800, color: GOLD_LIGHT, background: `#2A2145`,
+              border: `1px solid #3D2F63`, borderRadius: 20, padding: "2px 9px", fontVariantNumeric: "tabular-nums",
             }}
           >
             {liveCountdown || hoursLabel(next.startsIn, t)}
@@ -2080,6 +2076,7 @@ export function SessionMapCard({ sessions, nowTick }) {
 
 /* خط الجلسات المرئي: 24 ساعة، بدعم النطاقات الملفوفة (Sydney) + تظليل التداخل الفعلي + مؤشر الوقت الحالي */
 function SessionTimelineVisual({ sessions, overlap, nowTick }) {
+  const { t } = useLocale();
   const d = new Date(nowTick ?? Date.now());
   const now = d.getUTCHours() + d.getUTCMinutes() / 60 + d.getUTCSeconds() / 3600;
 
@@ -2105,7 +2102,7 @@ function SessionTimelineVisual({ sessions, overlap, nowTick }) {
 
   return (
     <div>
-      <div style={{ position: "relative", height: 34, background: "#0C1220", borderRadius: 3, overflow: "hidden", border: "1px solid #182033" }}>
+      <div style={{ position: "relative", height: 34, background: "#0E0A1A", borderRadius: 3, overflow: "hidden", border: "1px solid #1C1630" }}>
         {sessions.map((s) =>
           segmentsOf(s).map(([st, en], i) => (
             <div
@@ -2135,10 +2132,10 @@ function SessionTimelineVisual({ sessions, overlap, nowTick }) {
               width: `${((en - st) / 24) * 100}%`,
               top: 0,
               bottom: 0,
-              background: `repeating-linear-gradient(45deg, #3E5478, #3E5478 3px, transparent 3px, transparent 6px)`,
+              background: `repeating-linear-gradient(45deg, #3D2F63, #3D2F63 3px, transparent 3px, transparent 6px)`,
               border: `1px solid ${GOLD}`,
               borderRadius: 3,
-              boxShadow: `0 0 8px #3E5478`,
+              boxShadow: `0 0 8px #3D2F63`,
             }}
           />
         ))}
@@ -2147,7 +2144,7 @@ function SessionTimelineVisual({ sessions, overlap, nowTick }) {
           style={{ position: "absolute", left: `${(now / 24) * 100}%`, top: -2, bottom: -2, width: 2, background: "#fff", boxShadow: "0 0 6px #fff", transition: "left 1s linear" }}
         />
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8.5, color: "#3E4761", marginTop: 3 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8.5, color: "#4A4368", marginTop: 3 }}>
         <span>00:00</span>
         <span>06:00</span>
         <span>12:00</span>
@@ -2156,12 +2153,11 @@ function SessionTimelineVisual({ sessions, overlap, nowTick }) {
       </div>
 
       {/* -------- شرح دائم لعناصر الخط الزمني: الخط الأبيض = الآن، والشرائط الذهبية = تداخل جلستين -------- */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, fontSize: 9, color: "#5D6880" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, fontSize: 9, color: "#6E6690" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ width: 2, height: 9, background: "#fff", display: "inline-block", boxShadow: "0 0 4px #fff" }} /> Right now
-        </span>
+          <span style={{ width: 2, height: 9, background: "#fff", display: "inline-block", boxShadow: "0 0 4px #fff" }} />{t("radar.rightNow")}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ width: 12, height: 9, borderRadius: 2, display: "inline-block", background: `repeating-linear-gradient(45deg, #3E5478, #3E5478 2px, transparent 2px, transparent 4px)`, border: `1px solid ${GOLD}` }} /> Session overlap · highest liquidity
+          <span style={{ width: 12, height: 9, borderRadius: 2, display: "inline-block", background: `repeating-linear-gradient(45deg, #3D2F63, #3D2F63 2px, transparent 2px, transparent 4px)`, border: `1px solid ${GOLD}` }} /> Session overlap · highest liquidity
         </span>
       </div>
 
@@ -2185,7 +2181,7 @@ function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
   void nowTick; // يفرض إعادة تقييم "منذ..." كل ثانية لعرض عمر كل صف بدقة
   const [showAll, setShowAll] = useState(false);
 
-  // "Active Opportunities" must only contain setups that are genuinely
+  // t("radar.activeOpportunities") must only contain setups that are genuinely
   // actionable right now (entry_status === "Ready", the same tradeValid-gated
   // field the Analysis Panel and every other card read). Everything else is
   // still forming and gets shown as Building/Watching/Monitoring further
@@ -2209,7 +2205,7 @@ function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
   const visible = showAll ? sorted : sorted.slice(0, OPP_PREVIEW_COUNT);
 
   return (
-    <CardShell title="Active Opportunities" icon="⚡">
+    <CardShell title={t("radar.activeOpportunities")} icon="⚡">
       {items.length === 0 ? (
         <EmptyNote text={t("radar.noMonitoredAssets")} />
       ) : sorted.length === 0 ? (
@@ -2222,7 +2218,7 @@ function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
             </div>
           )}
           {openPositions.length > 0 && (
-            <div style={{ fontSize: 10.5, color: "#5D6880", marginBottom: 8 }}>
+            <div style={{ fontSize: 10.5, color: "#6E6690", marginBottom: 8 }}>
               {openPositions.length} symbol{openPositions.length > 1 ? "s" : ""} already {"have"} an open trade — hidden from new opportunities until closed.
             </div>
           )}
@@ -2230,8 +2226,8 @@ function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
             {visible.map((it) => {
               const meta = radarStatusMeta(it);
               const isReady = it.entry_status === "Ready";
-              const dirLabel = it.direction === "up" ? (isReady ? "BUY" : "BUY BIAS") : it.direction === "down" ? (isReady ? "SELL" : "SELL BIAS") : "—";
-              const dirColor = it.direction === "up" ? GREEN : it.direction === "down" ? RED : "#5D6880";
+              const dirLabel = it.direction === "up" ? (isReady ? "BUY" : t("radar.buyBias")) : it.direction === "down" ? (isReady ? "SELL" : t("radar.sellBias")) : "—";
+              const dirColor = it.direction === "up" ? GREEN : it.direction === "down" ? RED : "#6E6690";
               const confidence = it.radar_score ?? it.score ?? 0;
               return (
                 <button
@@ -2239,10 +2235,10 @@ function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
                   onClick={() => onOpen(it.symbol)}
                   style={{
                     display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "right",
-                    background: "#111726", border: "1px solid transparent", borderRadius: 3, padding: "8px 10px",
+                    background: "#141024", border: "1px solid transparent", borderRadius: 3, padding: "8px 10px",
                     cursor: "pointer", transition: "border-color .2s ease, background .2s ease",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = `#3E5478`)}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = `#3D2F63`)}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
                 >
                   {/* مؤشر ملوّن صغير لحالة الإشارة */}
@@ -2250,23 +2246,23 @@ function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 12, fontWeight: 800, color: "#EDF1F8" }}>{it.symbol}</span>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "#F5F3FF" }}>{it.symbol}</span>
                       <span style={{ fontSize: 9, fontWeight: 800, color: dirColor, background: `${dirColor}22`, borderRadius: 3, padding: "1px 6px" }}>{dirLabel}</span>
                       {it.timeframe && (
-                        <span style={{ fontSize: 8.5, fontWeight: 700, color: "#5D6880", background: "#111726", borderRadius: 3, padding: "1px 6px" }}>{it.timeframe}</span>
+                        <span style={{ fontSize: 8.5, fontWeight: 700, color: "#6E6690", background: "#141024", borderRadius: 3, padding: "1px 6px" }}>{it.timeframe}</span>
                       )}
                     </div>
                     <div style={{ fontSize: 9.5, color: meta.color, marginTop: 2, fontWeight: 700 }}>
                       {it.entry_status || meta.label}
                       {it.updated_at && (
-                        <span style={{ color: "#5D6880", fontWeight: 600 }}> · {relTime(it.updated_at, t)}</span>
+                        <span style={{ color: "#6E6690", fontWeight: 600 }}> · {relTime(it.updated_at, t)}</span>
                       )}
                     </div>
                   </div>
 
                   <div style={{ textAlign: "left", flexShrink: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 800, color: confidence >= 80 ? GREEN : confidence >= 60 ? GOLD_LIGHT : "#93A0B8" }}>{confidence}%</div>
-                    <div style={{ fontSize: 8, color: "#5D6880" }}>Score</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 800, color: confidence >= 80 ? GREEN : confidence >= 60 ? GOLD_LIGHT : "#A79FC4" }}>{confidence}%</div>
+                    <div style={{ fontSize: 8, color: "#6E6690" }}>{t("radar.score")}</div>
                   </div>
                 </button>
               );
@@ -2277,11 +2273,11 @@ function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
             <button
               onClick={() => setShowAll((v) => !v)}
               style={{
-                marginTop: 9, width: "100%", background: "transparent", border: `1px solid #3E5478`,
+                marginTop: 9, width: "100%", background: "transparent", border: `1px solid #3D2F63`,
                 color: GOLD_LIGHT, borderRadius: 3, padding: "7px 0", fontSize: 11, fontWeight: 700, cursor: "pointer",
               }}
             >
-              {showAll ? "Show Less" : `View All Opportunities (${sorted.length})`}
+              {showAll ? t("radar.showLess") : `View All Opportunities (${sorted.length})`}
             </button>
           )}
         </>
@@ -2312,18 +2308,18 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
       <div className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
         <SectionHeader
           icon="💧"
-          title="Liquidity Map"
+          title={t("radar.liquidityMap")}
           subtitle="Where price is hunting liquidity right now. Click any row to load its full breakdown in the Analysis Workspace below — nothing pops up, the page just updates."
         />
 
         {/* -------- كروت شرح المفاهيم (بدل الفقرة الطويلة) -------- */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, margin: "16px 0 18px" }}>
-          <ConceptCard icon="️" title="Above High" lines={["Price swept previous highs.", "Usually takes Buy Side Liquidity."]} color={RED} />
-          <ConceptCard icon="️" title="Below Low" lines={["Price swept previous lows.", "Usually takes Sell Side Liquidity."]} color={GREEN} />
-          <ConceptCard icon="🧱" title="Order Block" lines={["Institutional supply or demand zone."]} color={GOLD_LIGHT} />
-          <ConceptCard icon="⚡" title="Fair Value Gap" lines={["Price imbalance waiting to be rebalanced."]} color={BLUE} />
-          <ConceptCard icon="🎯" title="Quality Score" lines={["How complete the setup is (structure, liquidity, OB, targets)."]} color={GOLD} />
-          <ConceptCard icon="🧠" title="AI Confidence" lines={["How likely the AI thinks the setup is to play out (HTF, session, volume)."]} color={GOLD_LIGHT} />
+          <ConceptCard icon="️" title={t("radar.aboveHigh")} lines={[t("radar.sweptHighs"), t("radar.takesBuySide")]} color={RED} />
+          <ConceptCard icon="️" title={t("radar.belowLow")} lines={[t("radar.sweptLows"), t("radar.takesSellSide")]} color={GREEN} />
+          <ConceptCard icon="🧱" title={t("radar.orderBlock")} lines={[t("radar.obDesc")]} color={GOLD_LIGHT} />
+          <ConceptCard icon="⚡" title={t("radar.fvg")} lines={[t("radar.fvgDesc")]} color={BLUE} />
+          <ConceptCard icon="🎯" title={t("radar.qualityScore")} lines={[t("radar.qualityDescLong")]} color={GOLD} />
+          <ConceptCard icon="🧠" title={t("radar.aiConfidence")} lines={[t("radar.confidenceDescLong")]} color={GOLD_LIGHT} />
         </div>
 
         {sorted.length === 0 ? (
@@ -2331,31 +2327,31 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             <div className="qmi-liq-row qmi-liq-head">
-              <span>Symbol</span>
-              <span>Direction</span>
-              <span>Score</span>
-              <span>Liquidity Status</span>
-              <span>Order Block</span>
-              <span>Fair Value Gap</span>
-              <span>Confidence</span>
-              <span>Timeframe</span>
-              <span>Status</span>
+              <span>{t("radar.symbol")}</span>
+              <span>{t("radar.direction")}</span>
+              <span>{t("radar.score")}</span>
+              <span>{t("radar.liquidityStatus")}</span>
+              <span>{t("radar.orderBlock")}</span>
+              <span>{t("radar.fvg")}</span>
+              <span>{t("radar.confidence")}</span>
+              <span>{t("radar.timeframe")}</span>
+              <span>{t("radar.status")}</span>
             </div>
             {sorted.map((it) => {
               const d = it.decision;
               const swept = !!d?.liquidityStatus?.startsWith?.("Swept");
-              const liqLabel = swept ? (it.direction === "up" ? "Below Low" : "Above High") : d?.liquidityStatus || "Not Swept";
-              const liqColor = swept ? (it.direction === "up" ? GREEN : RED) : "#5D6880";
+              const liqLabel = swept ? (it.direction === "up" ? t("radar.belowLow") : t("radar.aboveHigh")) : d?.liquidityStatus || t("radar.notSwept");
+              const liqColor = swept ? (it.direction === "up" ? GREEN : RED) : "#6E6690";
               const obLabel = d?.ob?.eligible ? `${it.direction === "up" ? "Bullish" : "Bearish"} OB` : "—";
               const fvgLabel = d?.fvgStatus || "—";
               // Quality Score (setup completeness) vs AI Confidence (likelihood to play out) —
               // two distinct metrics, same numbers Active Opportunities / Analysis Panel show.
               const score = it.score ?? 0;
               const confidence = it.radar_score ?? d?.radarScore ?? 0;
-              const confLabel = confidence >= 80 ? "High" : confidence >= 50 ? "Medium" : "Low";
-              const confColor = confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : "#5D6880";
+              const confLabel = confidence >= 80 ? t("radar.levelHigh") : confidence >= 50 ? t("radar.levelMedium") : t("radar.levelLow");
+              const confColor = confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : "#6E6690";
               const dirLabel = it.direction === "up" ? "BUY" : it.direction === "down" ? "SELL" : "—";
-              const dirColor = it.direction === "up" ? GREEN : it.direction === "down" ? RED : "#5D6880";
+              const dirColor = it.direction === "up" ? GREEN : it.direction === "down" ? RED : "#6E6690";
               const meta = radarStatusMeta(it);
               const isSelected = active?.symbol === it.symbol;
               return (
@@ -2364,30 +2360,30 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
                   onClick={() => onSelect(it.symbol)}
                   className="qmi-liq-row qmi-liq-body"
                   style={{
-                    background: isSelected ? `#26314A` : "#111726",
-                    border: `1px solid ${isSelected ? `#3E5478` : "transparent"}`,
-                    boxShadow: isSelected ? `0 6px 18px #26314A` : "0 2px 8px rgba(0,0,0,0.18)",
+                    background: isSelected ? `#2A2145` : "#141024",
+                    border: `1px solid ${isSelected ? `#3D2F63` : "transparent"}`,
+                    boxShadow: isSelected ? `0 6px 18px #2A2145` : "0 2px 8px rgba(0,0,0,0.18)",
                   }}
                 >
-                  <span data-label="Symbol" style={{ fontWeight: 800, color: "#EDF1F8", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span data-label={t("radar.symbol")} style={{ fontWeight: 800, color: "#F5F3FF", display: "flex", alignItems: "center", gap: 6 }}>
                     {isSelected && <span style={{ width: 5, height: 5, borderRadius: "50%", background: GOLD, flexShrink: 0 }} />}
                     {it.symbol}
                   </span>
-                  <span data-label="Direction">
+                  <span data-label={t("radar.direction")}>
                     <span style={{ fontSize: 10, fontWeight: 800, color: dirColor, background: `${dirColor}20`, borderRadius: 3, padding: "3px 8px" }}>{dirLabel}</span>
                   </span>
-                  <span data-label="Score" style={{ fontWeight: 800, color: score >= 85 ? GREEN : "#93A0B8" }}>{score}%</span>
-                  <span data-label="Liquidity Status" style={{ color: liqColor, fontWeight: 700 }}>{liqLabel}</span>
-                  <span data-label="Order Block" style={{ color: d?.ob?.eligible ? GOLD_LIGHT : "#5D6880" }}>{obLabel}</span>
-                  <span data-label="Fair Value Gap" style={{ color: fvgLabel === "Present" ? BLUE : "#5D6880" }}>{fvgLabel}</span>
-                  <span data-label="Confidence" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ width: 34, height: 5, borderRadius: 3, background: "#0C1220", overflow: "hidden", flexShrink: 0 }}>
+                  <span data-label={t("radar.score")} style={{ fontWeight: 800, color: score >= 85 ? GREEN : "#A79FC4" }}>{score}%</span>
+                  <span data-label={t("radar.liquidityStatus")} style={{ color: liqColor, fontWeight: 700 }}>{liqLabel}</span>
+                  <span data-label={t("radar.orderBlock")} style={{ color: d?.ob?.eligible ? GOLD_LIGHT : "#6E6690" }}>{obLabel}</span>
+                  <span data-label={t("radar.fvg")} style={{ color: fvgLabel === "Present" ? BLUE : "#6E6690" }}>{fvgLabel}</span>
+                  <span data-label={t("radar.confidence")} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 34, height: 5, borderRadius: 3, background: "#0E0A1A", overflow: "hidden", flexShrink: 0 }}>
                       <span style={{ display: "block", height: "100%", width: `${confidence}%`, background: confColor, borderRadius: 3 }} />
                     </span>
                     <span style={{ fontSize: 10.5, fontWeight: 700, color: confColor }}>{confLabel}</span>
                   </span>
-                  <span data-label="Timeframe" style={{ color: "#93A0B8", fontWeight: 700 }}>{it.timeframe || "—"}</span>
-                  <span data-label="Status">
+                  <span data-label={t("radar.timeframe")} style={{ color: "#A79FC4", fontWeight: 700 }}>{it.timeframe || "—"}</span>
+                  <span data-label={t("radar.status")}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 800, color: meta.color, background: `${meta.color}1f`, borderRadius: 3, padding: "3px 8px" }}>
                       <span style={{ width: 5, height: 5, borderRadius: "50%", background: meta.color }} />
                       {it.entry_status || meta.label}
@@ -2412,10 +2408,10 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
    ============================================================================ */
 const CHECKLIST_LABELS = {
   trend: "A clear directional trend on the main structure",
-  bosConfirmed: "Break of Structure (BOS) confirmation",
-  mssConfirmed: "Market Structure Shift (MSS/CHOCH) confirmation",
+  bosConfirmed: t("radar.bosConfirmation"),
+  mssConfirmed: t("radar.mssConfirmation"),
   liquidityHit: "A liquidity sweep inside the point of interest",
-  priceLocationOk: "Price reaching a valid Fibonacci location",
+  priceLocationOk: t("radar.fibValid"),
   smtPresent: "A confirmed SMT divergence",
   obCreated: "A valid Order Block on the execution timeframe",
   retest: "A retest of the Order Block",
@@ -2500,21 +2496,21 @@ function buildAiBriefing(item, d) {
   }
 
   /* ---------- 5) AI Confidence ---------- */
-  const confidenceLabel = score >= 80 ? "High" : score >= 50 ? "Medium" : "Low";
+  const confidenceLabel = score >= 80 ? _t("radar.levelHigh") : score >= 50 ? _t("radar.levelMedium") : _t("radar.levelLow");
   const confidenceReasons = [];
-  confidenceReasons.push(dir ? `Trend is ${dirLabel}` : "No confirmed trend yet");
-  confidenceReasons.push(swept ? "Liquidity has been swept" : approaching ? "Liquidity zone identified but not swept yet" : "No liquidity sweep yet");
-  confidenceReasons.push(bosOk ? "BOS is confirmed" : "BOS is not confirmed");
+  confidenceReasons.push(dir ? `Trend is ${dirLabel}` : _t("radar.noTrendYet"));
+  confidenceReasons.push(swept ? _t("radar.liquiditySwept") : approaching ? _t("radar.liquidityNotSwept") : _t("radar.noSweepYet"));
+  confidenceReasons.push(bosOk ? _t("radar.bosConfirmed") : _t("radar.bosNotConfirmed"));
   if (obReady) confidenceReasons.push(`Order Block quality is ${obQuality}%`);
-  confidenceReasons.push(tradeValid ? "Entry conditions are complete" : "Entry conditions are incomplete");
+  confidenceReasons.push(tradeValid ? _t("radar.entryComplete") : _t("radar.entryIncomplete"));
 
   /* ---------- 6) Recommendation ---------- */
   let recommendation;
-  if (tradeValid && dir === "up") recommendation = { text: "Buy setup is valid.", tone: "buy" };
-  else if (tradeValid && dir === "down") recommendation = { text: "Sell setup is valid.", tone: "sell" };
+  if (tradeValid && dir === "up") recommendation = { text: _t("radar.buyValid"), tone: "buy" };
+  else if (tradeValid && dir === "down") recommendation = { text: _t("radar.sellValid"), tone: "sell" };
   else if (!dir) recommendation = { text: "Market is ranging — avoid entering until a clear trend forms.", tone: "range" };
-  else if (approaching) recommendation = { text: "Wait for the liquidity zone to be swept before considering entry.", tone: "wait" };
-  else if (!bosOk) recommendation = { text: "Wait for BOS confirmation before entering.", tone: "wait" };
+  else if (approaching) recommendation = { text: _t("radar.waitSweep"), tone: "wait" };
+  else if (!bosOk) recommendation = { text: _t("radar.waitBos"), tone: "wait" };
   else recommendation = { text: "Wait for confirmation — avoid entering early.", tone: "wait" };
 
   /* ---------- 7) Risk Factors ---------- */
@@ -2560,13 +2556,13 @@ const BRIEFING_TONE = {
 };
 
 function BriefingCard({ emoji, title, color, delay, confidence, children }) {
-  const confColor = confidence == null ? "#5D6880" : confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : AMBER;
+  const confColor = confidence == null ? "#6E6690" : confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : AMBER;
   return (
     <div
       className="qmi-anim qmi-briefing-card"
       style={{
         animationDelay: `${delay}ms`,
-        background: "#111726",
+        background: "#141024",
         border: `1px solid ${color}33`,
         borderLeft: `3px solid ${color}`,
         borderRadius: 0,
@@ -2601,16 +2597,17 @@ function BriefingCard({ emoji, title, color, delay, confidence, children }) {
 }
 
 function AiBriefing({ item, d }) {
+  const { t } = useLocale();
   const briefing = useMemo(() => buildAiBriefing(item, d), [item, d]);
 
   if (!briefing) {
     return (
-      <div style={{ marginTop: 12, background: "#111726", border: `1px solid #26314A`, borderRadius: 3, padding: "12px 14px" }}>
+      <div style={{ marginTop: 12, background: "#141024", border: `1px solid #2A2145`, borderRadius: 3, padding: "12px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
           <Sparkles size={12} color={GOLD} />
-          <span style={{ fontSize: 11, fontWeight: 800, color: GOLD_LIGHT, letterSpacing: 0.3 }}>AI SUMMARY</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: GOLD_LIGHT, letterSpacing: 0.3 }}>{t("radar.aiSummary")}</span>
         </div>
-        <div style={{ fontSize: 12, color: "#93A0B8", lineHeight: 1.8 }}>Waiting for the Qais SK Engine to complete the first analysis cycle for {item.symbol}.</div>
+        <div style={{ fontSize: 12, color: "#A79FC4", lineHeight: 1.8 }}>Waiting for the Qais SK Engine to complete the first analysis cycle for {item.symbol}.</div>
       </div>
     );
   }
@@ -2622,13 +2619,13 @@ function AiBriefing({ item, d }) {
     <div style={{ marginTop: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
         <Sparkles size={13} color={GOLD} />
-        <span style={{ fontSize: 12, fontWeight: 800, color: GOLD_LIGHT, letterSpacing: 0.5 }}>QAIS AI MARKET BRIEFING</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: GOLD_LIGHT, letterSpacing: 0.5 }}>{t("radar.aiBriefing")}</span>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {/* 1. Current Market Situation */}
-        <BriefingCard emoji="🧠" title="Current Market Situation" color={BLUE} delay={0} confidence={briefing.confidence.score}>
-          <div style={{ fontSize: 12, color: "#EDF1F8", lineHeight: 1.8 }}>{briefing.situation}</div>
+        <BriefingCard emoji="🧠" title={t("radar.currentSituation")} color={BLUE} delay={0} confidence={briefing.confidence.score}>
+          <div style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.8 }}>{briefing.situation}</div>
         </BriefingCard>
 
         {/* 2. What Are We Waiting For */}
@@ -2640,7 +2637,7 @@ function AiBriefing({ item, d }) {
           ) : (
             <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 4 }}>
               {briefing.waitingFor.map((w, i) => (
-                <li key={i} style={{ fontSize: 12, color: "#EDF1F8", lineHeight: 1.6 }}>
+                <li key={i} style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.6 }}>
                   {w}
                 </li>
               ))}
@@ -2649,20 +2646,20 @@ function AiBriefing({ item, d }) {
         </BriefingCard>
 
         {/* 3. Bullish Scenario */}
-        <BriefingCard emoji="📈" title="Bullish Scenario" color={GREEN} delay={120} confidence={briefing.confidence.score}>
-          <div style={{ fontSize: 12, color: "#EDF1F8", lineHeight: 1.8 }}>{briefing.bullish}</div>
+        <BriefingCard emoji="📈" title={t("radar.bullishScenario")} color={GREEN} delay={120} confidence={briefing.confidence.score}>
+          <div style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.8 }}>{briefing.bullish}</div>
         </BriefingCard>
 
         {/* 4. Bearish Scenario */}
-        <BriefingCard emoji="📉" title="Bearish Scenario" color={RED} delay={180} confidence={briefing.confidence.score}>
-          <div style={{ fontSize: 12, color: "#EDF1F8", lineHeight: 1.8 }}>{briefing.bearish}</div>
+        <BriefingCard emoji="📉" title={t("radar.bearishScenario")} color={RED} delay={180} confidence={briefing.confidence.score}>
+          <div style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.8 }}>{briefing.bearish}</div>
         </BriefingCard>
 
         {/* 5. Risk Factors */}
-        <BriefingCard emoji="️" title="Risk Factors" color={AMBER} delay={240} confidence={briefing.confidence.score}>
+        <BriefingCard emoji="️" title={t("radar.riskFactors")} color={AMBER} delay={240} confidence={briefing.confidence.score}>
           <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 5 }}>
             {briefing.riskFactors.map((r, i) => (
-              <li key={i} style={{ fontSize: 12, color: "#EDF1F8", lineHeight: 1.7 }}>
+              <li key={i} style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.7 }}>
                 {r}
               </li>
             ))}
@@ -2670,7 +2667,7 @@ function AiBriefing({ item, d }) {
         </BriefingCard>
 
         {/* 6. AI Recommendation */}
-        <BriefingCard emoji="🎯" title="AI Recommendation" color={tone.color} delay={300} confidence={briefing.confidence.score}>
+        <BriefingCard emoji="🎯" title={t("radar.aiRecommendation")} color={tone.color} delay={300} confidence={briefing.confidence.score}>
           <div
             style={{
               display: "flex",
@@ -2691,7 +2688,7 @@ function AiBriefing({ item, d }) {
             <span style={{ fontSize: 18, fontWeight: 900, color: GOLD_LIGHT }}>{briefing.confidence.score}%</span>
             <span style={{ fontSize: 11, fontWeight: 800, color: BLUE }}>{briefing.confidence.label} confidence</span>
           </div>
-          <div style={{ height: 6, borderRadius: 3, background: "#0C1220", overflow: "hidden", marginBottom: 8 }}>
+          <div style={{ height: 6, borderRadius: 3, background: "#0E0A1A", overflow: "hidden", marginBottom: 8 }}>
             <div
               className="qmi-conf-bar"
               style={{ height: "100%", width: `${briefing.confidence.score}%`, background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`, borderRadius: 3 }}
@@ -2716,7 +2713,7 @@ function AnalysisWorkspace({ item }) {
   if (!item) {
     return (
       <div className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
-        <SectionHeader icon="🧠" title="Analysis Workspace" subtitle="Click any asset in the Liquidity Map above to load its full breakdown here." />
+        <SectionHeader icon="🧠" title={t("radar.analysisWorkspace")} subtitle={t("radar.clickAsset")} />
         <EmptyNote text={t("radar.noAssetSelected")} />
       </div>
     );
@@ -2724,39 +2721,39 @@ function AnalysisWorkspace({ item }) {
 
   const d = item.decision;
   const dirLabel = item.direction === "up" ? "Bullish" : item.direction === "down" ? "Bearish" : "Neutral";
-  const dirColor = item.direction === "up" ? GREEN : item.direction === "down" ? RED : "#5D6880";
+  const dirColor = item.direction === "up" ? GREEN : item.direction === "down" ? RED : "#6E6690";
   const htfLabel = d?.htfTrend === "up" ? "Bullish" : d?.htfTrend === "down" ? "Bearish" : "—";
-  const htfColor = d?.htfTrend === "up" ? GREEN : d?.htfTrend === "down" ? RED : "#5D6880";
+  const htfColor = d?.htfTrend === "up" ? GREEN : d?.htfTrend === "down" ? RED : "#6E6690";
   const swept = !!d?.liquidityStatus?.startsWith?.("Swept");
   const liqTypeLabel = swept
     ? item.direction === "up"
       ? "Below Low — Sell-Side Liquidity Taken"
       : "Above High — Buy-Side Liquidity Taken"
-    : d?.liquidityStatus || "Not Swept Yet";
-  const obLabel = d?.ob?.eligible ? `${dirLabel} OB · ${d.ob.status} · Quality ${d.ob.quality}%` : "No Valid Order Block Yet";
+    : d?.liquidityStatus || t("radar.notSweptYet");
+  const obLabel = d?.ob?.eligible ? `${dirLabel} OB · ${d.ob.status} · Quality ${d.ob.quality}%` : t("radar.obInvalid");
   const lastTarget = d?.targets?.[d.targets.length - 1];
   const expectedMove = d?.entry != null && lastTarget ? `${fmt(d.entry)} → ${fmt(lastTarget.price)}` : "—";
   // Same AI Confidence / Quality Score / Entry Status fields the Analysis
   // Panel and Active Opportunities use — single source of truth.
   const confidence = d?.aiConfidence ?? d?.radarScore ?? 0;
   const qualityScore = d?.qualityScore ?? d?.score ?? 0;
-  const entryStatus = d?.entryStatus || "Monitoring";
-  const structureLabel = d?.marketStructure || (d?.bosStatus === "Detected" ? "Break of Structure" : "Ranging");
+  const entryStatus = d?.entryStatus || t("radar.monitoring");
+  const structureLabel = d?.marketStructure || (d?.bosStatus === "Detected" ? t("radar.bos") : t("radar.ranging"));
 
   /* -------- Smart Explanations — كل قيمة بتفسّر حالها بجملة بسيطة، مبنية من
      نفس القيم المحسوبة فوق فقط (لا نص عشوائي، ولا رقم جديد) -------- */
   const explain = {
     trend:
       item.direction === "up"
-        ? "The market continues making higher lows, keeping buyers in control."
+        ? t("radar.higherLows")
         : item.direction === "down"
-        ? "The market continues making lower highs, keeping sellers in control."
-        : "Price hasn't committed to a clear direction yet.",
+        ? t("radar.lowerHighs")
+        : t("radar.noCommitment"),
     htf:
       d?.htfTrend == null
-        ? "No clear higher-timeframe bias to compare against yet."
+        ? t("radar.noHtfBias")
         : d.htfTrend === item.direction
-        ? "The bigger picture agrees with this move, adding weight behind it."
+        ? t("radar.htfAgrees")
         : "The bigger picture disagrees — this move is against the broader trend.",
     structure:
       d?.bosStatus === "Detected"
@@ -2764,34 +2761,34 @@ function AnalysisWorkspace({ item }) {
         : "Price hasn't broken a clear structural level yet — still building the next move.",
     liqType: swept
       ? item.direction === "up"
-        ? "Sell-side liquidity has already been taken, reducing downside probability."
-        : "Buy-side liquidity has already been taken, reducing upside probability."
+        ? t("radar.sellSideTaken")
+        : t("radar.buySideTaken")
       : "This liquidity pool hasn't been taken yet — price may still reach for it first.",
     ob: d?.ob?.eligible
       ? "Institutional supply/demand zone — price could react strongly if it retests this area."
-      : "No institutional zone has formed yet on this timeframe.",
-    fvg: d?.fvgStatus === "Present" ? "Price may revisit this imbalance before continuing." : "No unfilled imbalance nearby for price to react to.",
+      : t("radar.obNone"),
+    fvg: d?.fvgStatus === "Present" ? t("radar.fvgRevisit") : t("radar.fvgNone"),
   };
 
   return (
     <div key={item.symbol} className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
-      <SectionHeader icon="🧠" title="Analysis Workspace" subtitle={`Full breakdown for ${item.symbol} — always visible, refreshes automatically when you pick another asset above.`} />
+      <SectionHeader icon="🧠" title={t("radar.analysisWorkspace")} subtitle={`Full breakdown for ${item.symbol} — always visible, refreshes automatically when you pick another asset above.`} />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10, marginTop: 14 }}>
-        <WorkspaceStat label="Liquidity Status" value={d?.liquidityStatus || "—"} explain={explain.liqType} />
-        <WorkspaceStat label="Market Structure" value={structureLabel} explain={explain.structure} />
-        <WorkspaceStat label="Trend" value={dirLabel} color={dirColor} explain={explain.trend} />
-        <WorkspaceStat label="HTF Trend" value={htfLabel} color={htfColor} explain={explain.htf} />
-        <WorkspaceStat label="Liquidity Type" value={liqTypeLabel} color={swept ? (item.direction === "up" ? GREEN : RED) : "#5D6880"} explain={explain.liqType} />
-        <WorkspaceStat label="Order Block" value={obLabel} color={d?.ob?.eligible ? GOLD_LIGHT : "#5D6880"} explain={explain.ob} />
-        <WorkspaceStat label="Fair Value Gap" value={d?.fvgStatus || "—"} color={d?.fvgStatus === "Present" ? BLUE : "#5D6880"} explain={explain.fvg} />
-        <WorkspaceStat label="Expected Move" value={expectedMove} color={GOLD_LIGHT} />
-        <WorkspaceStat label="Entry Zone" value={fmt(d?.entry)} color={GOLD_LIGHT} />
-        <WorkspaceStat label="Stop Loss" value={fmt(d?.stopLoss)} color={RED} />
-        <WorkspaceStat label="Take Profit" value={lastTarget ? fmt(lastTarget.price) : "—"} color={GREEN} />
-        <WorkspaceStat label="Entry Status" value={entryStatus} color={entryStatus === "Ready" ? GREEN : GOLD_LIGHT} />
-        <WorkspaceStat label="Quality Score" value={`${qualityScore}%`} color={qualityScore >= 85 ? GREEN : GOLD_LIGHT} explain="How complete the setup is." />
-        <WorkspaceStat label="AI Confidence" value={`${confidence}%`} color={confidence >= 85 ? GREEN : GOLD_LIGHT} explain="How likely the AI thinks this setup is to play out." />
+        <WorkspaceStat label={t("radar.liquidityStatus")} value={d?.liquidityStatus || "—"} explain={explain.liqType} />
+        <WorkspaceStat label={t("radar.marketStructure")} value={structureLabel} explain={explain.structure} />
+        <WorkspaceStat label={t("radar.trend")} value={dirLabel} color={dirColor} explain={explain.trend} />
+        <WorkspaceStat label={t("radar.htfTrend")} value={htfLabel} color={htfColor} explain={explain.htf} />
+        <WorkspaceStat label={t("radar.liquidityType")} value={liqTypeLabel} color={swept ? (item.direction === "up" ? GREEN : RED) : "#6E6690"} explain={explain.liqType} />
+        <WorkspaceStat label={t("radar.orderBlock")} value={obLabel} color={d?.ob?.eligible ? GOLD_LIGHT : "#6E6690"} explain={explain.ob} />
+        <WorkspaceStat label={t("radar.fvg")} value={d?.fvgStatus || "—"} color={d?.fvgStatus === "Present" ? BLUE : "#6E6690"} explain={explain.fvg} />
+        <WorkspaceStat label={t("radar.expectedMove")} value={expectedMove} color={GOLD_LIGHT} />
+        <WorkspaceStat label={t("radar.entryZone")} value={fmt(d?.entry)} color={GOLD_LIGHT} />
+        <WorkspaceStat label={t("radar.stopLoss")} value={fmt(d?.stopLoss)} color={RED} />
+        <WorkspaceStat label={t("radar.takeProfit")} value={lastTarget ? fmt(lastTarget.price) : "—"} color={GREEN} />
+        <WorkspaceStat label={t("radar.entryStatus")} value={entryStatus} color={entryStatus === "Ready" ? GREEN : GOLD_LIGHT} />
+        <WorkspaceStat label={t("radar.qualityScore")} value={`${qualityScore}%`} color={qualityScore >= 85 ? GREEN : GOLD_LIGHT} explain={t("radar.qualityDesc")} />
+        <WorkspaceStat label={t("radar.aiConfidence")} value={`${confidence}%`} color={confidence >= 85 ? GREEN : GOLD_LIGHT} explain={t("radar.confidenceDesc")} />
       </div>
 
       <AiBriefing item={item} d={d} />
@@ -2801,10 +2798,10 @@ function AnalysisWorkspace({ item }) {
 
 function WorkspaceStat({ label, value, color, explain }) {
   return (
-    <div className="qmi-wstat" style={{ background: "#111726", borderRadius: 3, padding: "10px 12px" }}>
-      <div style={{ fontSize: 10, color: "#5D6880", marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 12.5, fontWeight: 800, color: color || "#EDF1F8", lineHeight: 1.4 }}>{value}</div>
-      {explain && <div style={{ fontSize: 10.5, color: "#5D6880", lineHeight: 1.55, marginTop: 4 }}>{explain}</div>}
+    <div className="qmi-wstat" style={{ background: "#141024", borderRadius: 3, padding: "10px 12px" }}>
+      <div style={{ fontSize: 10, color: "#6E6690", marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 800, color: color || "#F5F3FF", lineHeight: 1.4 }}>{value}</div>
+      {explain && <div style={{ fontSize: 10.5, color: "#6E6690", lineHeight: 1.55, marginTop: 4 }}>{explain}</div>}
     </div>
   );
 }
@@ -2812,13 +2809,13 @@ function WorkspaceStat({ label, value, color, explain }) {
 /* -------------------- كرت شرح مفهوم واحد (تعليمي، بدون بيانات حيّة) -------------------- */
 function ConceptCard({ icon, title, lines, color }) {
   return (
-    <div className="qmi-concept-card" style={{ background: "#111726", border: `1px solid ${color}33`, borderRadius: 0, padding: "12px 14px" }}>
+    <div className="qmi-concept-card" style={{ background: "#141024", border: `1px solid ${color}33`, borderRadius: 0, padding: "12px 14px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
         <span style={{ fontSize: 15 }}>{icon}</span>
-        <span style={{ fontSize: 12, fontWeight: 800, color: color || "#EDF1F8" }}>{title}</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: color || "#F5F3FF" }}>{title}</span>
       </div>
       {lines.map((l, i) => (
-        <div key={i} style={{ fontSize: 11, color: "#93A0B8", lineHeight: 1.6 }}>
+        <div key={i} style={{ fontSize: 11, color: "#A79FC4", lineHeight: 1.6 }}>
           {l}
         </div>
       ))}
@@ -2831,8 +2828,8 @@ function SectionHeader({ icon, title, subtitle }) {
     <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
       <span style={{ fontSize: 18 }}>{icon}</span>
       <div>
-        <div style={{ fontSize: 14.5, fontWeight: 800, color: "#EDF1F8" }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 11, color: "#5D6880", marginTop: 2, lineHeight: 1.6 }}>{subtitle}</div>}
+        <div style={{ fontSize: 14.5, fontWeight: 800, color: "#F5F3FF" }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 11, color: "#6E6690", marginTop: 2, lineHeight: 1.6 }}>{subtitle}</div>}
       </div>
     </div>
   );
@@ -2854,16 +2851,16 @@ function MarketSummaryCard({ snapshot, radarItems, newsToday }) {
   const total = bullish + bearish;
   const biasLabel = total === 0 ? "—" : bullish >= bearish ? "Bullish" : "Bearish";
   const biasPct = total === 0 ? 0 : Math.round((Math.max(bullish, bearish) / total) * 100);
-  const biasColor = biasLabel === "Bullish" ? GREEN : biasLabel === "Bearish" ? RED : "#5D6880";
+  const biasColor = biasLabel === "Bullish" ? GREEN : biasLabel === "Bearish" ? RED : "#6E6690";
 
   return (
-    <CardShell title="Market Summary" icon="📊">
+    <CardShell title={t("radar.marketSummary")} icon="📊">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
-        <SummaryStat label="Overall Bias" value={biasLabel} sub={total ? `${biasPct}% confidence` : t("radar.notEnoughDataShort")} color={biasColor} />
-        <SummaryStat label="Strongest Currency" value={strongest ? strongest[0] : "—"} sub={strongest ? `${strongest[1]}` : ""} color={GREEN} />
-        <SummaryStat label="Weakest Currency" value={weakest ? weakest[0] : "—"} sub={weakest ? `${weakest[1]}` : ""} color={RED} />
-        <SummaryStat label="Active Opportunities" value={active.length} sub="Live from QAIS Radar" color={GOLD_LIGHT} />
-        <SummaryStat label="High Impact News" value={newsToday.high} sub="Today" color={AMBER} />
+        <SummaryStat label={t("radar.overallBias")} value={biasLabel} sub={total ? `${biasPct}% confidence` : t("radar.notEnoughDataShort")} color={biasColor} />
+        <SummaryStat label={t("radar.strongestCurrency")} value={strongest ? strongest[0] : "—"} sub={strongest ? `${strongest[1]}` : ""} color={GREEN} />
+        <SummaryStat label={t("radar.weakestCurrency")} value={weakest ? weakest[0] : "—"} sub={weakest ? `${weakest[1]}` : ""} color={RED} />
+        <SummaryStat label={t("radar.activeOpportunities")} value={active.length} sub={t("radar.liveFromRadar")} color={GOLD_LIGHT} />
+        <SummaryStat label={t("radar.highImpactNews")} value={newsToday.high} sub={t("radar.today")} color={AMBER} />
       </div>
     </CardShell>
   );
@@ -2871,10 +2868,10 @@ function MarketSummaryCard({ snapshot, radarItems, newsToday }) {
 
 function SummaryStat({ label, value, sub, color }) {
   return (
-    <div style={{ background: "#111726", borderRadius: 3, padding: "10px 12px" }}>
-      <div style={{ fontSize: 10.5, color: "#5D6880" }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 800, color: color || "#EDF1F8" }}>{value}</div>
-      {sub && <div style={{ fontSize: 9.5, color: "#5D6880", marginTop: 1 }}>{sub}</div>}
+    <div style={{ background: "#141024", borderRadius: 3, padding: "10px 12px" }}>
+      <div style={{ fontSize: 10.5, color: "#6E6690" }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: color || "#F5F3FF" }}>{value}</div>
+      {sub && <div style={{ fontSize: 9.5, color: "#6E6690", marginTop: 1 }}>{sub}</div>}
     </div>
   );
 }
@@ -2894,7 +2891,7 @@ function LiveNotificationsCard({ items, onOpen }) {
   );
 
   return (
-    <CardShell title="Live Notifications" icon="🔔">
+    <CardShell title={t("radar.liveNotifications")} icon="🔔">
       {notifs.length === 0 ? (
         <EmptyNote text={t("radar.noNewNotifications")} />
       ) : (
@@ -2903,14 +2900,14 @@ function LiveNotificationsCard({ items, onOpen }) {
             <button
               key={it.symbol}
               onClick={() => onOpen(it.symbol)}
-              style={{ display: "flex", alignItems: "center", gap: 9, background: "#111726", border: "none", borderRadius: 3, padding: "8px 10px", cursor: "pointer", textAlign: "right" }}
+              style={{ display: "flex", alignItems: "center", gap: 9, background: "#141024", border: "none", borderRadius: 3, padding: "8px 10px", cursor: "pointer", textAlign: "right" }}
             >
               <Bell size={13} color={GOLD} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11.5, color: "#EDF1F8", fontWeight: 700 }}>
+                <div style={{ fontSize: 11.5, color: "#F5F3FF", fontWeight: 700 }}>
                   New Opportunity — {it.symbol} <span style={{ color: it.direction === "up" ? GREEN : RED }}>{it.direction === "up" ? "BUY" : "SELL"}</span>
                 </div>
-                <div style={{ fontSize: 10, color: "#5D6880" }}>{it.radar_score ?? it.score}% Confidence · {relTime(it.updated_at, t)}</div>
+                <div style={{ fontSize: 10, color: "#6E6690" }}>{it.radar_score ?? it.score}% Confidence · {relTime(it.updated_at, t)}</div>
               </div>
             </button>
           ))}
@@ -2928,7 +2925,7 @@ export function CardShell({ title, icon, children }) {
     <div style={{ ...glass, padding: "1rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
         <span style={{ fontSize: 14 }}>{icon}</span>
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: "#EDF1F8" }}>{title}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: "#F5F3FF" }}>{title}</span>
       </div>
       {children}
     </div>
@@ -2936,5 +2933,5 @@ export function CardShell({ title, icon, children }) {
 }
 
 function EmptyNote({ text }) {
-  return <div style={{ fontSize: 11.5, color: "#5D6880", padding: "1rem 0", textAlign: "center" }}>{text}</div>;
+  return <div style={{ fontSize: 11.5, color: "#6E6690", padding: "1rem 0", textAlign: "center" }}>{text}</div>;
 }

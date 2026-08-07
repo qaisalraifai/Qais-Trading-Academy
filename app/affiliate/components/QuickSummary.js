@@ -54,7 +54,7 @@ export default function QuickSummary({ data, onShare }) {
             <h1 style={{ fontSize: "1.7rem", fontWeight: 800, fontFamily: displayStack, letterSpacing: "-0.02em", marginBottom: 4 }}>
               {t("affiliate.programTitleShort")}
             </h1>
-            <p style={{ color: "#93A0B8", fontSize: "0.85rem" }}>{t("affiliate.quickSummarySubtitle")}</p>
+            <p style={{ color: "#A79FC4", fontSize: "0.85rem" }}>{t("affiliate.quickSummarySubtitle")}</p>
           </div>
           <button onClick={onShare} style={btnPrimary}>
             {t("affiliate.shareLinkBtn")}
@@ -74,11 +74,11 @@ export default function QuickSummary({ data, onShare }) {
                 transition,
               }}
             >
-              <p style={{ color: "#93A0B8", fontSize: "0.72rem", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <p style={{ color: "#A79FC4", fontSize: "0.72rem", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {st.label}
                 <InfoDot text={st.tip} />
               </p>
-              <p style={{ color: st.highlight ? GOLD : "#EDF1F8", fontSize: "1.35rem", fontWeight: 800, fontFamily: monoStack }}>{st.value}</p>
+              <p style={{ color: st.highlight ? GOLD : "#F5F3FF", fontSize: "1.35rem", fontWeight: 800, fontFamily: monoStack }}>{st.value}</p>
             </div>
           ))}
         </div>
@@ -103,7 +103,7 @@ export default function QuickSummary({ data, onShare }) {
               flexShrink: 0,
               background: "rgba(255,255,255,0.03)",
               border: `1px solid ${BORDER}`,
-              color: "#93A0B8",
+              color: "#A79FC4",
               padding: "0.45rem 0.95rem",
               borderRadius: 999,
               fontSize: "0.78rem",

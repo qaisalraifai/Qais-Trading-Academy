@@ -1,11 +1,12 @@
 "use client";
+import { CheckCircle2, Clock } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import QrCodeBox from "../components/QrCodeBox";
 
-const gold = "#C9A860";
+const gold = "#DCD4F7";
 
 export default function CryptoAutoPaymentPage() {
   const router = useRouter();
@@ -155,7 +156,7 @@ export default function CryptoAutoPaymentPage() {
                   disabled={creatingPayment}
                 >
                   <div style={{ fontWeight: "bold" }}>{c.label}</div>
-                  <div style={{ fontSize: "0.72rem", color: "#5D6880" }}>{c.network}</div>
+                  <div style={{ fontSize: "0.72rem", color: "#6E6690" }}>{c.network}</div>
                 </button>
               ))}
             </div>
@@ -168,7 +169,7 @@ export default function CryptoAutoPaymentPage() {
           <>
             {txStatus === "succeeded" ? (
               <div style={{ textAlign: "center" }}>
-                <div style={styles.spinnerIcon}>✅</div>
+                <div style={styles.spinnerIcon}><CheckCircle2 size={14} aria-hidden /></div>
                 <h2 style={styles.title}>تم تفعيل اشتراكك!</h2>
                 <p style={styles.subtitle}>جاري تحويلك للوحة التحكم...</p>
               </div>
@@ -185,12 +186,12 @@ export default function CryptoAutoPaymentPage() {
                   <p style={styles.warnNote}>لازم تضيف Memo/Tag: <strong>{payment.payinExtraId}</strong> مع التحويل</p>
                 )}
                 {secondsLeft !== null && (
-                  <p style={{ ...styles.note, color: secondsLeft < 120 ? "#FF9800" : "#5D6880" }}>
+                  <p style={{ ...styles.note, color: secondsLeft < 120 ? "#FF9800" : "#6E6690" }}>
                     الوقت المتبقي: {formatTime(secondsLeft)}
                   </p>
                 )}
                 <div style={styles.pendingBox}>
-                  <div style={styles.spinnerIconSmall}>🕐</div>
+                  <div style={styles.spinnerIconSmall}><Clock size={14} aria-hidden /></div>
                   <p style={styles.note}>عم ننتظر تأكيد الشبكة — بيتفعّل اشتراكك تلقائياً فور وصول التحويل، بدون أي تدخل يدوي.</p>
                 </div>
               </>
@@ -207,7 +208,7 @@ export default function CryptoAutoPaymentPage() {
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#0C1220",
+    backgroundColor: "#0E0A1A",
     color: "#fff",
     direction: "rtl",
     fontFamily: "'Georgia', serif",
@@ -218,9 +219,9 @@ const styles = {
   },
   header: { textAlign: "center", marginBottom: "2rem" },
   logoText: { fontSize: "2.2rem", fontWeight: "bold", color: gold, letterSpacing: "6px" },
-  logoSub: { color: "#5D6880", fontSize: "0.85rem", marginTop: "0.4rem" },
+  logoSub: { color: "#6E6690", fontSize: "0.85rem", marginTop: "0.4rem" },
   card: {
-    backgroundColor: "#080B14",
+    backgroundColor: "#0A0614",
     border: `1px solid ${gold}`,
     borderRadius: "3px",
     padding: "2.5rem",
@@ -233,7 +234,7 @@ const styles = {
     boxShadow: `0 0 60px ${gold}22`,
   },
   title: { fontSize: "1.2rem", fontWeight: "bold", textAlign: "center" },
-  subtitle: { color: "#5D6880", fontSize: "0.9rem", textAlign: "center", lineHeight: 1.6 },
+  subtitle: { color: "#6E6690", fontSize: "0.9rem", textAlign: "center", lineHeight: 1.6 },
   currencyGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.7rem", width: "100%" },
   currencyBtn: {
     padding: "0.9rem 0.5rem",
@@ -250,12 +251,12 @@ const styles = {
     alignItems: "center",
     gap: "0.5rem",
     width: "100%",
-    background: "#080B14",
-    border: "1px solid #1E2941",
+    background: "#0A0614",
+    border: "1px solid #241C3E",
     borderRadius: 3,
     padding: "0.6rem 0.8rem",
   },
-  addressText: { flex: 1, fontSize: "0.75rem", wordBreak: "break-all", color: "#93A0B8" },
+  addressText: { flex: 1, fontSize: "0.75rem", wordBreak: "break-all", color: "#A79FC4" },
   copyBtn: {
     background: "transparent",
     border: `1px solid ${gold}`,
@@ -272,14 +273,14 @@ const styles = {
   spinnerIconSmall: { fontSize: "1.5rem" },
   linkBtn: { color: gold, fontSize: "0.85rem", textDecoration: "none" },
   configError: {
-    color: "#E8495F",
+    color: "#FF453A",
     fontSize: "0.78rem",
     textAlign: "center",
     lineHeight: 1.7,
-    background: "#E8495F14",
-    border: "1px solid #E8495F44",
+    background: "#FF453A14",
+    border: "1px solid #FF453A44",
     borderRadius: 3,
     padding: "0.6rem 0.9rem",
   },
-  note: { color: "#3E4761", fontSize: "0.8rem", textAlign: "center" },
+  note: { color: "#4A4368", fontSize: "0.8rem", textAlign: "center" },
 };

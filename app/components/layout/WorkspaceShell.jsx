@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronsLeft, ChevronsRight, Home, LogOut, Menu } from "lucide-react";
@@ -18,6 +18,8 @@ import LanguageSwitcher from "./LanguageSwitcher";
    شريط علوي رفيع + رِيل مداري قابل للتوسيع. الأداة بتاخد كل المساحة المتبقية.
    ============================================================================ */
 
+const RAIL_KEY = "qta_rail_collapsed";
+
 export default function WorkspaceShell({
   username,
   initials,
@@ -27,8 +29,31 @@ export default function WorkspaceShell({
 }) {
   const pathname = usePathname();
   const { t, dir } = useLocale();
+  /* الرِيل بيبلّش مطوي بالسيرفر (لتفادي اختلاف الترطيب)، وبعد أول رندر
+     بيفتح تلقائياً على الشاشات العريضة أو حسب آخر اختيار للمستخدم.
+     كان دايماً مطوي — يعني أيقونات بلا تسميات، وصعب تعرف وين إنت. */
   const [collapsed, setCollapsed] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(RAIL_KEY);
+    if (saved !== null) {
+      setCollapsed(saved === "1");
+      return;
+    }
+    if (window.matchMedia("(min-width: 1280px)").matches) setCollapsed(false);
+  }, []);
+
+  const toggleRail = () =>
+    setCollapsed((c) => {
+      const next = !c;
+      try {
+        window.localStorage.setItem(RAIL_KEY, next ? "1" : "0");
+      } catch {
+        /* التخزين معطّل — بنكمل بدون حفظ التفضيل */
+      }
+      return next;
+    });
 
   const visibleNavItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
   const activeItem = visibleNavItems.find((item) => isPathActive(pathname, item.href));
@@ -65,7 +90,7 @@ export default function WorkspaceShell({
           <IconButton
             icon={Chevron}
             label={collapsed ? t("header.expandMenu") : t("header.collapseMenu")}
-            onClick={() => setCollapsed((c) => !c)}
+            onClick={toggleRail}
             size="sm"
             className="hidden lg:inline-grid"
           />

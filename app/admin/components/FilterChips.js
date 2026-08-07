@@ -21,8 +21,8 @@ export default function FilterChips({ active, toggle }) {
             onClick={() => toggle(key)}
             style={{
               background: isActive ? gold + "1c" : "transparent",
-              border: `1px solid ${isActive ? gold + "88" : "#1B2438"}`,
-              color: isActive ? gold : "#5D6880",
+              border: `1px solid ${isActive ? gold + "88" : "#1E1836"}`,
+              color: isActive ? gold : "#6E6690",
               padding: "0.4rem 0.9rem",
               borderRadius: 999,
               fontSize: "0.78rem",

@@ -85,18 +85,18 @@ export default function PaymentSuccessPage() {
   );
 }
 
-const gold = "#C9A860";
+const gold = "#DCD4F7";
 const s = {
-  page: { backgroundColor: "#080B14", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EDF1F8", display: "flex", alignItems: "center", justifyContent: "center" },
+  page: { backgroundColor: "#0A0614", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#F5F3FF", display: "flex", alignItems: "center", justifyContent: "center" },
   center: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem", padding: "2rem", textAlign: "center", maxWidth: "420px" },
   spinner: {
     width: "40px", height: "40px",
-    border: `3px solid #1E2941`,
+    border: `3px solid #241C3E`,
     borderTopColor: gold,
     borderRadius: "50%",
     animation: "spin 0.8s linear infinite",
   },
   timeoutTitle: { fontSize: "1.3rem", fontWeight: 800, lineHeight: 1.3 },
-  timeoutSub: { color: "#5D6880", fontSize: "0.95rem", lineHeight: 1.75 },
-  logoutBtn: { background: "none", border: "1px solid #1B2438", color: "#93A0B8", padding: "0.6rem 1.4rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.85rem" },
+  timeoutSub: { color: "#6E6690", fontSize: "0.95rem", lineHeight: 1.75 },
+  logoutBtn: { background: "none", border: "1px solid #1E1836", color: "#A79FC4", padding: "0.6rem 1.4rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.85rem" },
 };

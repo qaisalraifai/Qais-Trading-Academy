@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { playBeep } from "@/lib/beep";
 
-const GOLD = "#C9A860";
+const GOLD = "#DCD4F7";
 
 function timeAgo(dateStr) {
   const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
@@ -99,14 +99,14 @@ export default function NotificationBell({ soundEnabled = true }) {
 }
 
 const s = {
-  bellBtn: { position: "relative", background: "transparent", border: "1px solid #1E2941", borderRadius: 3, width: 40, height: 40, fontSize: "1.1rem", cursor: "pointer", color: "#EDF1F8" },
-  badge: { position: "absolute", top: -4, left: -4, background: "#E8495F", color: "#fff", fontSize: "0.65rem", fontWeight: 700, borderRadius: 3, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" },
-  dropdown: { position: "absolute", top: "48px", left: 0, width: 320, maxWidth: "90vw", background: "#0C1220", border: "1px solid #1E2941", borderRadius: 0, boxShadow: "0 12px 30px rgba(0,0,0,0.5)", zIndex: 50, overflow: "hidden" },
-  dropdownHeader: { padding: "0.8rem 1rem", fontSize: "0.85rem", fontWeight: 700, color: GOLD, borderBottom: "1px solid #1E2941" },
+  bellBtn: { position: "relative", background: "transparent", border: "1px solid #241C3E", borderRadius: 3, width: 40, height: 40, fontSize: "1.1rem", cursor: "pointer", color: "#F5F3FF" },
+  badge: { position: "absolute", top: -4, left: -4, background: "#FF453A", color: "#fff", fontSize: "0.65rem", fontWeight: 700, borderRadius: 3, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" },
+  dropdown: { position: "absolute", top: "48px", left: 0, width: 320, maxWidth: "90vw", background: "#0E0A1A", border: "1px solid #241C3E", borderRadius: 0, boxShadow: "0 12px 30px rgba(0,0,0,0.5)", zIndex: 50, overflow: "hidden" },
+  dropdownHeader: { padding: "0.8rem 1rem", fontSize: "0.85rem", fontWeight: 700, color: GOLD, borderBottom: "1px solid #241C3E" },
   list: { maxHeight: 360, overflowY: "auto" },
-  empty: { padding: "1.2rem", color: "#3E4761", fontSize: "0.8rem", textAlign: "center" },
-  item: { padding: "0.8rem 1rem", borderBottom: "1px solid #0C1220" },
-  itemTitle: { fontSize: "0.83rem", color: "#EDF1F8", fontWeight: 600, marginBottom: 2 },
-  itemMsg: { fontSize: "0.78rem", color: "#93A0B8", lineHeight: 1.5, marginBottom: 4 },
-  itemTime: { fontSize: "0.68rem", color: "#3E4761" },
+  empty: { padding: "1.2rem", color: "#4A4368", fontSize: "0.8rem", textAlign: "center" },
+  item: { padding: "0.8rem 1rem", borderBottom: "1px solid #0E0A1A" },
+  itemTitle: { fontSize: "0.83rem", color: "#F5F3FF", fontWeight: 600, marginBottom: 2 },
+  itemMsg: { fontSize: "0.78rem", color: "#A79FC4", lineHeight: 1.5, marginBottom: 4 },
+  itemTime: { fontSize: "0.68rem", color: "#4A4368" },
 };

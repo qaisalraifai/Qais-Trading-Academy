@@ -134,8 +134,8 @@ export default function MlmOpsPage() {
             onClick={() => setTab(t)}
             style={{
               background: tab === t ? gold : "transparent",
-              color: tab === t ? "#111726" : "#aaa",
-              border: `1px solid ${tab === t ? gold : "#26314A"}`,
+              color: tab === t ? "#141024" : "#aaa",
+              border: `1px solid ${tab === t ? gold : "#2A2145"}`,
               borderRadius: 3, padding: "0.5rem 1.2rem", cursor: "pointer", fontWeight: 700, transition,
             }}
           >
@@ -145,30 +145,30 @@ export default function MlmOpsPage() {
       </div>
 
       <div style={s.section}>
-        {error && <div style={{ color: "#E8495F", marginBottom: "1rem" }}>{error}</div>}
+        {error && <div style={{ color: "#FF453A", marginBottom: "1rem" }}>{error}</div>}
         {loading ? (
-          <div style={{ color: "#5D6880" }}>جاري التحميل...</div>
+          <div style={{ color: "#6E6690" }}>جاري التحميل...</div>
         ) : tab === "withdrawals" ? (
           withdrawals.length === 0 ? (
-            <div style={{ color: "#3E4761" }}>ما في طلبات سحب معلّقة حاليًا</div>
+            <div style={{ color: "#4A4368" }}>ما في طلبات سحب معلّقة حاليًا</div>
           ) : (
             <div style={{ display: "grid", gap: "0.8rem" }}>
               {withdrawals.map((w) => (
                 <div key={w.id} style={{ ...glass, padding: "1rem 1.4rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
                   <div>
                     <div style={{ fontWeight: 700 }}>{w.profiles?.username || w.user_id}</div>
-                    <div style={{ fontSize: "0.8rem", color: "#5D6880" }}>
+                    <div style={{ fontSize: "0.8rem", color: "#6E6690" }}>
                       {fmt(w.amount)} دينار — {METHOD_LABELS[w.method]} — {w.destination_details}
                     </div>
-                    <div style={{ fontSize: "0.7rem", color: "#5D6880" }}>{new Date(w.requested_at).toLocaleString("ar")}</div>
+                    <div style={{ fontSize: "0.7rem", color: "#6E6690" }}>{new Date(w.requested_at).toLocaleString("ar")}</div>
                   </div>
                   <div style={{ display: "flex", gap: "0.5rem" }}>
                     <button disabled={busyId === w.id} onClick={() => processWithdrawal(w.id, "approve")}
-                      style={{ background: "#1FBF87", color: "#fff", border: "none", borderRadius: 3, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
+                      style={{ background: "#10E5A0", color: "#fff", border: "none", borderRadius: 3, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
                       موافقة ودُفع
                     </button>
                     <button disabled={busyId === w.id} onClick={() => processWithdrawal(w.id, "reject")}
-                      style={{ background: "transparent", color: "#E8495F", border: "1px solid #E8495F", borderRadius: 3, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
+                      style={{ background: "transparent", color: "#FF453A", border: "1px solid #FF453A", borderRadius: 3, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
                       رفض
                     </button>
                   </div>
@@ -178,7 +178,7 @@ export default function MlmOpsPage() {
           )
         ) : tab === "kyc" ? (
           kycProfiles.length === 0 ? (
-            <div style={{ color: "#3E4761" }}>ما في طلبات KYC معلّقة حاليًا</div>
+            <div style={{ color: "#4A4368" }}>ما في طلبات KYC معلّقة حاليًا</div>
           ) : (
             <div style={{ display: "grid", gap: "0.8rem" }}>
               {kycProfiles.map((p) => (
@@ -187,7 +187,7 @@ export default function MlmOpsPage() {
                     <div style={{ fontWeight: 700 }}>
                       {p.username}
                       {p.is_flagged_suspicious && (
-                        <span style={{ color: "#E8495F", fontSize: "0.75rem", marginRight: 8 }}>مشبوه: {p.flagged_reason}</span>
+                        <span style={{ color: "#FF453A", fontSize: "0.75rem", marginRight: 8 }}>مشبوه: {p.flagged_reason}</span>
                       )}
                     </div>
                     {p.documentSignedUrl ? (
@@ -195,16 +195,16 @@ export default function MlmOpsPage() {
                         عرض المستند →
                       </a>
                     ) : (
-                      <div style={{ fontSize: "0.8rem", color: "#5D6880" }}>لا يوجد مستند مرفوع</div>
+                      <div style={{ fontSize: "0.8rem", color: "#6E6690" }}>لا يوجد مستند مرفوع</div>
                     )}
                   </div>
                   <div style={{ display: "flex", gap: "0.5rem" }}>
                     <button disabled={busyId === p.id} onClick={() => processKyc(p.id, "verify")}
-                      style={{ background: "#1FBF87", color: "#fff", border: "none", borderRadius: 3, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
+                      style={{ background: "#10E5A0", color: "#fff", border: "none", borderRadius: 3, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
                       توثيق
                     </button>
                     <button disabled={busyId === p.id} onClick={() => processKyc(p.id, "reject")}
-                      style={{ background: "transparent", color: "#E8495F", border: "1px solid #E8495F", borderRadius: 3, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
+                      style={{ background: "transparent", color: "#FF453A", border: "1px solid #FF453A", borderRadius: 3, padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700 }}>
                       رفض
                     </button>
                   </div>
@@ -213,22 +213,22 @@ export default function MlmOpsPage() {
             </div>
           )
         ) : commissions.length === 0 ? (
-          <div style={{ color: "#3E4761" }}>لا يوجد عمولات</div>
+          <div style={{ color: "#4A4368" }}>لا يوجد عمولات</div>
         ) : (
           <div style={{ display: "grid", gap: "0.6rem" }}>
             {commissions.map((c) => (
               <div key={c.id} style={{ ...glass, padding: "0.8rem 1.2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.8rem", opacity: c.status === "cancelled" ? 0.5 : 1 }}>
                 <div style={{ fontSize: "0.85rem" }}>
                   <strong>{c.beneficiary?.username || c.beneficiary_id}</strong> — {BONUS_LABELS[c.bonus_type] || c.bonus_type} — {fmt(c.amount)} دينار
-                  <span style={{ color: "#5D6880", marginRight: 8 }}>{new Date(c.created_at).toLocaleDateString("ar")}</span>
+                  <span style={{ color: "#6E6690", marginRight: 8 }}>{new Date(c.created_at).toLocaleDateString("ar")}</span>
                 </div>
                 {c.status !== "cancelled" && (
                   <button disabled={busyId === c.id} onClick={() => cancelCommission(c.id)}
-                    style={{ background: "transparent", color: "#E8495F", border: "1px solid #E8495F", borderRadius: 3, padding: "0.35rem 0.8rem", cursor: "pointer", fontSize: "0.75rem" }}>
+                    style={{ background: "transparent", color: "#FF453A", border: "1px solid #FF453A", borderRadius: 3, padding: "0.35rem 0.8rem", cursor: "pointer", fontSize: "0.75rem" }}>
                     إلغاء
                   </button>
                 )}
-                {c.status === "cancelled" && <span style={{ fontSize: "0.75rem", color: "#5D6880" }}>ملغاة</span>}
+                {c.status === "cancelled" && <span style={{ fontSize: "0.75rem", color: "#6E6690" }}>ملغاة</span>}
               </div>
             ))}
           </div>

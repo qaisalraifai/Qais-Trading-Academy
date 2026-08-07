@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none" role="img" aria-label="Qais Trading Academy">
+  <defs>
+    <linearGradient id="qtaRing" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7C4DFF"/>
+      <stop offset="0.45" stop-color="#9F6CFF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="qtaCore" x1="18" y1="18" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C4B0FF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="#0A0614"/>
+  <circle cx="24" cy="24" r="14.5" stroke="url(#qtaRing)" stroke-width="2.6"/>
+  <path d="M28 28 L38 38" stroke="url(#qtaRing)" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="24" cy="24" rx="14.5" ry="5.4" stroke="url(#qtaRing)" stroke-width="1.2" opacity="0.5" transform="rotate(-28 24 24)"/>
+  <circle cx="24" cy="24" r="4.2" fill="url(#qtaCore)"/>
+</svg>

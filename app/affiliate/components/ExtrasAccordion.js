@@ -20,7 +20,7 @@ export default function ExtrasAccordion() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <h2 style={sectionTitle}>أنشطة إضافية</h2>
-              <p style={{ color: "#93A0B8", fontSize: "0.8rem", marginTop: 4 }}>آخر النشاطات، عجلة الحظ، وأدوات تسويقية إضافية</p>
+              <p style={{ color: "#A79FC4", fontSize: "0.8rem", marginTop: 4 }}>آخر النشاطات، عجلة الحظ، وأدوات تسويقية إضافية</p>
             </div>
             <span style={{ color: GOLD, fontSize: "1.1rem", transform: open ? "rotate(180deg)" : "none", transition }}>⌄</span>
           </div>

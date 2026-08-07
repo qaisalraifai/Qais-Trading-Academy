@@ -31,7 +31,7 @@ function Avatar({ user }) {
   return user.avatar_url ? (
     <img src={user.avatar_url} alt="" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: `1px solid ${gold}44` }} />
   ) : (
-    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#111726,#111726)", border: `1px solid ${gold}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", color: gold, fontWeight: 700 }}>
+    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#141024,#141024)", border: `1px solid ${gold}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", color: gold, fontWeight: 700 }}>
       {initial}
     </div>
   );
@@ -40,11 +40,11 @@ function Avatar({ user }) {
 const actionsList = [
   ["view", "👁", "عرض"],
   ["edit", "✏", "تعديل"],
-  ["renew", "🔄", "تجديد"],
-  ["activate_free", "🎁", "تفعيل مجاني"],
+ ["renew","","تجديد"],
+ ["activate_free","","تفعيل مجاني"],
   ["email", "📧", "إشعار"],
   ["suspend", "🚫", "إيقاف"],
-  ["delete", "🗑", "حذف"],
+ ["delete","","حذف"],
 ];
 
 async function activateFreeDirect(user) {
@@ -82,8 +82,8 @@ function ActionsBar({ user, onAction }) {
             onClick={() => (isFree ? activateFreeDirect(user) : onAction(key, user))}
             style={{
               background: "none",
-              border: "1px solid #1B2438",
-              color: key === "delete" ? "#E8495F" : "#93A0B8",
+              border: "1px solid #1E1836",
+              color: key === "delete" ? "#FF453A" : "#A79FC4",
               width: 28,
               height: 28,
               minWidth: 28,
@@ -95,8 +95,8 @@ function ActionsBar({ user, onAction }) {
               justifyContent: "center",
               transition,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = key === "delete" ? "#E8495F" : gold; e.currentTarget.style.background = "#111726"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1B2438"; e.currentTarget.style.background = "none"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = key === "delete" ? "#FF453A" : gold; e.currentTarget.style.background = "#141024"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1E1836"; e.currentTarget.style.background = "none"; }}
           >
             {icon}
           </button>
@@ -112,14 +112,14 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
   return (
     <div style={{ ...glass, overflow: "hidden" }}>
       {loading ? (
-        <p style={{ textAlign: "center", padding: "3rem", color: "#3E4761" }}>جاري التحميل...</p>
+        <p style={{ textAlign: "center", padding: "3rem", color: "#4A4368" }}>جاري التحميل...</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1180 }}>
             <thead>
               <tr>
                 {["", "الاسم", "الرتبة", "الخطة", "البداية", "النهاية", "الأيام المتبقية", "المدفوع", "الحالة", "آخر دخول", ""].map((h, i) => (
-                  <th key={i} style={{ background: "#111726", padding: "0.9rem 1.1rem", textAlign: "right", fontSize: "0.74rem", color: "#3E4761", fontWeight: 500, borderBottom: "1px solid #111726", whiteSpace: "nowrap" }}>
+                  <th key={i} style={{ background: "#141024", padding: "0.9rem 1.1rem", textAlign: "right", fontSize: "0.74rem", color: "#4A4368", fontWeight: 500, borderBottom: "1px solid #141024", whiteSpace: "nowrap" }}>
                     {h}
                   </th>
                 ))}
@@ -133,22 +133,22 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
                   onMouseLeave={() => setHoverRow(null)}
                   onClick={() => onOpenUser(user)}
                   style={{
-                    borderBottom: "1px solid #080B14",
+                    borderBottom: "1px solid #0A0614",
                     cursor: "pointer",
                     background: hoverRow === user.id ? "rgba(201,162,75,0.045)" : "transparent",
                     transition,
                   }}
                 >
                   <td style={{ padding: "0.85rem 1.1rem" }}><Avatar user={user} /></td>
-                  <td style={{ padding: "0.85rem 1.1rem", fontWeight: 500, color: "#EDF1F8" }}>{user.username || "—"}</td>
+                  <td style={{ padding: "0.85rem 1.1rem", fontWeight: 500, color: "#F5F3FF" }}>{user.username || "—"}</td>
                   <td style={{ padding: "0.85rem 1.1rem" }}>
-                    {user.role === "admin" ? <PlanBadge plan="admin" /> : <span style={{ color: "#3E4761", fontSize: "0.8rem" }}>Student</span>}
+                    {user.role === "admin" ? <PlanBadge plan="admin" /> : <span style={{ color: "#4A4368", fontSize: "0.8rem" }}>Student</span>}
                   </td>
                   <td style={{ padding: "0.85rem 1.1rem" }}><PlanBadge plan={user.plan} /></td>
-                  <td style={{ padding: "0.85rem 1.1rem", fontFamily: monoStack, color: "#5D6880", fontSize: "0.8rem" }}>
+                  <td style={{ padding: "0.85rem 1.1rem", fontFamily: monoStack, color: "#6E6690", fontSize: "0.8rem" }}>
                     {user.subscription_start ? new Date(user.subscription_start).toLocaleDateString("ar") : "—"}
                   </td>
-                  <td style={{ padding: "0.85rem 1.1rem", fontFamily: monoStack, color: "#5D6880", fontSize: "0.8rem" }}>
+                  <td style={{ padding: "0.85rem 1.1rem", fontFamily: monoStack, color: "#6E6690", fontSize: "0.8rem" }}>
                     {user.subscription_end ? new Date(user.subscription_end).toLocaleDateString("ar") : "—"}
                   </td>
                   <td style={{ padding: "0.85rem 1.1rem" }}>
@@ -160,14 +160,14 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
                   </td>
                   <td style={{ padding: "0.85rem 1.1rem", fontFamily: monoStack, color: gold, fontSize: "0.85rem" }}>${user.totalPaid.toLocaleString("en-US")}</td>
                   <td style={{ padding: "0.85rem 1.1rem" }}><StatusDot user={user} /></td>
-                  <td style={{ padding: "0.85rem 1.1rem", color: "#3E4761", fontSize: "0.78rem" }}>{timeAgo(user.last_login_at)}</td>
+                  <td style={{ padding: "0.85rem 1.1rem", color: "#4A4368", fontSize: "0.78rem" }}>{timeAgo(user.last_login_at)}</td>
                   <td style={{ padding: "0.85rem 1.1rem" }} onClick={(e) => e.stopPropagation()}>
                     <ActionsBar user={user} onAction={onAction} />
                   </td>
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={11} style={{ textAlign: "center", color: "#3E4761", padding: "3rem" }}>لا يوجد مستخدمون</td></tr>
+                <tr><td colSpan={11} style={{ textAlign: "center", color: "#4A4368", padding: "3rem" }}>لا يوجد مستخدمون</td></tr>
               )}
             </tbody>
           </table>

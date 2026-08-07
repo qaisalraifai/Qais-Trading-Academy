@@ -57,8 +57,8 @@ export default function TierProgress({ tier }) {
           </div>
           <div>
             <h2 style={{ ...sectionTitle, color: current.color_hex, marginBottom: 2 }}>{current.title_ar}</h2>
-            <p style={{ color: "#93A0B8", fontSize: "0.82rem" }}>
-              عندك حالياً <b style={{ color: "#EDF1F8" }}>{activeClientsCount}</b> عميل نشط
+            <p style={{ color: "#A79FC4", fontSize: "0.82rem" }}>
+              عندك حالياً <b style={{ color: "#F5F3FF" }}>{activeClientsCount}</b> عميل نشط
               <InfoDot text="عميل نشط = عميل مُحال منك وما زال مشتركاً فعلياً بالمنصة حالياً." />
             </p>
           </div>
@@ -74,22 +74,22 @@ export default function TierProgress({ tier }) {
             <p style={rateLabel}>عمولة التجديد الشهري</p>
             <p style={{ ...rateValue, color: current.color_hex }}>${fmt(current.renewal_amount)}</p>
           </div>
-          <div style={rateBox("#1FBF87")}>
+          <div style={rateBox("#10E5A0")}>
             <p style={rateLabel}>دخلك المتكرر المتوقع شهرياً</p>
-            <p style={{ ...rateValue, color: "#1FBF87" }}>${fmt(projectedMonthlyIncome)}</p>
+            <p style={{ ...rateValue, color: "#10E5A0" }}>${fmt(projectedMonthlyIncome)}</p>
           </div>
         </div>
 
         {next ? (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: "0.78rem", color: "#93A0B8" }}>
+              <span style={{ fontSize: "0.78rem", color: "#A79FC4" }}>
                 تبقى <b style={{ color: GOLD }}>{remaining}</b> {remaining === 1 ? "عميل" : "عملاء"} نشط للوصول إلى{" "}
                 <b style={{ color: next.color_hex }}>
                   {next.badge_icon} {next.title_ar}
                 </b>
               </span>
-              <span style={{ fontFamily: monoStack, fontSize: "0.75rem", color: "#5D6880" }}>{progressPct}%</span>
+              <span style={{ fontFamily: monoStack, fontSize: "0.75rem", color: "#6E6690" }}>{progressPct}%</span>
             </div>
             <div style={{ height: 10, borderRadius: 3, background: "rgba(255,255,255,0.05)", overflow: "hidden", marginBottom: "0.9rem" }}>
               <div
@@ -112,20 +112,20 @@ export default function TierProgress({ tier }) {
                 padding: "0.9rem 1.1rem",
               }}
             >
-              <p style={{ fontSize: "0.8rem", color: "#EDF1F8", fontWeight: 700, marginBottom: 6 }}>
+              <p style={{ fontSize: "0.8rem", color: "#F5F3FF", fontWeight: 700, marginBottom: 6 }}>
                 {next.badge_icon} بعد الترقية لـ {next.title_ar}:
               </p>
-              <div style={{ display: "flex", gap: "1.4rem", flexWrap: "wrap", fontSize: "0.78rem", color: "#93A0B8" }}>
+              <div style={{ display: "flex", gap: "1.4rem", flexWrap: "wrap", fontSize: "0.78rem", color: "#A79FC4" }}>
                 <span>
                   عمولة التسجيل: <b style={{ color: next.color_hex }}>${fmt(next.signup_amount)}</b>{" "}
-                  <span style={{ color: "#1FBF87" }}>(+${fmt(signupDelta)})</span>
+                  <span style={{ color: "#10E5A0" }}>(+${fmt(signupDelta)})</span>
                 </span>
                 <span>
                   عمولة التجديد: <b style={{ color: next.color_hex }}>${fmt(next.renewal_amount)}</b>{" "}
-                  <span style={{ color: "#1FBF87" }}>(+${fmt(renewalDelta)})</span>
+                  <span style={{ color: "#10E5A0" }}>(+${fmt(renewalDelta)})</span>
                 </span>
                 <span>
-                  دخلك الشهري بيصير: <b style={{ color: "#1FBF87" }}>${fmt(projectedMonthlyIncomeAtNextTier)}</b>
+                  دخلك الشهري بيصير: <b style={{ color: "#10E5A0" }}>${fmt(projectedMonthlyIncomeAtNextTier)}</b>
                 </span>
               </div>
             </div>
@@ -154,10 +154,10 @@ export default function TierProgress({ tier }) {
                   }}
                 >
                   <div style={{ fontSize: 18 }}>{t.badge_icon}</div>
-                  <div style={{ fontSize: "0.68rem", color: reached ? "#EDF1F8" : "#5D6880", fontWeight: 700, marginTop: 2 }}>
+                  <div style={{ fontSize: "0.68rem", color: reached ? "#F5F3FF" : "#6E6690", fontWeight: 700, marginTop: 2 }}>
                     {t.title_ar}
                   </div>
-                  <div style={{ fontSize: "0.6rem", color: "#5D6880" }}>{t.min_active_clients}+ عميل</div>
+                  <div style={{ fontSize: "0.6rem", color: "#6E6690" }}>{t.min_active_clients}+ عميل</div>
                   <div style={{ fontSize: "0.62rem", color: t.color_hex, fontWeight: 700, marginTop: 2 }}>
                     ${t.signup_amount} / ${t.renewal_amount}
                   </div>
@@ -171,7 +171,7 @@ export default function TierProgress({ tier }) {
   );
 }
 
-const rateLabel = { fontSize: "0.68rem", color: "#93A0B8", marginBottom: 4 };
+const rateLabel = { fontSize: "0.68rem", color: "#A79FC4", marginBottom: 4 };
 const rateValue = { fontSize: "1.1rem", fontWeight: 800, fontFamily: monoStack };
 function rateBox(color) {
   return {

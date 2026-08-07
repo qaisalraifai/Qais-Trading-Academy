@@ -10,10 +10,10 @@ const MONTHS = [
 ];
 
 const TYPE_META = {
-  start: { icon: "🚀", color: "#1FBF87", label: "بداية الدفعة" },
-  end: { icon: "🏁", color: "#E8495F", label: "نهاية الدفعة" },
-  live: { icon: "🔴", color: "#C9A860", label: "بث مباشر" },
-  assignment: { icon: "📝", color: "#5FA8E8", label: "تسليم واجب" },
+ start: { icon:"", color:"#10E5A0", label:"بداية الدفعة" },
+ end: { icon:"", color:"#FF453A", label:"نهاية الدفعة" },
+ live: { icon:"", color:"#DCD4F7", label:"بث مباشر" },
+ assignment: { icon:"", color:"#7C4DFF", label:"تسليم واجب" },
 };
 
 function dateKey(d) {
@@ -123,7 +123,7 @@ export default function CalendarClient({ course, batch, events }) {
                       {dayEvents.length > 0 && (
                         <div style={s.dotsRow}>
                           {dayEvents.slice(0, 3).map((e, idx) => (
-                            <span key={idx} style={{ ...s.dot, background: TYPE_META[e.type]?.color || "#C9A860" }} />
+                            <span key={idx} style={{ ...s.dot, background: TYPE_META[e.type]?.color || "#DCD4F7" }} />
                           ))}
                         </div>
                       )}
@@ -148,14 +148,14 @@ export default function CalendarClient({ course, batch, events }) {
             <div style={s.upcomingBox}>
               <p style={s.upcomingTitle}>المواعيد القادمة</p>
               {upcoming.length === 0 ? (
-                <p style={{ color: "#5D6880", fontSize: 13 }}>ما في مواعيد قادمة حاليًا.</p>
+                <p style={{ color: "#6E6690", fontSize: 13 }}>ما في مواعيد قادمة حاليًا.</p>
               ) : (
                 upcoming.map((e, idx) => (
                   <div key={idx} style={s.upcomingRow}>
                     <span style={{ fontSize: 18 }}>{TYPE_META[e.type]?.icon}</span>
                     <div>
                       <div style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>{e.title}</div>
-                      <div style={{ color: "#5D6880", fontSize: 11.5 }}>{formatDate(e.date)}</div>
+                      <div style={{ color: "#6E6690", fontSize: 11.5 }}>{formatDate(e.date)}</div>
                     </div>
                   </div>
                 ))
@@ -171,40 +171,40 @@ export default function CalendarClient({ course, batch, events }) {
 const s = {
   page: {
     minHeight: "100vh",
-    background: "radial-gradient(ellipse at top, #101828 0%, #0C1220 60%)",
+    background: "radial-gradient(ellipse at top, #120B24 0%, #0E0A1A 60%)",
     color: "#fff",
     fontFamily: "'Inter', sans-serif",
     direction: "rtl",
     padding: "2rem",
   },
   header: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" },
-  headerSub: { color: "#C9A860", fontSize: 11, letterSpacing: 2, margin: 0 },
+  headerSub: { color: "#DCD4F7", fontSize: 11, letterSpacing: 2, margin: 0 },
   headerTitle: { margin: 0, fontSize: 20, fontWeight: 800 },
-  backLink: { color: "#3E4761", fontSize: 13, textDecoration: "none" },
-  empty: { color: "#5D6880", background: "#111726", border: "1px solid #26314A", borderRadius: 0, padding: "2rem", textAlign: "center" },
+  backLink: { color: "#4A4368", fontSize: 13, textDecoration: "none" },
+  empty: { color: "#6E6690", background: "#141024", border: "1px solid #2A2145", borderRadius: 0, padding: "2rem", textAlign: "center" },
   layout: { display: "flex", gap: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" },
-  calendarBox: { flex: "1 1 480px", background: "#111726", border: "1px solid #26314A", borderRadius: 0, padding: "1.25rem" },
+  calendarBox: { flex: "1 1 480px", background: "#141024", border: "1px solid #2A2145", borderRadius: 0, padding: "1.25rem" },
   monthNav: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" },
-  navBtn: { background: "#1B2438", color: "#C9A860", border: "1px solid #3E5478", borderRadius: 3, width: 32, height: 32, fontSize: 18, cursor: "pointer" },
+  navBtn: { background: "#1E1836", color: "#DCD4F7", border: "1px solid #3D2F63", borderRadius: 3, width: 32, height: 32, fontSize: 18, cursor: "pointer" },
   monthLabel: { fontWeight: 800, fontSize: 15 },
   weekRow: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: "0.4rem" },
-  weekday: { textAlign: "center", color: "#5D6880", fontSize: 11.5, fontWeight: 700 },
+  weekday: { textAlign: "center", color: "#6E6690", fontSize: 11.5, fontWeight: 700 },
   daysGrid: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 },
   dayCellEmpty: { height: 46 },
   dayCell: {
-    height: 46, borderRadius: 3, background: "#0C1220", border: "1px solid transparent",
-    color: "#93A0B8", fontSize: 12.5, display: "flex", flexDirection: "column", alignItems: "center",
+    height: 46, borderRadius: 3, background: "#0E0A1A", border: "1px solid transparent",
+    color: "#A79FC4", fontSize: 12.5, display: "flex", flexDirection: "column", alignItems: "center",
     justifyContent: "center", gap: 3, fontFamily: "inherit",
   },
-  dayCellToday: { border: "1px solid #C9A860", color: "#C9A860", fontWeight: 800 },
-  dayCellSelected: { background: "#26314A" },
+  dayCellToday: { border: "1px solid #DCD4F7", color: "#DCD4F7", fontWeight: 800 },
+  dayCellSelected: { background: "#2A2145" },
   dotsRow: { display: "flex", gap: 2 },
   dot: { width: 5, height: 5, borderRadius: "50%" },
-  dayDetail: { marginTop: "1rem", borderTop: "1px solid #26314A", paddingTop: "0.9rem" },
-  dayDetailTitle: { color: "#C9A860", fontSize: 13, fontWeight: 800, marginBottom: "0.5rem" },
-  eventRow: { display: "flex", justifyContent: "space-between", alignItems: "center", color: "#EDF1F8", fontSize: 13, padding: "0.4rem 0" },
-  liveNow: { background: "#D4373722", color: "#E8495F", fontSize: 10.5, fontWeight: 800, borderRadius: 3, padding: "0.2rem 0.5rem" },
-  upcomingBox: { flex: "1 1 260px", background: "#111726", border: "1px solid #26314A", borderRadius: 0, padding: "1.25rem" },
-  upcomingTitle: { color: "#C9A860", fontSize: 13, fontWeight: 800, marginBottom: "0.9rem" },
+  dayDetail: { marginTop: "1rem", borderTop: "1px solid #2A2145", paddingTop: "0.9rem" },
+  dayDetailTitle: { color: "#DCD4F7", fontSize: 13, fontWeight: 800, marginBottom: "0.5rem" },
+  eventRow: { display: "flex", justifyContent: "space-between", alignItems: "center", color: "#F5F3FF", fontSize: 13, padding: "0.4rem 0" },
+  liveNow: { background: "#D4373722", color: "#FF453A", fontSize: 10.5, fontWeight: 800, borderRadius: 3, padding: "0.2rem 0.5rem" },
+  upcomingBox: { flex: "1 1 260px", background: "#141024", border: "1px solid #2A2145", borderRadius: 0, padding: "1.25rem" },
+  upcomingTitle: { color: "#DCD4F7", fontSize: 13, fontWeight: 800, marginBottom: "0.9rem" },
   upcomingRow: { display: "flex", gap: "0.6rem", alignItems: "flex-start", marginBottom: "0.8rem" },
 };

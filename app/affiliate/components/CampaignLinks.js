@@ -72,7 +72,7 @@ export default function CampaignLinks({ affiliateCode, siteOrigin }) {
       <div style={card} className="qta-animate-in">
         <p style={sectionEyebrow}>أدوات تسويق متقدّمة</p>
         <h2 style={sectionTitle}>روابط حملات مخصّصة</h2>
-        <p style={{ color: "#93A0B8", fontSize: "0.82rem", margin: "0.5rem 0 1.2rem", lineHeight: 1.8 }}>
+        <p style={{ color: "#A79FC4", fontSize: "0.82rem", margin: "0.5rem 0 1.2rem", lineHeight: 1.8 }}>
           سوّي رابط منفصل لكل قناة (إنستغرام، تيك توك، واتساب...) وتابع أداء كل واحد لحاله —
           نفس عمولتك، بس بتعرف بالضبط منين جايينك العملاء.
         </p>
@@ -94,19 +94,19 @@ export default function CampaignLinks({ affiliateCode, siteOrigin }) {
             {saving ? "جاري الإنشاء..." : "+ إنشاء رابط"}
           </button>
         </div>
-        {error && <p style={{ color: "#E8495F", fontSize: "0.78rem", marginBottom: "1rem" }}>{error}</p>}
+        {error && <p style={{ color: "#FF453A", fontSize: "0.78rem", marginBottom: "1rem" }}>{error}</p>}
 
         {links.length === 0 ? (
-          <p style={{ color: "#5D6880", fontSize: "0.82rem" }}>ما سويت أي رابط حملة لسا.</p>
+          <p style={{ color: "#6E6690", fontSize: "0.82rem" }}>ما سويت أي رابط حملة لسا.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
             {links.map((l) => (
               <div key={l.id} style={s.row}>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <p style={{ fontWeight: 700, fontSize: "0.85rem", color: "#EDF1F8", marginBottom: 3 }}>
+                  <p style={{ fontWeight: 700, fontSize: "0.85rem", color: "#F5F3FF", marginBottom: 3 }}>
                     {l.label || l.slug}
                   </p>
-                  <p style={{ fontFamily: monoStack, fontSize: "0.75rem", color: "#5D6880", direction: "ltr", textAlign: "left" }}>
+                  <p style={{ fontFamily: monoStack, fontSize: "0.75rem", color: "#6E6690", direction: "ltr", textAlign: "left" }}>
                     {linkFor(l)}
                   </p>
                 </div>
@@ -116,7 +116,7 @@ export default function CampaignLinks({ affiliateCode, siteOrigin }) {
                     <span style={s.statLabel}>نقرة</span>
                   </div>
                   <div style={s.stat}>
-                    <span style={{ color: "#1FBF87", fontWeight: 800 }}>{l.conversions}</span>
+                    <span style={{ color: "#10E5A0", fontWeight: 800 }}>{l.conversions}</span>
                     <span style={s.statLabel}>تسجيل</span>
                   </div>
                 </div>
@@ -132,7 +132,7 @@ export default function CampaignLinks({ affiliateCode, siteOrigin }) {
                   </button>
                   <button
                     onClick={() => deleteLink(l.id)}
-                    style={{ ...btnGhost, fontSize: "0.72rem", padding: "0.5rem 0.8rem", borderColor: "#E8495F55", color: "#E8495F" }}
+                    style={{ ...btnGhost, fontSize: "0.72rem", padding: "0.5rem 0.8rem", borderColor: "#FF453A55", color: "#FF453A" }}
                   >
                     حذف
                   </button>
@@ -157,7 +157,7 @@ const s = {
     minWidth: 160,
     background: "rgba(255,255,255,0.03)",
     border: `1px solid ${BORDER}`,
-    color: "#EDF1F8",
+    color: "#F5F3FF",
     padding: "0.7rem 1rem",
     borderRadius: 3,
     fontSize: "0.82rem",
@@ -174,5 +174,5 @@ const s = {
   },
   statsBox: { display: "flex", gap: "1.1rem" },
   stat: { display: "flex", flexDirection: "column", alignItems: "center", minWidth: 46 },
-  statLabel: { fontSize: "0.65rem", color: "#5D6880", marginTop: 2 },
+  statLabel: { fontSize: "0.65rem", color: "#6E6690", marginTop: 2 },
 };

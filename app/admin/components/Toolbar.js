@@ -1,4 +1,5 @@
 "use client";
+import { Calendar } from "lucide-react";
 import { useState } from "react";
 import { gold, glass, transition, s } from "../styles";
 
@@ -22,9 +23,9 @@ const sortOptions = [
 ];
 
 const fieldStyle = {
-  background: "#080B14",
-  border: "1px solid #1E2941",
-  color: "#EDF1F8",
+  background: "#0A0614",
+  border: "1px solid #241C3E",
+  color: "#F5F3FF",
   padding: "0.6rem 0.9rem",
   borderRadius: 3,
   fontSize: "0.85rem",
@@ -56,15 +57,13 @@ export default function Toolbar({ search, setSearch, period, setPeriod, statuses
           ...fieldStyle,
           flex: "1 1 220px",
           minWidth: 200,
-          borderColor: focused ? gold + "77" : "#1E2941",
+          borderColor: focused ? gold + "77" : "#241C3E",
         }}
       />
 
       <Divider />
 
-      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#5D6880" }}>
-        📅
-        <select value={period} onChange={(e) => setPeriod(e.target.value)} style={{ ...fieldStyle, cursor: "pointer" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#6E6690" }}><Calendar size={14} aria-hidden /><select value={period} onChange={(e) => setPeriod(e.target.value)} style={{ ...fieldStyle, cursor: "pointer" }}>
           {periods.map(([v, l]) => (
             <option key={v} value={v}>{l}</option>
           ))}
@@ -75,7 +74,7 @@ export default function Toolbar({ search, setSearch, period, setPeriod, statuses
 
       <div style={{ display: "flex", gap: "0.9rem", alignItems: "center" }}>
         {statusOptions.map(([v, l]) => (
-          <label key={v} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", color: "#93A0B8", cursor: "pointer" }}>
+          <label key={v} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", color: "#A79FC4", cursor: "pointer" }}>
             <input type="checkbox" checked={statuses.includes(v)} onChange={() => toggleStatus(v)} style={{ accentColor: gold }} />
             {l}
           </label>
@@ -84,7 +83,7 @@ export default function Toolbar({ search, setSearch, period, setPeriod, statuses
 
       <Divider />
 
-      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#5D6880" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#6E6690" }}>
         ترتيب
         <select value={sort} onChange={(e) => setSort(e.target.value)} style={{ ...fieldStyle, cursor: "pointer" }}>
           {sortOptions.map(([v, l]) => (
@@ -102,5 +101,5 @@ export default function Toolbar({ search, setSearch, period, setPeriod, statuses
 }
 
 function Divider() {
-  return <div style={{ width: 1, height: 22, background: "#111726" }} />;
+  return <div style={{ width: 1, height: 22, background: "#141024" }} />;
 }

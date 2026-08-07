@@ -14,17 +14,23 @@
    ============================================================================ */
 
 const ORBIT = {
-  space: { 0: "#060911", 1: "#080B14", 2: "#0C1220" },
-  module: { 1: "#111726", 2: "#182033", 3: "#1E2941" },
-  edge: { DEFAULT: "#26314A", soft: "#1B2438", lit: "#3E5478", bright: "#55719E" },
-  steel: { 100: "#D6DEEE", 200: "#A8B8D8", 300: "#7D8DAE", 400: "#4E5C7A" },
-  ice: { 100: "#A8CFF5", 200: "#5FA8E8", 300: "#3C7FC0", 400: "#24507D", 500: "#152E48" },
-  au: { 100: "#E4CD95", 200: "#C9A860", 300: "#9C7F42", 400: "#5E4C27", 500: "#33290F" },
-  text: { primary: "#EDF1F8", secondary: "#93A0B8", muted: "#5D6880", faint: "#3E4761" },
-  profit: "#1FBF87",
-  loss: "#E8495F",
-  warning: "#E0A44A",
-  info: "#5FA8E8",
+  space: { 0: "#050308", 1: "#0A0614", 2: "#0E0A1A" },
+  module: { 1: "#141024", 2: "#1C1630", 3: "#241C3E" },
+  edge: { DEFAULT: "#2A2145", soft: "#1E1836", lit: "#3D2F63", bright: "#54418A" },
+  steel: { 100: "#E9E4FA", 200: "#B9AEDC", 300: "#8A7CB8", 400: "#5C5188" },
+  /* البنفسجي = الهوية والحالة النشطة */
+  violet: { 100: "#C4B0FF", 200: "#7C4DFF", 300: "#5B32D6", 400: "#3C2090", 500: "#231354" },
+  /* السماوي = التفاعل الثانوي، الروابط، البيانات الحيّة */
+  cyan: { 100: "#8FEEFF", 200: "#22D3EE", 300: "#12A5BE", 400: "#0C6D7E" },
+  /* ice = alias انتقالي على البنفسجي (كان لون التفاعل بـORBIT) */
+  ice: { 100: "#C4B0FF", 200: "#7C4DFF", 300: "#5B32D6", 400: "#3C2090", 500: "#231354" },
+  /* au = القيمة المالية. ما بقى لون — صار سطوع. الرقم بيبرز بالوزن مش باللون. */
+  au: { 100: "#F5F3FF", 200: "#DCD4F7", 300: "#8A7CB8", 400: "#3D2F63", 500: "#231354" },
+  text: { primary: "#F5F3FF", secondary: "#A79FC4", muted: "#6E6690", faint: "#4A4368" },
+  profit: "#10E5A0",
+  loss: "#FF453A",
+  warning: "#F0A13C",
+  info: "#22D3EE",
 };
 
 module.exports = {
@@ -37,6 +43,8 @@ module.exports = {
         module: ORBIT.module,
         edge: ORBIT.edge,
         steel: ORBIT.steel,
+        violet: ORBIT.violet,
+        cyan: ORBIT.cyan,
         ice: ORBIT.ice,
         au: ORBIT.au,
 
@@ -55,14 +63,16 @@ module.exports = {
         },
 
         /* ---------- aliases انتقالية ---------- */
+        /* الذهبي انحذف من الهوية — الأسماء القديمة بتشير على سلّم القيمة
+           (سطوع، مش لون) لحتى تخلص إزالتها من كل الصفحات. */
         gold: {
-          50: "#F6F0E1",
+          50: "#FFFFFF",
           100: ORBIT.au[100],
-          200: "#D8BC7C",
-          300: ORBIT.au[200],
-          400: ORBIT.au[200],
-          500: ORBIT.au[300],
-          600: ORBIT.au[400],
+          200: ORBIT.au[200],
+          300: ORBIT.steel[200],
+          400: ORBIT.violet[200],
+          500: ORBIT.violet[300],
+          600: ORBIT.violet[400],
         },
         ink: ORBIT.space[1],
         surface: {
@@ -120,12 +130,14 @@ module.exports = {
         overlay: "0 32px 80px -24px rgba(0, 0, 0, 0.9)",
         /* الحافة المعدنية — ضوء بيلمس حرف المعدن */
         edge: "inset 0 1px 0 rgba(255, 255, 255, 0.055)",
-        "focus-ice": "0 0 0 1px #24507D, 0 0 0 3px rgba(95, 168, 232, 0.22)",
-        /* aliases انتقالية — الوهج صار أخفت بكتير وأبرد */
+        "focus-ice": "0 0 0 1px #3C2090, 0 0 0 3px rgba(124, 77, 255, 0.28)",
+        /* توهّج بنفسجي — للهبوط والباقات فقط، مش للتيرمنال */
+        "glow-violet": "0 0 34px -8px rgba(124, 77, 255, 0.45)",
+        /* aliases انتقالية */
         card: "0 18px 40px -18px rgba(0, 0, 0, 0.75)",
-        glow: "0 0 24px -6px rgba(95, 168, 232, 0.35)",
-        "glow-sm": "0 0 14px -6px rgba(95, 168, 232, 0.28)",
-        header: "0 1px 0 rgba(38, 49, 74, 0.9)",
+        glow: "0 0 24px -6px rgba(124, 77, 255, 0.35)",
+        "glow-sm": "0 0 14px -6px rgba(124, 77, 255, 0.26)",
+        header: "0 1px 0 rgba(42, 33, 69, 0.9)",
       },
 
       backdropBlur: { glass: "16px" },

@@ -5,15 +5,15 @@ import Link from "next/link";
 import { TrendingUp, TrendingDown, RefreshCw, Bot, Clock, ExternalLink, BarChart3 } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#C9A860";
-const GOLD_LIGHT = "#E4CD95";
-const GREEN = "#1FBF87";
-const RED = "#E8495F";
-const BLUE = "#5FA8E8";
+const GOLD = "#DCD4F7";
+const GOLD_LIGHT = "#F5F3FF";
+const GREEN = "#10E5A0";
+const RED = "#FF453A";
+const BLUE = "#7C4DFF";
 
 const glass = {
-  background: "#111726",
-  border: `1px solid #26314A`,
+  background: "#141024",
+  border: `1px solid #2A2145`,
   borderRadius: 0,
   boxShadow: "0 8px 30px rgba(0,0,0,0.4)",
   backdropFilter: "blur(10px)",
@@ -25,7 +25,7 @@ const OPEN_STATUSES = ["Open", "Running", "TP1 Hit", "TP2 Hit", "TP3 Hit", "TP4 
 function statusColor(status) {
   if (status === "Closed Winner") return GREEN;
   if (status === "Stopped Out") return RED;
-  if (status === "Open") return "#93A0B8";
+  if (status === "Open") return "#A79FC4";
   return GOLD_LIGHT; // Running / TPx Hit
 }
 
@@ -112,14 +112,14 @@ export default function AITradesClient() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Bot size={20} color={GOLD} />
-          <h1 style={{ fontSize: 18, fontWeight: 900, color: "#EDF1F8", margin: 0 }}>{t("aiTrades.pageTitle")}</h1>
+          <h1 style={{ fontSize: 18, fontWeight: 900, color: "#F5F3FF", margin: 0 }}>{t("aiTrades.pageTitle")}</h1>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <Link
             href="/ai-trades/history"
             style={{
               display: "flex", alignItems: "center", gap: 6,
-              background: "transparent", border: "1px solid #1E2941", color: "#aaa",
+              background: "transparent", border: "1px solid #241C3E", color: "#aaa",
               borderRadius: 3, padding: "6px 12px", fontSize: 12, textDecoration: "none",
             }}
           >
@@ -134,9 +134,9 @@ export default function AITradesClient() {
               key={f.key}
               onClick={() => setFilter(f.key)}
               style={{
-                background: filter === f.key ? `#26314A` : "transparent",
-                border: `1px solid ${filter === f.key ? GOLD : "#1E2941"}`,
-                color: filter === f.key ? GOLD_LIGHT : "#5D6880",
+                background: filter === f.key ? `#2A2145` : "transparent",
+                border: `1px solid ${filter === f.key ? GOLD : "#241C3E"}`,
+                color: filter === f.key ? GOLD_LIGHT : "#6E6690",
                 borderRadius: 3, padding: "6px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
               }}
             >
@@ -149,9 +149,9 @@ export default function AITradesClient() {
       {error && <div style={{ ...glass, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
 
       {loading ? (
-        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#5D6880" }}>{t("aiTrades.loading")}</div>
+        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#6E6690" }}>{t("aiTrades.loading")}</div>
       ) : visible.length === 0 ? (
-        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#5D6880" }}>
+        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#6E6690" }}>
           {t("aiTrades.emptyState", { status: emptyStatusLabel })}
           <br />
           {t("aiTrades.emptyStateHint")}
@@ -178,8 +178,8 @@ export default function AITradesClient() {
                       {isBuy ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                       {isBuy ? "BUY" : "SELL"}
                     </span>
-                    <b style={{ color: "#EDF1F8", fontSize: 14 }}>{tr.symbol}</b>
-                    <span style={{ fontSize: 11, color: "#93A0B8", background: "#111726", border: "1px solid #1E2941", borderRadius: 3, padding: "3px 8px" }}>
+                    <b style={{ color: "#F5F3FF", fontSize: 14 }}>{tr.symbol}</b>
+                    <span style={{ fontSize: 11, color: "#A79FC4", background: "#141024", border: "1px solid #241C3E", borderRadius: 3, padding: "3px 8px" }}>
                       {tr.timeframe}
                     </span>
                     <span
@@ -193,7 +193,7 @@ export default function AITradesClient() {
                     </span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#5D6880" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#6E6690" }}>
                       <Clock size={11} /> {timeAgo(tr.created_at, t)}
                     </span>
                     {!isClosed && (
@@ -202,7 +202,7 @@ export default function AITradesClient() {
                         disabled={isChecking}
                         style={{
                           display: "flex", alignItems: "center", gap: 5,
-                          background: "transparent", border: "1px solid #1E2941", color: "#aaa",
+                          background: "transparent", border: "1px solid #241C3E", color: "#aaa",
                           borderRadius: 3, padding: "5px 10px", fontSize: 11, cursor: isChecking ? "default" : "pointer",
                         }}
                       >
@@ -214,7 +214,7 @@ export default function AITradesClient() {
                       href={`/ai-trades/${tr.id}`}
                       style={{
                         display: "flex", alignItems: "center", gap: 5,
-                        background: `#26314A`, border: `1px solid #3E5478`, color: GOLD_LIGHT,
+                        background: `#2A2145`, border: `1px solid #3D2F63`, color: GOLD_LIGHT,
                         borderRadius: 3, padding: "5px 10px", fontSize: 11, fontWeight: 700, textDecoration: "none",
                       }}
                     >
@@ -234,8 +234,8 @@ export default function AITradesClient() {
                   <MiniStat label="R/R" value={tr.risk_reward != null ? `${tr.risk_reward}R` : "—"} />
                 </div>
 
-                <div style={{ marginTop: 10, fontSize: 11, color: "#5D6880" }}>
-                  {t("aiTrades.lastCheckedPrice")} <b style={{ color: "#93A0B8" }}>{fmt(tr.last_checked_price)}</b> · {timeAgo(tr.last_checked_at, t)}
+                <div style={{ marginTop: 10, fontSize: 11, color: "#6E6690" }}>
+                  {t("aiTrades.lastCheckedPrice")} <b style={{ color: "#A79FC4" }}>{fmt(tr.last_checked_price)}</b> · {timeAgo(tr.last_checked_at, t)}
                 </div>
               </div>
             );
@@ -246,10 +246,10 @@ export default function AITradesClient() {
   );
 }
 
-function MiniStat({ label, value, color = "#EDF1F8" }) {
+function MiniStat({ label, value, color = "#F5F3FF" }) {
   return (
-    <div style={{ background: "#111726", border: "1px solid #1E2941", borderRadius: 3, padding: "6px 9px" }}>
-      <div style={{ fontSize: 10, color: "#5D6880", marginBottom: 2 }}>{label}</div>
+    <div style={{ background: "#141024", border: "1px solid #241C3E", borderRadius: 3, padding: "6px 9px" }}>
+      <div style={{ fontSize: 10, color: "#6E6690", marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 12.5, fontWeight: 800, color }}>{value}</div>
     </div>
   );

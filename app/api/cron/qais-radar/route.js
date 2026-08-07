@@ -200,7 +200,7 @@ export async function GET(request) {
           if (justTurnedGreen) {
             await createNotification(supabase, userId, {
               type: "qais_radar_signal",
-              title: `${symbol} جاهز 🟢`,
+ title: `${symbol} جاهز `,
               message: `Setup: SK + ICT ${result.direction === "up" ? "Buy" : "Sell"} — Confidence: ${result.confidence}% — Timeframe: ${result.timeframe}`,
               link: `/trading-radar?symbol=${symbol}`,
             });

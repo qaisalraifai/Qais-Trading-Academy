@@ -48,8 +48,8 @@ function AssignmentRow({ assignment, onSubmitted }) {
   return (
     <div
       style={{
-        background: "#0C1220",
-        border: "1px solid #26314A",
+        background: "#0E0A1A",
+        border: "1px solid #2A2145",
         borderRadius: 3,
         padding: "0.9rem 1.1rem",
         marginBottom: "0.7rem",
@@ -62,7 +62,7 @@ function AssignmentRow({ assignment, onSubmitted }) {
             <div style={{ color: "#aaa", fontSize: 12.5, marginTop: 4 }}>{assignment.description}</div>
           )}
           {assignment.due_date && (
-            <div style={{ color: "#C9A860", fontSize: 12, marginTop: 4 }}>
+            <div style={{ color: "#DCD4F7", fontSize: 12, marginTop: 4 }}>
               آخر موعد للتسليم: {formatDate(assignment.due_date)}
             </div>
           )}
@@ -70,8 +70,8 @@ function AssignmentRow({ assignment, onSubmitted }) {
         {isGraded && (
           <span
             style={{
-              background: "#26314A",
-              color: "#C9A860",
+              background: "#2A2145",
+              color: "#DCD4F7",
               borderRadius: 3,
               padding: "0.3rem 0.7rem",
               fontSize: 12,
@@ -87,7 +87,7 @@ function AssignmentRow({ assignment, onSubmitted }) {
       {sub && (
         <div style={{ marginTop: 8, fontSize: 12, color: "#8f8" }}>تم التسليم {sub.file_name ? `— ${sub.file_name}` : ""} ({formatDate(sub.submitted_at)})
           {isGraded && sub.feedback && (
-            <div style={{ color: "#93A0B8", marginTop: 4 }}>ملاحظات المدرب: {sub.feedback}</div>
+            <div style={{ color: "#A79FC4", marginTop: 4 }}>ملاحظات المدرب: {sub.feedback}</div>
           )}
         </div>
       )}
@@ -96,7 +96,7 @@ function AssignmentRow({ assignment, onSubmitted }) {
         <input
           type="file"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
-          style={{ color: "#93A0B8", fontSize: 12 }}
+          style={{ color: "#A79FC4", fontSize: 12 }}
         />
         <textarea
           value={note}
@@ -104,10 +104,10 @@ function AssignmentRow({ assignment, onSubmitted }) {
           placeholder="ملاحظة اختيارية..."
           rows={2}
           style={{
-            background: "#111726",
-            border: "1px solid #26314A",
+            background: "#141024",
+            border: "1px solid #2A2145",
             borderRadius: 3,
-            color: "#EDF1F8",
+            color: "#F5F3FF",
             padding: "0.5rem",
             fontSize: 12.5,
             fontFamily: "inherit",
@@ -119,8 +119,8 @@ function AssignmentRow({ assignment, onSubmitted }) {
           onClick={handleSubmit}
           disabled={busy}
           style={{
-            background: "#C9A860",
-            color: "#111726",
+            background: "#DCD4F7",
+            color: "#141024",
             border: "none",
             borderRadius: 3,
             padding: "0.5rem 1rem",
@@ -160,8 +160,8 @@ export default function BatchAssignmentsPanel({ courseId }) {
   return (
     <div
       style={{
-        background: "#111726",
-        border: "1px solid #26314A",
+        background: "#141024",
+        border: "1px solid #2A2145",
         borderRadius: 0,
         marginBottom: "1.5rem",
         overflow: "hidden",
@@ -183,7 +183,7 @@ export default function BatchAssignmentsPanel({ courseId }) {
         }}
       >
         <span style={{ fontSize: 14, fontWeight: 800 }}>واجبات الدفعة ({assignments.length})</span>
-        <span style={{ color: "#C9A860", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
+        <span style={{ color: "#DCD4F7", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
       </button>
 
       {open && (

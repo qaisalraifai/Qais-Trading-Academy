@@ -47,12 +47,24 @@ export default function NavRail({
       />
 
       <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto" aria-label={t?.("nav.dashboard")}>
-        {items.map((item) => {
+        {items.map((item, i) => {
           const Icon = item.icon;
           const active = isPathActive(pathname, item.href);
           const label = t ? t(item.labelKey) : item.label;
+          const newGroup = i > 0 && item.group && item.group !== items[i - 1].group;
+          const groupLabel = t && item.group ? t(`navGroup.${item.group}`) : null;
 
           return (
+            <div key={`g-${item.key}`} className="contents">
+              {/* فاصل المجموعة — عنوان وقت التوسّع، خط وقت الطيّ */}
+              {newGroup &&
+                (collapsed ? (
+                  <span className="mx-auto my-1.5 h-px w-5 bg-edge" aria-hidden />
+                ) : (
+                  <span className="mt-3 px-2.5 pb-1 text-[9px] uppercase tracking-[0.2em] text-text-faint">
+                    {groupLabel}
+                  </span>
+                ))}
             <Link
               key={item.key}
               href={item.href}
@@ -89,6 +101,17 @@ export default function NavRail({
 
               {!collapsed && <span className="relative flex-1 truncate">{label}</span>}
 
+              {/* تلميح وقت الطيّ — الأيقونة لحالها ما بتكفي لتعريف الوجهة */}
+              {collapsed && (
+                <span
+                  role="tooltip"
+                  className="pointer-events-none absolute top-1/2 z-overlay w-max -translate-y-1/2 whitespace-nowrap border border-edge-lit bg-module-3 px-2 py-1 text-caption text-text-primary opacity-0 shadow-overlay transition-opacity duration-fast group-hover:opacity-100"
+                  style={{ insetInlineStart: "calc(100% + 8px)" }}
+                >
+                  {label}
+                </span>
+              )}
+
               {/* نقطة المدار — قاعدة على المسار */}
               <span
                 aria-hidden
@@ -110,6 +133,7 @@ export default function NavRail({
                 </span>
               )}
             </Link>
+            </div>
           );
         })}
       </nav>

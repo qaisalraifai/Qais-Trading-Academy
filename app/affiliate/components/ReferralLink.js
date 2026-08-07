@@ -31,7 +31,7 @@ export default function ReferralLink({ link, clicks, code }) {
       <div style={card} className="qta-animate-in">
         <p style={sectionEyebrow}>رابطك الخاص</p>
         <h2 style={sectionTitle}>رابط الإحالة</h2>
-        <p style={{ color: "#93A0B8", fontSize: "0.82rem", marginBottom: "1.2rem" }}>شاركه بأي وسيلة، وكل تسجيل يصير من خلاله بينحسب لصالحك تلقائياً.</p>
+        <p style={{ color: "#A79FC4", fontSize: "0.82rem", marginBottom: "1.2rem" }}>شاركه بأي وسيلة، وكل تسجيل يصير من خلاله بينحسب لصالحك تلقائياً.</p>
 
         <div
           style={{
@@ -54,7 +54,7 @@ export default function ReferralLink({ link, clicks, code }) {
                 flexWrap: "wrap",
               }}
             >
-              <span style={{ fontFamily: monoStack, fontSize: "0.85rem", color: "#93A0B8", direction: "ltr", flex: 1, wordBreak: "break-all" }}>
+              <span style={{ fontFamily: monoStack, fontSize: "0.85rem", color: "#A79FC4", direction: "ltr", flex: 1, wordBreak: "break-all" }}>
                 {link}
               </span>
               <button onClick={copyLink} style={btnGhost}>{copyState || "نسخ"}</button>
@@ -96,12 +96,12 @@ export default function ReferralLink({ link, clicks, code }) {
               }}
             >
               <div>
-                <p style={{ color: "#5D6880", fontSize: "0.7rem", marginBottom: 4 }}>كود الإحالة</p>
+                <p style={{ color: "#6E6690", fontSize: "0.7rem", marginBottom: 4 }}>كود الإحالة</p>
                 <p style={{ color: GOLD, fontFamily: monoStack, fontWeight: 700, fontSize: "0.85rem" }}>{code || "—"}</p>
               </div>
               <div>
-                <p style={{ color: "#5D6880", fontSize: "0.7rem", marginBottom: 4 }}>عدد مرات الضغط على الرابط</p>
-                <p style={{ color: "#EDF1F8", fontFamily: monoStack, fontWeight: 700, fontSize: "0.85rem" }}>{clicks ?? 0}</p>
+                <p style={{ color: "#6E6690", fontSize: "0.7rem", marginBottom: 4 }}>عدد مرات الضغط على الرابط</p>
+                <p style={{ color: "#F5F3FF", fontFamily: monoStack, fontWeight: 700, fontSize: "0.85rem" }}>{clicks ?? 0}</p>
               </div>
             </div>
           </div>

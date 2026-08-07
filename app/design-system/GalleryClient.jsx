@@ -106,32 +106,35 @@ const COPY = {
 };
 
 const PALETTE = [
-  { group: "space", swatches: [["0", "#060911"], ["1", "#080B14"], ["2", "#0C1220"]] },
-  { group: "module", swatches: [["1", "#111726"], ["2", "#182033"], ["3", "#1E2941"]] },
+  { group: "space", swatches: [["0", "#050308"], ["1", "#0A0614"], ["2", "#0E0A1A"]] },
+  { group: "module", swatches: [["1", "#141024"], ["2", "#1C1630"], ["3", "#241C3E"]] },
   {
     group: "edge",
-    swatches: [["soft", "#1B2438"], ["DEFAULT", "#26314A"], ["lit", "#3E5478"], ["bright", "#55719E"]],
+    swatches: [["soft", "#1E1836"], ["DEFAULT", "#2A2145"], ["lit", "#3D2F63"], ["bright", "#54418A"]],
   },
-  { group: "steel", swatches: [["100", "#D6DEEE"], ["200", "#A8B8D8"], ["300", "#7D8DAE"]] },
-  { group: "ice", swatches: [["100", "#A8CFF5"], ["200", "#5FA8E8"], ["300", "#3C7FC0"], ["400", "#24507D"]] },
-  { group: "au", swatches: [["100", "#E4CD95"], ["200", "#C9A860"], ["300", "#9C7F42"], ["400", "#5E4C27"]] },
+  { group: "steel", swatches: [["100", "#E9E4FA"], ["200", "#B9AEDC"], ["300", "#8A7CB8"]] },
+  { group: "violet", swatches: [["100", "#C4B0FF"], ["200", "#7C4DFF"], ["300", "#5B32D6"], ["400", "#3C2090"]] },
+  { group: "cyan", swatches: [["100", "#8FEEFF"], ["200", "#22D3EE"], ["300", "#12A5BE"]] },
+  { group: "au", swatches: [["100", "#F5F3FF"], ["200", "#DCD4F7"], ["300", "#8A7CB8"], ["400", "#3D2F63"]] },
   {
     group: "semantic",
-    swatches: [["profit", "#1FBF87"], ["loss", "#E8495F"], ["warning", "#E0A44A"], ["info", "#5FA8E8"]],
+    swatches: [["profit", "#10E5A0"], ["loss", "#FF453A"], ["warning", "#F0A13C"], ["info", "#22D3EE"]],
   },
 ];
 
 const RULES = {
   ar: {
     steel: "المعدن — الحواف والحلقات والأيقونات الثانوية",
-    ice: "التفاعل فقط — الحالة النشطة، الروابط، التركيز",
-    au: "القيمة المالية فقط — رصيد، عمولة، اشتراك، إنجاز",
+    violet: "الهوية والحالة النشطة — والحافة الإيريدسنت للوحدات البطل",
+    cyan: "التفاعل الثانوي — الروابط، التركيز، البيانات الحيّة",
+    au: "القيمة المالية = سطوع مش لون. الذهبي انحذف من الهوية.",
     semantic: "نتيجة الصفقة فقط — ما بتستخدم كلون ديكور",
   },
   en: {
     steel: "Metal — edges, rings, secondary icons",
-    ice: "Interaction only — active state, links, focus",
-    au: "Monetary value only — balance, commission, subscription",
+    violet: "Identity and active state — plus the iridescent hero edge",
+    cyan: "Secondary interaction — links, focus, live data",
+    au: "Monetary value is weight, not colour. Gold is gone.",
     semantic: "Trade outcome only — never decorative",
   },
 };

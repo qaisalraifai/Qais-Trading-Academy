@@ -17,9 +17,9 @@ function fmt(n) {
 function StatCard({ label, value, sub, highlight }) {
   return (
     <div style={{ ...glass, padding: "1.3rem 1.5rem" }}>
-      <div style={{ fontSize: "0.75rem", color: "#5D6880", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: "1.5rem", fontWeight: 800, color: highlight ? gold : "#EDF1F8" }}>{value}</div>
-      {sub && <div style={{ fontSize: "0.7rem", color: "#5D6880", marginTop: 4 }}>{sub}</div>}
+      <div style={{ fontSize: "0.75rem", color: "#6E6690", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: "1.5rem", fontWeight: 800, color: highlight ? gold : "#F5F3FF" }}>{value}</div>
+      {sub && <div style={{ fontSize: "0.7rem", color: "#6E6690", marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
@@ -70,9 +70,9 @@ export default function MlmAnalyticsPage() {
       </div>
 
       <div style={s.section}>
-        {error && <div style={{ color: "#E8495F", marginBottom: "1rem" }}>{error}</div>}
+        {error && <div style={{ color: "#FF453A", marginBottom: "1rem" }}>{error}</div>}
         {loading || !data ? (
-          <div style={{ color: "#5D6880" }}>جاري التحميل...</div>
+          <div style={{ color: "#6E6690" }}>جاري التحميل...</div>
         ) : (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
@@ -86,12 +86,12 @@ export default function MlmAnalyticsPage() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
               <div style={{ ...glass, padding: "1.3rem 1.5rem" }}>
-                <div style={{ fontSize: "0.85rem", color: "#5D6880", marginBottom: "1rem" }}>العمولات هالشهر حسب النوع</div>
+                <div style={{ fontSize: "0.85rem", color: "#6E6690", marginBottom: "1rem" }}>العمولات هالشهر حسب النوع</div>
                 {Object.keys(data.commissionsByType).length === 0 ? (
-                  <div style={{ color: "#3E4761", fontSize: "0.85rem" }}>لا يوجد بعد</div>
+                  <div style={{ color: "#4A4368", fontSize: "0.85rem" }}>لا يوجد بعد</div>
                 ) : (
                   Object.entries(data.commissionsByType).map(([type, amount]) => (
-                    <div key={type} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid #1E2941", fontSize: "0.85rem" }}>
+                    <div key={type} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid #241C3E", fontSize: "0.85rem" }}>
                       <span>{BONUS_LABELS[type] || type}</span>
                       <span style={{ color: gold, fontWeight: 700 }}>{fmt(amount)} دينار</span>
                     </div>
@@ -100,13 +100,13 @@ export default function MlmAnalyticsPage() {
               </div>
 
               <div style={{ ...glass, padding: "1.3rem 1.5rem" }}>
-                <div style={{ fontSize: "0.85rem", color: "#5D6880", marginBottom: "1rem" }}>أفضل 10 قادة (حسب CV)</div>
+                <div style={{ fontSize: "0.85rem", color: "#6E6690", marginBottom: "1rem" }}>أفضل 10 قادة (حسب CV)</div>
                 {data.topLeaders.length === 0 ? (
-                  <div style={{ color: "#3E4761", fontSize: "0.85rem" }}>لا يوجد بعد</div>
+                  <div style={{ color: "#4A4368", fontSize: "0.85rem" }}>لا يوجد بعد</div>
                 ) : (
                   data.topLeaders.map((l, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid #1E2941", fontSize: "0.85rem" }}>
-                      <span>{i + 1}. {l.username} <span style={{ color: "#5D6880" }}>({l.rankName})</span></span>
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid #241C3E", fontSize: "0.85rem" }}>
+                      <span>{i + 1}. {l.username} <span style={{ color: "#6E6690" }}>({l.rankName})</span></span>
                       <span style={{ color: gold, fontWeight: 700 }}>{fmt(l.totalCv)} CV</span>
                     </div>
                   ))

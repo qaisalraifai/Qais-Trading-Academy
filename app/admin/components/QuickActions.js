@@ -6,15 +6,15 @@ const menuItems = [
   ["add_user", "إضافة مستخدم"],
   ["add_subscription", "إضافة اشتراك"],
   ["notify", "إرسال إشعار"],
-  ["extend", "⏳ تمديد اشتراك"],
+ ["extend"," تمديد اشتراك"],
   ["discount", "خصم"],
   ["coupon", "إنشاء كوبون"],
 ];
 
 const inputStyle = {
-  background: "#080B14",
-  border: "1px solid #1B2438",
-  color: "#EDF1F8",
+  background: "#0A0614",
+  border: "1px solid #1E1836",
+  color: "#F5F3FF",
   padding: "0.6rem 0.8rem",
   borderRadius: 3,
   fontSize: "0.85rem",
@@ -28,13 +28,13 @@ function Modal({ title, onClose, onSubmit, children, submitLabel = "تأكيد" 
     <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(2px)" }} />
       <div style={{ ...glass, position: "relative", width: "min(380px, 92vw)", padding: "1.6rem", direction: "rtl" }}>
-        <h3 style={{ margin: "0 0 1.1rem", fontSize: "1rem", color: "#EDF1F8" }}>{title}</h3>
+        <h3 style={{ margin: "0 0 1.1rem", fontSize: "1rem", color: "#F5F3FF" }}>{title}</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>{children}</div>
         <div style={{ display: "flex", gap: "0.6rem", marginTop: "1.3rem" }}>
-          <button onClick={onSubmit} style={{ background: `linear-gradient(135deg, ${gold}, #9C7F42)`, color: "#000", border: "none", padding: "0.6rem 1.2rem", borderRadius: 3, fontWeight: 700, cursor: "pointer", flex: 1 }}>
+          <button onClick={onSubmit} style={{ background: `linear-gradient(135deg, ${gold}, #8A7CB8)`, color: "#000", border: "none", padding: "0.6rem 1.2rem", borderRadius: 3, fontWeight: 700, cursor: "pointer", flex: 1 }}>
             {submitLabel}
           </button>
-          <button onClick={onClose} style={{ background: "none", border: "1px solid #1B2438", color: "#93A0B8", padding: "0.6rem 1.2rem", borderRadius: 3, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ background: "none", border: "1px solid #1E1836", color: "#A79FC4", padding: "0.6rem 1.2rem", borderRadius: 3, cursor: "pointer" }}>
             إلغاء
           </button>
         </div>
@@ -74,8 +74,8 @@ export default function QuickActions({ users, onAddUser, onNotifyBroadcast, onCr
               <div
                 key={key}
                 onClick={() => openModal(key)}
-                style={{ padding: "0.65rem 0.8rem", fontSize: "0.85rem", color: "#93A0B8", cursor: "pointer", borderRadius: 3, transition }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#111726")}
+                style={{ padding: "0.65rem 0.8rem", fontSize: "0.85rem", color: "#A79FC4", cursor: "pointer", borderRadius: 3, transition }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#141024")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
                 {label}
@@ -89,7 +89,7 @@ export default function QuickActions({ users, onAddUser, onNotifyBroadcast, onCr
             width: 56,
             height: 56,
             borderRadius: "50%",
-            background: `linear-gradient(135deg, ${gold}, #9C7F42)`,
+            background: `linear-gradient(135deg, ${gold}, #8A7CB8)`,
             border: "none",
             color: "#000",
             fontSize: "1.6rem",
@@ -132,7 +132,7 @@ export default function QuickActions({ users, onAddUser, onNotifyBroadcast, onCr
       )}
 
       {modal === "extend" && (
-        <Modal title="⏳ تمديد اشتراك" onClose={() => setModal(null)} onSubmit={submit}>
+ <Modal title=" تمديد اشتراك" onClose={() => setModal(null)} onSubmit={submit}>
           <select style={inputStyle} onChange={set("userId")} defaultValue="">
             <option value="" disabled>اختر المستخدم</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}

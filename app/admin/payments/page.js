@@ -6,9 +6,9 @@ import { createClient } from "@/lib/supabase-client";
 import { gold, s, glass } from "../styles";
 
 const inputStyle = {
-  background: "#080B14",
-  border: "1px solid #1E2941",
-  color: "#EDF1F8",
+  background: "#0A0614",
+  border: "1px solid #241C3E",
+  color: "#F5F3FF",
   borderRadius: 3,
   padding: "0.55rem 0.8rem",
   fontSize: "0.85rem",
@@ -84,7 +84,7 @@ export default function AdminPaymentsPage() {
       const res = await fetch(`/api/admin/payments/${id}/approve`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      showToast("تم تفعيل الاشتراك ✅");
+ showToast("تم تفعيل الاشتراك");
       loadAll();
     } catch (e) {
       showToast(e.message || "فشلت الموافقة", true);
@@ -188,34 +188,34 @@ export default function AdminPaymentsPage() {
         ))}
       </div>
 
-      {error && <div style={{ ...s.section, color: "#E8495F" }}>{error}</div>}
+      {error && <div style={{ ...s.section, color: "#FF453A" }}>{error}</div>}
       {loading ? (
-        <div style={{ ...s.section, color: "#5D6880" }}>...جاري التحميل</div>
+        <div style={{ ...s.section, color: "#6E6690" }}>...جاري التحميل</div>
       ) : (
         <>
           {tab === "pending" && (
             <div style={s.section}>
               <div style={s.sectionTitle}>طلبات دفع USDT اليدوي بانتظار موافقتك — التفعيل فوري بعد الموافقة</div>
               {pending.length === 0 ? (
-                <div style={{ ...s.card, padding: "2rem", textAlign: "center", color: "#5D6880" }}>لا يوجد طلبات حالياً 🎉</div>
+ <div style={{ ...s.card, padding:"2rem", textAlign:"center", color:"#6E6690" }}>لا يوجد طلبات حالياً </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   {pending.map((p) => (
                     <div key={p.id} style={{ ...s.card, padding: "1.25rem", display: "flex", flexWrap: "wrap", gap: "1.25rem", alignItems: "flex-start" }}>
                       {p.proofUrl && (
                         <a href={p.proofUrl} target="_blank" rel="noreferrer">
-                          <img src={p.proofUrl} alt="إثبات التحويل" style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 3, border: "1px solid #1E2941" }} />
+                          <img src={p.proofUrl} alt="إثبات التحويل" style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 3, border: "1px solid #241C3E" }} />
                         </a>
                       )}
                       <div style={{ flex: 1, minWidth: 220 }}>
-                        <div style={{ fontWeight: 700 }}>{p.user?.username || "—"} <span style={{ color: "#5D6880", fontWeight: 400 }}>({p.user?.email || "—"})</span></div>
-                        <div style={{ color: "#5D6880", fontSize: "0.85rem", marginTop: "0.3rem" }}>
+                        <div style={{ fontWeight: 700 }}>{p.user?.username || "—"} <span style={{ color: "#6E6690", fontWeight: 400 }}>({p.user?.email || "—"})</span></div>
+                        <div style={{ color: "#6E6690", fontSize: "0.85rem", marginTop: "0.3rem" }}>
                           {p.planCode === "signup" ? "اشتراك أول" : "تجديد شهري"} · {p.amount} {p.currency} · شبكة {p.network || "—"}
                         </div>
                         <div style={{ color: "#aaa", fontSize: "0.8rem", marginTop: "0.3rem", fontFamily: "monospace" }}>
                           TXID: {p.txid || "لم يُدخل"}
                         </div>
-                        <div style={{ color: "#3E4761", fontSize: "0.75rem", marginTop: "0.3rem" }}>
+                        <div style={{ color: "#4A4368", fontSize: "0.75rem", marginTop: "0.3rem" }}>
                           {new Date(p.submittedAt || p.createdAt).toLocaleString("ar-EG")}
                         </div>
                       </div>
@@ -252,9 +252,9 @@ export default function AdminPaymentsPage() {
                 {providers.map((p) => (
                   <div key={p.code} style={{ ...s.card, padding: "1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
                     <div>
-                      <div style={{ fontWeight: 700 }}>{p.name} <span style={{ color: "#3E4761", fontSize: "0.75rem" }}>({p.code})</span></div>
-                      <div style={{ color: "#5D6880", fontSize: "0.8rem", marginTop: "0.2rem" }}>{p.description}</div>
-                      <div style={{ color: "#3E4761", fontSize: "0.75rem", marginTop: "0.2rem" }}>
+                      <div style={{ fontWeight: 700 }}>{p.name} <span style={{ color: "#4A4368", fontSize: "0.75rem" }}>({p.code})</span></div>
+                      <div style={{ color: "#6E6690", fontSize: "0.8rem", marginTop: "0.2rem" }}>{p.description}</div>
+                      <div style={{ color: "#4A4368", fontSize: "0.75rem", marginTop: "0.2rem" }}>
                         {p.supports_auto_renew ? "تجديد تلقائي" : "بدون تجديد تلقائي — يعتمد على نظام الفوترة والتذكيرات"}
                       </div>
                     </div>
@@ -290,7 +290,7 @@ export default function AdminPaymentsPage() {
                     <div>
                       <div style={{ fontWeight: 700 }}>{w.network} · {w.currency}</div>
                       <div style={{ color: "#aaa", fontSize: "0.8rem", fontFamily: "monospace", marginTop: "0.2rem" }}>{w.address}</div>
-                      {w.label && <div style={{ color: "#3E4761", fontSize: "0.75rem", marginTop: "0.2rem" }}>{w.label}</div>}
+                      {w.label && <div style={{ color: "#4A4368", fontSize: "0.75rem", marginTop: "0.2rem" }}>{w.label}</div>}
                     </div>
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                       <button onClick={() => toggleWallet(w.id, !w.is_active)} style={{ ...s.btn, ...(w.is_active ? s.btnGold : {}) }}>
@@ -300,7 +300,7 @@ export default function AdminPaymentsPage() {
                     </div>
                   </div>
                 ))}
-                {wallets.length === 0 && <div style={{ color: "#5D6880" }}>ما في محافظ مضافة بعد.</div>}
+                {wallets.length === 0 && <div style={{ color: "#6E6690" }}>ما في محافظ مضافة بعد.</div>}
               </div>
             </div>
           )}
@@ -313,15 +313,15 @@ export default function AdminPaymentsPage() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
                 <div style={{ ...s.card, padding: "1.25rem" }}>
-                  <div style={{ color: "#5D6880", fontSize: "0.8rem" }}>إجمالي الإيرادات</div>
+                  <div style={{ color: "#6E6690", fontSize: "0.8rem" }}>إجمالي الإيرادات</div>
                   <div style={{ fontSize: "1.8rem", fontWeight: 800, color: gold }}>${stats.totalRevenue?.toFixed(2)}</div>
                 </div>
                 <div style={{ ...s.card, padding: "1.25rem" }}>
-                  <div style={{ color: "#5D6880", fontSize: "0.8rem" }}>عدد العمليات الناجحة</div>
+                  <div style={{ color: "#6E6690", fontSize: "0.8rem" }}>عدد العمليات الناجحة</div>
                   <div style={{ fontSize: "1.8rem", fontWeight: 800 }}>{stats.totalCount}</div>
                 </div>
                 <div style={{ ...s.card, padding: "1.25rem" }}>
-                  <div style={{ color: "#5D6880", fontSize: "0.8rem" }}>بانتظار المراجعة</div>
+                  <div style={{ color: "#6E6690", fontSize: "0.8rem" }}>بانتظار المراجعة</div>
                   <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "#FF9800" }}>{stats.pendingReview}</div>
                 </div>
               </div>
@@ -345,7 +345,7 @@ export default function AdminPaymentsPage() {
       {toast && (
         <div style={{
           position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)",
-          background: toast.isError ? "#E8495F" : gold, color: "#111726", padding: "0.7rem 1.4rem",
+          background: toast.isError ? "#FF453A" : gold, color: "#141024", padding: "0.7rem 1.4rem",
           borderRadius: 3, fontWeight: 700, fontSize: "0.85rem", zIndex: 999,
         }}>
           {toast.msg}

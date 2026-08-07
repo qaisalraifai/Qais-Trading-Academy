@@ -2,7 +2,7 @@ export default function EmailConfirmedPage() {
   return (
     <div style={s.page}>
       <div style={s.card}>
-        <img src="/logo.jpg" alt="QTA" style={s.logo} />
+        <img src="/logo.svg" alt="QTA" style={s.logo} />
         <h1 style={s.title}>تم التأكيد ✓</h1>
         <p style={s.text}>رجّع لصفحة التسجيل على جهازك الأول، رح تكمّل لحالها.</p>
       </div>
@@ -10,22 +10,22 @@ export default function EmailConfirmedPage() {
   );
 }
 
-const gold = "#C9A860";
+const gold = "#DCD4F7";
 const s = {
   page: {
-    backgroundColor: "#080B14",
+    backgroundColor: "#0A0614",
     minHeight: "100vh",
     direction: "rtl",
     fontFamily: "'Inter', sans-serif",
-    color: "#EDF1F8",
+    color: "#F5F3FF",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     padding: "2rem",
   },
   card: {
-    backgroundColor: "#0C1220",
-    border: "1px solid #1E2941",
+    backgroundColor: "#0E0A1A",
+    border: "1px solid #241C3E",
     borderRadius: "3px",
     padding: "3rem 2.5rem",
     maxWidth: "380px",
@@ -42,5 +42,5 @@ const s = {
     display: "block",
   },
   title: { fontSize: "1.5rem", fontWeight: 800, marginBottom: "0.75rem", color: gold },
-  text: { color: "#5D6880", fontSize: "0.9rem", lineHeight: 1.8 },
+  text: { color: "#6E6690", fontSize: "0.9rem", lineHeight: 1.8 },
 };

@@ -1,333 +1,406 @@
 "use client";
+
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  BookOpen,
+  Check,
+  GraduationCap,
+  LineChart,
+  Radio,
+  Repeat,
+  Target,
+  Users,
+} from "lucide-react";
+import Logo from "./components/brand/Logo";
+import Starfield from "./components/brand/Starfield";
+import OrbitDiagram from "./components/brand/OrbitDiagram";
 
-function Reveal({ children, delay = 0, style }) {
+/* ============================================================================
+   الصفحة الرئيسية — ما قبل تسجيل الدخول.
+   ----------------------------------------------------------------------------
+   مبنية على نظام NEBULA بالكامل: صفر style={{ }}، كل شي بتوكنز الهوية.
+   الفضاء بيدخل عبر حقل نجوم حقيقي + مخطّط مداري + حواف إيريدسنت — مش صور
+   جاهزة ولا كواكب كرتونية.
+   ============================================================================ */
+
+/* ظهور تدريجي بالسكرول — بيشتغل مرة وحدة لكل عنصر وبعدها بيفصل المراقب */
+function Reveal({ children, delay = 0, className = "" }) {
   const ref = useRef(null);
-  const [visible, setVisible] = useState(false);
+  const [shown, setShown] = useState(false);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
-      { threshold: 0.1 }
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setShown(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setShown(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -60px 0px" }
     );
-    observer.observe(el);
-    return () => observer.disconnect();
+    io.observe(el);
+    return () => io.disconnect();
   }, []);
+
   return (
-    <div ref={ref} style={{ ...style, opacity: visible ? 1 : 0, transform: visible ? "translateY(0px)" : "translateY(32px)", transition: `opacity 0.9s ease ${delay}s, transform 0.9s ease ${delay}s` }}>
+    <div
+      ref={ref}
+      className={`transition-all duration-[900ms] ease-orbit ${
+        shown ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+      } ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
       {children}
     </div>
   );
 }
 
-function GlowOrb({ size, color, blur, top, left, right, opacity = 0.18 }) {
+const CURRICULUM = [
+  { code: "FND", Icon: BookOpen, title: "أساسيات التداول", desc: "فهم الأسواق، أنواع الأدوات المالية، وإدارة رأس المال من الصفر." },
+  { code: "FUN", Icon: LineChart, title: "التحليل الأساسي", desc: "قراءة الأخبار الاقتصادية والمؤشرات وتأثيرها المباشر على حركة السعر." },
+  { code: "ICT", Icon: Target, title: "ICT", desc: "مفاهيم Inner Circle Trader لفهم سلوك السيولة وأثر المؤسسات الكبرى." },
+  { code: "SK", Icon: Radio, title: "SK", desc: "منهجية SK المشتقة من التحليل الموجي (Elliott Wave) لقراءة دورات السعر." },
+  { code: "DEMO", Icon: GraduationCap, title: "تدريب 6 أشهر ديمو", desc: "تطبيق عملي يومي على حساب تجريبي لصقل المهارة قبل رأس المال الحقيقي." },
+  { code: "BT", Icon: Repeat, title: "Backtest مستمر", desc: "اختبار كل استراتيجية على بيانات تاريخية فعلية لقياس جدواها وتطويرها." },
+];
+
+const LEARNING = [
+  "محاضرات مباشرة أسبوعية",
+  "مكتبة محاضرات مسجّلة منظّمة",
+  "اختبارات لقياس التقدّم",
+  "دعم مباشر من المدرّب داخل Discord",
+];
+
+const PLAN_FEATURES = [
+  "وصول فوري لجميع المحاضرات المسجّلة والمباشرة",
+  "عضوية Discord الحصرية",
+  "تدريب 6 أشهر على حساب ديمو",
+  "دعم مباشر من المدرّب",
+];
+
+function SectionHead({ eyebrow, title, align = "center" }) {
   return (
-    <div style={{
-      position: "absolute", top, left, right,
-      width: size, height: size, borderRadius: "50%",
-      background: `radial-gradient(circle, ${color} 0%, transparent 70%)`,
-      filter: `blur(${blur})`, opacity, pointerEvents: "none",
-    }} />
+    <div className={align === "center" ? "text-center" : ""}>
+      <Reveal>
+        <p className="mb-3 font-mono text-[0.66rem] uppercase tracking-[0.28em] text-violet-100">
+          {eyebrow}
+        </p>
+      </Reveal>
+      <Reveal delay={90}>
+        <h2 className="mx-auto max-w-[22ch] text-balance text-2xl font-bold leading-tight tracking-tight text-text-primary md:text-3xl">
+          {title}
+        </h2>
+      </Reveal>
+    </div>
   );
 }
 
 export default function HomePage() {
   return (
-    <div style={styles.page}>
-      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
-      {/* Header */}
-      <header style={styles.header}>
-        <div style={styles.logoBlock}>
-          <img src="/logo.jpg" alt="QTA" style={styles.logoImg} />
-          <span style={styles.logoText}>Qais Trading Academy</span>
+    <div className="min-h-screen bg-space-1 font-sans text-text-primary" dir="rtl">
+      {/* ═══════════ الشريط العلوي ═══════════ */}
+      <header className="glass sticky top-0 z-header border-b border-edge">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-5">
+          <Logo size={28} withWordmark />
+          <nav className="flex items-center gap-2">
+            <Link
+              href="/login"
+              className="px-3 py-2 text-caption text-text-secondary transition-colors duration-base hover:text-text-primary"
+            >
+              تسجيل الدخول
+            </Link>
+            <Link
+              href="/signup"
+              className="rounded-sm bg-violet-200 px-4 py-2 text-caption font-semibold text-space-0 transition-colors duration-base hover:bg-violet-100"
+            >
+              اشترك الآن
+            </Link>
+          </nav>
         </div>
-        <nav style={styles.navLinks}>
-          <Link href="/login" style={styles.navLink}>تسجيل الدخول</Link>
-          <Link href="/signup" style={styles.navCta}>اشترك الآن</Link>
-        </nav>
       </header>
 
-      {/* Hero */}
-      <section style={styles.hero}>
-        {/* Glow orbs */}
-        <GlowOrb size="600px" color="#C9A860" blur="120px" top="-100px" left="-200px" opacity={0.12} />
-        <GlowOrb size="400px" color="#C9A860" blur="80px" top="200px" right="-100px" opacity={0.1} />
-        <GlowOrb size="300px" color="#5E4C27" blur="60px" top="400px" left="40%" opacity={0.08} />
+      {/* ═══════════ البطل ═══════════ */}
+      <section className="relative overflow-hidden border-b border-edge">
+        <Starfield density={1.1} className="opacity-90" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(70% 55% at 25% 0%, rgba(124,77,255,0.22), transparent 62%), radial-gradient(50% 45% at 85% 25%, rgba(34,211,238,0.10), transparent 60%)",
+          }}
+        />
 
-        <div style={styles.heroInner}>
-          <Reveal delay={0}>
-            <div style={styles.badge}>
-              <span style={styles.badgeDot} />
-              أكاديمية تداول متكاملة
-            </div>
-          </Reveal>
+        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 md:py-24 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <Reveal>
+              <span className="inline-flex items-center gap-2 rounded-pill border border-edge-lit bg-module-1/70 px-3 py-1 text-micro text-text-secondary">
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-200" aria-hidden />
+                أكاديمية تداول متكاملة
+              </span>
+            </Reveal>
 
-          <Reveal delay={0.1}>
-            <h1 style={styles.heroTitle}>
-              السوق يكافئ<br />
-              <span style={styles.heroTitleGold}>من يفهمه</span>
-            </h1>
-          </Reveal>
+            <Reveal delay={100}>
+              <h1 className="mt-5 text-balance text-4xl font-extrabold leading-[1.12] tracking-tight md:text-[3.25rem]">
+                السوق يكافئ
+                <br />
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{ backgroundImage: "linear-gradient(115deg,#C4B0FF 0%,#7C4DFF 45%,#22D3EE 100%)" }}
+                >
+                  من يفهمه
+                </span>
+              </h1>
+            </Reveal>
 
-          <Reveal delay={0.25}>
-            <p style={styles.heroSubtitle}>
-              منهج تداول كامل من الأساسيات حتى الاحترافية — محاضرات مباشرة ومسجلة،
-              وتدريب عملي مستمر على حساب ديمو لمدة 6 أشهر.
-            </p>
-          </Reveal>
+            <Reveal delay={200}>
+              <p className="mt-5 max-w-[46ch] text-base leading-relaxed text-text-secondary">
+                منهج تداول كامل من الأساسيات حتى الاحترافية — محاضرات مباشرة ومسجّلة،
+                وتدريب عملي مستمر على حساب ديمو لمدة ستة أشهر.
+              </p>
+            </Reveal>
 
-          <Reveal delay={0.4}>
-            <div style={styles.heroBtns}>
-              <Link href="/signup" style={styles.btnPrimary}>ابدأ رحلتك الآن</Link>
-              <Link href="/login" style={styles.btnSecondary}>تسجيل الدخول</Link>
-            </div>
-          </Reveal>
+            <Reveal delay={300}>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/signup"
+                  className="group inline-flex items-center gap-2 rounded-sm bg-violet-200 px-6 py-3 text-sm font-semibold text-space-0 shadow-glow-violet transition-colors duration-base hover:bg-violet-100"
+                >
+                  ابدأ رحلتك الآن
+                  <ArrowLeft
+                    className="h-4 w-4 transition-transform duration-base group-hover:-translate-x-1"
+                    aria-hidden
+                  />
+                </Link>
+                <Link
+                  href="/login"
+                  className="rounded-sm border border-edge-lit px-6 py-3 text-sm text-text-secondary transition-colors duration-base hover:border-violet-300 hover:text-text-primary"
+                >
+                  تسجيل الدخول
+                </Link>
+              </div>
+            </Reveal>
 
-          <Reveal delay={0.55}>
-            <div style={styles.statsRow}>
-              {[
-                { num: "6", label: "أشهر تدريب ديمو" },
-                { num: "4", label: "منهجيات تحليل" },
-                { num: "∞", label: "Backtest مستمر" },
-              ].map((s, i) => (
-                <div key={i} style={styles.statItem}>
-                  <span style={styles.statNum}>{s.num}</span>
-                  <span style={styles.statLabel}>{s.label}</span>
-                </div>
-              ))}
-            </div>
+            <Reveal delay={400}>
+              <dl className="mt-10 grid max-w-md grid-cols-3 gap-px border border-edge bg-edge">
+                {[
+                  ["6", "أشهر تدريب ديمو"],
+                  ["4", "منهجيات تحليل"],
+                  ["∞", "Backtest مستمر"],
+                ].map(([num, label]) => (
+                  <div key={label} className="bg-module-1 px-3 py-3.5 text-center">
+                    <dt className="font-num text-2xl font-bold leading-none text-text-primary">
+                      {num}
+                    </dt>
+                    <dd className="mt-1.5 text-micro leading-snug text-text-muted">{label}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Reveal>
+          </div>
+
+          <Reveal delay={250} className="flex justify-center lg:justify-start">
+            <OrbitDiagram size={400} />
           </Reveal>
         </div>
-
-        {/* Visual orbs */}
-        <Reveal delay={0.3} style={styles.orbsWrap}>
-          <div style={styles.orbsGrid}>
-            {[
-              { label: "ICT", sub: "Inner Circle Trader" },
-              { label: "SK", sub: "Elliott Wave" },
-              { label: "FND", sub: "أساسيات التداول" },
-              { label: "DEMO", sub: "تدريب ديمو" },
-            ].map((o, i) => (
-              <div key={i} style={styles.orbCard}>
-                <div style={styles.orbRing}>
-                  <div style={styles.orbInner}>
-                    <span style={styles.orbLabel}>{o.label}</span>
-                  </div>
-                </div>
-                <p style={styles.orbSub}>{o.sub}</p>
-              </div>
-            ))}
-          </div>
-          <p style={styles.orbsCaption}>UNLOCK YOUR TRADING POTENTIAL</p>
-        </Reveal>
       </section>
 
-      {/* Curriculum */}
-      <section style={styles.section}>
-        <Reveal><p style={styles.eyebrow}>وحدات المنهج</p></Reveal>
-        <Reveal delay={0.1}><h2 style={styles.sectionTitle}>ست ركائز تبني متداولاً كاملاً</h2></Reveal>
+      {/* ═══════════ المنهج ═══════════ */}
+      <section className="mx-auto max-w-6xl px-5 py-20">
+        <SectionHead eyebrow="Curriculum" title="ست ركائز تبني متداولاً كاملاً" />
 
-        <div style={styles.grid}>
-          {[
-            { code: "FND", title: "أساسيات التداول", desc: "فهم الأسواق، أنواع الأدوات المالية، وإدارة رأس المال من الصفر." },
-            { code: "FUN", title: "التحليل الأساسي", desc: "قراءة الأخبار الاقتصادية والمؤشرات وتأثيرها المباشر على حركة السعر." },
-            { code: "ICT", title: "ICT", desc: "مفاهيم Inner Circle Trader لفهم سلوك السيولة وأثر المؤسسات الكبرى." },
-            { code: "SK", title: "SK", desc: "منهجية SK المشتقة من التحليل الموجي (Elliott Wave) لقراءة دورات السعر." },
-            { code: "DEMO", title: "تدريب 6 أشهر ديمو", desc: "تطبيق عملي يومي على حساب تجريبي لصقل المهارة قبل رأس المال الحقيقي." },
-            { code: "BT", title: "Backtest مستمر", desc: "اختبار كل استراتيجية على بيانات تاريخية فعلية لقياس جدواها وتطويرها." },
-          ].map((item, i) => (
-            <Reveal key={i} delay={i * 0.07}>
-              <div style={styles.card}>
-                <span style={styles.cardCode}>{item.code}</span>
-                <h3 style={styles.cardTitle}>{item.title}</h3>
-                <p style={styles.cardDesc}>{item.desc}</p>
-              </div>
+        <div className="mt-12 grid gap-px border border-edge bg-edge sm:grid-cols-2 lg:grid-cols-3">
+          {CURRICULUM.map((item, i) => (
+            <Reveal key={item.code} delay={i * 70}>
+              <article className="group h-full bg-module-1 p-6 transition-colors duration-base hover:bg-module-2">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="grid h-9 w-9 place-items-center border border-edge-lit text-violet-100 transition-colors duration-base group-hover:border-violet-300">
+                    <item.Icon className="h-4 w-4" aria-hidden />
+                  </span>
+                  <span className="font-mono text-micro tracking-[0.18em] text-text-faint">
+                    {item.code}
+                  </span>
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-text-primary">{item.title}</h3>
+                <p className="text-sm leading-relaxed text-text-muted">{item.desc}</p>
+              </article>
             </Reveal>
           ))}
         </div>
       </section>
 
-      {/* Features */}
-      <section style={styles.featuresSection}>
-        <div style={styles.featuresInner}>
-          <Reveal>
-            <p style={styles.eyebrow}>طريقة التعلّم</p>
-            <h2 style={{ ...styles.sectionTitle, textAlign: "right", marginBottom: "1.5rem" }}>
-              محاضرات مباشرة ومسجلة،<br />منظمة بالكامل
-            </h2>
-            <p style={styles.featuresDesc}>
-              يصلك المحتوى عبر مجتمع Discord الخاص — محاضرات حية تفاعلية أسبوعية،
-              ومكتبة كاملة من المحاضرات المسجلة مرتبة حسب التسلسل التعليمي.
-            </p>
-          </Reveal>
-          <Reveal delay={0.2}>
-            <ul style={styles.featureList}>
-              {["محاضرات مباشرة أسبوعية", "مكتبة محاضرات مسجلة منظمة", "اختبارات لقياس التقدم", "دعم مباشر من المدرب داخل Discord"].map((f, i) => (
-                <li key={i} style={styles.featureItem}>
-                  <span style={styles.featureIcon}>◆</span> {f}
-                </li>
-              ))}
-            </ul>
+      {/* ═══════════ طريقة التعلّم ═══════════ */}
+      <section className="border-y border-edge bg-space-2/60">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-20 lg:grid-cols-2">
+          <div>
+            <Reveal>
+              <p className="mb-3 font-mono text-[0.66rem] uppercase tracking-[0.28em] text-violet-100">
+                How it works
+              </p>
+              <h2 className="text-balance text-2xl font-bold leading-tight tracking-tight md:text-3xl">
+                محاضرات مباشرة ومسجّلة،
+                <br />
+                منظّمة بالكامل
+              </h2>
+              <p className="mt-4 max-w-[48ch] text-sm leading-relaxed text-text-secondary">
+                يصلك المحتوى عبر مجتمع Discord الخاص — محاضرات حيّة تفاعلية أسبوعية،
+                ومكتبة كاملة من المحاضرات المسجّلة مرتّبة حسب التسلسل التعليمي.
+              </p>
+            </Reveal>
+          </div>
+
+          <Reveal delay={150}>
+            <div className="mod mod-lit shadow-module">
+              <div className="mod-in p-6">
+                <ul className="flex flex-col gap-3">
+                  {LEARNING.map((f) => (
+                    <li key={f} className="flex items-start gap-3 border-b border-edge pb-3 last:border-b-0 last:pb-0">
+                      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-sm bg-violet-200/15 text-violet-100">
+                        <Check className="h-3 w-3" aria-hidden />
+                      </span>
+                      <span className="text-sm text-text-secondary">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </Reveal>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section style={styles.section} id="pricing">
-        <Reveal><p style={styles.eyebrow}>الأسعار</p></Reveal>
-        <Reveal delay={0.1}><h2 style={styles.sectionTitle}>سعر واضح، بدون مفاجآت</h2></Reveal>
+      {/* ═══════════ السعر ═══════════ */}
+      <section id="pricing" className="mx-auto max-w-6xl px-5 py-20">
+        <SectionHead eyebrow="Pricing" title="سعر واضح، بدون مفاجآت" />
 
-        <Reveal delay={0.2}>
-          <div style={styles.priceCard}>
-            <h3 style={styles.priceCardTitle}>عضوية Qais Trading Academy</h3>
-            <div style={styles.priceRow}>
-              <span style={styles.priceCurrency}>$</span>
-              <span style={styles.priceNum}>300</span>
-              <span style={styles.pricePeriod}>عند التسجيل</span>
+        <Reveal delay={150}>
+          <div className="mod mod-iri mx-auto mt-12 max-w-lg shadow-glow-violet">
+            <div className="mod-in p-8">
+              <h3 className="text-center text-lg font-semibold text-text-primary">
+                عضوية Qais Trading Academy
+              </h3>
+
+              <div className="mt-6 flex items-end justify-center gap-1.5" dir="ltr">
+                <span className="mb-2 font-num text-xl text-text-muted">$</span>
+                <span className="font-num text-6xl font-extrabold leading-none tracking-tighter text-text-primary">
+                  300
+                </span>
+              </div>
+              <p className="mt-2 text-center text-caption text-text-muted">عند التسجيل</p>
+
+              <p className="mt-4 text-center text-caption text-text-secondary">
+                ثم <strong className="font-num font-semibold text-text-primary">$100</strong> شهرياً
+                تلقائياً حتى تلغي الاشتراك
+              </p>
+
+              <ul className="mt-7 flex flex-col gap-3 border-y border-edge py-6">
+                {PLAN_FEATURES.map((f) => (
+                  <li key={f} className="flex items-start gap-3">
+                    <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-sm bg-cyan-200/15 text-cyan-100">
+                      <Check className="h-3 w-3" aria-hidden />
+                    </span>
+                    <span className="text-sm text-text-secondary">{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                href="/signup"
+                className="mt-7 block rounded-sm bg-violet-200 py-3.5 text-center text-sm font-semibold text-space-0 transition-colors duration-base hover:bg-violet-100"
+              >
+                اشترك الآن — $300
+              </Link>
+
+              <p className="mt-4 text-center text-micro leading-relaxed text-text-faint">
+                الأسعار بالدولار الأمريكي (USD) وقابلة لتطبيق ضرائب حسب موقعك — بيتم
+                احتسابها وعرضها بوضوح قبل إتمام الدفع.
+              </p>
             </div>
-            <p style={styles.priceRenewal}>ثم <strong style={{ color: gold }}>$100</strong> شهرياً بشكل تلقائي لحد ما تلغي الاشتراك</p>
-
-            <ul style={styles.priceFeatures}>
-              {[
-                "وصول فوري لجميع المحاضرات المسجلة والمباشرة",
-                "عضوية Discord الحصرية",
-                "تدريب 6 أشهر على حساب ديمو",
-                "دعم مباشر من المدرب",
-              ].map((f, i) => (
-                <li key={i} style={styles.priceFeatureItem}>
-                  <span style={styles.featureIcon}>◆</span> {f}
-                </li>
-              ))}
-            </ul>
-
-            <Link href="/signup" style={{ ...styles.btnPrimary, width: "100%", textAlign: "center", boxSizing: "border-box" }}>
-              اشترك الآن — $300
-            </Link>
-
-            <p style={styles.priceTaxNote}>
-              الأسعار بالدولار الأمريكي (USD) وقابلة لتطبيق ضرائب حسب موقعك — بيتم احتسابها وعرضها بشكل واضح قبل إتمام الدفع عند الـ Checkout.
-            </p>
           </div>
         </Reveal>
       </section>
 
-      {/* CTA */}
-      <section style={styles.ctaSection}>
-        <GlowOrb size="500px" color="#C9A860" blur="100px" top="50%" left="50%" opacity={0.1} />
-        <Reveal><h2 style={styles.ctaTitle}>جاهز تبدأ؟</h2></Reveal>
-        <Reveal delay={0.15}><p style={styles.ctaSub}>انضم الآن وابدأ رحلتك في عالم التداول الاحترافي</p></Reveal>
-        <Reveal delay={0.3}>
-          <Link href="/signup" style={styles.btnPrimary}>عرض خطط الاشتراك</Link>
-        </Reveal>
+      {/* ═══════════ الدعوة الأخيرة ═══════════ */}
+      <section className="relative overflow-hidden border-t border-edge">
+        <Starfield density={0.7} parallax={false} />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(60% 90% at 50% 100%, rgba(124,77,255,0.20), transparent 65%)",
+          }}
+        />
+        <div className="relative mx-auto max-w-3xl px-5 py-24 text-center">
+          <Reveal>
+            <Logo size={52} className="mx-auto mb-7" />
+          </Reveal>
+          <Reveal delay={100}>
+            <h2 className="text-balance text-3xl font-bold tracking-tight md:text-4xl">
+              جاهز تبدأ؟
+            </h2>
+          </Reveal>
+          <Reveal delay={200}>
+            <p className="mx-auto mt-4 max-w-[42ch] text-base text-text-secondary">
+              انضم الآن وابدأ رحلتك في عالم التداول الاحترافي.
+            </p>
+          </Reveal>
+          <Reveal delay={300}>
+            <Link
+              href="/signup"
+              className="group mt-8 inline-flex items-center gap-2 rounded-sm bg-violet-200 px-7 py-3.5 text-sm font-semibold text-space-0 shadow-glow-violet transition-colors duration-base hover:bg-violet-100"
+            >
+              عرض خطط الاشتراك
+              <ArrowLeft
+                className="h-4 w-4 transition-transform duration-base group-hover:-translate-x-1"
+                aria-hidden
+              />
+            </Link>
+          </Reveal>
+        </div>
       </section>
 
-      <footer style={styles.footer}>
-        <div style={styles.footerLinks}>
-          <Link href="/terms" style={styles.footerLink}>الشروط والأحكام</Link>
-          <span style={styles.footerDot}>·</span>
-          <Link href="/privacy" style={styles.footerLink}>سياسة الخصوصية</Link>
-          <span style={styles.footerDot}>·</span>
-          <Link href="/refund-policy" style={styles.footerLink}>سياسة الاسترجاع</Link>
-          <span style={styles.footerDot}>·</span>
-          <a href="mailto:qaisalraifai@gmail.com" style={styles.footerLink}>تواصل معنا</a>
-        </div>
-        <div style={{ marginTop: "1rem" }}>
-          © {new Date().getFullYear()} Qais Trading Academy — جميع الحقوق محفوظة
+      {/* ═══════════ التذييل ═══════════ */}
+      <footer className="border-t border-edge bg-space-0">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 px-5 py-10">
+          <nav className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2 text-caption">
+            {[
+              ["/terms", "الشروط والأحكام"],
+              ["/privacy", "سياسة الخصوصية"],
+              ["/refund-policy", "سياسة الاسترجاع"],
+            ].map(([href, label], i) => (
+              <span key={href} className="flex items-center gap-2">
+                {i > 0 && <span className="text-text-faint" aria-hidden>·</span>}
+                <Link
+                  href={href}
+                  className="text-text-muted transition-colors duration-base hover:text-text-secondary"
+                >
+                  {label}
+                </Link>
+              </span>
+            ))}
+            <span className="text-text-faint" aria-hidden>·</span>
+            <a
+              href="mailto:qaisalraifai@gmail.com"
+              className="text-text-muted transition-colors duration-base hover:text-text-secondary"
+            >
+              تواصل معنا
+            </a>
+          </nav>
+
+          <p className="flex items-center gap-2 text-micro text-text-faint">
+            <Users className="h-3 w-3" aria-hidden />
+            <span dir="ltr">© {new Date().getFullYear()} Qais Trading Academy</span>
+          </p>
         </div>
       </footer>
     </div>
   );
 }
-
-const gold = "#C9A860";
-const goldDim = "#C9A860";
-const ink = "#080B14";
-const cardBg = "#0C1220";
-const textMuted = "#5D6880";
-const textSoft = "#EDF1F8";
-
-const styles = {
-  page: { backgroundColor: ink, color: textSoft, direction: "rtl", fontFamily: "'Cairo', system-ui, sans-serif", minHeight: "100vh", overflowX: "hidden" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #0C1220", position: "relative", zIndex: 10 },
-  logoBlock: { display: "flex", alignItems: "center", gap: "0.85rem" },
-  logoImg: { height: "36px", width: "auto", borderRadius: "3px" },
-  logoText: { fontSize: "1rem", color: textSoft, fontWeight: 500 },
-  navLinks: { display: "flex", alignItems: "center", gap: "1.75rem" },
-  navLink: { color: textMuted, textDecoration: "none", fontSize: "0.9rem" },
-  navCta: { border: `1px solid ${goldDim}`, color: gold, padding: "0.55rem 1.3rem", borderRadius: "3px", textDecoration: "none", fontSize: "0.85rem" },
-
-  hero: { position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", maxWidth: "1280px", margin: "0 auto", padding: "6rem 3rem 5rem", gap: "3rem", flexWrap: "wrap", minHeight: "85vh" },
-  heroInner: { flex: "1 1 480px", minWidth: "320px", position: "relative", zIndex: 2 },
-  badge: { display: "inline-flex", alignItems: "center", gap: "0.5rem", border: "1px solid #111726", borderRadius: "999px", padding: "0.4rem 1rem", fontSize: "0.8rem", color: textMuted, marginBottom: "2rem", backgroundColor: "#0C1220" },
-  badgeDot: { width: "6px", height: "6px", borderRadius: "50%", backgroundColor: gold },
-  heroTitle: { fontSize: "clamp(2.5rem, 5vw, 4.5rem)", fontWeight: 900, lineHeight: 1.1, marginBottom: "1.5rem", letterSpacing: "-1px" },
-  heroTitleGold: { color: gold },
-  heroSubtitle: { color: textMuted, fontSize: "1.05rem", lineHeight: 1.85, marginBottom: "2.5rem", maxWidth: "480px" },
-  heroBtns: { display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "3rem" },
-  btnPrimary: { display: "inline-block", backgroundColor: gold, color: "#0C1220", padding: "0.9rem 2.2rem", borderRadius: "3px", textDecoration: "none", fontWeight: 700, fontSize: "0.95rem" },
-  btnSecondary: { display: "inline-block", border: "1px solid #1B2438", color: textSoft, padding: "0.9rem 2.2rem", borderRadius: "3px", textDecoration: "none", fontWeight: 500, fontSize: "0.95rem" },
-  statsRow: { display: "flex", gap: "2.5rem" },
-  statItem: { display: "flex", flexDirection: "column", gap: "0.2rem" },
-  statNum: { fontFamily: "'JetBrains Mono', monospace", fontSize: "1.8rem", color: textSoft, fontWeight: 500 },
-  statLabel: { color: textMuted, fontSize: "0.75rem" },
-
-  orbsWrap: { flex: "1 1 320px", minWidth: "280px", display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem" },
-  orbsGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" },
-  orbCard: { display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" },
-  orbRing: { width: "100px", height: "100px", borderRadius: "50%", border: "1px solid #111726", display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle at 30% 30%, #111726 0%, #0C1220 100%)", boxShadow: `0 0 30px ${gold}22, inset 0 0 20px ${gold}11` },
-  orbInner: { width: "70px", height: "70px", borderRadius: "50%", border: `1px solid ${gold}44`, display: "flex", alignItems: "center", justifyContent: "center", background: `radial-gradient(circle, ${gold}15 0%, transparent 70%)` },
-  orbLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", color: gold, letterSpacing: "1px", fontWeight: 500 },
-  orbSub: { color: textMuted, fontSize: "0.72rem", textAlign: "center" },
-  orbsCaption: { fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "#182033", letterSpacing: "3px" },
-
-  section: { padding: "5rem 3rem", maxWidth: "1280px", margin: "0 auto" },
-  eyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, letterSpacing: "2px", fontSize: "0.75rem", marginBottom: "0.75rem", textAlign: "center" },
-  sectionTitle: { fontSize: "2rem", fontWeight: 800, textAlign: "center", marginBottom: "3rem", letterSpacing: "-0.5px" },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1px", backgroundColor: "#111726", border: "1px solid #111726" },
-  card: { backgroundColor: cardBg, padding: "2.25rem 2rem", textAlign: "right", transition: "background 0.3s" },
-  cardCode: { fontFamily: "'JetBrains Mono', monospace", color: textMuted, fontSize: "0.72rem", letterSpacing: "1px" },
-  cardTitle: { fontSize: "1.15rem", color: gold, margin: "0.75rem 0", fontWeight: 700 },
-  cardDesc: { color: textMuted, fontSize: "0.9rem", lineHeight: 1.75 },
-
-  priceCard: {
-    backgroundColor: cardBg,
-    border: `1px solid ${goldDim}66`,
-    borderRadius: "3px",
-    padding: "2.75rem 2.5rem",
-    maxWidth: "440px",
-    margin: "0 auto",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "1.25rem",
-    textAlign: "center",
-  },
-  priceCardTitle: { fontSize: "1.15rem", fontWeight: 700, color: textSoft, margin: 0 },
-  priceRow: { display: "flex", alignItems: "baseline", gap: "0.35rem", justifyContent: "center" },
-  priceCurrency: { color: gold, fontSize: "1.3rem" },
-  priceNum: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "3.2rem", fontWeight: 700, lineHeight: 1 },
-  pricePeriod: { color: textMuted, fontSize: "0.85rem" },
-  priceRenewal: { color: textMuted, fontSize: "0.88rem", margin: 0 },
-  priceFeatures: { listStyle: "none", padding: 0, margin: "0.5rem 0", width: "100%", display: "flex", flexDirection: "column", gap: "0.65rem" },
-  priceFeatureItem: { color: textMuted, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "flex-start" },
-  priceTaxNote: { color: "#3E4761", fontSize: "0.75rem", lineHeight: 1.6, margin: 0 },
-
-  featuresSection: { backgroundColor: "#080B14", padding: "5rem 3rem", borderTop: "1px solid #111726", borderBottom: "1px solid #111726" },
-  featuresInner: { maxWidth: "900px", margin: "0 auto", display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "4rem", alignItems: "center" },
-  featuresDesc: { color: textMuted, fontSize: "1rem", lineHeight: 1.9 },
-  featureList: { listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "1.25rem" },
-  featureItem: { color: textSoft, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "0.75rem" },
-  featureIcon: { color: gold, fontSize: "1rem", display: "inline-block", animation: "pulseSoft 2s ease-in-out infinite" },
-
-  ctaSection: { position: "relative", padding: "6rem 3rem 7rem", textAlign: "center", overflow: "hidden" },
-  ctaTitle: { fontSize: "2.5rem", fontWeight: 900, marginBottom: "1rem", letterSpacing: "-0.5px" },
-  ctaSub: { color: textMuted, marginBottom: "2.5rem", fontSize: "1rem" },
-
-  footer: { textAlign: "center", padding: "2rem", color: "#1B2438", fontSize: "0.8rem", fontFamily: "'JetBrains Mono', monospace", borderTop: "1px solid #111726" },
-  footerLinks: { display: "flex", justifyContent: "center", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" },
-  footerLink: { color: textMuted, textDecoration: "none", fontSize: "0.8rem" },
-  footerDot: { color: "#182033" },
-};

@@ -5,18 +5,18 @@ export default function KpiRow({ kpis }) {
   if (!kpis) return null;
   const items = [
     { label: "Revenue", value: `$${kpis.revenue.toLocaleString("en-US")}`, delta: null, color: gold },
-    { label: "Retention", value: `${kpis.retention}%`, color: "#1FBF87" },
-    { label: "Renewal Rate", value: `${kpis.renewalRate}%`, color: "#5FA8E8" },
+    { label: "Retention", value: `${kpis.retention}%`, color: "#10E5A0" },
+    { label: "Renewal Rate", value: `${kpis.renewalRate}%`, color: "#7C4DFF" },
     { label: "Average Subscription", value: `${kpis.avgSubMonths} أشهر`, color: "#B26FE0" },
   ];
 
   return (
     <div style={{ ...glass, display: "flex", padding: "1.1rem 1.5rem" }}>
       {items.map((it, i) => (
-        <div key={it.label} style={{ flex: 1, display: "flex", alignItems: "center", gap: "1rem", ...(i > 0 ? { borderRight: "1px solid #111726", paddingRight: "1.2rem", marginRight: "1.2rem" } : {}) }}>
+        <div key={it.label} style={{ flex: 1, display: "flex", alignItems: "center", gap: "1rem", ...(i > 0 ? { borderRight: "1px solid #141024", paddingRight: "1.2rem", marginRight: "1.2rem" } : {}) }}>
           <div>
             <div style={{ fontFamily: monoStack, fontSize: "1.35rem", fontWeight: 600, color: it.color }}>{it.value}</div>
-            <div style={{ fontSize: "0.75rem", color: "#5D6880", marginTop: 2 }}>{it.label}</div>
+            <div style={{ fontSize: "0.75rem", color: "#6E6690", marginTop: 2 }}>{it.label}</div>
           </div>
         </div>
       ))}

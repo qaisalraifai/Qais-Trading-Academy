@@ -1,4 +1,5 @@
 "use client";
+import { Crown, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -89,7 +90,7 @@ export default function PaymentPage() {
       </div>
 
       <div style={styles.card}>
-        <div style={styles.cardIcon}>👑</div>
+        <div style={styles.cardIcon}><Crown size={14} aria-hidden /></div>
         <h2 style={styles.cardTitle}>عضوية Qais Trading Academy</h2>
         <div style={styles.priceBox}>
           <span style={styles.currency}>$</span>
@@ -140,7 +141,7 @@ export default function PaymentPage() {
         )}
 
         <p style={styles.note}>
-          بعد $300 رسوم التسجيل، بينسحب تلقائياً <strong style={{ color: "#C9A860" }}>$100 كل شهر</strong> (بالبطاقة) أو بيتوجب عليك التجديد يدوياً كل شهر (بالكريبتو) لحد ما تلغي الاشتراك.
+          بعد $300 رسوم التسجيل، بينسحب تلقائياً <strong style={{ color: "#DCD4F7" }}>$100 كل شهر</strong> (بالبطاقة) أو بيتوجب عليك التجديد يدوياً كل شهر (بالكريبتو) لحد ما تلغي الاشتراك.
         </p>
         <p style={styles.taxNote}>
           الأسعار المعروضة قابلة لتطبيق ضرائب حسب موقعك — بيتم احتسابها وعرضها بوضوح قبل إتمام الدفع.
@@ -149,7 +150,7 @@ export default function PaymentPage() {
 
       <p style={styles.footer}>جميع المدفوعات مؤمنة · يمكنك الإلغاء بأي وقت</p>
 
-      <Link href="/admin" style={styles.adminLink}>⚙</Link>
+      <Link href="/admin" style={styles.adminLink}><Settings size={14} aria-hidden /></Link>
     </div>
   );
 }
@@ -160,12 +161,12 @@ function providerIcon(type) {
   return "💰";
 }
 
-const gold = "#C9A860";
+const gold = "#DCD4F7";
 
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#0C1220",
+    backgroundColor: "#0E0A1A",
     color: "#fff",
     direction: "rtl",
     fontFamily: "'Georgia', serif",
@@ -176,12 +177,12 @@ const styles = {
   },
   header: { textAlign: "center", marginBottom: "3rem" },
   logoText: { fontSize: "3rem", fontWeight: "bold", color: gold, letterSpacing: "8px", textShadow: `0 0 30px ${gold}44` },
-  logoSub: { color: "#5D6880", letterSpacing: "4px", fontSize: "0.75rem", marginTop: "-0.5rem", marginBottom: "1.5rem" },
+  logoSub: { color: "#6E6690", letterSpacing: "4px", fontSize: "0.75rem", marginTop: "-0.5rem", marginBottom: "1.5rem" },
   divider: { width: "80px", height: "2px", backgroundColor: gold, margin: "0 auto 1.5rem" },
   title: { fontSize: "2rem", fontWeight: "bold", marginBottom: "0.5rem" },
-  subtitle: { color: "#5D6880", fontSize: "1rem" },
+  subtitle: { color: "#6E6690", fontSize: "1rem" },
   card: {
-    backgroundColor: "#080B14",
+    backgroundColor: "#0A0614",
     border: `1px solid ${gold}`,
     borderRadius: "3px",
     padding: "3rem",
@@ -197,8 +198,8 @@ const styles = {
   cardTitle: { fontSize: "1.4rem", fontWeight: "bold", textAlign: "center", color: "#fff" },
   priceBox: {
     textAlign: "center",
-    borderTop: "1px solid #1E2941",
-    borderBottom: "1px solid #1E2941",
+    borderTop: "1px solid #241C3E",
+    borderBottom: "1px solid #241C3E",
     padding: "1.5rem 0",
     width: "100%",
     display: "flex",
@@ -208,9 +209,9 @@ const styles = {
   },
   currency: { color: gold, fontSize: "1.5rem" },
   amount: { color: gold, fontSize: "4rem", fontWeight: "bold", lineHeight: 1 },
-  period: { color: "#3E4761", fontSize: "0.85rem" },
+  period: { color: "#4A4368", fontSize: "0.85rem" },
   features: { listStyle: "none", padding: 0, width: "100%", display: "flex", flexDirection: "column", gap: "0.75rem" },
-  feature: { color: "#5D6880", fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "0.5rem" },
+  feature: { color: "#6E6690", fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "0.5rem" },
   check: { color: gold, fontSize: "0.6rem" },
   providerList: { width: "100%", display: "flex", flexDirection: "column", gap: "0.75rem" },
   providerBtn: {
@@ -227,20 +228,20 @@ const styles = {
     fontFamily: "inherit",
   },
   providerBtnMain: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  providerBtnDesc: { color: "#5D6880", fontSize: "0.75rem", fontWeight: "normal", marginTop: "0.3rem" },
+  providerBtnDesc: { color: "#6E6690", fontSize: "0.75rem", fontWeight: "normal", marginTop: "0.3rem" },
   checkoutContainer: {
     width: "100%",
     minHeight: "450px",
   },
-  note: { color: "#3E4761", fontSize: "0.8rem", textAlign: "center", lineHeight: 1.6 },
-  configError: { color: "#E8495F", fontSize: "0.78rem", textAlign: "center", lineHeight: 1.7, background: "#E8495F14", border: "1px solid #E8495F44", borderRadius: 3, padding: "0.75rem 1rem" },
-  taxNote: { color: "#26314A", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5, marginTop: "-0.75rem" },
-  footer: { color: "#26314A", fontSize: "0.8rem", marginTop: "1.5rem" },
+  note: { color: "#4A4368", fontSize: "0.8rem", textAlign: "center", lineHeight: 1.6 },
+  configError: { color: "#FF453A", fontSize: "0.78rem", textAlign: "center", lineHeight: 1.7, background: "#FF453A14", border: "1px solid #FF453A44", borderRadius: 3, padding: "0.75rem 1rem" },
+  taxNote: { color: "#2A2145", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5, marginTop: "-0.75rem" },
+  footer: { color: "#2A2145", fontSize: "0.8rem", marginTop: "1.5rem" },
   adminLink: {
     position: "fixed",
     bottom: "1rem",
     left: "1rem",
-    color: "#1E2941",
+    color: "#241C3E",
     fontSize: "1rem",
     textDecoration: "none",
     opacity: 0.3,

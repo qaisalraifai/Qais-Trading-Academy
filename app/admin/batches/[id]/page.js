@@ -261,7 +261,7 @@ function OverviewTab({ batch, instructors }) {
         </span>
         {fillPct != null && (
           <div style={s.progressBarBg}>
-            <div style={{ ...s.progressBarFill, width: `${fillPct}%`, backgroundColor: batch.is_full ? "#E8495F" : "#1FBF87" }} />
+            <div style={{ ...s.progressBarFill, width: `${fillPct}%`, backgroundColor: batch.is_full ? "#FF453A" : "#10E5A0" }} />
           </div>
         )}
       </div>
@@ -458,7 +458,7 @@ function LiveAttendanceTab({ batchId }) {
           {sessions.map((sess) => (
             <button key={sess.id} onClick={() => openDetail(sess.id)} style={s.sessionBtn}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "0.2rem" }}>
-                <span style={{ color: "#EDF1F8", fontSize: "0.88rem", fontWeight: 600 }}>
+                <span style={{ color: "#F5F3FF", fontSize: "0.88rem", fontWeight: 600 }}>
                   {sess.title || "بث مباشر"} {sess.is_active && <span style={s.badgeLive}>نشط</span>}
                 </span>
                 <span style={s.mono}>{fmtDateTime(sess.started_at)}</span>
@@ -563,7 +563,7 @@ function AssignmentsTab({ batchId }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#111726", border: "1px solid #1B2438", borderRadius: "3px", padding: "1rem" }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#141024", border: "1px solid #1E1836", borderRadius: "3px", padding: "1rem" }}>
           <label style={s.label}>عنوان الواجب</label>
           <input style={s.input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
 
@@ -598,10 +598,10 @@ function AssignmentsTab({ batchId }) {
           {assignments.map((a) => (
             <div key={a.id} style={s.rowItem}>
               <div style={{ minWidth: 0, cursor: "pointer" }} onClick={() => setOpenAssignment(a)}>
-                <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#EDF1F8" }}>
+                <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#F5F3FF" }}>
                   {a.title} {a.course ? <span style={s.badgeDefault}>{a.course.icon} {a.course.title}</span> : <span style={s.badgeShared}>عام</span>}
                 </p>
-                {a.description && <p style={{ color: "#93A0B8", fontSize: "0.8rem", margin: "0.3rem 0 0" }}>{a.description}</p>}
+                {a.description && <p style={{ color: "#A79FC4", fontSize: "0.8rem", margin: "0.3rem 0 0" }}>{a.description}</p>}
                 <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>
                   {a.due_date ? `موعد التسليم: ${a.due_date}` : "بدون موعد محدد"} — {a.submitted_count} تسليم ({a.graded_count} مقيّم)
                 </p>
@@ -667,12 +667,12 @@ function SubmissionsPanel({ assignment, onClose }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
           {submissions.map((sub) => (
-            <div key={sub.id} style={{ background: "#111726", border: "1px solid #1B2438", borderRadius: "3px", padding: "0.85rem 1rem" }}>
+            <div key={sub.id} style={{ background: "#141024", border: "1px solid #1E1836", borderRadius: "3px", padding: "0.85rem 1rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem", flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0 }}>
                   <span style={s.username}>{sub.username}</span> <span style={s.mono}>— {sub.email}</span>
                   <p style={{ ...s.mono, margin: "0.3rem 0 0" }}>سلّم بتاريخ {fmtDateTime(sub.submitted_at)}</p>
-                  {sub.note && <p style={{ color: "#93A0B8", fontSize: "0.82rem", margin: "0.4rem 0 0" }}>{sub.note}</p>}
+                  {sub.note && <p style={{ color: "#A79FC4", fontSize: "0.82rem", margin: "0.4rem 0 0" }}>{sub.note}</p>}
                   {sub.file_path && (
                     <a href={sub.download_url || "#"} target="_blank" rel="noopener noreferrer" style={{ ...s.fileLink, display: "inline-block", marginTop: "0.4rem" }}>{sub.file_name || "الملف المرفوع"}
                     </a>
@@ -688,7 +688,7 @@ function SubmissionsPanel({ assignment, onClose }) {
               </div>
 
               {sub.feedback && gradingId !== sub.id && (
-                <p style={{ color: "#93A0B8", fontSize: "0.8rem", margin: "0.5rem 0 0" }}>ملاحظتك: {sub.feedback}</p>
+                <p style={{ color: "#A79FC4", fontSize: "0.8rem", margin: "0.5rem 0 0" }}>ملاحظتك: {sub.feedback}</p>
               )}
 
               {gradingId === sub.id ? (
@@ -721,10 +721,10 @@ function SubmissionsPanel({ assignment, onClose }) {
 // قراءة فقط، صفر جدول جديد — تجميع لنفس البيانات المستخدمة بتبويبي "البث والحضور"
 // و"الواجبات"، بالضبط متل نسخة الطالب بـ app/course/[id]/calendar/page.js
 const eventMeta = {
-  start: { icon: "🏁", label: "بداية الدفعة" },
-  end: { icon: "🏆", label: "نهاية الدفعة" },
-  live: { icon: "🔴", label: "بث مباشر" },
-  assignment: { icon: "📝", label: "تسليم واجب" },
+ start: { icon:"", label:"بداية الدفعة" },
+ end: { icon:"", label:"نهاية الدفعة" },
+ live: { icon:"", label:"بث مباشر" },
+ assignment: { icon:"", label:"تسليم واجب" },
 };
 
 function CalendarTab({ batchId, batch }) {
@@ -780,7 +780,7 @@ function CalendarTab({ batchId, batch }) {
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
                   <span style={{ fontSize: "1.1rem" }}>{meta.icon}</span>
                   <div>
-                    <p style={{ margin: 0, fontSize: "0.86rem", fontWeight: 600, color: "#EDF1F8" }}>
+                    <p style={{ margin: 0, fontSize: "0.86rem", fontWeight: 600, color: "#F5F3FF" }}>
                       {ev.title} {ev.isActive && <span style={s.badgeLive}>نشط</span>}
                     </p>
                     <p style={{ ...s.mono, margin: "0.2rem 0 0" }}>{meta.label}</p>
@@ -1018,7 +1018,7 @@ function QuizzesTab({ batchId }) {
           )}
 
           {showForm && (
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#111726", border: "1px solid #1B2438", borderRadius: "3px", padding: "1rem" }}>
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxWidth: "480px", marginBottom: "1rem", background: "#141024", border: "1px solid #1E1836", borderRadius: "3px", padding: "1rem" }}>
               <label style={s.label}>عنوان الاختبار</label>
               <input style={s.input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
 
@@ -1048,7 +1048,7 @@ function QuizzesTab({ batchId }) {
               {quizzes.map((q) => (
                 <div key={q.id} style={s.rowItem}>
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#EDF1F8" }}>
+                    <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#F5F3FF" }}>
                       {q.title} {q.batch_course_id ? <span style={s.badgeDefault}>حصري</span> : <span style={s.badgeShared}>مشترك</span>}
                     </p>
                     <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>
@@ -1157,11 +1157,11 @@ function QuestionsPanel({ quiz, onClose }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "560px", marginBottom: "1rem", background: "#111726", border: "1px solid #1B2438", borderRadius: "3px", padding: "1rem" }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "560px", marginBottom: "1rem", background: "#141024", border: "1px solid #1E1836", borderRadius: "3px", padding: "1rem" }}>
           <label style={s.label}>نص السؤال</label>
           <textarea style={{ ...s.input, minHeight: "60px", resize: "vertical", fontFamily: "inherit" }} value={form.question_text} onChange={(e) => setForm({ ...form, question_text: e.target.value })} required />
 
-          <label style={s.label}>الخيارات (حددي الإجابة الصحيحة بالزر ⚪)</label>
+ <label style={s.label}>الخيارات (حددي الإجابة الصحيحة بالزر)</label>
           {form.options.map((opt, idx) => (
             <div key={idx} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
               <input
@@ -1195,9 +1195,9 @@ function QuestionsPanel({ quiz, onClose }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           {questions.map((q, idx) => (
-            <div key={q.id} style={{ background: "#111726", border: "1px solid #1B2438", borderRadius: "3px", padding: "0.85rem 1rem" }}>
+            <div key={q.id} style={{ background: "#141024", border: "1px solid #1E1836", borderRadius: "3px", padding: "0.85rem 1rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem" }}>
-                <p style={{ margin: 0, fontSize: "0.86rem", fontWeight: 600, color: "#EDF1F8" }}>{idx + 1}. {q.question_text}</p>
+                <p style={{ margin: 0, fontSize: "0.86rem", fontWeight: 600, color: "#F5F3FF" }}>{idx + 1}. {q.question_text}</p>
                 <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0 }}>
                   <button onClick={() => openEditForm(q)} style={s.btnEdit}>تعديل</button>
                   <button onClick={() => handleDelete(q)} style={s.btnDanger}>حذف</button>
@@ -1205,7 +1205,7 @@ function QuestionsPanel({ quiz, onClose }) {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: "0.5rem" }}>
                 {q.options.map((opt, i) => (
-                  <span key={i} style={{ fontSize: "0.8rem", color: i === q.correct_option_index ? "#1FBF87" : "#93A0B8" }}>
+                  <span key={i} style={{ fontSize: "0.8rem", color: i === q.correct_option_index ? "#10E5A0" : "#A79FC4" }}>
                     {i === q.correct_option_index ? "✓ " : "— "}{opt}
                   </span>
                 ))}
@@ -1350,7 +1350,7 @@ function CoursesTab({ batchId }) {
                   <button onClick={() => handleMove(link, 1)} disabled={idx === links.length - 1 || busyId === link.id} style={s.moveBtn}>▼</button>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#EDF1F8" }}>
+                  <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#F5F3FF" }}>
                     {link.course ? `${link.course.icon || ""} ${link.course.title}` : "دورة محذوفة"}
                   </p>
                 </div>
@@ -1570,9 +1570,9 @@ function AnnouncementsTab({ batchId }) {
           {announcements.map((a) => (
             <div key={a.id} style={s.rowItem}>
               <div style={{ minWidth: 0 }}>
-                <span style={{ color: "#EDF1F8", fontSize: "0.86rem", fontWeight: 700 }}>{a.title}</span>
+                <span style={{ color: "#F5F3FF", fontSize: "0.86rem", fontWeight: 700 }}>{a.title}</span>
                 {a.course && <span style={{ ...s.badgeDefault, marginRight: "0.4rem" }}>{a.course.icon} {a.course.title}</span>}
-                {a.message && <p style={{ color: "#93A0B8", fontSize: "0.8rem", margin: "0.35rem 0 0" }}>{a.message}</p>}
+                {a.message && <p style={{ color: "#A79FC4", fontSize: "0.8rem", margin: "0.35rem 0 0" }}>{a.message}</p>}
                 <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>{fmtDateTime(a.created_at)}</p>
               </div>
               <span style={s.mono}>{a.recipients_count} طالب</span>
@@ -1640,7 +1640,7 @@ function CertificatesTab({ batchId }) {
           {students.map((st) => (
             <div key={st.user_id} style={s.rowItem}>
               <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, color: "#EDF1F8" }}>{st.username}</p>
+                <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, color: "#F5F3FF" }}>{st.username}</p>
                 <p style={{ ...s.mono, margin: "0.25rem 0 0" }}>
                   {st.progress.completed}/{st.progress.total} محاضرة ({st.progress.percent}%)
                   {st.certificate && <> — {st.certificate.is_automatic ? "صادرة تلقائيًا" : "صادرة يدويًا"} بتاريخ {fmtDateTime(st.certificate.issued_at)}</>}
@@ -1785,58 +1785,58 @@ function SettingsTab({ batch, instructors, onSaved, onAction, router }) {
   );
 }
 
-const gold = "#C9A860";
-const ink = "#080B14";
+const gold = "#DCD4F7";
+const ink = "#0A0614";
 const s = {
-  page: { backgroundColor: ink, color: "#EDF1F8", direction: "rtl", fontFamily: "'Inter', sans-serif", minHeight: "100vh", padding: "0 0 4rem" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "2rem 3rem 1rem", borderBottom: "1px solid #111726" },
-  headerBack: { color: "#93A0B8", fontSize: "0.8rem", textDecoration: "none" },
+  page: { backgroundColor: ink, color: "#F5F3FF", direction: "rtl", fontFamily: "'Inter', sans-serif", minHeight: "100vh", padding: "0 0 4rem" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "2rem 3rem 1rem", borderBottom: "1px solid #141024" },
+  headerBack: { color: "#A79FC4", fontSize: "0.8rem", textDecoration: "none" },
   headerTitle: { fontSize: "1.5rem", fontWeight: 800, margin: "0.5rem 0 0" },
   tabsBar: { display: "flex", gap: "0.3rem", flexWrap: "wrap", padding: "1rem 3rem 0" },
-  tabBtn: { background: "none", border: "1px solid #111726", color: "#93A0B8", padding: "0.55rem 1rem", borderRadius: "6px 6px 0 0", cursor: "pointer", fontSize: "0.82rem", fontFamily: "inherit", display: "flex", alignItems: "center", gap: "0.4rem" },
-  tabBtnActive: { color: gold, borderColor: gold, backgroundColor: "#0C1220" },
+  tabBtn: { background: "none", border: "1px solid #141024", color: "#A79FC4", padding: "0.55rem 1rem", borderRadius: "6px 6px 0 0", cursor: "pointer", fontSize: "0.82rem", fontFamily: "inherit", display: "flex", alignItems: "center", gap: "0.4rem" },
+  tabBtnActive: { color: gold, borderColor: gold, backgroundColor: "#0E0A1A" },
   tabBtnDisabled: { opacity: 0.5, cursor: "default" },
-  tabSoon: { fontSize: "0.62rem", color: "#5D6880", backgroundColor: "#111726", padding: "0.1rem 0.4rem", borderRadius: "3px" },
-  tabBody: { padding: "1.5rem 3rem 2rem", borderTop: "1px solid #111726" },
+  tabSoon: { fontSize: "0.62rem", color: "#6E6690", backgroundColor: "#141024", padding: "0.1rem 0.4rem", borderRadius: "3px" },
+  tabBody: { padding: "1.5rem 3rem 2rem", borderTop: "1px solid #141024" },
   overviewGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" },
-  overviewCard: { display: "flex", flexDirection: "column", gap: "0.4rem", backgroundColor: "#080B14", border: "1px solid #111726", borderRadius: "3px", padding: "1.1rem 1.3rem" },
-  overviewValue: { fontSize: "1rem", fontWeight: 600, color: "#EDF1F8" },
-  card: { backgroundColor: "#080B14", border: "1px solid #111726", borderRadius: "3px", padding: "1.3rem" },
+  overviewCard: { display: "flex", flexDirection: "column", gap: "0.4rem", backgroundColor: "#0A0614", border: "1px solid #141024", borderRadius: "3px", padding: "1.1rem 1.3rem" },
+  overviewValue: { fontSize: "1rem", fontWeight: 600, color: "#F5F3FF" },
+  card: { backgroundColor: "#0A0614", border: "1px solid #141024", borderRadius: "3px", padding: "1.3rem" },
   cardTitle: { fontSize: "1rem", fontWeight: 700, margin: "0 0 0.75rem" },
-  hr: { border: "none", borderTop: "1px solid #1B2438", margin: "1rem 0 0.75rem" },
-  statLabel: { fontSize: "0.78rem", color: "#5D6880" },
-  progressBarBg: { width: "100%", height: "6px", backgroundColor: "#111726", borderRadius: "999px", overflow: "hidden", marginTop: "0.3rem" },
+  hr: { border: "none", borderTop: "1px solid #1E1836", margin: "1rem 0 0.75rem" },
+  statLabel: { fontSize: "0.78rem", color: "#6E6690" },
+  progressBarBg: { width: "100%", height: "6px", backgroundColor: "#141024", borderRadius: "999px", overflow: "hidden", marginTop: "0.3rem" },
   progressBarFill: { height: "100%", borderRadius: "999px" },
   table: { width: "100%", borderCollapse: "collapse" },
-  th: { backgroundColor: "#111726", padding: "0.85rem 1rem", textAlign: "right", fontSize: "0.76rem", color: "#3E4761", fontWeight: 500, borderBottom: "1px solid #111726", whiteSpace: "nowrap" },
-  tr: { borderBottom: "1px solid #080B14" },
+  th: { backgroundColor: "#141024", padding: "0.85rem 1rem", textAlign: "right", fontSize: "0.76rem", color: "#4A4368", fontWeight: 500, borderBottom: "1px solid #141024", whiteSpace: "nowrap" },
+  tr: { borderBottom: "1px solid #0A0614" },
   td: { padding: "0.85rem 1rem", fontSize: "0.86rem", verticalAlign: "middle" },
-  username: { color: "#EDF1F8", fontWeight: 500 },
-  mono: { fontFamily: "'JetBrains Mono', monospace", color: "#3E4761", fontSize: "0.8rem" },
-  label: { fontSize: "0.82rem", color: "#93A0B8", marginTop: "0.5rem" },
-  input: { backgroundColor: "#111726", border: "1px solid #1B2438", color: "#EDF1F8", padding: "0.65rem 0.9rem", borderRadius: "3px", fontSize: "0.88rem", outline: "none", fontFamily: "inherit" },
-  checkboxList: { display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "220px", overflowY: "auto", border: "1px solid #1B2438", borderRadius: "3px", padding: "0.6rem" },
-  checkboxRow: { display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "#EDF1F8", cursor: "pointer" },
-  moveBtn: { background: "#111726", border: "1px solid #1B2438", color: "#93A0B8", width: "22px", height: "18px", fontSize: "0.6rem", cursor: "pointer", borderRadius: "3px", lineHeight: 1 },
-  hint: { fontSize: "0.75rem", color: "#3E4761", marginTop: "0.15rem" },
-  errorText: { color: "#E8495F", fontSize: "0.85rem", marginTop: "0.5rem" },
-  loading: { textAlign: "center", padding: "2rem", color: "#3E4761" },
+  username: { color: "#F5F3FF", fontWeight: 500 },
+  mono: { fontFamily: "'JetBrains Mono', monospace", color: "#4A4368", fontSize: "0.8rem" },
+  label: { fontSize: "0.82rem", color: "#A79FC4", marginTop: "0.5rem" },
+  input: { backgroundColor: "#141024", border: "1px solid #1E1836", color: "#F5F3FF", padding: "0.65rem 0.9rem", borderRadius: "3px", fontSize: "0.88rem", outline: "none", fontFamily: "inherit" },
+  checkboxList: { display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "220px", overflowY: "auto", border: "1px solid #1E1836", borderRadius: "3px", padding: "0.6rem" },
+  checkboxRow: { display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "#F5F3FF", cursor: "pointer" },
+  moveBtn: { background: "#141024", border: "1px solid #1E1836", color: "#A79FC4", width: "22px", height: "18px", fontSize: "0.6rem", cursor: "pointer", borderRadius: "3px", lineHeight: 1 },
+  hint: { fontSize: "0.75rem", color: "#4A4368", marginTop: "0.15rem" },
+  errorText: { color: "#FF453A", fontSize: "0.85rem", marginTop: "0.5rem" },
+  loading: { textAlign: "center", padding: "2rem", color: "#4A4368" },
   saveBtn: { backgroundColor: gold, color: "#000", border: "none", padding: "0.55rem 1.2rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700 },
-  cancelBtn: { background: "none", border: "1px solid #1B2438", color: "#93A0B8", padding: "0.5rem 1rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.8rem" },
-  btnEdit: { backgroundColor: "#111726", color: "#5FA8E8", border: "1px solid #182033", padding: "0.45rem 0.9rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.8rem" },
-  btnDanger: { backgroundColor: "#182033", color: "#E8495F", border: "1px solid #1E2941", padding: "0.45rem 0.9rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.8rem" },
-  btnLive: { backgroundColor: "#E8495F", color: "#fff", border: "none", padding: "0.55rem 1.1rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700, whiteSpace: "nowrap" },
-  badgeDefault: { fontSize: "0.68rem", backgroundColor: "#111726", color: "#5FA8E8", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeShared: { fontSize: "0.68rem", backgroundColor: "#111726", color: "#93A0B8", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeActive: { fontSize: "0.68rem", backgroundColor: "#111726", color: "#1FBF87", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeUpcoming: { fontSize: "0.68rem", backgroundColor: "#111726", color: "#5FA8E8", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeEnded: { fontSize: "0.68rem", backgroundColor: "#111726", color: "#93A0B8", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeArchived: { fontSize: "0.68rem", backgroundColor: "#182033", color: "#93A0B8", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeLive: { fontSize: "0.68rem", color: "#E8495F", backgroundColor: "#182033", padding: "0.15rem 0.5rem", borderRadius: "3px", fontWeight: 700 },
-  badgeOpen: { fontSize: "0.68rem", color: "#1FBF87", backgroundColor: "#111726", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  badgeClosed: { fontSize: "0.68rem", color: "#93A0B8", backgroundColor: "#111726", padding: "0.15rem 0.5rem", borderRadius: "3px" },
-  sessionBtn: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#111726", border: "1px solid #1B2438", borderRadius: "3px", padding: "0.75rem 1rem", cursor: "pointer", width: "100%", textAlign: "right", fontFamily: "inherit" },
-  rowItem: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#111726", border: "1px solid #1B2438", borderRadius: "3px", padding: "0.65rem 0.9rem", gap: "0.5rem" },
-  fileLink: { color: "#5FA8E8", fontSize: "0.85rem", fontWeight: 600, textDecoration: "none" },
-  backBtn: { color: "#93A0B8", fontSize: "0.85rem", textDecoration: "none", margin: "0 3rem" },
+  cancelBtn: { background: "none", border: "1px solid #1E1836", color: "#A79FC4", padding: "0.5rem 1rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.8rem" },
+  btnEdit: { backgroundColor: "#141024", color: "#7C4DFF", border: "1px solid #1C1630", padding: "0.45rem 0.9rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.8rem" },
+  btnDanger: { backgroundColor: "#1C1630", color: "#FF453A", border: "1px solid #241C3E", padding: "0.45rem 0.9rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.8rem" },
+  btnLive: { backgroundColor: "#FF453A", color: "#fff", border: "none", padding: "0.55rem 1.1rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700, whiteSpace: "nowrap" },
+  badgeDefault: { fontSize: "0.68rem", backgroundColor: "#141024", color: "#7C4DFF", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeShared: { fontSize: "0.68rem", backgroundColor: "#141024", color: "#A79FC4", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeActive: { fontSize: "0.68rem", backgroundColor: "#141024", color: "#10E5A0", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeUpcoming: { fontSize: "0.68rem", backgroundColor: "#141024", color: "#7C4DFF", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeEnded: { fontSize: "0.68rem", backgroundColor: "#141024", color: "#A79FC4", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeArchived: { fontSize: "0.68rem", backgroundColor: "#1C1630", color: "#A79FC4", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeLive: { fontSize: "0.68rem", color: "#FF453A", backgroundColor: "#1C1630", padding: "0.15rem 0.5rem", borderRadius: "3px", fontWeight: 700 },
+  badgeOpen: { fontSize: "0.68rem", color: "#10E5A0", backgroundColor: "#141024", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  badgeClosed: { fontSize: "0.68rem", color: "#A79FC4", backgroundColor: "#141024", padding: "0.15rem 0.5rem", borderRadius: "3px" },
+  sessionBtn: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#141024", border: "1px solid #1E1836", borderRadius: "3px", padding: "0.75rem 1rem", cursor: "pointer", width: "100%", textAlign: "right", fontFamily: "inherit" },
+  rowItem: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#141024", border: "1px solid #1E1836", borderRadius: "3px", padding: "0.65rem 0.9rem", gap: "0.5rem" },
+  fileLink: { color: "#7C4DFF", fontSize: "0.85rem", fontWeight: 600, textDecoration: "none" },
+  backBtn: { color: "#A79FC4", fontSize: "0.85rem", textDecoration: "none", margin: "0 3rem" },
 };

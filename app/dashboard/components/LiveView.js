@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Radio, Loader2, Video, Users, Square, PlusCircle, ChevronDown } from "lucide-react";
+import { ChevronDown, Loader2, PlusCircle, Radio, RadioTower, Square, Users, Video } from "lucide-react";
 import Link from "next/link";
 import LiveRoom from "./live/LiveRoom";
 
@@ -234,7 +234,7 @@ export default function LiveView({ isAdmin = false, username = "" }) {
         <LiveRoom session={{ ...activeSession, recording_status: activeSession.recording_status }} tokenInfo={tokenInfo} onLeave={handleLeave} />
       ) : sessions.length === 0 ? (
         <div className="text-center py-14 border border-dashed border-line rounded-xl">
-          <div className="text-3xl mb-2">📡</div>
+          <div className="text-3xl mb-2"><RadioTower size={14} aria-hidden /></div>
           <p className="text-text-secondary text-sm">
             {isAdmin
               ? "ما في بث نشط. اضغطي «بدء بث جديد لدفعة» فوق لتبدئي واحد من هون مباشرة."

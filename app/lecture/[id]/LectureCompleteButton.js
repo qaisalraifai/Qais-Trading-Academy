@@ -28,9 +28,9 @@ export default function LectureCompleteButton({ lectureId, initialCompleted = fa
       style={{
         marginTop: "1rem",
         alignSelf: "flex-start",
-        background: completed ? "linear-gradient(135deg, #C9A860, #9C7F42)" : "transparent",
-        border: `1px solid ${completed ? "#C9A860" : "#3E5478"}`,
-        color: completed ? "#111726" : "#C9A860",
+        background: completed ? "linear-gradient(135deg, #DCD4F7, #8A7CB8)" : "transparent",
+        border: `1px solid ${completed ? "#DCD4F7" : "#3D2F63"}`,
+        color: completed ? "#141024" : "#DCD4F7",
         padding: "0.65rem 1.2rem",
         borderRadius: 3,
         fontSize: "0.85rem",

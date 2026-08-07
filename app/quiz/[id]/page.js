@@ -38,7 +38,7 @@ export default async function QuizPage({ params }) {
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#080B14",
+    backgroundColor: "#0A0614",
     color: "#fff",
     direction: "rtl",
     fontFamily: "system-ui, sans-serif",

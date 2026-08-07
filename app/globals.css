@@ -9,47 +9,63 @@
 @layer base {
   :root {
     /* ---------- الأرضية والأسطح ---------- */
-    --space-0: #060911;
-    --space-1: #080b14;
-    --space-2: #0c1220;
+    --space-0: #050308;
+    --space-1: #0a0614;
+    --space-2: #0e0a1a;
 
-    --module-1: #111726;
-    --module-2: #182033;
-    --module-3: #1e2941;
+    --module-1: #141024;
+    --module-2: #1c1630;
+    --module-3: #241c3e;
 
     /* ---------- الحواف ---------- */
-    --edge: #26314a;
-    --edge-soft: #1b2438;
-    --edge-lit: #3e5478;
-    --edge-bright: #55719e;
+    --edge: #2a2145;
+    --edge-soft: #1e1836;
+    --edge-lit: #3d2f63;
+    --edge-bright: #54418a;
 
-    /* ---------- المعدن / التفاعل / القيمة ---------- */
-    --steel-100: #d6deee;
-    --steel-200: #a8b8d8;
-    --steel-300: #7d8dae;
+    /* ---------- المعدن ---------- */
+    --steel-100: #e9e4fa;
+    --steel-200: #b9aedc;
+    --steel-300: #8a7cb8;
 
-    --ice-100: #a8cff5;
-    --ice-200: #5fa8e8;
-    --ice-300: #3c7fc0;
-    --ice-400: #24507d;
-    --ice-500: #152e48;
+    /* ---------- البنفسجي = الهوية والحالة النشطة ---------- */
+    --violet-100: #c4b0ff;
+    --violet-200: #7c4dff;
+    --violet-300: #5b32d6;
+    --violet-400: #3c2090;
 
-    --au-100: #e4cd95;
-    --au-200: #c9a860;
-    --au-300: #9c7f42;
-    --au-400: #5e4c27;
+    /* ---------- السماوي = التفاعل الثانوي والبيانات الحيّة ---------- */
+    --cyan-100: #8feeff;
+    --cyan-200: #22d3ee;
+    --cyan-300: #12a5be;
+
+    /* البصمة: تدرّج إيريدسنت بنفسجي → سماوي */
+    --iri: linear-gradient(115deg, #7c4dff 0%, #9f6cff 42%, #22d3ee 100%);
+
+    /* aliases انتقالية */
+    --ice-100: var(--violet-100);
+    --ice-200: var(--violet-200);
+    --ice-300: var(--violet-300);
+    --ice-400: var(--violet-400);
+    --ice-500: #231354;
+
+    /* القيمة المالية = سطوع، مش لون. الذهبي انحذف. */
+    --au-100: #f5f3ff;
+    --au-200: #dcd4f7;
+    --au-300: #8a7cb8;
+    --au-400: #3d2f63;
 
     /* ---------- النص ---------- */
-    --text-primary: #edf1f8;
-    --text-secondary: #93a0b8;
-    --text-muted: #5d6880;
-    --text-faint: #3e4761;
+    --text-primary: #f5f3ff;
+    --text-secondary: #a79fc4;
+    --text-muted: #6e6690;
+    --text-faint: #4a4368;
 
     /* ---------- دلالي ---------- */
-    --profit: #1fbf87;
-    --loss: #e8495f;
-    --warning: #e0a44a;
-    --info: #5fa8e8;
+    --profit: #10e5a0;
+    --loss: #ff453a;
+    --warning: #f0a13c;
+    --info: #22d3ee;
 
     /* ---------- هندسة ---------- */
     --chamfer: 20px;
@@ -106,8 +122,8 @@
   body {
     @apply bg-space-1 font-sans text-text-primary;
     background-image:
-      radial-gradient(115% 70% at 78% -8%, rgba(30, 47, 84, 0.55) 0%, transparent 58%),
-      radial-gradient(90% 60% at 8% 4%, rgba(20, 32, 60, 0.4) 0%, transparent 55%),
+      radial-gradient(115% 70% at 78% -8%, rgba(124, 77, 255, 0.20) 0%, transparent 58%),
+      radial-gradient(90% 60% at 8% 4%, rgba(34, 211, 238, 0.07) 0%, transparent 55%),
       radial-gradient(1px 1px at 12% 18%, rgba(196, 216, 238, 0.5), transparent),
       radial-gradient(1px 1px at 34% 62%, rgba(196, 216, 238, 0.32), transparent),
       radial-gradient(1.4px 1.4px at 58% 24%, rgba(196, 216, 238, 0.42), transparent),
@@ -127,8 +143,8 @@
   *:focus-visible {
     outline: none;
     box-shadow:
-      0 0 0 1px var(--ice-400),
-      0 0 0 3px rgba(95, 168, 232, 0.22);
+      0 0 0 1px var(--violet-400),
+      0 0 0 3px rgba(124, 77, 255, 0.28);
     border-radius: 3px;
   }
 
@@ -236,21 +252,32 @@
     );
   }
 
-  /* المستوى الأول — حافة معدنية ملتقطة للضوء. للوحدات البطل فقط. */
+  /* المستوى الأول — حافة إيريدسنت (بنفسجي → سماوي). البصمة المميّزة.
+     للوحدات البطل فقط: وحدة أو اثنتين بالشاشة، وإلا بتفقد معناها. */
   .mod-lit {
-    background: linear-gradient(200deg, var(--edge-lit) 0%, var(--edge) 45%);
+    background: linear-gradient(200deg, var(--violet-200) 0%, var(--edge-lit) 38%, var(--edge) 72%);
   }
   .mod-lit > .mod-in {
     background:
-      linear-gradient(200deg, rgba(255, 255, 255, 0.045) 0%, transparent 42%),
+      linear-gradient(200deg, rgba(124, 77, 255, 0.10) 0%, transparent 44%),
       var(--module-1);
   }
   [dir="ltr"] .mod-lit {
-    background: linear-gradient(160deg, var(--edge-lit) 0%, var(--edge) 45%);
+    background: linear-gradient(160deg, var(--violet-200) 0%, var(--edge-lit) 38%, var(--edge) 72%);
   }
   [dir="ltr"] .mod-lit > .mod-in {
     background:
-      linear-gradient(160deg, rgba(255, 255, 255, 0.045) 0%, transparent 42%),
+      linear-gradient(160deg, rgba(124, 77, 255, 0.10) 0%, transparent 44%),
+      var(--module-1);
+  }
+
+  /* حافة إيريدسنت كاملة — لحظات البطل بصفحة الهبوط والباقات */
+  .mod-iri {
+    background: var(--iri);
+  }
+  .mod-iri > .mod-in {
+    background:
+      linear-gradient(200deg, rgba(124, 77, 255, 0.12) 0%, rgba(34, 211, 238, 0.05) 60%, transparent 85%),
       var(--module-1);
   }
 
@@ -442,6 +469,20 @@
     direction: ltr;
     unicode-bidi: isolate;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* اتجاه تلقائي حسب أول حرف قوي بالفقرة.
+     بيحلّ مشكلة الجملة الإنجليزية جوّا صفحة عربية يلي بتطلع نقطتها ببداية
+     السطر (".No setup is confirmed" بدل "No setup is confirmed."). */
+  .bidi-auto {
+    unicode-bidi: plaintext;
+  }
+
+  /* نص إنجليزي مؤكّد جوّا سياق عربي */
+  .ltr-text {
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: start;
   }
 
   /* تدرّج بيبلّش من الحافة الأمامية وبيخفت باتجاه القراءة.

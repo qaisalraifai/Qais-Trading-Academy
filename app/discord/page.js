@@ -21,7 +21,7 @@ export default async function DiscordPage() {
     <PageShell {...shellProfile}>
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #0C1220 0%, #0C1220 60%)",
+      background: "radial-gradient(ellipse at top, #0E0A1A 0%, #0E0A1A 60%)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -45,12 +45,12 @@ export default async function DiscordPage() {
 
       <p style={{ color: "#5865F2", letterSpacing: 4, fontSize: 11, margin: "0 0 12px" }}>QAIS TRADING ACADEMY</p>
       <h1 style={{ color: "#fff", fontSize: 28, margin: "0 0 8px", fontWeight: 800 }}>مجتمع Discord</h1>
-      <p style={{ color: "#3E4761", fontSize: 14, margin: "0 0 12px", textAlign: "center", maxWidth: 400, lineHeight: 1.7 }}>
+      <p style={{ color: "#4A4368", fontSize: 14, margin: "0 0 12px", textAlign: "center", maxWidth: 400, lineHeight: 1.7 }}>
         انضم إلى سيرفر Discord الخاص بأكاديمية Qais Trading وتفاعل مع المتداولين واحصل على الدعم والمناقشات اليومية
       </p>
 
       <div style={{
-        background: "#0C1220",
+        background: "#0E0A1A",
         border: "1px solid #5865F233",
         borderRadius: 0,
         padding: "2rem",
@@ -66,7 +66,7 @@ export default async function DiscordPage() {
       </div>
 
       <a href="/dashboard" style={{
-        color: "#3E4761", fontSize: 13, textDecoration: "none",
+        color: "#4A4368", fontSize: 13, textDecoration: "none",
         marginTop: 24, display: "flex", alignItems: "center", gap: 6,
       }}>
         ← رجوع للرئيسية

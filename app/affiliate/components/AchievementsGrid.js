@@ -29,7 +29,7 @@ export default function AchievementsGrid() {
             {unlockedCount} / {achievements.length}
           </span>
         </div>
-        <p style={{ color: "#93A0B8", fontSize: "0.8rem", margin: "0.5rem 0 1.2rem" }}>
+        <p style={{ color: "#A79FC4", fontSize: "0.8rem", margin: "0.5rem 0 1.2rem" }}>
           إنجازات تراكمية — أول ما تحققها بتضل مكتسبة إلك للأبد، حتى لو تغيّرت أرقامك لاحقاً.
         </p>
 
@@ -52,11 +52,11 @@ export default function AchievementsGrid() {
               <div style={{ fontSize: "1.9rem", marginBottom: 8, opacity: a.unlocked ? 1 : 0.3, filter: a.unlocked ? "none" : "grayscale(1)" }}>
                 {a.icon}
               </div>
-              <p style={{ fontWeight: 800, fontSize: "0.82rem", color: a.unlocked ? "#EDF1F8" : "#5D6880", marginBottom: 4 }}>
+              <p style={{ fontWeight: 800, fontSize: "0.82rem", color: a.unlocked ? "#F5F3FF" : "#6E6690", marginBottom: 4 }}>
                 {a.title}
               </p>
               {a.description && (
-                <p style={{ fontSize: "0.68rem", color: "#5D6880", marginBottom: 8, lineHeight: 1.5 }}>{a.description}</p>
+                <p style={{ fontSize: "0.68rem", color: "#6E6690", marginBottom: 8, lineHeight: 1.5 }}>{a.description}</p>
               )}
 
               {a.unlocked ? (
@@ -64,14 +64,14 @@ export default function AchievementsGrid() {
                   <p style={{ fontSize: "0.65rem", color: GOLD, fontWeight: 700 }}>
                     {a.bonusAmount > 0 ? `+$${fmt(a.bonusAmount)}` : "مفتوحة ✓"}
                   </p>
-                  <p style={{ fontSize: "0.6rem", color: "#5D6880", marginTop: 3 }}>{fmtDate(a.unlockedAt)}</p>
+                  <p style={{ fontSize: "0.6rem", color: "#6E6690", marginTop: 3 }}>{fmtDate(a.unlockedAt)}</p>
                 </>
               ) : (
                 <>
                   <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.06)", overflow: "hidden", marginBottom: 5 }}>
                     <div style={{ height: "100%", width: `${a.progressPct}%`, background: GOLD, opacity: 0.5, borderRadius: 3 }} />
                   </div>
-                  <p style={{ fontSize: "0.62rem", color: "#5D6880" }}>
+                  <p style={{ fontSize: "0.62rem", color: "#6E6690" }}>
                     {fmt(a.currentValue)} / {fmt(a.threshold)}
                   </p>
                 </>

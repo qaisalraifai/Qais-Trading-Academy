@@ -67,11 +67,11 @@ export default function ProgressBar({
    بتبلّش من الأعلى وبتلف مع عقارب الساعة بالحالتين (التقدّم مش اتجاه قراءة).
    --------------------------------------------------------------------------- */
 const RING_TONES = {
-  ice: "#5FA8E8",
-  value: "#C9A860",
-  profit: "#1FBF87",
-  steel: "#A8B8D8",
-  loss: "#E8495F",
+  ice: "#7C4DFF",
+  value: "#DCD4F7",
+  profit: "#10E5A0",
+  steel: "#B9AEDC",
+  loss: "#FF453A",
 };
 
 export function OrbitRing({
@@ -105,7 +105,7 @@ export function OrbitRing({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="#26314A"
+          stroke="#2A2145"
           strokeWidth={stroke}
         />
         <circle

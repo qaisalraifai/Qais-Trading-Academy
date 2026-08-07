@@ -16,7 +16,7 @@ export default function QrCodeBox({ value, size = 180, filename = "qta-qr-code.p
       {
         width: size,
         margin: 1,
-        color: { dark: "#C9A860", light: "#080B14" },
+        color: { dark: "#DCD4F7", light: "#0A0614" },
       },
       (err) => setReady(!err)
     );

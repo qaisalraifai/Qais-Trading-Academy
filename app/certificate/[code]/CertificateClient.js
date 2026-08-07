@@ -8,8 +8,8 @@ export default function PrintButton() {
       onClick={() => window.print()}
       style={{
         marginTop: "1.5rem",
-        background: "linear-gradient(135deg, #C9A860, #9C7F42)",
-        color: "#111726",
+        background: "linear-gradient(135deg, #DCD4F7, #8A7CB8)",
+        color: "#141024",
         border: "none",
         borderRadius: 3,
         padding: "0.75rem 1.75rem",

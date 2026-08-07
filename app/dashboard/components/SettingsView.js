@@ -1,23 +1,24 @@
 "use client";
+import { CheckCircle2, MessageCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#C9A860";
-const GOLD_LIGHT = "#E4CD95";
-const GOLD_DARK = "#9C7F42";
-const GREEN = "#1FBF87";
-const RED = "#E8495F";
-const BLUE = "#5FA8E8";
+const GOLD = "#DCD4F7";
+const GOLD_LIGHT = "#F5F3FF";
+const GOLD_DARK = "#8A7CB8";
+const GREEN = "#10E5A0";
+const RED = "#FF453A";
+const BLUE = "#7C4DFF";
 
 const cardStyle = {
-  background: "#111726",
-  border: `1px solid #26314A`,
+  background: "#141024",
+  border: `1px solid #2A2145`,
   borderRadius: 0,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
 };
 
 const PLAN_INFO = {
-  member: { label: "Member", icon: "⭐", color: "#93A0B8" },
+  member: { label: "Member", icon: "⭐", color: "#A79FC4" },
   trial: { label: "Trial", icon: "🔷", color: BLUE },
   elite: { label: "Elite Access", icon: "👑", color: GOLD },
   vip: { label: "VIP", icon: "💎", color: BLUE },
@@ -112,12 +113,12 @@ export default function SettingsView({ username }) {
   }
 
   if (loading) {
-    return <div style={{ color: "#5D6880", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>{t("settings.loading")}</div>;
+    return <div style={{ color: "#6E6690", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>{t("settings.loading")}</div>;
   }
 
   if (error || !data) {
     return (
-      <div style={{ ...cardStyle, padding: "3rem", textAlign: "center", color: "#5D6880", fontSize: 14 }}>
+      <div style={{ ...cardStyle, padding: "3rem", textAlign: "center", color: "#6E6690", fontSize: 14 }}>
         {t("settings.loadError")}. {error}
       </div>
     );
@@ -157,7 +158,7 @@ export default function SettingsView({ username }) {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 4,
-                  background: isActive ? "#111726" : "#1E2941",
+                  background: isActive ? "#141024" : "#241C3E",
                   border: `1px solid ${isActive ? GREEN : RED}33`,
                   color: isActive ? GREEN : RED,
                   fontSize: 11,
@@ -169,20 +170,20 @@ export default function SettingsView({ username }) {
                 {isActive ? t("settings.active") : t("settings.inactive")}
               </span>
             </div>
-            <p style={{ margin: 0, color: "#5D6880", fontSize: 12 }}>{t("settings.fullAccessDesc")}</p>
+            <p style={{ margin: 0, color: "#6E6690", fontSize: 12 }}>{t("settings.fullAccessDesc")}</p>
           </div>
           <div style={{ textAlign: "left" }}>
-            <p style={{ margin: 0, color: "#5D6880", fontSize: 12 }}>{username}</p>
+            <p style={{ margin: 0, color: "#6E6690", fontSize: 12 }}>{username}</p>
           </div>
         </div>
 
         {daysLeft !== null && (
           <div style={{ marginTop: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#93A0B8", marginBottom: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#A79FC4", marginBottom: 6 }}>
               <span>{t("settings.expiresIn", { days: daysLeft })}</span>
               <span>{fmtDate(profile.subscription_end, locale)}</span>
             </div>
-            <div style={{ width: "100%", height: 7, background: "#1B2438", borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ width: "100%", height: 7, background: "#1E1836", borderRadius: 3, overflow: "hidden" }}>
               <div
                 style={{
                   width: `${percentLeft}%`,
@@ -212,7 +213,7 @@ export default function SettingsView({ username }) {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              border: `1px solid #3E5478`,
+              border: `1px solid #3D2F63`,
               color: GOLD_LIGHT,
               fontSize: 13,
               fontWeight: 700,
@@ -234,7 +235,7 @@ export default function SettingsView({ username }) {
               <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>
                 {membership?.cancelAtPeriodEnd ? t("settings.subscriptionScheduledStop") : t("settings.cardRegisteredWhop")}
               </p>
-              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#5D6880" }}>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6E6690" }}>
                 {t("settings.manageOnWhopHint")}
               </p>
             </div>
@@ -243,7 +244,7 @@ export default function SettingsView({ username }) {
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                border: `1px solid #3E5478`,
+                border: `1px solid #3D2F63`,
                 background: "transparent",
                 color: GOLD_LIGHT,
                 fontSize: 13,
@@ -260,7 +261,7 @@ export default function SettingsView({ username }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
             <div>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>{t("settings.noPaymentMethod")}</p>
-              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#5D6880" }}>{t("settings.addCardHint")}</p>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6E6690" }}>{t("settings.addCardHint")}</p>
             </div>
             <a
               href="/payment"
@@ -269,7 +270,7 @@ export default function SettingsView({ username }) {
                 alignItems: "center",
                 gap: 6,
                 background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                color: "#101828",
+                color: "#120B24",
                 border: "none",
                 fontWeight: 800,
                 fontSize: 13,
@@ -291,7 +292,7 @@ export default function SettingsView({ username }) {
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>
               {data.profile.auto_renew ? t("settings.autoRenewEnabled") : t("settings.autoRenewDisabled")}
             </p>
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#5D6880" }}>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6E6690" }}>
               {data.profile.auto_renew ? t("settings.autoRenewOnDesc") : t("settings.autoRenewOffDesc")}
             </p>
           </div>
@@ -303,8 +304,8 @@ export default function SettingsView({ username }) {
               alignItems: "center",
               gap: 8,
               background: data.profile.auto_renew ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})` : "transparent",
-              border: `1px solid #3E5478`,
-              color: data.profile.auto_renew ? "#101828" : GOLD_LIGHT,
+              border: `1px solid #3D2F63`,
+              color: data.profile.auto_renew ? "#120B24" : GOLD_LIGHT,
               fontWeight: 800,
               fontSize: 13,
               padding: "0.6rem 1.2rem",
@@ -329,15 +330,15 @@ export default function SettingsView({ username }) {
               <div
                 key={key}
                 style={{
-                  border: `1px solid ${isCurrent ? GOLD : "#1B2438"}`,
-                  background: isCurrent ? `linear-gradient(135deg, #26314A, #0C1220)` : "#0C1220",
+                  border: `1px solid ${isCurrent ? GOLD : "#1E1836"}`,
+                  background: isCurrent ? `linear-gradient(135deg, #2A2145, #0E0A1A)` : "#0E0A1A",
                   borderRadius: 0,
                   padding: "1rem",
                   textAlign: "center",
                 }}
               >
                 <div style={{ fontSize: 22, marginBottom: 4 }}>{info.icon}</div>
-                <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: isCurrent ? GOLD_LIGHT : "#93A0B8" }}>{info.label}</p>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: isCurrent ? GOLD_LIGHT : "#A79FC4" }}>{info.label}</p>
                 {isCurrent ? (
                   <span
                     style={{
@@ -345,7 +346,7 @@ export default function SettingsView({ username }) {
                       marginTop: 8,
                       fontSize: 10,
                       fontWeight: 800,
-                      color: "#101828",
+                      color: "#120B24",
                       background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
                       padding: "3px 10px",
                       borderRadius: 20,
@@ -356,7 +357,7 @@ export default function SettingsView({ username }) {
                 ) : (
                   <a
                     href={`mailto:qaisalraifai@gmail.com?subject=${encodeURIComponent(t("settings.changePlanEmailSubject"))}&body=${encodeURIComponent(t("settings.changePlanEmailBody", { plan: info.label }))}`}
-                    style={{ display: "block", marginTop: 8, fontSize: 11, color: "#5D6880", textDecoration: "underline" }}
+                    style={{ display: "block", marginTop: 8, fontSize: 11, color: "#6E6690", textDecoration: "underline" }}
                   >
                     {t("settings.contactSupportChange")}
                   </a>
@@ -377,8 +378,8 @@ export default function SettingsView({ username }) {
             t("settings.benefitReports"),
             t("settings.benefitDiscord"),
           ].map((f) => (
-            <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#93A0B8" }}>
-              <span style={{ color: GREEN }}>✅</span>
+            <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#A79FC4" }}>
+              <span style={{ color: GREEN }}><CheckCircle2 size={14} aria-hidden /></span>
               <span>{f}</span>
             </div>
           ))}
@@ -391,7 +392,7 @@ export default function SettingsView({ username }) {
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr style={{ borderBottom: `1px solid #26314A`, color: "#5D6880", textAlign: "right" }}>
+                <tr style={{ borderBottom: `1px solid #2A2145`, color: "#6E6690", textAlign: "right" }}>
                   <th style={{ padding: "0.5rem", fontWeight: 600 }}>{t("settings.colDate")}</th>
                   <th style={{ padding: "0.5rem", fontWeight: 600 }}>{t("settings.colAmount")}</th>
                   <th style={{ padding: "0.5rem", fontWeight: 600 }}>{t("settings.colStatus")}</th>
@@ -399,8 +400,8 @@ export default function SettingsView({ username }) {
               </thead>
               <tbody>
                 {payments.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: "1px solid #1B2438" }}>
-                    <td style={{ padding: "0.6rem 0.5rem", color: "#93A0B8" }}>{fmtDate(p.created_at, locale)}</td>
+                  <tr key={p.id} style={{ borderBottom: "1px solid #1E1836" }}>
+                    <td style={{ padding: "0.6rem 0.5rem", color: "#A79FC4" }}>{fmtDate(p.created_at, locale)}</td>
                     <td style={{ padding: "0.6rem 0.5rem", color: GOLD_LIGHT, fontWeight: 700 }}>${Number(p.amount).toFixed(2)}</td>
                     <td style={{ padding: "0.6rem 0.5rem", color: p.status === "paid" ? GREEN : RED }}>
                       {p.status === "paid" ? t("settings.statusPaid") : p.status === "refunded" ? t("settings.statusRefunded") : t("settings.statusFailed")}
@@ -411,7 +412,7 @@ export default function SettingsView({ username }) {
             </table>
           </div>
         ) : (
-          <p style={{ color: "#5D6880", fontSize: 13, margin: 0 }}>{t("settings.noPaymentsYet")}</p>
+          <p style={{ color: "#6E6690", fontSize: 13, margin: 0 }}>{t("settings.noPaymentsYet")}</p>
         )}
       </SectionCard>
 
@@ -425,8 +426,8 @@ export default function SettingsView({ username }) {
             style={{
               flex: 1,
               minWidth: 200,
-              background: "#0C1220",
-              border: `1px solid #26314A`,
+              background: "#0E0A1A",
+              border: `1px solid #2A2145`,
               borderRadius: 3,
               padding: "0.6rem 1rem",
               color: "#fff",
@@ -439,7 +440,7 @@ export default function SettingsView({ username }) {
             disabled={couponBusy || !couponCode.trim()}
             style={{
               background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-              color: "#101828",
+              color: "#120B24",
               border: "none",
               fontWeight: 800,
               fontSize: 13,
@@ -461,14 +462,14 @@ export default function SettingsView({ username }) {
 
       {/* 8. الدعم */}
       <div style={{ ...cardStyle, padding: "1.4rem 1.6rem", textAlign: "center" }}>
-        <p style={{ margin: "0 0 10px", fontSize: 14, color: "#93A0B8" }}>{t("settings.supportQuestion")}</p>
+        <p style={{ margin: "0 0 10px", fontSize: 14, color: "#A79FC4" }}>{t("settings.supportQuestion")}</p>
         <a
           href="mailto:qaisalraifai@gmail.com"
           style={{
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
-            border: `1px solid #3E5478`,
+            border: `1px solid #3D2F63`,
             color: GOLD_LIGHT,
             fontSize: 13,
             fontWeight: 700,
@@ -477,7 +478,7 @@ export default function SettingsView({ username }) {
             textDecoration: "none",
           }}
         >
-          <span>💬</span><span>{t("settings.contactSupport")}</span>
+          <span><MessageCircle size={14} aria-hidden /></span><span>{t("settings.contactSupport")}</span>
         </a>
       </div>
     </div>
@@ -487,7 +488,7 @@ export default function SettingsView({ username }) {
 function InfoField({ label, value }) {
   return (
     <div>
-      <p style={{ margin: "0 0 4px", fontSize: 11, color: "#5D6880" }}>{label}</p>
+      <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6E6690" }}>{label}</p>
       <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>{value}</p>
     </div>
   );

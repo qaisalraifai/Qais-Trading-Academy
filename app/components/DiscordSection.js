@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckCircle2, MessageCircle } from "lucide-react";
 import { useState } from "react";
 
 export default function DiscordSection({ discordUsername }) {
@@ -23,7 +24,7 @@ export default function DiscordSection({ discordUsername }) {
   if (!discordUsername) {
     return (
       <div style={s.box}>
-        <div style={s.icon}>💬</div>
+        <div style={s.icon}><MessageCircle size={14} aria-hidden /></div>
         <div style={{ flex: 1 }}>
           <div style={s.title}>مجتمع Discord</div>
           <div style={s.desc}>اربطي حساب Discord تبعك حتى تقدري تنضمي لسيرفر الأكاديمية</div>
@@ -37,7 +38,7 @@ export default function DiscordSection({ discordUsername }) {
 
   return (
     <div style={s.box}>
-      <div style={s.icon}>✅</div>
+      <div style={s.icon}><CheckCircle2 size={14} aria-hidden /></div>
       <div style={{ flex: 1 }}>
         <div style={s.title}>مجتمع Discord</div>
         <div style={s.desc}>حسابك مربوط: <strong style={{ color: "#fff" }}>{discordUsername}</strong></div>
@@ -52,8 +53,8 @@ export default function DiscordSection({ discordUsername }) {
 
 const s = {
   box: {
-    backgroundColor: "#111726",
-    border: "1px solid #1B2438",
+    backgroundColor: "#141024",
+    border: "1px solid #1E1836",
     borderRadius: "0px",
     padding: "1.25rem 1.5rem",
     display: "flex",
@@ -63,8 +64,8 @@ const s = {
   },
   icon: { fontSize: "1.6rem" },
   title: { fontWeight: "bold", marginBottom: "0.25rem" },
-  desc: { color: "#5D6880", fontSize: "0.85rem" },
-  error: { color: "#E8495F", fontSize: "0.8rem", marginTop: "0.35rem" },
+  desc: { color: "#6E6690", fontSize: "0.85rem" },
+  error: { color: "#FF453A", fontSize: "0.8rem", marginTop: "0.35rem" },
   btn: {
     padding: "0.65rem 1.25rem",
     backgroundColor: "#5865F2",

@@ -1,12 +1,13 @@
 "use client";
 
+import { Star } from "lucide-react";
 import { useState, useMemo } from "react";
 import Link from "next/link";
 
 const DIFFICULTY_LABELS = {
-  beginner: { label: "مبتدئ", color: "#1FBF87" },
-  intermediate: { label: "متوسط", color: "#E0A44A" },
-  advanced: { label: "متقدم", color: "#E8495F" },
+  beginner: { label: "مبتدئ", color: "#10E5A0" },
+  intermediate: { label: "متوسط", color: "#F0A13C" },
+  advanced: { label: "متقدم", color: "#FF453A" },
 };
 
 function formatDuration(seconds) {
@@ -66,7 +67,7 @@ export default function CourseClient({ course, chapters }) {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #101828 0%, #0C1220 60%)",
+      background: "radial-gradient(ellipse at top, #120B24 0%, #0E0A1A 60%)",
       color: "#fff",
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
@@ -79,15 +80,15 @@ export default function CourseClient({ course, chapters }) {
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <div style={{ fontSize: 36 }}>{course.icon}</div>
             <div>
-              <p style={{ color: "#C9A860", fontSize: 11, letterSpacing: 2, margin: 0 }}>QAIS TRADING ACADEMY</p>
+              <p style={{ color: "#DCD4F7", fontSize: 11, letterSpacing: 2, margin: 0 }}>QAIS TRADING ACADEMY</p>
               <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800 }}>{course.title}</h1>
             </div>
           </div>
-          <Link href="/lecture" style={{ color: "#3E4761", fontSize: 13, textDecoration: "none" }}>← البرامج التعليمية</Link>
+          <Link href="/lecture" style={{ color: "#4A4368", fontSize: 13, textDecoration: "none" }}>← البرامج التعليمية</Link>
         </div>
 
         {course.description && (
-          <p style={{ color: "#5D6880", fontSize: 14, marginBottom: "1.5rem" }}>{course.description}</p>
+          <p style={{ color: "#6E6690", fontSize: 14, marginBottom: "1.5rem" }}>{course.description}</p>
         )}
 
         {/* Search + Filters */}
@@ -100,8 +101,8 @@ export default function CourseClient({ course, chapters }) {
               onChange={(e) => setSearch(e.target.value)}
               style={{
                 width: "100%",
-                background: "#111726",
-                border: "1px solid #26314A",
+                background: "#141024",
+                border: "1px solid #2A2145",
                 borderRadius: 3,
                 padding: "0.65rem 1rem",
                 color: "#fff",
@@ -117,9 +118,9 @@ export default function CourseClient({ course, chapters }) {
                 key={f.key}
                 onClick={() => setFilter(f.key)}
                 style={{
-                  background: filter === f.key ? "linear-gradient(135deg, #C9A860, #9C7F42)" : "#111726",
-                  color: filter === f.key ? "#000" : "#93A0B8",
-                  border: filter === f.key ? "none" : "1px solid #26314A",
+                  background: filter === f.key ? "linear-gradient(135deg, #DCD4F7, #8A7CB8)" : "#141024",
+                  color: filter === f.key ? "#000" : "#A79FC4",
+                  border: filter === f.key ? "none" : "1px solid #2A2145",
                   borderRadius: 3,
                   padding: "0.6rem 1rem",
                   fontSize: 12,
@@ -147,15 +148,15 @@ export default function CourseClient({ course, chapters }) {
                 <div style={{ marginBottom: "1rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
                     <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#fff" }}>{chapter.name}</h2>
-                    <span style={{ fontSize: 12, color: "#C9A860", fontWeight: 700 }}>
+                    <span style={{ fontSize: 12, color: "#DCD4F7", fontWeight: 700 }}>
                       {pct}% &nbsp;·&nbsp; {completed} / {total} درس
                     </span>
                   </div>
-                  <div style={{ width: "100%", height: 6, background: "#1B2438", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ width: "100%", height: 6, background: "#1E1836", borderRadius: 3, overflow: "hidden" }}>
                     <div style={{
                       width: `${pct}%`,
                       height: "100%",
-                      background: "linear-gradient(90deg, #C9A860, #E4CD95)",
+                      background: "linear-gradient(90deg, #DCD4F7, #F5F3FF)",
                       borderRadius: 3,
                     }} />
                   </div>
@@ -173,8 +174,8 @@ export default function CourseClient({ course, chapters }) {
                     return (
                       <Link key={lecture.id} href={`/lecture/${lecture.id}`} style={{ textDecoration: "none" }}>
                         <div style={{
-                          background: "#111726",
-                          border: isCompleted ? "1px solid #1FBF8744" : "1px solid #26314A",
+                          background: "#141024",
+                          border: isCompleted ? "1px solid #10E5A044" : "1px solid #2A2145",
                           borderRadius: 0,
                           padding: "1rem 1.25rem",
                           display: "flex",
@@ -186,7 +187,7 @@ export default function CourseClient({ course, chapters }) {
                           {/* Status icon */}
                           <div style={{
                             width: 40, height: 40, borderRadius: "50%",
-                            background: isCompleted ? "#1FBF8722" : "#26314A",
+                            background: isCompleted ? "#10E5A022" : "#2A2145",
                             display: "flex", alignItems: "center", justifyContent: "center",
                             fontSize: 16, flexShrink: 0,
                           }}>
@@ -196,7 +197,7 @@ export default function CourseClient({ course, chapters }) {
                           {/* Info */}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 700, fontSize: 15, color: "#fff" }}>{lecture.title}</div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", marginTop: 5, fontSize: 12, color: "#5D6880" }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", marginTop: 5, fontSize: 12, color: "#6E6690" }}>
                               {duration && <span>⏱ {duration}</span>}
                               {diff && (
                                 <span style={{ color: diff.color }}>{diff.label}</span>
@@ -205,11 +206,11 @@ export default function CourseClient({ course, chapters }) {
                               {lastWatched && <span>آخر مشاهدة: {lastWatched}</span>}
                             </div>
                             {!isCompleted && watchedPct > 0 && (
-                              <div style={{ width: "100%", height: 4, background: "#1B2438", borderRadius: 3, overflow: "hidden", marginTop: 8 }}>
+                              <div style={{ width: "100%", height: 4, background: "#1E1836", borderRadius: 3, overflow: "hidden", marginTop: 8 }}>
                                 <div style={{
                                   width: `${watchedPct}%`,
                                   height: "100%",
-                                  background: "#3E5478",
+                                  background: "#3D2F63",
                                   borderRadius: 3,
                                 }} />
                               </div>
@@ -218,12 +219,12 @@ export default function CourseClient({ course, chapters }) {
 
                           {/* Favorite + arrow */}
                           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
-                            {lecture.progress?.favorite && <span style={{ fontSize: 14 }}>⭐</span>}
+                            {lecture.progress?.favorite && <span style={{ fontSize: 14 }}><Star size={14} aria-hidden /></span>}
                             <div style={{
                               width: 32, height: 32, borderRadius: "50%",
-                              background: "#26314A",
+                              background: "#2A2145",
                               display: "flex", alignItems: "center", justifyContent: "center",
-                              color: "#C9A860", fontSize: 14,
+                              color: "#DCD4F7", fontSize: 14,
                             }}>←</div>
                           </div>
                         </div>
@@ -236,7 +237,7 @@ export default function CourseClient({ course, chapters }) {
           })}
 
           {filteredChapters.length === 0 && (
-            <div style={{ color: "#3E4761", textAlign: "center", padding: "3rem 0" }}>
+            <div style={{ color: "#4A4368", textAlign: "center", padding: "3rem 0" }}>
               لا توجد نتائج مطابقة.
             </div>
           )}

@@ -2,9 +2,9 @@
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#C9A860";
-const CARD = "#080B14";
-const BORDER = "#1E2941";
+const GOLD = "#DCD4F7";
+const CARD = "#0A0614";
+const BORDER = "#241C3E";
 
 export default function Badges() {
   const { t } = useLocale();
@@ -43,8 +43,8 @@ const s = {
   card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 0, padding: "1.6rem", marginBottom: "1.2rem" },
   sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD, marginBottom: "1rem" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "0.8rem" },
-  badge: { background: "#080B14", border: `1px solid ${BORDER}`, borderRadius: 3, padding: "1rem 0.7rem", textAlign: "center" },
+  badge: { background: "#0A0614", border: `1px solid ${BORDER}`, borderRadius: 3, padding: "1rem 0.7rem", textAlign: "center" },
   icon: { fontSize: "1.8rem", marginBottom: 6 },
-  badgeTitle: { fontSize: "0.78rem", fontWeight: 700, color: "#EDF1F8", marginBottom: 4 },
-  badgeDesc: { fontSize: "0.68rem", color: "#5D6880", lineHeight: 1.4 },
+  badgeTitle: { fontSize: "0.78rem", fontWeight: 700, color: "#F5F3FF", marginBottom: 4 },
+  badgeDesc: { fontSize: "0.68rem", color: "#6E6690", lineHeight: 1.4 },
 };

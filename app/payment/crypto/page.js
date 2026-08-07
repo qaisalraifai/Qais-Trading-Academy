@@ -1,11 +1,12 @@
 "use client";
+import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import QrCodeBox from "../components/QrCodeBox";
 
-const gold = "#C9A860";
+const gold = "#DCD4F7";
 
 export default function CryptoPaymentPage() {
   const router = useRouter();
@@ -188,21 +189,21 @@ export default function CryptoPaymentPage() {
           <div style={{ textAlign: "center" }}>
             {txStatus === "pending" && (
               <>
-                <div style={styles.spinnerIcon}>🕐</div>
+                <div style={styles.spinnerIcon}><Clock size={14} aria-hidden /></div>
                 <h2 style={styles.title}>بانتظار مراجعة الأدمن</h2>
                 <p style={styles.subtitle}>استلمنا إثبات التحويل. بيتفعّل اشتراكك تلقائياً فور الموافقة (عادة خلال ساعات قليلة).</p>
               </>
             )}
             {txStatus === "succeeded" && (
               <>
-                <div style={styles.spinnerIcon}>✅</div>
+                <div style={styles.spinnerIcon}><CheckCircle2 size={14} aria-hidden /></div>
                 <h2 style={styles.title}>تم تفعيل اشتراكك!</h2>
                 <p style={styles.subtitle}>جاري تحويلك للوحة التحكم...</p>
               </>
             )}
             {txStatus === "rejected" && (
               <>
-                <div style={styles.spinnerIcon}>❌</div>
+                <div style={styles.spinnerIcon}><XCircle size={14} aria-hidden /></div>
                 <h2 style={styles.title}>تعذّرت مراجعة الدفعة</h2>
                 {rejectionReason && <p style={styles.configError}>السبب: {rejectionReason}</p>}
                 <button
@@ -237,7 +238,7 @@ function groupBy(arr, key) {
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#0C1220",
+    backgroundColor: "#0E0A1A",
     color: "#fff",
     direction: "rtl",
     fontFamily: "'Georgia', serif",
@@ -248,9 +249,9 @@ const styles = {
   },
   header: { textAlign: "center", marginBottom: "2rem" },
   logoText: { fontSize: "2.2rem", fontWeight: "bold", color: gold, letterSpacing: "6px" },
-  logoSub: { color: "#5D6880", fontSize: "0.85rem", marginTop: "0.4rem" },
+  logoSub: { color: "#6E6690", fontSize: "0.85rem", marginTop: "0.4rem" },
   card: {
-    backgroundColor: "#080B14",
+    backgroundColor: "#0A0614",
     border: `1px solid ${gold}`,
     borderRadius: "3px",
     padding: "2.5rem",
@@ -263,7 +264,7 @@ const styles = {
     boxShadow: `0 0 60px ${gold}22`,
   },
   title: { fontSize: "1.2rem", fontWeight: "bold", textAlign: "center" },
-  subtitle: { color: "#5D6880", fontSize: "0.9rem", textAlign: "center", lineHeight: 1.6 },
+  subtitle: { color: "#6E6690", fontSize: "0.9rem", textAlign: "center", lineHeight: 1.6 },
   networkGrid: { display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center", width: "100%" },
   networkBtn: {
     padding: "0.9rem 1.5rem",
@@ -281,12 +282,12 @@ const styles = {
     alignItems: "center",
     gap: "0.5rem",
     width: "100%",
-    background: "#080B14",
-    border: "1px solid #1E2941",
+    background: "#0A0614",
+    border: "1px solid #241C3E",
     borderRadius: 3,
     padding: "0.6rem 0.8rem",
   },
-  addressText: { flex: 1, fontSize: "0.75rem", wordBreak: "break-all", color: "#93A0B8" },
+  addressText: { flex: 1, fontSize: "0.75rem", wordBreak: "break-all", color: "#A79FC4" },
   copyBtn: {
     background: "transparent",
     border: `1px solid ${gold}`,
@@ -299,10 +300,10 @@ const styles = {
   },
   warnNote: { color: "#FF9800", fontSize: "0.78rem", textAlign: "center" },
   formBox: { width: "100%", display: "flex", flexDirection: "column", gap: "0.6rem" },
-  label: { color: "#5D6880", fontSize: "0.78rem" },
+  label: { color: "#6E6690", fontSize: "0.78rem" },
   input: {
-    background: "#080B14",
-    border: "1px solid #1E2941",
+    background: "#0A0614",
+    border: "1px solid #241C3E",
     color: "#fff",
     borderRadius: 3,
     padding: "0.6rem 0.8rem",
@@ -315,7 +316,7 @@ const styles = {
     borderRadius: 3,
     border: "none",
     background: gold,
-    color: "#111726",
+    color: "#141024",
     fontWeight: "bold",
     fontSize: "0.9rem",
     cursor: "pointer",
@@ -324,14 +325,14 @@ const styles = {
   linkBtnInline: { background: "none", border: "none", color: gold, fontSize: "0.8rem", cursor: "pointer", textAlign: "center" },
   spinnerIcon: { fontSize: "3rem", marginBottom: "0.5rem" },
   configError: {
-    color: "#E8495F",
+    color: "#FF453A",
     fontSize: "0.78rem",
     textAlign: "center",
     lineHeight: 1.7,
-    background: "#E8495F14",
-    border: "1px solid #E8495F44",
+    background: "#FF453A14",
+    border: "1px solid #FF453A44",
     borderRadius: 3,
     padding: "0.6rem 0.9rem",
   },
-  note: { color: "#3E4761", fontSize: "0.85rem" },
+  note: { color: "#4A4368", fontSize: "0.85rem" },
 };

@@ -97,8 +97,8 @@ export default function BatchChatPanel({ courseId }) {
   return (
     <div
       style={{
-        background: "#111726",
-        border: "1px solid #26314A",
+        background: "#141024",
+        border: "1px solid #2A2145",
         borderRadius: 0,
         marginBottom: "1.5rem",
         overflow: "hidden",
@@ -120,7 +120,7 @@ export default function BatchChatPanel({ courseId }) {
         }}
       >
         <span style={{ fontSize: 14, fontWeight: 800 }}>دردشة الدفعة</span>
-        <span style={{ color: "#C9A860", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
+        <span style={{ color: "#DCD4F7", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
       </button>
 
       {open && (
@@ -137,7 +137,7 @@ export default function BatchChatPanel({ courseId }) {
             }}
           >
             {messages.length === 0 && (
-              <p style={{ color: "#5D6880", fontSize: 12.5, textAlign: "center", margin: "1rem 0" }}>
+              <p style={{ color: "#6E6690", fontSize: 12.5, textAlign: "center", margin: "1rem 0" }}>
                 ما في رسائل بعد، ابدئي الدردشة مع دفعتك ومدربك.
               </p>
             )}
@@ -148,8 +148,8 @@ export default function BatchChatPanel({ courseId }) {
                 <div
                   key={m.id}
                   style={{
-                    background: mine ? "#26314A" : "#0C1220",
-                    border: "1px solid " + (isInstructor ? "#3E5478" : "#26314A"),
+                    background: mine ? "#2A2145" : "#0E0A1A",
+                    border: "1px solid " + (isInstructor ? "#3D2F63" : "#2A2145"),
                     borderRadius: 3,
                     padding: "0.5rem 0.75rem",
                     maxWidth: "85%",
@@ -168,14 +168,14 @@ export default function BatchChatPanel({ courseId }) {
                       style={{
                         fontSize: 11.5,
                         fontWeight: 800,
-                        color: isInstructor ? "#C9A860" : "#9aa",
+                        color: isInstructor ? "#DCD4F7" : "#9aa",
                       }}
                     >
                       {isInstructor ? `‍🏫 ${m.sender_name}` : m.sender_name}
                     </span>
-                    <span style={{ fontSize: 10.5, color: "#5D6880" }}>{formatTime(m.created_at)}</span>
+                    <span style={{ fontSize: 10.5, color: "#6E6690" }}>{formatTime(m.created_at)}</span>
                   </div>
-                  <div style={{ color: "#EDF1F8", fontSize: 13, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                  <div style={{ color: "#F5F3FF", fontSize: 13, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                     {m.message}
                   </div>
                 </div>
@@ -194,10 +194,10 @@ export default function BatchChatPanel({ courseId }) {
               rows={1}
               style={{
                 flex: 1,
-                background: "#0C1220",
-                border: "1px solid #26314A",
+                background: "#0E0A1A",
+                border: "1px solid #2A2145",
                 borderRadius: 3,
-                color: "#EDF1F8",
+                color: "#F5F3FF",
                 padding: "0.5rem 0.7rem",
                 fontSize: 13,
                 fontFamily: "inherit",
@@ -208,8 +208,8 @@ export default function BatchChatPanel({ courseId }) {
               onClick={handleSend}
               disabled={sending || !text.trim()}
               style={{
-                background: "#C9A860",
-                color: "#111726",
+                background: "#DCD4F7",
+                color: "#141024",
                 border: "none",
                 borderRadius: 3,
                 padding: "0.5rem 1.1rem",

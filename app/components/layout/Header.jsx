@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Search, Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Avatar, IconButton, Input } from "@/app/components/ui";
+import Logo from "@/app/components/brand/Logo";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "./LanguageSwitcher";
 
@@ -40,11 +41,7 @@ export default function Header({
         )}
 
         <div className="flex items-center gap-2.5">
-          <img
-            src="/logo.jpg"
-            alt="QTA"
-            className="h-7 w-7 shrink-0 rounded-sm border border-edge-lit object-cover"
-          />
+          <Logo size={26} />
           <div className="hidden min-w-0 sm:block">
             <p className="text-[9px] uppercase leading-tight tracking-[0.16em] text-text-muted">
               Qais Trading

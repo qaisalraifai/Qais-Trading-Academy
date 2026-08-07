@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const GOLD = "#C9A860";
+const GOLD = "#DCD4F7";
 
 export default function SelectBatchClient({ batches }) {
   const router = useRouter();
@@ -31,19 +31,19 @@ export default function SelectBatchClient({ batches }) {
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "3rem 1.2rem" }}>
       <div style={{ textAlign: "center", marginBottom: "2.2rem" }}>
-        <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, color: "#EDF1F8" }}>أهلًا فيكِ 👋</h1>
-        <p style={{ color: "#93A0B8", fontSize: 15, marginTop: "0.6rem", lineHeight: 1.7 }}>
+ <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, color:"#F5F3FF" }}>أهلًا فيكِ </h1>
+        <p style={{ color: "#A79FC4", fontSize: 15, marginTop: "0.6rem", lineHeight: 1.7 }}>
           قبل ما تبلشي، اختاري الدفعة اللي بدك تنضمي فيها. هاد الاختيار بيفتحلك كل محتوى الدفعة —
           الدورات، البث المباشر، الإعلانات، والاختبارات — بمكان واحد.
         </p>
       </div>
 
       {error && (
-        <p style={{ color: "#E8495F", textAlign: "center", marginBottom: "1rem", fontSize: 14 }}>{error}</p>
+        <p style={{ color: "#FF453A", textAlign: "center", marginBottom: "1rem", fontSize: 14 }}>{error}</p>
       )}
 
       {batches.length === 0 ? (
-        <p style={{ color: "#5D6880", textAlign: "center", fontSize: 15 }}>
+        <p style={{ color: "#6E6690", textAlign: "center", fontSize: 15 }}>
           ما في دفعات متاحة للتسجيل هلأ. تواصلي معنا للمساعدة.
         </p>
       ) : (
@@ -56,16 +56,16 @@ export default function SelectBatchClient({ batches }) {
                 justifyContent: "space-between",
                 alignItems: "center",
                 gap: "1rem",
-                background: "#111726",
-                border: `1px solid #26314A`,
+                background: "#141024",
+                border: `1px solid #2A2145`,
                 borderRadius: 0,
                 padding: "1.3rem 1.5rem",
                 boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
               }}
             >
               <div>
-                <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: "#EDF1F8" }}>{b.name}</p>
-                <p style={{ margin: "0.4rem 0 0", color: "#5D6880", fontSize: 13 }}>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: "#F5F3FF" }}>{b.name}</p>
+                <p style={{ margin: "0.4rem 0 0", color: "#6E6690", fontSize: 13 }}>
                   {b.start_date || "—"} → {b.end_date || "—"}
                   {b.seats_total != null && ` — ${b.seats_remaining} مقعد متاح`}
                 </p>
@@ -74,8 +74,8 @@ export default function SelectBatchClient({ batches }) {
                 onClick={() => handleJoin(b.id)}
                 disabled={enrollingId !== null || b.is_full}
                 style={{
-                  background: b.is_full ? "#26314A" : GOLD,
-                  color: b.is_full ? "#5D6880" : "#000",
+                  background: b.is_full ? "#2A2145" : GOLD,
+                  color: b.is_full ? "#6E6690" : "#000",
                   border: "none",
                   borderRadius: 3,
                   padding: "0.7rem 1.4rem",

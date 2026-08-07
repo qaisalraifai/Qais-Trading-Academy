@@ -1,4 +1,5 @@
 "use client";
+import { GraduationCap, Star } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
@@ -9,21 +10,21 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
    لتشغيله كصفحة مستقلة بكامل عرض الشاشة بدل تبويب داخل الداشبورد.
    ============================================================================ */
 
-const GOLD = "#C9A860";
-const GOLD_LIGHT = "#E4CD95";
-const GOLD_DARK = "#9C7F42";
+const GOLD = "#DCD4F7";
+const GOLD_LIGHT = "#F5F3FF";
+const GOLD_DARK = "#8A7CB8";
 
 const cardStyle = {
-  background: "#111726",
-  border: `1px solid #26314A`,
+  background: "#141024",
+  border: `1px solid #2A2145`,
   borderRadius: 0,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
 };
 
 const DIFFICULTY_KEYS = {
-  beginner: { labelKey: "courses.difficultyBeginner", color: "#1FBF87" },
-  intermediate: { labelKey: "courses.difficultyIntermediate", color: "#E0A44A" },
-  advanced: { labelKey: "courses.difficultyAdvanced", color: "#E8495F" },
+  beginner: { labelKey: "courses.difficultyBeginner", color: "#10E5A0" },
+  intermediate: { labelKey: "courses.difficultyIntermediate", color: "#F0A13C" },
+  advanced: { labelKey: "courses.difficultyAdvanced", color: "#FF453A" },
 };
 
 const LECTURE_FILTERS = [
@@ -54,9 +55,9 @@ function formatLastWatched(dateStr, t, locale) {
 }
 
 const COURSE_COLORS = [
-  { solid: "#1FBF87", soft: "#1FBF8722", border: "#1FBF8755" },
-  { solid: "#C9A860", soft: "#26314A", border: "#3E5478" },
-  { solid: "#5FA8E8", soft: "#5FA8E822", border: "#5FA8E855" },
+  { solid: "#10E5A0", soft: "#10E5A022", border: "#10E5A055" },
+  { solid: "#DCD4F7", soft: "#2A2145", border: "#3D2F63" },
+  { solid: "#7C4DFF", soft: "#7C4DFF22", border: "#7C4DFF55" },
 ];
 
 const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced"];
@@ -163,7 +164,7 @@ function LecturesView({
 
   if (loading) {
     return (
-      <div style={{ color: "#5D6880", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>
+      <div style={{ color: "#6E6690", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>
         {t("courses.loading")}
       </div>
     );
@@ -177,7 +178,7 @@ function LecturesView({
           <div>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>{selectedLecture.title}</h2>
             {selectedLecture.description && (
-              <p style={{ color: "#5D6880", margin: "6px 0 0", fontSize: 13 }}>{selectedLecture.description}</p>
+              <p style={{ color: "#6E6690", margin: "6px 0 0", fontSize: 13 }}>{selectedLecture.description}</p>
             )}
           </div>
           <div onClick={onBack} style={{ color: GOLD, fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
@@ -193,7 +194,7 @@ function LecturesView({
             background: "#000",
             borderRadius: 0,
             overflow: "hidden",
-            border: `1px solid #26314A`,
+            border: `1px solid #2A2145`,
           }}
         >
           <iframe
@@ -226,11 +227,11 @@ function LecturesView({
               {t("courses.backToProgams")}
             </div>
           </div>
-          <p style={{ color: "#93A0B8", fontSize: 14, marginBottom: "1.2rem" }}>
+          <p style={{ color: "#A79FC4", fontSize: 14, marginBottom: "1.2rem" }}>
             {t("courses.batchSelectPrompt")}
           </p>
           {batchInfo.batches.length === 0 ? (
-            <p style={{ color: "#5D6880", fontSize: 14 }}>{t("courses.batchNoneAvailable")}</p>
+            <p style={{ color: "#6E6690", fontSize: 14 }}>{t("courses.batchNoneAvailable")}</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
               {batchInfo.batches.map((b) => (
@@ -238,12 +239,12 @@ function LecturesView({
                   key={b.id}
                   style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
-                    background: "#0C1220", border: `1px solid #26314A`, borderRadius: 3, padding: "0.9rem 1.1rem",
+                    background: "#0E0A1A", border: `1px solid #2A2145`, borderRadius: 3, padding: "0.9rem 1.1rem",
                   }}
                 >
                   <div>
                     <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{b.name}</p>
-                    <p style={{ margin: "0.3rem 0 0", color: "#5D6880", fontSize: 12 }}>
+                    <p style={{ margin: "0.3rem 0 0", color: "#6E6690", fontSize: 12 }}>
                       {b.start_date || "—"} → {b.end_date || "—"}
                       {b.seats_total != null && ` — ${t("courses.batchSeatsAvailable", { seats: b.seats_remaining })}`}
                     </p>
@@ -252,7 +253,7 @@ function LecturesView({
                     onClick={() => onEnrollBatch(b.id)}
                     disabled={enrolling || b.is_full}
                     style={{
-                      background: b.is_full ? "#26314A" : GOLD, color: b.is_full ? "#5D6880" : "#000",
+                      background: b.is_full ? "#2A2145" : GOLD, color: b.is_full ? "#6E6690" : "#000",
                       border: "none", borderRadius: 3, padding: "0.55rem 1.1rem", fontWeight: 700,
                       fontSize: 13, cursor: b.is_full ? "not-allowed" : "pointer",
                     }}
@@ -288,8 +289,8 @@ function LecturesView({
             onChange={(e) => setSearch(e.target.value)}
             style={{
               flex: "1 1 200px",
-              background: "#0C1220",
-              border: `1px solid #26314A`,
+              background: "#0E0A1A",
+              border: `1px solid #2A2145`,
               borderRadius: 3,
               padding: "0.6rem 1rem",
               color: "#fff",
@@ -303,9 +304,9 @@ function LecturesView({
                 key={f.key}
                 onClick={() => setFilter(f.key)}
                 style={{
-                  background: filter === f.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0C1220",
-                  color: filter === f.key ? "#000" : "#93A0B8",
-                  border: filter === f.key ? "none" : `1px solid #26314A`,
+                  background: filter === f.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0E0A1A",
+                  color: filter === f.key ? "#000" : "#A79FC4",
+                  border: filter === f.key ? "none" : `1px solid #2A2145`,
                   borderRadius: 3,
                   padding: "0.55rem 0.9rem",
                   fontSize: 12,
@@ -334,7 +335,7 @@ function LecturesView({
                       {pct}% &nbsp;·&nbsp; {t("courses.lessonsCount", { completed, total })}
                     </span>
                   </div>
-                  <div style={{ width: "100%", height: 5, background: "#1B2438", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ width: "100%", height: 5, background: "#1E1836", borderRadius: 3, overflow: "hidden" }}>
                     <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`, borderRadius: 3 }} />
                   </div>
                 </div>
@@ -352,8 +353,8 @@ function LecturesView({
                         key={lecture.id}
                         onClick={() => onSelect(lecture)}
                         style={{
-                          background: "#0C1220",
-                          border: isCompleted ? "1px solid #1FBF8744" : `1px solid #26314A`,
+                          background: "#0E0A1A",
+                          border: isCompleted ? "1px solid #10E5A044" : `1px solid #2A2145`,
                           borderRadius: 0,
                           padding: "0.9rem 1.1rem",
                           display: "flex",
@@ -364,7 +365,7 @@ function LecturesView({
                       >
                         <div style={{
                           width: 36, height: 36, borderRadius: "50%",
-                          background: isCompleted ? "#1FBF8722" : `#26314A`,
+                          background: isCompleted ? "#10E5A022" : `#2A2145`,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: 15, flexShrink: 0,
                         }}>
@@ -373,21 +374,21 @@ function LecturesView({
 
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>{lecture.title}</div>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.55rem", marginTop: 4, fontSize: 11, color: "#5D6880" }}>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.55rem", marginTop: 4, fontSize: 11, color: "#6E6690" }}>
                             {duration && <span>⏱ {duration}</span>}
                             {diff && <span style={{ color: diff.color }}>{t(diff.labelKey)}</span>}
                             {lecture.practice_type && <span>{t("courses.practiceExercise")}</span>}
                             {lastWatched && <span>{t("courses.lastWatchedLabel", { date: lastWatched })}</span>}
                           </div>
                           {!isCompleted && watchedPct > 0 && (
-                            <div style={{ width: "100%", height: 3, background: "#1B2438", borderRadius: 2, overflow: "hidden", marginTop: 6 }}>
-                              <div style={{ width: `${watchedPct}%`, height: "100%", background: `#3E5478`, borderRadius: 2 }} />
+                            <div style={{ width: "100%", height: 3, background: "#1E1836", borderRadius: 2, overflow: "hidden", marginTop: 6 }}>
+                              <div style={{ width: `${watchedPct}%`, height: "100%", background: `#3D2F63`, borderRadius: 2 }} />
                             </div>
                           )}
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
-                          {lecture.progress?.favorite && <span style={{ fontSize: 13 }}>⭐</span>}
+                          {lecture.progress?.favorite && <span style={{ fontSize: 13 }}><Star size={14} aria-hidden /></span>}
                           <div style={{ color: GOLD, fontSize: 14 }}>←</div>
                         </div>
                       </div>
@@ -399,7 +400,7 @@ function LecturesView({
           })}
 
           {filteredChapters.length === 0 && (
-            <div style={{ color: "#3E4761", fontSize: 13, textAlign: "center", padding: "2rem 0" }}>
+            <div style={{ color: "#4A4368", fontSize: 13, textAlign: "center", padding: "2rem 0" }}>
               {t("courses.noMatchingResults")}
             </div>
           )}
@@ -417,8 +418,8 @@ function LecturesView({
         style={{
           position: "relative",
           overflow: "hidden",
-          background: `linear-gradient(135deg, #1E2941 0%, #0C1220 60%)`,
-          border: `1px solid #26314A`,
+          background: `linear-gradient(135deg, #241C3E 0%, #0E0A1A 60%)`,
+          border: `1px solid #2A2145`,
           borderRadius: 0,
           padding: "1.6rem 1.8rem",
           display: "flex",
@@ -432,15 +433,13 @@ function LecturesView({
           <div
             style={{
               width: 54, height: 54, borderRadius: "50%",
-              background: `#26314A`, border: `2px solid #3E5478`,
+              background: `#2A2145`, border: `2px solid #3D2F63`,
               display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0,
             }}
-          >
-            🎓
-          </div>
+          ><GraduationCap size={14} aria-hidden /></div>
           <div>
             <p style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>{t("courses.welcomeGreeting", { name: username })}</p>
-            <p style={{ margin: "5px 0 0", color: "#93A0B8", fontSize: 13 }}>{t("courses.welcomeSubtitle")}</p>
+            <p style={{ margin: "5px 0 0", color: "#A79FC4", fontSize: 13 }}>{t("courses.welcomeSubtitle")}</p>
           </div>
         </div>
 
@@ -459,7 +458,7 @@ function LecturesView({
           }}
           style={{
             background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-            color: "#101828", fontWeight: 800, fontSize: 13,
+            color: "#120B24", fontWeight: 800, fontSize: 13,
             padding: "0.8rem 1.4rem", borderRadius: 3, cursor: "pointer",
             display: "flex", alignItems: "center", gap: 8, zIndex: 1, whiteSpace: "nowrap",
           }}
@@ -479,18 +478,18 @@ function LecturesView({
         ].map((s, i) => (
           <div key={i} style={{ ...cardStyle, padding: "1rem 1.2rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <p style={{ color: "#5D6880", fontSize: 11, margin: 0 }}>{s.label}</p>
+              <p style={{ color: "#6E6690", fontSize: 11, margin: 0 }}>{s.label}</p>
               <p style={{ color: "#fff", fontSize: 19, fontWeight: 800, margin: "4px 0 0" }}>{s.value}</p>
             </div>
             {s.ring !== undefined && (
               <div
                 style={{
                   width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
-                  background: `conic-gradient(${GOLD} ${s.ring * 3.6}deg, #1B2438 0deg)`,
+                  background: `conic-gradient(${GOLD} ${s.ring * 3.6}deg, #1E1836 0deg)`,
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
-                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0C1220" }} />
+                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0E0A1A" }} />
               </div>
             )}
           </div>
@@ -501,7 +500,7 @@ function LecturesView({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 8 }}>
         <div>
           <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>{t("courses.programsTitle")}</p>
-          <p style={{ margin: "4px 0 0", color: "#5D6880", fontSize: 12.5 }}>{t("courses.programsSubtitle")}</p>
+          <p style={{ margin: "4px 0 0", color: "#6E6690", fontSize: 12.5 }}>{t("courses.programsSubtitle")}</p>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {[
@@ -513,9 +512,9 @@ function LecturesView({
               onClick={() => setViewMode(v.key)}
               style={{
                 width: 34, height: 34, borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center",
-                background: viewMode === v.key ? `#26314A` : "#0C1220",
-                border: viewMode === v.key ? `1px solid #3E5478` : `1px solid #26314A`,
-                color: viewMode === v.key ? GOLD_LIGHT : "#5D6880",
+                background: viewMode === v.key ? `#2A2145` : "#0E0A1A",
+                border: viewMode === v.key ? `1px solid #3D2F63` : `1px solid #2A2145`,
+                color: viewMode === v.key ? GOLD_LIGHT : "#6E6690",
                 cursor: "pointer", fontSize: 14,
               }}
             >
@@ -535,7 +534,7 @@ function LecturesView({
         }}
       >
         {courseStats.length === 0 ? (
-          <div style={{ color: "#3E4761", fontSize: 13, textAlign: "center", padding: "2rem 0" }}>
+          <div style={{ color: "#4A4368", fontSize: 13, textAlign: "center", padding: "2rem 0" }}>
             {t("courses.noProgramsYet")}
           </div>
         ) : (
@@ -544,7 +543,7 @@ function LecturesView({
               key={course.id}
               onClick={() => onSelectCourse(course.id)}
               style={{
-                background: "#0C1220",
+                background: "#0E0A1A",
                 border: `1px solid ${course.color.border}`,
                 borderRadius: 0,
                 padding: "1.25rem",
@@ -580,9 +579,9 @@ function LecturesView({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: 16, color: "#fff" }}>{course.title}</div>
                 {course.description && (
-                  <div style={{ color: "#5D6880", fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>{course.description}</div>
+                  <div style={{ color: "#6E6690", fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>{course.description}</div>
                 )}
-                <div style={{ display: "flex", gap: "0.9rem", fontSize: 11.5, color: "#93A0B8", marginTop: 8 }}>
+                <div style={{ display: "flex", gap: "0.9rem", fontSize: 11.5, color: "#A79FC4", marginTop: 8 }}>
                   <span>{t("courses.lessonsSuffix", { count: course.totalLessons })}</span>
                   <span>⏱ {t("courses.hoursShort", { hours: course.totalHours.toFixed(1) })}</span>
                 </div>
@@ -593,7 +592,7 @@ function LecturesView({
                   <span>{t("courses.progressLabel")}</span>
                   <span>{course.progressPct}%</span>
                 </div>
-                <div style={{ width: "100%", minWidth: 140, height: 6, background: "#1B2438", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ width: "100%", minWidth: 140, height: 6, background: "#1E1836", borderRadius: 3, overflow: "hidden" }}>
                   <div style={{ width: `${course.progressPct}%`, height: "100%", background: course.color.solid, borderRadius: 3 }} />
                 </div>
               </div>
@@ -608,7 +607,7 @@ function LecturesView({
                 >
                   {t("courses.continueProgram")}
                 </div>
-                <div style={{ color: "#5D6880", fontSize: 11.5, textAlign: "center", padding: "0.3rem", textDecoration: "underline", whiteSpace: "nowrap" }}>
+                <div style={{ color: "#6E6690", fontSize: 11.5, textAlign: "center", padding: "0.3rem", textDecoration: "underline", whiteSpace: "nowrap" }}>
                   {t("courses.viewContent")}
                 </div>
               </div>
@@ -628,14 +627,14 @@ function LecturesView({
           <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 6 }}>
             <div
               style={{
-                width: 46, height: 46, borderRadius: "50%", background: `#26314A`,
+                width: 46, height: 46, borderRadius: "50%", background: `#2A2145`,
                 display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
               }}
             >
               {f.icon}
             </div>
-            <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#EDF1F8" }}>{f.label}</p>
-            <p style={{ margin: 0, fontSize: 10.5, color: "#5D6880", lineHeight: 1.4 }}>{f.sub}</p>
+            <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#F5F3FF" }}>{f.label}</p>
+            <p style={{ margin: 0, fontSize: 10.5, color: "#6E6690", lineHeight: 1.4 }}>{f.sub}</p>
           </div>
         ))}
       </div>

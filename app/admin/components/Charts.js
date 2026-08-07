@@ -29,7 +29,7 @@ export function SubscriptionsTrendChart({ data, big = false }) {
       {big ? (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "0.6rem", marginBottom: "1.2rem" }}>
           <div>
-            <div style={{ fontSize: "0.75rem", color: "#5D6880", fontWeight: 700, letterSpacing: "1.2px", fontFamily: monoStack, textTransform: "uppercase" }}>
+            <div style={{ fontSize: "0.75rem", color: "#6E6690", fontWeight: 700, letterSpacing: "1.2px", fontFamily: monoStack, textTransform: "uppercase" }}>
               إجمالي التسجيلات · آخر 30 يوم
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: "0.6rem", marginTop: "0.4rem" }}>
@@ -37,7 +37,7 @@ export function SubscriptionsTrendChart({ data, big = false }) {
                 {total.toLocaleString("en-US")}
               </span>
               {pctChange !== null && (
-                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: pctChange >= 0 ? "#1FBF87" : "#E8495F" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: pctChange >= 0 ? "#10E5A0" : "#FF453A" }}>
                   {pctChange >= 0 ? "↗" : "↘"} {Math.abs(pctChange)}% مقارنة بالنصف الأول من الشهر
                 </span>
               )}
@@ -46,8 +46,8 @@ export function SubscriptionsTrendChart({ data, big = false }) {
         </div>
       ) : (
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.8rem" }}>
-          <span style={{ fontSize: "0.85rem", color: "#93A0B8", fontWeight: 600 }}>Subscriptions</span>
-          <span style={{ fontSize: "0.72rem", color: "#3E4761" }}>آخر 30 يوم</span>
+          <span style={{ fontSize: "0.85rem", color: "#A79FC4", fontWeight: 600 }}>Subscriptions</span>
+          <span style={{ fontSize: "0.72rem", color: "#4A4368" }}>آخر 30 يوم</span>
         </div>
       )}
       <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} style={{ overflow: "visible" }}>
@@ -83,8 +83,8 @@ export function RevenueBarChart({ data }) {
   return (
     <div style={{ ...glass, padding: "1.4rem 1.6rem", flex: 1, minWidth: 280 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-        <span style={{ fontSize: "0.85rem", color: "#93A0B8", fontWeight: 600 }}>Revenue</span>
-        <span style={{ fontSize: "0.72rem", color: "#3E4761" }}>آخر 6 أشهر</span>
+        <span style={{ fontSize: "0.85rem", color: "#A79FC4", fontWeight: 600 }}>Revenue</span>
+        <span style={{ fontSize: "0.72rem", color: "#4A4368" }}>آخر 6 أشهر</span>
       </div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: "0.7rem", height: 100 }}>
         {data.map((d, i) => (
@@ -100,11 +100,11 @@ export function RevenueBarChart({ data }) {
                 width: "100%",
                 height: Math.max((d.value / max) * 80, 3),
                 borderRadius: 3,
-                background: hoverIdx === i ? `linear-gradient(180deg, ${gold}, #9C7F42)` : "linear-gradient(180deg, #3E5478, #26314A)",
+                background: hoverIdx === i ? `linear-gradient(180deg, ${gold}, #8A7CB8)` : "linear-gradient(180deg, #3D2F63, #2A2145)",
                 transition: "all 250ms",
               }}
             />
-            <span style={{ fontSize: "0.68rem", color: "#5D6880" }}>{d.label}</span>
+            <span style={{ fontSize: "0.68rem", color: "#6E6690" }}>{d.label}</span>
           </div>
         ))}
       </div>

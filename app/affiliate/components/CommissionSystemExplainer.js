@@ -13,7 +13,7 @@ import {
 
 /** يحدد مستوى المسوّق حسب عدد عملائه المتراكم لهيك اللحظة */
 function tierFor(count, tiers) {
-  if (!tiers || tiers.length === 0) return { title_ar: "Bronze", badge_icon: "🥉", color_hex: "#9C7F42", signup_amount: 30, renewal_amount: 8 };
+  if (!tiers || tiers.length === 0) return { title_ar: "Bronze", badge_icon: "🥉", color_hex: "#8A7CB8", signup_amount: 30, renewal_amount: 8 };
   let current = tiers[0];
   for (const t of tiers) {
     if (count >= t.min_active_clients) current = t;
@@ -56,7 +56,7 @@ function Bar({ value, max, label, highlight, color = GOLD }) {
   const pct = max > 0 ? Math.max(4, Math.round((value / max) * 100)) : 4;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flex: 1, minWidth: 34 }}>
-      <span style={{ fontFamily: monoStack, fontSize: 11, color: highlight ? color : "#93A0B8", fontWeight: 700 }}>
+      <span style={{ fontFamily: monoStack, fontSize: 11, color: highlight ? color : "#A79FC4", fontWeight: 700 }}>
         ${fmt(value)}
       </span>
       <div style={{ width: "100%", height: 90, display: "flex", alignItems: "flex-end", background: "rgba(255,255,255,0.03)", borderRadius: 3, overflow: "hidden" }}>
@@ -69,7 +69,7 @@ function Bar({ value, max, label, highlight, color = GOLD }) {
           }}
         />
       </div>
-      <span style={{ fontSize: 10.5, color: "#5D6880" }}>{label}</span>
+      <span style={{ fontSize: 10.5, color: "#6E6690" }}>{label}</span>
     </div>
   );
 }
@@ -78,8 +78,8 @@ function StatPill({ big, small, sub, color = GOLD }) {
   return (
     <div style={{ ...card, padding: "1.3rem 1.1rem", textAlign: "center", flex: 1, minWidth: 150 }}>
       <p style={{ fontFamily: monoStack, fontSize: 26, fontWeight: 800, color, marginBottom: 4 }}>{big}</p>
-      <p style={{ fontSize: 13, fontWeight: 700, color: "#EDF1F8", marginBottom: 2 }}>{small}</p>
-      {sub && <p style={{ fontSize: 11.5, color: "#5D6880", lineHeight: 1.6 }}>{sub}</p>}
+      <p style={{ fontSize: 13, fontWeight: 700, color: "#F5F3FF", marginBottom: 2 }}>{small}</p>
+      {sub && <p style={{ fontSize: 11.5, color: "#6E6690", lineHeight: 1.6 }}>{sub}</p>}
     </div>
   );
 }
@@ -104,8 +104,8 @@ export default function CommissionSystemExplainer({ tiers }) {
   return (
     <div style={{ marginBottom: "1.6rem" }}>
       {/* تنويه افتتاحي */}
-      <div style={{ ...card, marginBottom: "1rem", border: `1px solid #3E5478`, background: "rgba(212,175,55,0.05)" }} className="qta-animate-in">
-        <p style={{ fontSize: 13, color: "#E4CD95", lineHeight: 1.9, margin: 0 }}>دليلك لفهم نظام العمولة — كيف تكسب من كل شخص تدعوه، وكيف عمولتك بترتفع أوتوماتيكياً كل ما ترقّيت مستوى.
+      <div style={{ ...card, marginBottom: "1rem", border: `1px solid #3D2F63`, background: "rgba(212,175,55,0.05)" }} className="qta-animate-in">
+        <p style={{ fontSize: 13, color: "#F5F3FF", lineHeight: 1.9, margin: 0 }}>دليلك لفهم نظام العمولة — كيف تكسب من كل شخص تدعوه، وكيف عمولتك بترتفع أوتوماتيكياً كل ما ترقّيت مستوى.
         </p>
       </div>
 
@@ -113,7 +113,7 @@ export default function CommissionSystemExplainer({ tiers }) {
       <div style={{ ...card, marginBottom: "1rem" }} className="qta-animate-in">
         <p style={sectionEyebrow}>الأساس</p>
         <h2 style={sectionTitle}>مصدرين للدخل، وعمولة تكبر معك</h2>
-        <p style={{ color: "#93A0B8", fontSize: 13, margin: "0.4rem 0 1.2rem" }}>
+        <p style={{ color: "#A79FC4", fontSize: 13, margin: "0.4rem 0 1.2rem" }}>
           بدون أي طبقات أو فرق تحتك — راعي مباشر واحد بس. بس عمولتك نفسها مش ثابتة: كل ما زاد عدد
           عملائك النشطين، بترقّى مستوى، وعمولتك على كل عملياتك الجاية بترتفع فوراً — من{" "}
           <b style={{ color: GOLD }}>${fmt(bronze.signup_amount)}</b> عند البداية، لحد{" "}
@@ -125,7 +125,7 @@ export default function CommissionSystemExplainer({ tiers }) {
               <span style={numBadge}>1</span>
               <span style={{ fontWeight: 800, fontSize: 14 }}>عمولة تسجيل</span>
             </div>
-            <p style={{ color: "#93A0B8", fontSize: 12.5, lineHeight: 1.8, margin: 0 }}>
+            <p style={{ color: "#A79FC4", fontSize: 12.5, lineHeight: 1.8, margin: 0 }}>
               لمرة وحدة، لما تدعو صديق وهو يبلّش فعلياً بالتعلم — بعمولة مستواك الحالي.
             </p>
           </div>
@@ -134,7 +134,7 @@ export default function CommissionSystemExplainer({ tiers }) {
               <span style={numBadge}>2</span>
               <span style={{ fontWeight: 800, fontSize: 14 }}>عمولة تجديد</span>
             </div>
-            <p style={{ color: "#93A0B8", fontSize: 12.5, lineHeight: 1.8, margin: 0 }}>
+            <p style={{ color: "#A79FC4", fontSize: 12.5, lineHeight: 1.8, margin: 0 }}>
               شهرياً، طول ما استمر عملاؤك — بعمولة مستواك الحالي وقت كل تجديد (حتى من عملاء قدامى).
             </p>
           </div>
@@ -151,8 +151,8 @@ export default function CommissionSystemExplainer({ tiers }) {
               <div key={t.id} style={{ flex: "1 1 110px", textAlign: "center", border: `1px solid ${t.color_hex}44`, borderRadius: 0, padding: "0.8rem 0.5rem", background: `${t.color_hex}0c` }}>
                 <div style={{ fontSize: 20 }}>{t.badge_icon}</div>
                 <div style={{ fontSize: 12, fontWeight: 800, color: t.color_hex, margin: "4px 0" }}>{t.title_ar}</div>
-                <div style={{ fontSize: 11, color: "#93A0B8" }}>${fmt(t.signup_amount)} / ${fmt(t.renewal_amount)}</div>
-                <div style={{ fontSize: 10, color: "#5D6880", marginTop: 3 }}>{t.min_active_clients}+ عميل</div>
+                <div style={{ fontSize: 11, color: "#A79FC4" }}>${fmt(t.signup_amount)} / ${fmt(t.renewal_amount)}</div>
+                <div style={{ fontSize: 10, color: "#6E6690", marginTop: 3 }}>{t.min_active_clients}+ عميل</div>
               </div>
             ))}
           </div>
@@ -164,10 +164,10 @@ export default function CommissionSystemExplainer({ tiers }) {
 
       {/* تنويه مهم: الشرط */}
       <div style={{ ...card, marginBottom: "1rem", border: "1px solid rgba(79,168,224,0.4)", background: "rgba(79,168,224,0.05)" }} className="qta-animate-in">
-        <p style={{ ...sectionEyebrow, color: "#5FA8E8" }}>مهم</p>
+        <p style={{ ...sectionEyebrow, color: "#7C4DFF" }}>مهم</p>
         <h2 style={sectionTitle}>عمولة التسجيل مش أوتوماتيكية</h2>
-        <ul style={{ margin: "0.8rem 0 0", paddingRight: 18, color: "#93A0B8", fontSize: 12.8, lineHeight: 2 }}>
-          <li>لازم الشخص يلي دعوته يكمّل <b style={{ color: "#EDF1F8" }}>أول درس فعلياً</b> قبل ما تستحق عمولة التسجيل.</li>
+        <ul style={{ margin: "0.8rem 0 0", paddingRight: 18, color: "#A79FC4", fontSize: 12.8, lineHeight: 2 }}>
+          <li>لازم الشخص يلي دعوته يكمّل <b style={{ color: "#F5F3FF" }}>أول درس فعلياً</b> قبل ما تستحق عمولة التسجيل.</li>
           <li>هذا حماية إلك وللبرنامج كله من التسجيل الشكلي اللي ما بيفيد حدا.</li>
           <li>عمولة التسجيل بتتحدد وتُقفل بمستواك وقت التسجيل نفسه — ما بتتغيّر لو مستواك تغيّر بعدين.</li>
         </ul>
@@ -177,7 +177,7 @@ export default function CommissionSystemExplainer({ tiers }) {
       <div style={{ ...card, marginBottom: "1rem" }} className="qta-animate-in">
         <p style={sectionEyebrow}>جرّبها بنفسك</p>
         <h2 style={sectionTitle}>احسب دخلك المتوقع (مع ترقية المستوى تلقائياً)</h2>
-        <p style={{ color: "#93A0B8", fontSize: 12.5, margin: "0.3rem 0 1.2rem" }}>
+        <p style={{ color: "#A79FC4", fontSize: 12.5, margin: "0.3rem 0 1.2rem" }}>
           حرّك الأشرطة تحت — لاحظ كيف عمولتك بترتفع لحالها كل ما تراكمت عملاءك وترقّيت مستوى.
         </p>
 
@@ -225,9 +225,9 @@ export default function CommissionSystemExplainer({ tiers }) {
 
       {/* بصراحة تامة */}
       <div style={{ ...card, marginBottom: "1rem", border: "1px solid rgba(246,70,93,0.3)", background: "rgba(246,70,93,0.04)" }} className="qta-animate-in">
-        <p style={{ ...sectionEyebrow, color: "#E8495F" }}>بصراحة تامة</p>
+        <p style={{ ...sectionEyebrow, color: "#FF453A" }}>بصراحة تامة</p>
         <h2 style={sectionTitle}>هاي أمثلة حساب، مش وعد بدخل</h2>
-        <ul style={{ margin: "0.8rem 0 0", paddingRight: 18, color: "#E8495F", fontSize: 12.5, lineHeight: 1.95 }}>
+        <ul style={{ margin: "0.8rem 0 0", paddingRight: 18, color: "#FF453A", fontSize: 12.5, lineHeight: 1.95 }}>
           <li>كل الأرقام فوق حساب رياضي بسيط على افتراض معيّن — مش أرقام مضمونة لكل شخص.</li>
           <li>دخلك الفعلي بيعتمد على جهدك، وعلى مدى اهتمام الناس يلي بتدعوهم، وعلى استمرارهم الفعلي كعملاء نشطين.</li>
           <li>الهدف من هالصفحة إنك تفهم كيف يشتغل النظام بالضبط، مو إنك تبني توقعات ثابتة على أمثلة توضيحية.</li>
@@ -263,7 +263,7 @@ const modeBtn = {
   borderRadius: 3,
   border: `1px solid ${BORDER}`,
   background: "transparent",
-  color: "#93A0B8",
+  color: "#A79FC4",
   fontSize: 12.5,
   fontWeight: 700,
   cursor: "pointer",
@@ -275,5 +275,5 @@ const modeBtnActive = {
   background: "rgba(212,175,55,0.1)",
 };
 
-const sliderLabel = { display: "block", fontSize: 12.5, color: "#93A0B8", marginBottom: 8 };
+const sliderLabel = { display: "block", fontSize: 12.5, color: "#A79FC4", marginBottom: 8 };
 const rangeInput = { width: "100%", accentColor: GOLD };

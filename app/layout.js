@@ -52,7 +52,11 @@ export const metadata = {
     google: "y3K0SdO26agCZv7Fs_4sYw7y2pbNyZO3slIJ6MCdmCs",
   },
   icons: {
-    icon: "/logo.jpg",
+    icon: [
+      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
   },
   openGraph: {
     title: "Qais Trading Academy | QTA",

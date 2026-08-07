@@ -10,10 +10,10 @@ const TOAST_ICONS = {
 };
 
 const TOAST_ACCENT = {
-  referral_joined: "#1FBF87",
+  referral_joined: "#10E5A0",
   commission: GOLD,
-  payout: "#5FA8E8",
-  application_rejected: "#E8495F",
+  payout: "#7C4DFF",
+  application_rejected: "#FF453A",
 };
 
 // أنواع الإشعارات يلي بدنا نطلعلها Toast فوري (إحالة جديدة، عمولة جاهزة، دفعة، رفض/إلغاء)
@@ -85,7 +85,7 @@ export default function AlertToasts() {
           key={t._key}
           className="qta-animate-in"
           style={{
-            background: "#111726",
+            background: "#141024",
             border: `1px solid ${TOAST_ACCENT[t.type] || GOLD}55`,
             borderInlineStart: `3px solid ${TOAST_ACCENT[t.type] || GOLD}`,
             borderRadius: 3,
@@ -99,8 +99,8 @@ export default function AlertToasts() {
         >
           <span style={{ fontSize: "1.1rem" }}>{TOAST_ICONS[t.type] || "🔔"}</span>
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#EDF1F8" }}>{t.title}</p>
-            {t.message && <p style={{ fontSize: "0.74rem", color: "#93A0B8", marginTop: 2, lineHeight: 1.5 }}>{t.message}</p>}
+            <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#F5F3FF" }}>{t.title}</p>
+            {t.message && <p style={{ fontSize: "0.74rem", color: "#A79FC4", marginTop: 2, lineHeight: 1.5 }}>{t.message}</p>}
           </div>
         </div>
       ))}

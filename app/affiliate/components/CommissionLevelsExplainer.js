@@ -1,4 +1,5 @@
 "use client";
+import { Lightbulb, Link2 } from "lucide-react";
 import { useState } from "react";
 import {
   GOLD,
@@ -119,7 +120,7 @@ function Segment({ active, onClick, children }) {
       style={{
         background: active ? "rgba(212,175,55,0.12)" : "transparent",
         border: `1px solid ${active ? GOLD : BORDER}`,
-        color: active ? GOLD : "#93A0B8",
+        color: active ? GOLD : "#A79FC4",
         borderRadius: 3,
         padding: "0.5rem 1rem",
         fontSize: "0.78rem",
@@ -145,7 +146,7 @@ export default function CommissionLevelsExplainer({ settings }) {
       <div style={card} className="qta-animate-in">
         <p style={sectionEyebrow}>ضروري تفهمه قبل ما تبلّش</p>
         <h2 style={sectionTitle}>مستويات العمولة بالتفصيل — والفرق بين المسارين</h2>
-        <p style={{ color: "#93A0B8", fontSize: "0.85rem", lineHeight: 1.9, margin: "0.6rem 0 1.3rem", maxWidth: 780 }}>
+        <p style={{ color: "#A79FC4", fontSize: "0.85rem", lineHeight: 1.9, margin: "0.6rem 0 1.3rem", maxWidth: 780 }}>
           عنا مسارين لكسب الفلوس بالأكاديمية، وكل واحد فيهم شغلته مختلفة عن التاني تماماً. تحت شرح كل مسار
           لحاله بأدق التفاصيل، وبعدها جدول مقارنة سريع يلخّصلك الفرق بينهم بلمحة وحدة.
         </p>
@@ -161,12 +162,12 @@ export default function CommissionLevelsExplainer({ settings }) {
         {showAffiliate && (
           <div style={{ marginBottom: showMlm ? "2rem" : 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: "1.1rem" }}>🔗</span>
+              <span style={{ fontSize: "1.1rem" }}><Link2 size={14} aria-hidden /></span>
               <h3 style={{ fontSize: "0.98rem", fontWeight: 800, fontFamily: displayStack, margin: 0 }}>
                 المسار الأول: برنامج التسويق بالعمولة (3 مستويات)
               </h3>
             </div>
-            <p style={{ color: "#93A0B8", fontSize: "0.82rem", lineHeight: 1.8, marginBottom: "1rem" }}>
+            <p style={{ color: "#A79FC4", fontSize: "0.82rem", lineHeight: 1.8, marginBottom: "1rem" }}>
               نظام بسيط ومباشر: بتاخذ نسبة % ثابتة من قيمة اشتراك أي شخص ينضم عن طريق رابطك — وبعدين نسبة أقل
               على اللي هنن جابوهم، وهيك لغاية 3 مستويات فقط. ما في شجرة، ما في رتب، ما في تعقيد — بس نسبة واضحة
               على كل مستوى.
@@ -193,7 +194,7 @@ export default function CommissionLevelsExplainer({ settings }) {
                       flexShrink: 0,
                       borderRadius: "50%",
                       background: "rgba(212,175,55,0.1)",
-                      border: `1px solid #3E5478`,
+                      border: `1px solid #3D2F63`,
                       color: GOLD,
                       display: "flex",
                       flexDirection: "column",
@@ -207,11 +208,11 @@ export default function CommissionLevelsExplainer({ settings }) {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-                      <p style={{ fontWeight: 700, fontSize: "0.86rem", color: "#EDF1F8", margin: 0 }}>{lv.title}</p>
+                      <p style={{ fontWeight: 700, fontSize: "0.86rem", color: "#F5F3FF", margin: 0 }}>{lv.title}</p>
                       <span style={{ fontFamily: monoStack, color: GOLD, fontWeight: 800, fontSize: "1rem" }}>{lv.percent}%</span>
                     </div>
-                    <p style={{ color: "#93A0B8", fontSize: "0.78rem", lineHeight: 1.7, margin: "4px 0" }}>{lv.desc}</p>
-                    <p style={{ color: "#5D6880", fontSize: "0.74rem", lineHeight: 1.6, fontStyle: "italic" }}>{lv.example}</p>
+                    <p style={{ color: "#A79FC4", fontSize: "0.78rem", lineHeight: 1.7, margin: "4px 0" }}>{lv.desc}</p>
+                    <p style={{ color: "#6E6690", fontSize: "0.74rem", lineHeight: 1.6, fontStyle: "italic" }}>{lv.example}</p>
                   </div>
                 </div>
               ))}
@@ -221,15 +222,14 @@ export default function CommissionLevelsExplainer({ settings }) {
               style={{
                 marginTop: "0.9rem",
                 background: "rgba(212,175,55,0.05)",
-                border: `1px solid #26314A`,
+                border: `1px solid #2A2145`,
                 borderRadius: 0,
                 padding: "0.8rem 1rem",
                 fontSize: "0.78rem",
-                color: "#93A0B8",
+                color: "#A79FC4",
                 lineHeight: 1.8,
               }}
-            >
-              💡 <strong>خلاصة بسيطة:</strong> كل ما نزلت مستوى، النسبة بتقل — بس العدد يلي ممكن تكسب منه بيكبر
+            ><Lightbulb size={14} aria-hidden /><strong>خلاصة بسيطة:</strong> كل ما نزلت مستوى، النسبة بتقل — بس العدد يلي ممكن تكسب منه بيكبر
               (لأنه شبكة اللي تحتك بتتوسع تلقائياً بدون ما تعمل شي إنت). العمولة بتتحسب فوراً وقت الدفع، وبتضل
               «معلّقة» لحد أقرب دورة دفع قبل ما تصير جاهزة للسحب.
             </div>
@@ -245,13 +245,13 @@ export default function CommissionLevelsExplainer({ settings }) {
                 المسار الثاني: الشبكة الثنائية (نظام النقاط والرتب)
               </h3>
             </div>
-            <p style={{ color: "#93A0B8", fontSize: "0.82rem", lineHeight: 1.8, marginBottom: "1rem" }}>
+            <p style={{ color: "#A79FC4", fontSize: "0.82rem", lineHeight: 1.8, marginBottom: "1rem" }}>
               هون القصة مختلفة تماماً: كل عضو بينضم بيتحط بواحدة من رجلين بشجرتك — <span style={{ color: GOLD }}>يسار</span> أو{" "}
-              <span style={{ color: GOLD }}>يمين</span> — بلا حد لعمق الشجرة. وبدل عمولة وحدة بسيطة، عندك <strong style={{ color: "#EDF1F8" }}>9 أنواع دخل مختلفة</strong>{" "}
+              <span style={{ color: GOLD }}>يمين</span> — بلا حد لعمق الشجرة. وبدل عمولة وحدة بسيطة، عندك <strong style={{ color: "#F5F3FF" }}>9 أنواع دخل مختلفة</strong>{" "}
               بتشتغل مع بعض، وكل ما بنيت فريق أكبر وأقوى بترتقي لرتب أعلى وبتفتح مكافآت أكبر.
             </p>
 
-            <div style={{ fontWeight: 700, marginBottom: "0.7rem", fontSize: "0.85rem", color: "#EDF1F8" }}>
+            <div style={{ fontWeight: 700, marginBottom: "0.7rem", fontSize: "0.85rem", color: "#F5F3FF" }}>
               أنواع الدخل التسعة — وشو الفرق بينهم
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "0.8rem", marginBottom: "1.4rem" }}>
@@ -267,25 +267,25 @@ export default function CommissionLevelsExplainer({ settings }) {
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                     <span style={{ fontSize: "1.05rem" }}>{b.icon}</span>
-                    <span style={{ fontWeight: 700, fontSize: "0.82rem", color: "#EDF1F8" }}>{b.title}</span>
+                    <span style={{ fontWeight: 700, fontSize: "0.82rem", color: "#F5F3FF" }}>{b.title}</span>
                   </div>
                   <p style={{ fontSize: "0.72rem", color: GOLD, marginBottom: 4, fontFamily: monoStack, letterSpacing: 0.3 }}>{b.when}</p>
-                  <p style={{ fontSize: "0.76rem", color: "#93A0B8", lineHeight: 1.7, margin: 0 }}>{b.desc}</p>
+                  <p style={{ fontSize: "0.76rem", color: "#A79FC4", lineHeight: 1.7, margin: 0 }}>{b.desc}</p>
                 </div>
               ))}
             </div>
 
-            <div style={{ fontWeight: 700, marginBottom: "0.7rem", fontSize: "0.85rem", color: "#EDF1F8" }}>
+            <div style={{ fontWeight: 700, marginBottom: "0.7rem", fontSize: "0.85rem", color: "#F5F3FF" }}>
               مسار الرتب الست — كل رتبة بتفتحلك مكافآت أكبر
             </div>
             <div style={{ display: "flex", gap: "0.6rem", overflowX: "auto", paddingBottom: 6 }}>
               {RANKS.map((r, i) => (
                 <div key={r.name} style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
-                  <div style={{ background: "rgba(255,255,255,0.02)", border: `1px solid #3E5478`, borderRadius: 3, padding: "0.7rem 1rem", textAlign: "center", minWidth: 130 }}>
+                  <div style={{ background: "rgba(255,255,255,0.02)", border: `1px solid #3D2F63`, borderRadius: 3, padding: "0.7rem 1rem", textAlign: "center", minWidth: 130 }}>
                     <div style={{ fontWeight: 700, color: GOLD, fontSize: "0.82rem" }}>{r.name}</div>
-                    <div style={{ fontSize: "0.68rem", color: "#5D6880", marginTop: 2 }}>{r.req}</div>
+                    <div style={{ fontSize: "0.68rem", color: "#6E6690", marginTop: 2 }}>{r.req}</div>
                   </div>
-                  {i < RANKS.length - 1 && <div style={{ color: "#3E4761" }}>←</div>}
+                  {i < RANKS.length - 1 && <div style={{ color: "#4A4368" }}>←</div>}
                 </div>
               ))}
             </div>
@@ -294,15 +294,14 @@ export default function CommissionLevelsExplainer({ settings }) {
               style={{
                 marginTop: "1rem",
                 background: "rgba(212,175,55,0.05)",
-                border: `1px solid #26314A`,
+                border: `1px solid #2A2145`,
                 borderRadius: 0,
                 padding: "0.8rem 1rem",
                 fontSize: "0.78rem",
-                color: "#93A0B8",
+                color: "#A79FC4",
                 lineHeight: 1.8,
               }}
-            >
-              💡 <strong>خلاصة بسيطة:</strong> هون مو بس عمولة على اللي دعوتهم — عندك دخل من تجديد الفريق، دخل من
+            ><Lightbulb size={14} aria-hidden /><strong>خلاصة بسيطة:</strong> هون مو بس عمولة على اللي دعوتهم — عندك دخل من تجديد الفريق، دخل من
               نجاح فريقك، ودخل جماعي من صندوق القيادة كل ما رتبتك ارتفعت. بالمقابل، السحب من محفظة الشبكة
               بده تحقّق من الهوية (KYC) أولاً.
             </div>
@@ -311,7 +310,7 @@ export default function CommissionLevelsExplainer({ settings }) {
 
         {/* جدول المقارنة */}
         <div style={{ marginTop: "2rem" }}>
-          <div style={{ fontWeight: 700, marginBottom: "0.8rem", fontSize: "0.9rem", color: "#EDF1F8" }}>
+          <div style={{ fontWeight: 700, marginBottom: "0.8rem", fontSize: "0.9rem", color: "#F5F3FF" }}>
             مقارنة سريعة: برنامج الإحالة مقابل الشبكة الثنائية
           </div>
           <div style={{ overflowX: "auto", borderRadius: 0, border: `1px solid ${BORDER}` }}>
@@ -327,7 +326,7 @@ export default function CommissionLevelsExplainer({ settings }) {
                 {COMPARE_ROWS.map((row, i) => (
                   <tr key={i} style={{ background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)" }}>
                     {row.map((cell, j) => (
-                      <td key={j} style={{ ...tdStyle, color: j === 0 ? "#EDF1F8" : "#93A0B8", fontWeight: j === 0 ? 700 : 400 }}>
+                      <td key={j} style={{ ...tdStyle, color: j === 0 ? "#F5F3FF" : "#A79FC4", fontWeight: j === 0 ? 700 : 400 }}>
                         {cell}
                       </td>
                     ))}
@@ -336,7 +335,7 @@ export default function CommissionLevelsExplainer({ settings }) {
               </tbody>
             </table>
           </div>
-          <p style={{ color: "#5D6880", fontSize: "0.72rem", marginTop: 8, lineHeight: 1.7 }}>
+          <p style={{ color: "#6E6690", fontSize: "0.72rem", marginTop: 8, lineHeight: 1.7 }}>
             ملاحظة: الأرقام والنسب هون تقريبية للتوضيح — نسب برنامج الإحالة (المستويات 1-2-3) بتتحدث تلقائياً حسب
             آخر إعدادات الأكاديمية وبتظهر فعلياً بقسم «برنامج التسويق بالعمولة» تحت.
           </p>
@@ -346,5 +345,5 @@ export default function CommissionLevelsExplainer({ settings }) {
   );
 }
 
-const thStyle = { textAlign: "right", padding: "0.7rem 0.9rem", color: "#EDF1F8", fontWeight: 700, borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap" };
+const thStyle = { textAlign: "right", padding: "0.7rem 0.9rem", color: "#F5F3FF", fontWeight: 700, borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap" };
 const tdStyle = { textAlign: "right", padding: "0.65rem 0.9rem", borderBottom: `1px solid ${BORDER}`, lineHeight: 1.6 };

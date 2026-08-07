@@ -12,15 +12,15 @@ import {
   BarChart3,
 } from "lucide-react";
 
-const GOLD = "#C9A860";
-const GOLD_LIGHT = "#E4CD95";
-const GREEN = "#1FBF87";
-const RED = "#E8495F";
-const BLUE = "#5FA8E8";
+const GOLD = "#DCD4F7";
+const GOLD_LIGHT = "#F5F3FF";
+const GREEN = "#10E5A0";
+const RED = "#FF453A";
+const BLUE = "#7C4DFF";
 
 const glass = {
-  background: "#111726",
-  border: `1px solid #26314A`,
+  background: "#141024",
+  border: `1px solid #2A2145`,
   borderRadius: 0,
   boxShadow: "0 8px 30px rgba(0,0,0,0.4)",
   backdropFilter: "blur(10px)",
@@ -39,7 +39,7 @@ const CONFIDENCE_BUCKETS = [
 function statusColor(status) {
   if (status === "Closed Winner") return GREEN;
   if (status === "Stopped Out") return RED;
-  if (status === "Open") return "#93A0B8";
+  if (status === "Open") return "#A79FC4";
   return GOLD_LIGHT; // Running / TPx Hit
 }
 
@@ -213,7 +213,7 @@ export default function CombinedAITradesClient() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Bot size={20} color={GOLD} />
-          <h1 style={{ fontSize: 18, fontWeight: 900, color: "#EDF1F8", margin: 0 }}>صفقات QAIS AI</h1>
+          <h1 style={{ fontSize: 18, fontWeight: 900, color: "#F5F3FF", margin: 0 }}>صفقات QAIS AI</h1>
         </div>
 
         {/* تبديل بين العرض المباشر والسجل والإحصائيات */}
@@ -222,8 +222,8 @@ export default function CombinedAITradesClient() {
             onClick={() => setView("live")}
             style={{
               display: "flex", alignItems: "center", gap: 6,
-              background: view === "live" ? `#26314A` : "transparent",
-              border: `1px solid ${view === "live" ? GOLD : "#1E2941"}`,
+              background: view === "live" ? `#2A2145` : "transparent",
+              border: `1px solid ${view === "live" ? GOLD : "#241C3E"}`,
               color: view === "live" ? GOLD_LIGHT : "#aaa",
               borderRadius: 3, padding: "6px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
             }}
@@ -234,8 +234,8 @@ export default function CombinedAITradesClient() {
             onClick={() => setView("history")}
             style={{
               display: "flex", alignItems: "center", gap: 6,
-              background: view === "history" ? `#26314A` : "transparent",
-              border: `1px solid ${view === "history" ? GOLD : "#1E2941"}`,
+              background: view === "history" ? `#2A2145` : "transparent",
+              border: `1px solid ${view === "history" ? GOLD : "#241C3E"}`,
               color: view === "history" ? GOLD_LIGHT : "#aaa",
               borderRadius: 3, padding: "6px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
             }}
@@ -260,9 +260,9 @@ export default function CombinedAITradesClient() {
                 key={f.key}
                 onClick={() => setLiveFilter(f.key)}
                 style={{
-                  background: liveFilter === f.key ? `#26314A` : "transparent",
-                  border: `1px solid ${liveFilter === f.key ? GOLD : "#1E2941"}`,
-                  color: liveFilter === f.key ? GOLD_LIGHT : "#5D6880",
+                  background: liveFilter === f.key ? `#2A2145` : "transparent",
+                  border: `1px solid ${liveFilter === f.key ? GOLD : "#241C3E"}`,
+                  color: liveFilter === f.key ? GOLD_LIGHT : "#6E6690",
                   borderRadius: 3, padding: "6px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
                 }}
               >
@@ -272,9 +272,9 @@ export default function CombinedAITradesClient() {
           </div>
 
           {loading ? (
-            <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#5D6880" }}>جارٍ التحميل...</div>
+            <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#6E6690" }}>جارٍ التحميل...</div>
           ) : visibleLive.length === 0 ? (
-            <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#5D6880" }}>
+            <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#6E6690" }}>
               ما في صفقات QAIS AI {liveFilter === "open" ? "مفتوحة" : liveFilter === "closed" ? "مغلقة" : ""} حالياً.
               <br />
               نفّذ صفقة من كارد الـ AI Trade بصفحة Trading Radar لما يصير الإعداد جاهز.
@@ -301,8 +301,8 @@ export default function CombinedAITradesClient() {
                           {isBuy ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                           {isBuy ? "BUY" : "SELL"}
                         </span>
-                        <b style={{ color: "#EDF1F8", fontSize: 14 }}>{t.symbol}</b>
-                        <span style={{ fontSize: 11, color: "#93A0B8", background: "#111726", border: "1px solid #1E2941", borderRadius: 3, padding: "3px 8px" }}>
+                        <b style={{ color: "#F5F3FF", fontSize: 14 }}>{t.symbol}</b>
+                        <span style={{ fontSize: 11, color: "#A79FC4", background: "#141024", border: "1px solid #241C3E", borderRadius: 3, padding: "3px 8px" }}>
                           {t.timeframe}
                         </span>
                         <span
@@ -316,7 +316,7 @@ export default function CombinedAITradesClient() {
                         </span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#5D6880" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#6E6690" }}>
                           <Clock size={11} /> {timeAgo(t.created_at)}
                         </span>
                         {!isClosed && (
@@ -325,7 +325,7 @@ export default function CombinedAITradesClient() {
                             disabled={isChecking}
                             style={{
                               display: "flex", alignItems: "center", gap: 5,
-                              background: "transparent", border: "1px solid #1E2941", color: "#aaa",
+                              background: "transparent", border: "1px solid #241C3E", color: "#aaa",
                               borderRadius: 3, padding: "5px 10px", fontSize: 11, cursor: isChecking ? "default" : "pointer",
                             }}
                           >
@@ -337,7 +337,7 @@ export default function CombinedAITradesClient() {
                           href={`/ai-trades/${t.id}`}
                           style={{
                             display: "flex", alignItems: "center", gap: 5,
-                            background: `#26314A`, border: `1px solid #3E5478`, color: GOLD_LIGHT,
+                            background: `#2A2145`, border: `1px solid #3D2F63`, color: GOLD_LIGHT,
                             borderRadius: 3, padding: "5px 10px", fontSize: 11, fontWeight: 700, textDecoration: "none",
                           }}
                         >
@@ -357,8 +357,8 @@ export default function CombinedAITradesClient() {
                       <MiniStat label="R/R" value={t.risk_reward != null ? `${t.risk_reward}R` : "—"} />
                     </div>
 
-                    <div style={{ marginTop: 10, fontSize: 11, color: "#5D6880" }}>
-                      آخر سعر تم فحصه: <b style={{ color: "#93A0B8" }}>{fmt(t.last_checked_price)}</b> · {timeAgo(t.last_checked_at)}
+                    <div style={{ marginTop: 10, fontSize: 11, color: "#6E6690" }}>
+                      آخر سعر تم فحصه: <b style={{ color: "#A79FC4" }}>{fmt(t.last_checked_price)}</b> · {timeAgo(t.last_checked_at)}
                     </div>
                   </div>
                 );
@@ -389,33 +389,33 @@ export default function CombinedAITradesClient() {
             <FilterSelect label="النتيجة" value={resultFilter} onChange={setResultFilter} options={[{ v: "all", l: "الكل" }, { v: "win", l: "رابحة" }, { v: "loss", l: "خاسرة" }]} />
             <FilterSelect label="Confidence" value={confFilter} onChange={setConfFilter} options={CONFIDENCE_BUCKETS.map((b) => ({ v: b.key, l: b.label }))} />
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 10.5, color: "#5D6880" }}>من تاريخ</label>
+              <label style={{ fontSize: 10.5, color: "#6E6690" }}>من تاريخ</label>
               <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={inputStyle} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 10.5, color: "#5D6880" }}>إلى تاريخ</label>
+              <label style={{ fontSize: 10.5, color: "#6E6690" }}>إلى تاريخ</label>
               <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={inputStyle} />
             </div>
           </div>
 
           {loading ? (
-            <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#5D6880" }}>جارٍ التحميل...</div>
+            <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#6E6690" }}>جارٍ التحميل...</div>
           ) : filteredHistory.length === 0 ? (
-            <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#5D6880" }}>ما في صفقات مطابقة للفلاتر المختارة.</div>
+            <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#6E6690" }}>ما في صفقات مطابقة للفلاتر المختارة.</div>
           ) : (
             <div style={{ ...glass, padding: "0.5rem", overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
                 <thead>
-                  <tr style={{ color: "#5D6880", textAlign: "right" }}>
+                  <tr style={{ color: "#6E6690", textAlign: "right" }}>
                     {["الرمز", "الاتجاه", "الفريم", "Confidence", "R/R", "الحالة", "التاريخ", ""].map((h) => (
-                      <th key={h} style={{ padding: "10px 12px", fontWeight: 700, borderBottom: "1px solid #1E2941" }}>{h}</th>
+                      <th key={h} style={{ padding: "10px 12px", fontWeight: 700, borderBottom: "1px solid #241C3E" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredHistory.map((t) => (
-                    <tr key={t.id} style={{ borderBottom: "1px solid #182033" }}>
-                      <td style={{ padding: "9px 12px", fontWeight: 800, color: "#EDF1F8" }}>{t.symbol}</td>
+                    <tr key={t.id} style={{ borderBottom: "1px solid #1C1630" }}>
+                      <td style={{ padding: "9px 12px", fontWeight: 800, color: "#F5F3FF" }}>{t.symbol}</td>
                       <td style={{ padding: "9px 12px" }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: t.direction === "up" ? GREEN : RED, fontWeight: 700 }}>
                           {t.direction === "up" ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
@@ -424,13 +424,13 @@ export default function CombinedAITradesClient() {
                       </td>
                       <td style={{ padding: "9px 12px", color: "#aaa" }}>{t.timeframe}</td>
                       <td style={{ padding: "9px 12px", color: GOLD_LIGHT, fontWeight: 700 }}>{t.confidence != null ? `${t.confidence}%` : "—"}</td>
-                      <td style={{ padding: "9px 12px", color: "#93A0B8" }}>{t.risk_reward != null ? `${t.risk_reward}R` : "—"}</td>
+                      <td style={{ padding: "9px 12px", color: "#A79FC4" }}>{t.risk_reward != null ? `${t.risk_reward}R` : "—"}</td>
                       <td style={{ padding: "9px 12px" }}>
                         <span style={{ fontSize: 11, fontWeight: 800, color: statusColor(t.status), background: `${statusColor(t.status)}1a`, border: `1px solid ${statusColor(t.status)}55`, borderRadius: 3, padding: "3px 8px" }}>
                           {t.status}
                         </span>
                       </td>
-                      <td style={{ padding: "9px 12px", color: "#5D6880" }}>{new Date(t.created_at).toLocaleDateString("en-GB")}</td>
+                      <td style={{ padding: "9px 12px", color: "#6E6690" }}>{new Date(t.created_at).toLocaleDateString("en-GB")}</td>
                       <td style={{ padding: "9px 12px" }}>
                         <Link href={`/ai-trades/${t.id}`} style={{ display: "flex", alignItems: "center", gap: 4, color: GOLD_LIGHT, fontSize: 11, textDecoration: "none" }}>
                           التفاصيل <ExternalLink size={11} />
@@ -449,14 +449,14 @@ export default function CombinedAITradesClient() {
 }
 
 const inputStyle = {
-  background: "#111726", border: "1px solid #1E2941", color: "#ddd",
+  background: "#141024", border: "1px solid #241C3E", color: "#ddd",
   borderRadius: 3, padding: "6px 8px", fontSize: 11.5,
 };
 
 function FilterSelect({ label, value, onChange, options }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <label style={{ fontSize: 10.5, color: "#5D6880" }}>{label}</label>
+      <label style={{ fontSize: 10.5, color: "#6E6690" }}>{label}</label>
       <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...inputStyle, minWidth: 110 }}>
         {options.map((o) => (
           <option key={o.v} value={o.v}>{o.l}</option>
@@ -466,19 +466,19 @@ function FilterSelect({ label, value, onChange, options }) {
   );
 }
 
-function StatCard({ label, value, color = "#EDF1F8", small = false }) {
+function StatCard({ label, value, color = "#F5F3FF", small = false }) {
   return (
     <div style={{ ...glass, padding: "0.8rem 1rem" }}>
-      <div style={{ fontSize: 10.5, color: "#5D6880", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 10.5, color: "#6E6690", marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: small ? 13 : 18, fontWeight: 900, color }}>{value}</div>
     </div>
   );
 }
 
-function MiniStat({ label, value, color = "#EDF1F8" }) {
+function MiniStat({ label, value, color = "#F5F3FF" }) {
   return (
-    <div style={{ background: "#111726", border: "1px solid #1E2941", borderRadius: 3, padding: "6px 9px" }}>
-      <div style={{ fontSize: 10, color: "#5D6880", marginBottom: 2 }}>{label}</div>
+    <div style={{ background: "#141024", border: "1px solid #241C3E", borderRadius: 3, padding: "6px 9px" }}>
+      <div style={{ fontSize: 10, color: "#6E6690", marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 12.5, fontWeight: 800, color }}>{value}</div>
     </div>
   );

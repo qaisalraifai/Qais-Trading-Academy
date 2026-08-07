@@ -163,7 +163,7 @@ export default function AdminLecturesPage() {
   async function handleAddCourse() {
     const title = prompt("اسم الكورس الجديد:");
     if (!title || !title.trim()) return;
-    const icon = prompt("إيموجي للكورس (اختياري، مثلاً 📈):", "📚") || "📚";
+ const icon = prompt("إيموجي للكورس (اختياري، مثلاً):","") ||"";
 
     const res = await fetch("/api/admin/courses", {
       method: "POST",
@@ -416,35 +416,35 @@ export default function AdminLecturesPage() {
   );
 }
 
-const gold = "#C9A860";
-const ink = "#080B14";
+const gold = "#DCD4F7";
+const ink = "#0A0614";
 const s = {
-  page: { backgroundColor: ink, color: "#EDF1F8", direction: "rtl", fontFamily: "'Inter', sans-serif", minHeight: "100vh", padding: "0 0 4rem" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2rem 3rem", borderBottom: "1px solid #111726" },
+  page: { backgroundColor: ink, color: "#F5F3FF", direction: "rtl", fontFamily: "'Inter', sans-serif", minHeight: "100vh", padding: "0 0 4rem" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2rem 3rem", borderBottom: "1px solid #141024" },
   headerSub: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.75rem", letterSpacing: "2px", marginBottom: "0.25rem" },
   headerTitle: { fontSize: "1.4rem", fontWeight: 800 },
-  backBtn: { background: "none", border: "1px solid #1B2438", color: "#93A0B8", padding: "0.6rem 1.2rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center" },
+  backBtn: { background: "none", border: "1px solid #1E1836", color: "#A79FC4", padding: "0.6rem 1.2rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center" },
   addBtn: { backgroundColor: gold, color: "#000", border: "none", padding: "0.6rem 1.2rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 700 },
-  addCourseBtn: { backgroundColor: "#111726", color: gold, border: `1px solid ${gold}55`, padding: "0 0.9rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, whiteSpace: "nowrap" },
-  tableWrap: { margin: "2rem 3rem", border: "1px solid #111726", borderRadius: "3px", overflow: "hidden" },
+  addCourseBtn: { backgroundColor: "#141024", color: gold, border: `1px solid ${gold}55`, padding: "0 0.9rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, whiteSpace: "nowrap" },
+  tableWrap: { margin: "2rem 3rem", border: "1px solid #141024", borderRadius: "3px", overflow: "hidden" },
   table: { width: "100%", borderCollapse: "collapse" },
-  th: { backgroundColor: "#111726", padding: "1rem 1.25rem", textAlign: "right", fontSize: "0.78rem", color: "#3E4761", fontWeight: 500, borderBottom: "1px solid #111726" },
-  tr: { borderBottom: "1px solid #080B14" },
+  th: { backgroundColor: "#141024", padding: "1rem 1.25rem", textAlign: "right", fontSize: "0.78rem", color: "#4A4368", fontWeight: 500, borderBottom: "1px solid #141024" },
+  tr: { borderBottom: "1px solid #0A0614" },
   td: { padding: "1rem 1.25rem", fontSize: "0.88rem", verticalAlign: "middle" },
-  username: { color: "#EDF1F8", fontWeight: 500 },
-  mono: { fontFamily: "'JetBrains Mono', monospace", color: "#3E4761", fontSize: "0.82rem" },
-  btnEdit: { backgroundColor: "#111726", color: "#5FA8E8", border: "1px solid #182033", padding: "0.4rem 0.9rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.82rem" },
-  btnDanger: { backgroundColor: "#182033", color: "#E8495F", border: "1px solid #1E2941", padding: "0.4rem 0.9rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.82rem" },
-  badgeShared: { fontSize: "0.72rem", color: "#5FA8E8", backgroundColor: "#111726", padding: "0.2rem 0.55rem", borderRadius: "3px" },
-  loading: { textAlign: "center", padding: "3rem", color: "#3E4761" },
+  username: { color: "#F5F3FF", fontWeight: 500 },
+  mono: { fontFamily: "'JetBrains Mono', monospace", color: "#4A4368", fontSize: "0.82rem" },
+  btnEdit: { backgroundColor: "#141024", color: "#7C4DFF", border: "1px solid #1C1630", padding: "0.4rem 0.9rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.82rem" },
+  btnDanger: { backgroundColor: "#1C1630", color: "#FF453A", border: "1px solid #241C3E", padding: "0.4rem 0.9rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.82rem" },
+  badgeShared: { fontSize: "0.72rem", color: "#7C4DFF", backgroundColor: "#141024", padding: "0.2rem 0.55rem", borderRadius: "3px" },
+  loading: { textAlign: "center", padding: "3rem", color: "#4A4368" },
   overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "1rem" },
-  formCard: { backgroundColor: "#080B14", border: `1px solid ${gold}44`, borderRadius: "3px", padding: "2rem", width: "100%", maxWidth: "480px", display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "90vh", overflowY: "auto" },
+  formCard: { backgroundColor: "#0A0614", border: `1px solid ${gold}44`, borderRadius: "3px", padding: "2rem", width: "100%", maxWidth: "480px", display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "90vh", overflowY: "auto" },
   formTitle: { fontSize: "1.2rem", fontWeight: 700, marginBottom: "0.75rem" },
-  label: { fontSize: "0.82rem", color: "#93A0B8", marginTop: "0.75rem" },
-  input: { backgroundColor: "#111726", border: "1px solid #1B2438", color: "#EDF1F8", padding: "0.7rem 0.9rem", borderRadius: "3px", fontSize: "0.9rem", outline: "none", fontFamily: "inherit" },
-  hint: { fontSize: "0.75rem", color: "#3E4761", marginTop: "0.15rem" },
-  errorText: { color: "#E8495F", fontSize: "0.85rem", marginTop: "0.5rem" },
+  label: { fontSize: "0.82rem", color: "#A79FC4", marginTop: "0.75rem" },
+  input: { backgroundColor: "#141024", border: "1px solid #1E1836", color: "#F5F3FF", padding: "0.7rem 0.9rem", borderRadius: "3px", fontSize: "0.9rem", outline: "none", fontFamily: "inherit" },
+  hint: { fontSize: "0.75rem", color: "#4A4368", marginTop: "0.15rem" },
+  errorText: { color: "#FF453A", fontSize: "0.85rem", marginTop: "0.5rem" },
   formActions: { display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" },
-  cancelBtn: { background: "none", border: "1px solid #1B2438", color: "#93A0B8", padding: "0.6rem 1.4rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.85rem" },
+  cancelBtn: { background: "none", border: "1px solid #1E1836", color: "#A79FC4", padding: "0.6rem 1.4rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.85rem" },
   saveBtn: { backgroundColor: gold, color: "#000", border: "none", padding: "0.6rem 1.4rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 700 },
 };
