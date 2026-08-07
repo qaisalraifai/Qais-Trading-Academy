@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { Bell, CircleDollarSign, CircleX, Landmark, UserPlus } from "lucide-react";
 import { GOLD, transition } from "./shared";
 
 const TOAST_ICONS = {
-  referral_joined: "👋",
-  commission: "💰",
-  payout: "🏦",
-  application_rejected: "️",
+  referral_joined: UserPlus,
+  commission: CircleDollarSign,
+  payout: Landmark,
+  application_rejected: CircleX,
 };
 
 const TOAST_ACCENT = {
@@ -97,7 +98,10 @@ export default function AlertToasts() {
             transition,
           }}
         >
-          <span style={{ fontSize: "1.1rem" }}>{TOAST_ICONS[t.type] || "🔔"}</span>
+          {(() => {
+            const Icon = TOAST_ICONS[t.type] || Bell;
+            return <Icon size={17} strokeWidth={1.75} color={TOAST_ACCENT[t.type] || GOLD} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden />;
+          })()}
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#F5F3FF" }}>{t.title}</p>
             {t.message && <p style={{ fontSize: "0.74rem", color: "#A79FC4", marginTop: 2, lineHeight: 1.5 }}>{t.message}</p>}

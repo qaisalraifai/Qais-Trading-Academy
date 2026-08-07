@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { resolveTierIcon } from "@/lib/icon-registry";
 import {
   GOLD,
   BORDER,
@@ -13,7 +14,7 @@ import {
 
 /** يحدد مستوى المسوّق حسب عدد عملائه المتراكم لهيك اللحظة */
 function tierFor(count, tiers) {
-  if (!tiers || tiers.length === 0) return { title_ar: "Bronze", badge_icon: "🥉", color_hex: "#8A7CB8", signup_amount: 30, renewal_amount: 8 };
+  if (!tiers || tiers.length === 0) return { title_ar: "Bronze", badge_icon: "shield", color_hex: "#8A7CB8", signup_amount: 30, renewal_amount: 8, sort_order: 0 };
   let current = tiers[0];
   for (const t of tiers) {
     if (count >= t.min_active_clients) current = t;
@@ -149,7 +150,12 @@ export default function CommissionSystemExplainer({ tiers }) {
           <div style={{ display: "flex", gap: 8, marginTop: "1rem", flexWrap: "wrap" }}>
             {tiers.map((t) => (
               <div key={t.id} style={{ flex: "1 1 110px", textAlign: "center", border: `1px solid ${t.color_hex}44`, borderRadius: 0, padding: "0.8rem 0.5rem", background: `${t.color_hex}0c` }}>
-                <div style={{ fontSize: 20 }}>{t.badge_icon}</div>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 2 }}>
+                  {(() => {
+                    const TierIcon = resolveTierIcon(t);
+                    return <TierIcon size={19} strokeWidth={1.75} color={t.color_hex} aria-hidden />;
+                  })()}
+                </div>
                 <div style={{ fontSize: 12, fontWeight: 800, color: t.color_hex, margin: "4px 0" }}>{t.title_ar}</div>
                 <div style={{ fontSize: 11, color: "#A79FC4" }}>${fmt(t.signup_amount)} / ${fmt(t.renewal_amount)}</div>
                 <div style={{ fontSize: 10, color: "#6E6690", marginTop: 3 }}>{t.min_active_clients}+ عميل</div>
@@ -216,7 +222,7 @@ export default function CommissionSystemExplainer({ tiers }) {
           <StatPill big={`$${fmt(lastMonth?.income || 0)}`} small={`دخل الشهر ${months}`} />
           <StatPill big={`$${fmt(lastMonth?.cumulative || 0)}`} small={`إجمالي ${months} أشهر`} />
           <StatPill
-            big={`${lastMonth?.tier?.badge_icon || ""} ${lastMonth?.tier?.title_ar || ""}`}
+            big={lastMonth?.tier?.title_ar || "—"}
             small="مستواك بنهاية المدة"
             color={lastMonth?.tier?.color_hex}
           />

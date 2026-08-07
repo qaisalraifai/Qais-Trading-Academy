@@ -1,3 +1,4 @@
+import { MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import DiscordSection from "@/app/components/DiscordSection";
@@ -36,11 +37,10 @@ export default async function DiscordPage() {
         background: "linear-gradient(135deg, #5865F2, #4752c4)",
         borderRadius: "50%",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 56,
         boxShadow: "0 0 60px #5865F244, 0 0 120px #5865F222",
         marginBottom: 24,
       }}>
-        🎮
+        <MessageCircle size={52} strokeWidth={1.5} color="#fff" aria-hidden />
       </div>
 
       <p style={{ color: "#5865F2", letterSpacing: 4, fontSize: 11, margin: "0 0 12px" }}>QAIS TRADING ACADEMY</p>

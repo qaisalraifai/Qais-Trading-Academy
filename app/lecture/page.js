@@ -1,3 +1,5 @@
+import { BookOpen, Clock } from "lucide-react";
+import { resolveIcon } from "@/lib/icon-registry";
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -97,7 +99,12 @@ export default async function LecturesPage() {
                 transition: "transform 0.15s ease",
               }}>
                 {/* Icon */}
-                <div style={{ fontSize: 40 }}>{course.icon}</div>
+                <div style={{ display: "flex" }}>
+                  {(() => {
+                    const CourseIcon = resolveIcon(course.icon, BookOpen);
+                    return <CourseIcon size={36} strokeWidth={1.5} color="#F5F3FF" aria-hidden />;
+                  })()}
+                </div>
 
                 {/* Title + Description */}
                 <div>
@@ -110,7 +117,10 @@ export default async function LecturesPage() {
                 {/* Stats */}
                 <div style={{ display: "flex", gap: "1.25rem", fontSize: 12, color: "#A79FC4" }}>
                   <span>{course.totalLessons} درس</span>
-                  <span>⏱ {course.totalHours.toFixed(1)} ساعة</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <Clock size={12} strokeWidth={1.75} aria-hidden />
+                    {course.totalHours.toFixed(1)} ساعة
+                  </span>
                 </div>
 
                 {/* Progress bar */}

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { Compass, Target, History, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Bell, CalendarDays, CircleCheck, CircleX, Clock, Compass, History, Lightbulb, Minus, Star, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
@@ -22,22 +22,62 @@ const cardStyle = {
 };
 
 const IMPACT_KEYS = {
-  high: { labelKey: "calendar.impactHigh", color: "#FF453A", bg: "#FF453A22", dot: "🔴" },
-  medium: { labelKey: "calendar.impactMedium", color: "#F0A13C", bg: "#F0A13C22", dot: "🟡" },
-  low: { labelKey: "calendar.impactLow", color: "#10E5A0", bg: "#10E5A022", dot: "🟢" },
-  holiday: { labelKey: "calendar.impactHoliday", color: "#7C4DFF", bg: "#7C4DFF22", dot: "🔵" },
-};
-
-const CURRENCY_FLAGS = {
-  USD: "🇺🇸", EUR: "🇪🇺", GBP: "🇬🇧", JPY: "🇯🇵", CHF: "🇨🇭",
-  CAD: "🇨🇦", AUD: "🇦🇺", NZD: "🇳🇿", CNY: "🇨🇳",
+  high: { labelKey: "calendar.impactHigh", color: "#FF453A", bg: "#FF453A22" },
+  medium: { labelKey: "calendar.impactMedium", color: "#F0A13C", bg: "#F0A13C22" },
+  low: { labelKey: "calendar.impactLow", color: "#10E5A0", bg: "#10E5A022" },
+  holiday: { labelKey: "calendar.impactHoliday", color: "#7C4DFF", bg: "#7C4DFF22" },
 };
 
 const DIRECTION_STYLE = {
-  up: { arrow: "⬆️", color: "#10E5A0" },
-  down: { arrow: "⬇️", color: "#FF453A" },
-  neutral: { arrow: "➖", color: "#A79FC4" },
+  up: { icon: TrendingUp, color: "#10E5A0" },
+  down: { icon: TrendingDown, color: "#FF453A" },
+  neutral: { icon: Minus, color: "#A79FC4" },
 };
+
+/* نقطة شدة التأثير — دائرة CSS نظيفة بدل إيموجي ملوّن */
+function ImpactDot({ color, size = 7 }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        display: "inline-block",
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: color,
+        boxShadow: `0 0 0 2px ${color}26`,
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+/* رمز العملة بشكل شارة — أوضح من أعلام الدول وبيظهر صح على كل الأنظمة */
+function CurrencyChip({ code, size = 11 }) {
+  if (!code) return null;
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: size,
+        fontWeight: 800,
+        letterSpacing: 0.5,
+        color: GOLD_LIGHT,
+        background: "#1E1836",
+        border: "1px solid #2A2145",
+        borderRadius: 3,
+        padding: "2px 6px",
+        lineHeight: 1.2,
+        direction: "ltr",
+        flexShrink: 0,
+      }}
+    >
+      {code}
+    </span>
+  );
+}
 
 const STRENGTH_KEYS = { strong: "calendar.strengthStrong", medium: "calendar.strengthMedium", weak: "calendar.strengthWeak" };
 
@@ -130,8 +170,25 @@ function SemiGauge({ value, size = 150, colors, gradId }) {
 const CCY_LIST = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD"];
 
 /* صف تحميل/خطأ موحّد لبطاقات البيانات الحية */
-function LiveCardStatus({ label }) {
-  return <p style={{ margin: 0, fontSize: 11, color: "#6E6690", textAlign: "center", padding: "0.6rem 0" }}>{label}</p>;
+function LiveCardStatus({ label, icon: Icon }) {
+  return (
+    <p
+      style={{
+        margin: 0,
+        fontSize: 11,
+        color: "#6E6690",
+        textAlign: "center",
+        padding: "0.6rem 0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+      }}
+    >
+      {Icon && <Icon size={13} strokeWidth={1.75} aria-hidden />}
+      <span>{label}</span>
+    </p>
+  );
 }
 
 /* خريطة قوة العملات — بيانات حقيقية محسوبة من أزواج الفوركس الفعلية عبر Yahoo Finance */
@@ -162,7 +219,7 @@ function CurrencyStrengthMeter({ snapshot, loading, error }) {
               <div key={v.code}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                   <span style={{ fontSize: 11.5, color: "#A79FC4", fontWeight: 700 }}>
-                    {CURRENCY_FLAGS[v.code] || "🌐"} {v.code}
+                    {v.code}
                   </span>
                   <span style={{ fontSize: 11.5, color, fontWeight: 700 }}>{v.value}%</span>
                 </div>
@@ -325,7 +382,7 @@ function PriceChart() {
       {chartLoading && !chartData ? (
         <LiveCardStatus label={t("calendar.loadingDxy")} />
       ) : chartError && points.length < 2 ? (
-        <LiveCardStatus label={`⚠️ ${chartError}`} />
+        <LiveCardStatus label={chartError} icon={AlertTriangle} />
       ) : (
         <>
           <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
@@ -483,7 +540,7 @@ function TechnicalAnalysisPanel({ currency }) {
       {loading && !data ? (
         <LiveCardStatus label={t("calendar.calculatingIndicators")} />
       ) : error && !data ? (
-        <LiveCardStatus label={`⚠️ ${error}`} />
+        <LiveCardStatus label={error} icon={AlertTriangle} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           {rows.map((r, i) => (
@@ -699,9 +756,11 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 16, cursor: "pointer" }} title={t("calendar.favoritesTitle")}>⭐</span>
-        <span style={{ fontSize: 16, cursor: "pointer", position: "relative" }} title={t("calendar.alertsTitle")}>
-          🔔
+        <span style={{ display: "inline-flex", cursor: "pointer", color: "#A79FC4" }} title={t("calendar.favoritesTitle")}>
+          <Star size={16} strokeWidth={1.75} aria-hidden />
+        </span>
+        <span style={{ display: "inline-flex", cursor: "pointer", position: "relative", color: "#A79FC4" }} title={t("calendar.alertsTitle")}>
+          <Bell size={16} strokeWidth={1.75} aria-hidden />
           {highImpactUpcomingCount > 0 && (
             <span
               style={{
@@ -768,19 +827,20 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
 function KPICardsRow({ todayStats, activeCurrenciesCount, opportunitiesCount, opportunitiesReady }) {
   const { t } = useLocale();
   const cards = [
-    { label: t("calendar.kpiActiveCurrencies"), value: activeCurrenciesCount, sub: t("calendar.kpiActiveCurrenciesSub"), color: PURPLE_LIGHT, icon: "🎯" },
-    { label: t("calendar.kpiLowImpact"), value: todayStats.low, sub: t("calendar.today"), color: "#10E5A0", icon: "🟢" },
-    { label: t("calendar.kpiMediumImpact"), value: todayStats.medium, sub: t("calendar.today"), color: "#F0A13C", icon: "🟡" },
-    { label: t("calendar.kpiHighImpact"), value: todayStats.high, sub: t("calendar.today"), color: "#FF453A", icon: "🔴" },
-    { label: t("calendar.kpiOpportunities"), value: opportunitiesReady ? opportunitiesCount : "--", sub: t("calendar.kpiOpportunitiesSub"), color: GOLD_LIGHT, icon: "💡" },
-    { label: t("calendar.kpiTodayNews"), value: todayStats.total, sub: t("calendar.kpiRemaining", { count: todayStats.upcoming }), color: "#7C4DFF", icon: "🗓️" },
+    { label: t("calendar.kpiActiveCurrencies"), value: activeCurrenciesCount, sub: t("calendar.kpiActiveCurrenciesSub"), color: PURPLE_LIGHT, icon: Target },
+    { label: t("calendar.kpiLowImpact"), value: todayStats.low, sub: t("calendar.today"), color: "#10E5A0", dot: true },
+    { label: t("calendar.kpiMediumImpact"), value: todayStats.medium, sub: t("calendar.today"), color: "#F0A13C", dot: true },
+    { label: t("calendar.kpiHighImpact"), value: todayStats.high, sub: t("calendar.today"), color: "#FF453A", dot: true },
+    { label: t("calendar.kpiOpportunities"), value: opportunitiesReady ? opportunitiesCount : "--", sub: t("calendar.kpiOpportunitiesSub"), color: GOLD_LIGHT, icon: Lightbulb },
+    { label: t("calendar.kpiTodayNews"), value: todayStats.total, sub: t("calendar.kpiRemaining", { count: todayStats.upcoming }), color: "#7C4DFF", icon: CalendarDays },
   ];
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "0.7rem", marginBottom: "1.1rem" }}>
       {cards.map((c, i) => (
         <div key={i} style={{ ...cardStyle, padding: "0.85rem 0.9rem" }}>
-          <p style={{ margin: 0, fontSize: 10, color: "#6E6690" }}>
-            {c.icon} {c.label}
+          <p style={{ margin: 0, fontSize: 10, color: "#6E6690", display: "flex", alignItems: "center", gap: 5 }}>
+            {c.dot ? <ImpactDot color={c.color} size={6} /> : c.icon ? <c.icon size={12} strokeWidth={1.75} color={c.color} aria-hidden /> : null}
+            {c.label}
           </p>
           <p style={{ margin: "6px 0 0", fontSize: 21, fontWeight: 800, color: c.color }}>{c.value}</p>
           <p style={{ margin: "2px 0 0", fontSize: 9.5, color: "#6E6690" }}>{c.sub}</p>
@@ -808,11 +868,13 @@ function MICFooter({ tzOffset, lastUpdated }) {
       }}
     >
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <span>
-          🟢 API Status: <span style={{ color: "#10E5A0" }}>Live</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <ImpactDot color="#10E5A0" size={6} />
+          API Status: <span style={{ color: "#10E5A0" }}>Live</span>
         </span>
-        <span>
-          🟢 Data Feed: <span style={{ color: "#10E5A0" }}>{t("calendar.footerConnected")}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <ImpactDot color="#10E5A0" size={6} />
+          Data Feed: <span style={{ color: "#10E5A0" }}>{t("calendar.footerConnected")}</span>
         </span>
         <span>{t("calendar.footerLastSync", { time: lastUpdated ? new Date(lastUpdated).toLocaleTimeString(locale === "ar" ? "ar-EG" : "en-US") : "--" })}</span>
         <span>
@@ -1068,7 +1130,7 @@ function CalendarView({ events, loading, isAdmin }) {
   }
 
   const impact = selectedEvent ? (IMPACT_KEYS[selectedEvent.impact] || IMPACT_KEYS.low) : null;
-  const flag = selectedEvent ? (CURRENCY_FLAGS[selectedEvent.currency] || "🌐") : null;
+
   const countdownMs = selectedEvent?.event_datetime ? new Date(selectedEvent.event_datetime) - now : null;
   const countdown = countdownMs !== null ? formatCountdown(countdownMs, t("calendar.dayUnit")) : null;
   const aiData = selectedEvent?.ai_data || null;
@@ -1136,11 +1198,14 @@ function CalendarView({ events, loading, isAdmin }) {
                         background: impact.bg, color: impact.color, fontSize: 11, fontWeight: 700,
                         padding: "4px 12px", borderRadius: 20, whiteSpace: "nowrap",
                       }}>
-                        {impact.dot} {t(impact.labelKey)}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <ImpactDot color={impact.color} />
+                          {t(impact.labelKey)}
+                        </span>
                       </span>
                       <div>
                         <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#fff" }}>
-                          {flag} {selectedEvent.event_title}
+                          {selectedEvent.event_title}
                         </p>
                         <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6E6690" }}>
                           {selectedEvent.currency} · {formatArabicDate(selectedEvent.event_date)} · {selectedEvent.event_time}
@@ -1271,7 +1336,18 @@ function CalendarView({ events, loading, isAdmin }) {
                             <div key={i} style={{ background: "#0E0A1A", border: `1px solid #2A2145`, borderRadius: 3, padding: "0.9rem" }}>
                               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#F5F3FF" }}>{sc.title}</p>
                               <p style={{ margin: "8px 0 4px", fontSize: 20, fontWeight: 800, color: GOLD_LIGHT }}>{sc.probability}%</p>
-                              <p style={{ margin: "0 0 6px", fontSize: 11, color: "#F0A13C" }}>{"⭐".repeat(Math.max(1, Math.min(5, sc.stars || 1)))}</p>
+                              <p style={{ margin: "0 0 6px", display: "flex", gap: 2 }}>
+                                {Array.from({ length: 5 }, (_, si) => (
+                                  <Star
+                                    key={si}
+                                    size={11}
+                                    strokeWidth={1.75}
+                                    color="#F0A13C"
+                                    fill={si < Math.max(1, Math.min(5, sc.stars || 1)) ? "#F0A13C" : "none"}
+                                    aria-hidden
+                                  />
+                                ))}
+                              </p>
                               <p style={{ margin: 0, fontSize: 11, color: "#6E6690", lineHeight: 1.6 }}>{sc.description}</p>
                             </div>
                           ))}
@@ -1295,7 +1371,7 @@ function CalendarView({ events, loading, isAdmin }) {
                           <div key={i} style={{ padding: "0.6rem 0", borderBottom: i < aiData.assets.length - 1 ? "1px solid #1E1836" : "none" }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <span>{dir.arrow}</span>
+                                <dir.icon size={15} strokeWidth={1.75} color={dir.color} aria-hidden />
                                 <span style={{ fontSize: 13, fontWeight: 700, color: "#F5F3FF" }}>{a.name}</span>
                                 <span style={{ fontSize: 11, color: "#6E6690" }}>{a.symbol}</span>
                               </div>
@@ -1341,7 +1417,7 @@ function CalendarView({ events, loading, isAdmin }) {
                                   }}>
                                     {h.year}
                                   </span>
-                                  <span style={{ fontSize: 15 }}>{dir.arrow}</span>
+                                  <dir.icon size={15} strokeWidth={1.75} color={dir.color} aria-hidden />
                                   <div style={{ flex: 1, minWidth: 0 }}>
                                     <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#F5F3FF" }}>
                                       {h.asset} {h.symbol && <span style={{ color: "#6E6690", fontWeight: 400 }}>({h.symbol})</span>}
@@ -1370,13 +1446,19 @@ function CalendarView({ events, loading, isAdmin }) {
                     <div>
                       <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#6E6690", fontWeight: 700 }}>{t("calendar.beforeNewsTitle")}</p>
                       {(aiData?.tips_before?.length > 0 ? aiData.tips_before : raw("calendar.genericTipsBefore") || []).map((tip, i) => (
-                        <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#A79FC4" }}>❌ {tip}</p>
+                        <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#A79FC4", display: "flex", alignItems: "flex-start", gap: 6 }}>
+                          <CircleX size={13} strokeWidth={1.75} color="#FF453A" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />
+                          <span>{tip}</span>
+                        </p>
                       ))}
                     </div>
                     <div>
                       <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#6E6690", fontWeight: 700 }}>{t("calendar.afterNewsTitle")}</p>
                       {(aiData?.tips_after?.length > 0 ? aiData.tips_after : raw("calendar.genericTipsAfter") || []).map((tip, i) => (
-                        <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#A79FC4" }}>✅ {tip}</p>
+                        <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#A79FC4", display: "flex", alignItems: "flex-start", gap: 6 }}>
+                          <CircleCheck size={13} strokeWidth={1.75} color="#10E5A0" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />
+                          <span>{tip}</span>
+                        </p>
                       ))}
                     </div>
                   </div>
@@ -1409,8 +1491,9 @@ function CalendarView({ events, loading, isAdmin }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
               <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.economicCalendarTitle")}</p>
               {nextHighImpactEvent && (
-                <span style={{ fontSize: 9.5, color: "#FF453A", fontWeight: 700, direction: "ltr" }}>
-                  ⏱ {nextHighImpactCountdown || "--"}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9.5, color: "#FF453A", fontWeight: 700, direction: "ltr" }}>
+                  <Clock size={11} strokeWidth={1.75} aria-hidden />
+                  {nextHighImpactCountdown || "--"}
                 </span>
               )}
             </div>
@@ -1445,8 +1528,10 @@ function CalendarView({ events, loading, isAdmin }) {
                     color: impactFilter === f.key ? f.color : "#A79FC4",
                     border: impactFilter === f.key ? `1px solid ${f.color}66` : `1px solid #2A2145`,
                     borderRadius: 3, padding: "0.4rem 0.2rem", fontSize: 9.5, fontWeight: 700, cursor: "pointer",
+                    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
                   }}
                 >
+                  {f.key !== "all" && <ImpactDot color={f.color} size={5} />}
                   {t(f.labelKey)}
                 </button>
               ))}
@@ -1481,16 +1566,21 @@ function CalendarView({ events, loading, isAdmin }) {
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                               <span style={{ fontSize: 11, color: "#6E6690" }}>{ev.event_time}</span>
-                              <span style={{ fontSize: 15 }}>{CURRENCY_FLAGS[ev.currency] || "🌐"}</span>
+                              <CurrencyChip code={ev.currency} size={10} />
                             </div>
-                            <span style={{ fontSize: 12 }}>{impactStyle.dot}</span>
+                            <ImpactDot color={impactStyle.color} />
                           </div>
                           <p style={{ margin: "6px 0 0", fontSize: 12, fontWeight: 700, color: "#F5F3FF", lineHeight: 1.4 }}>{ev.event_title}</p>
                           <div style={{ display: "flex", gap: "0.7rem", marginTop: 6, fontSize: 10, color: "#6E6690", flexWrap: "wrap" }}>
                             {ev.previous && <span>{t("calendar.previousShort")} {ev.previous}</span>}
                             {ev.forecast && <span>{t("calendar.forecastShort")} {ev.forecast}</span>}
                             {ev.actual && <span style={{ color: GOLD_LIGHT }}>{t("calendar.actualShort")} {ev.actual}</span>}
-                            {!ev.actual && evCountdown && <span style={{ color: impactStyle.color, direction: "ltr" }}>⏱ {evCountdown}</span>}
+                            {!ev.actual && evCountdown && (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: impactStyle.color, direction: "ltr" }}>
+                                <Clock size={11} strokeWidth={1.75} aria-hidden />
+                                {evCountdown}
+                              </span>
+                            )}
                           </div>
                         </div>
                       );

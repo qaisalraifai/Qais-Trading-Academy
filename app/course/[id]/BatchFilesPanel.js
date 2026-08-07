@@ -1,5 +1,6 @@
 "use client";
 
+import { Download } from "lucide-react";
 import { useEffect, useState } from "react";
 
 // المرحلة 10: مكتبة ملفات دفعة الطالب لهاي الدورة (ملازم، أوراق عمل، مرفقات)
@@ -81,7 +82,10 @@ export default function BatchFilesPanel({ courseId }) {
               }}
             >
               <span>{f.file_name}</span>
-              <span style={{ color: "#6E6690", fontSize: 11 }}>{formatSize(f.file_size)} — تحميل ⬇</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#6E6690", fontSize: 11 }}>
+                {formatSize(f.file_size)} — تحميل
+                <Download size={12} strokeWidth={1.75} aria-hidden />
+              </span>
             </a>
           ))}
         </div>

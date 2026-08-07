@@ -1,5 +1,6 @@
 "use client";
 
+import { GraduationCap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 // المرحلة 12: دردشة دفعة الطالب لهاي الدورة — كومبوننت مستقل بيجيب بياناته لحاله،
@@ -171,7 +172,14 @@ export default function BatchChatPanel({ courseId }) {
                         color: isInstructor ? "#DCD4F7" : "#9aa",
                       }}
                     >
-                      {isInstructor ? `‍🏫 ${m.sender_name}` : m.sender_name}
+                      {isInstructor ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <GraduationCap size={12} strokeWidth={1.75} aria-hidden />
+                          {m.sender_name}
+                        </span>
+                      ) : (
+                        m.sender_name
+                      )}
                     </span>
                     <span style={{ fontSize: 10.5, color: "#6E6690" }}>{formatTime(m.created_at)}</span>
                   </div>

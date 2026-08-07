@@ -37,6 +37,6 @@ export async function GET(_request, { params }) {
     student_name: profile?.username || "طالب",
     batch_name: batch?.name || "—",
     course_title: course?.title || "—",
-    course_icon: course?.icon || "🎓",
+    course_icon: course?.icon || "graduation-cap",
   });
 }

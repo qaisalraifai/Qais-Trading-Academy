@@ -1,4 +1,5 @@
 "use client";
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { glass, gold, monoStack } from "../styles";
 
@@ -37,8 +38,11 @@ export function SubscriptionsTrendChart({ data, big = false }) {
                 {total.toLocaleString("en-US")}
               </span>
               {pctChange !== null && (
-                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: pctChange >= 0 ? "#10E5A0" : "#FF453A" }}>
-                  {pctChange >= 0 ? "↗" : "↘"} {Math.abs(pctChange)}% مقارنة بالنصف الأول من الشهر
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.85rem", fontWeight: 700, color: pctChange >= 0 ? "#10E5A0" : "#FF453A" }}>
+                  {pctChange >= 0
+                    ? <ArrowUpRight size={14} strokeWidth={2} aria-hidden />
+                    : <ArrowDownRight size={14} strokeWidth={2} aria-hidden />}
+                  {Math.abs(pctChange)}% مقارنة بالنصف الأول من الشهر
                 </span>
               )}
             </div>

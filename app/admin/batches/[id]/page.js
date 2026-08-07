@@ -11,6 +11,7 @@
 // كل وحدة رح تُبنى بمرحلتها الخاصة حسب خطة "تصميم-معماري-صفحة-الدفعة"، فهي
 // هون بس عنصر نائب (Placeholder) واضح إنها "قريبًا".
 
+import { ArrowUpRight, Square } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -182,7 +183,12 @@ export default function BatchDetailPage() {
         {!batch.is_archived && (
           batch.live_session ? (
             <button onClick={handleEndLive} disabled={liveBusy} style={s.btnDanger}>
-              {liveBusy ? "جاري الإنهاء..." : "⏹ إنهاء البث"}
+              {liveBusy ? "جاري الإنهاء..." : (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Square size={13} strokeWidth={2} fill="currentColor" aria-hidden />
+                  إنهاء البث
+                </span>
+              )}
             </button>
           ) : (
             <button onClick={handleStartLive} disabled={liveBusy} style={s.btnLive}>
@@ -244,7 +250,7 @@ function OverviewTab({ batch, instructors }) {
     <div style={s.overviewGrid}>
       <div style={s.overviewCard}>
         <span style={s.statLabel}>الدورة</span>
-        <span style={s.overviewValue}>{batch.course ? `${batch.course.icon || ""} ${batch.course.title}` : "—"}</span>
+        <span style={s.overviewValue}>{batch.course ? batch.course.title : "—"}</span>
       </div>
       <div style={s.overviewCard}>
         <span style={s.statLabel}>{batch.instructors_list?.length > 1 ? "المدربين" : "المدرب"}</span>
@@ -577,7 +583,7 @@ function AssignmentsTab({ batchId }) {
           <select style={s.input} value={form.batch_course_id} onChange={(e) => setForm({ ...form, batch_course_id: e.target.value })}>
             <option value="">عام لكل دورات الدفعة</option>
             {batchCourses.map((bc) => (
-              <option key={bc.id} value={bc.id}>{bc.course?.icon} {bc.course?.title}</option>
+              <option key={bc.id} value={bc.id}>{bc.course?.title}</option>
             ))}
           </select>
 
@@ -599,7 +605,7 @@ function AssignmentsTab({ batchId }) {
             <div key={a.id} style={s.rowItem}>
               <div style={{ minWidth: 0, cursor: "pointer" }} onClick={() => setOpenAssignment(a)}>
                 <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#F5F3FF" }}>
-                  {a.title} {a.course ? <span style={s.badgeDefault}>{a.course.icon} {a.course.title}</span> : <span style={s.badgeShared}>عام</span>}
+                  {a.title} {a.course ? <span style={s.badgeDefault}>{a.course.title}</span> : <span style={s.badgeShared}>عام</span>}
                 </p>
                 {a.description && <p style={{ color: "#A79FC4", fontSize: "0.8rem", margin: "0.3rem 0 0" }}>{a.description}</p>}
                 <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>
@@ -843,7 +849,10 @@ function LecturesTab({ batch }) {
     <div style={s.card}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
         <h3 style={{ ...s.cardTitle, margin: 0 }}>محاضرات الدفعة</h3>
-        <Link href="/admin/lectures" style={{ ...s.btnEdit, textDecoration: "none" }}>إدارة المحاضرات ↗</Link>
+        <Link href="/admin/lectures" style={{ ...s.btnEdit, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          إدارة المحاضرات
+          <ArrowUpRight size={14} strokeWidth={1.75} aria-hidden />
+        </Link>
       </div>
       <p style={s.hint}>
         هون عرض فقط — تحديد دفعة لمحاضرة أو تعديلها بيصير من صفحة "إدارة المحاضرات" المشتركة (اختاري الدفعة بالفورم هناك).
@@ -860,7 +869,7 @@ function LecturesTab({ batch }) {
               <label style={s.label}>الدورة</label>
               <select style={s.input} value={selectedLinkId} onChange={(e) => setSelectedLinkId(e.target.value)}>
                 {batchCourses.map((l) => (
-                  <option key={l.id} value={l.id}>{l.course?.icon} {l.course?.title}</option>
+                  <option key={l.id} value={l.id}>{l.course?.title}</option>
                 ))}
               </select>
             </div>
@@ -1011,7 +1020,7 @@ function QuizzesTab({ batchId }) {
               <label style={s.label}>الدورة</label>
               <select style={s.input} value={selectedLinkId} onChange={(e) => setSelectedLinkId(e.target.value)}>
                 {batchCourses.map((l) => (
-                  <option key={l.id} value={l.id}>{l.course?.icon} {l.course?.title}</option>
+                  <option key={l.id} value={l.id}>{l.course?.title}</option>
                 ))}
               </select>
             </div>
@@ -1351,7 +1360,7 @@ function CoursesTab({ batchId }) {
                 </div>
                 <div>
                   <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 700, color: "#F5F3FF" }}>
-                    {link.course ? `${link.course.icon || ""} ${link.course.title}` : "دورة محذوفة"}
+                    {link.course ? link.course.title : "دورة محذوفة"}
                   </p>
                 </div>
               </div>
@@ -1445,7 +1454,7 @@ function FilesTab({ batchId }) {
           <select style={s.input} value={uploadCourseId} onChange={(e) => setUploadCourseId(e.target.value)}>
             <option value="">مشتركة لكل دورات الدفعة</option>
             {batchCourses.map((bc) => (
-              <option key={bc.id} value={bc.id}>{bc.course?.icon} {bc.course?.title}</option>
+              <option key={bc.id} value={bc.id}>{bc.course?.title}</option>
             ))}
           </select>
         </div>
@@ -1464,7 +1473,7 @@ function FilesTab({ batchId }) {
             <option value="all">كل الملفات</option>
             <option value="shared">مشتركة فقط</option>
             {batchCourses.map((bc) => (
-              <option key={bc.id} value={bc.id}>{bc.course?.icon} {bc.course?.title}</option>
+              <option key={bc.id} value={bc.id}>{bc.course?.title}</option>
             ))}
           </select>
         </div>
@@ -1481,7 +1490,7 @@ function FilesTab({ batchId }) {
               <div style={{ minWidth: 0 }}>
                 <a href={f.download_url || "#"} target="_blank" rel="noopener noreferrer" style={s.fileLink}>{f.file_name}</a>
                 <p style={{ ...s.mono, margin: "0.25rem 0 0" }}>
-                  {formatFileSize(f.file_size)} — {fmtDateTime(f.created_at)} — {f.course ? <span style={s.badgeDefault}>{f.course.icon} {f.course.title}</span> : <span style={s.badgeShared}>مشتركة</span>}
+                  {formatFileSize(f.file_size)} — {fmtDateTime(f.created_at)} — {f.course ? <span style={s.badgeDefault}>{f.course.title}</span> : <span style={s.badgeShared}>مشتركة</span>}
                 </p>
               </div>
               <button onClick={() => handleDelete(f)} disabled={deletingId === f.id} style={s.btnDanger}>
@@ -1550,7 +1559,7 @@ function AnnouncementsTab({ batchId }) {
         <select style={s.input} value={form.batch_course_id} onChange={(e) => setForm({ ...form, batch_course_id: e.target.value })}>
           <option value="">عام لكل دورات الدفعة</option>
           {batchCourses.map((bc) => (
-            <option key={bc.id} value={bc.id}>{bc.course?.icon} {bc.course?.title}</option>
+            <option key={bc.id} value={bc.id}>{bc.course?.title}</option>
           ))}
         </select>
         {error && <p style={s.errorText}>{error}</p>}
@@ -1571,7 +1580,7 @@ function AnnouncementsTab({ batchId }) {
             <div key={a.id} style={s.rowItem}>
               <div style={{ minWidth: 0 }}>
                 <span style={{ color: "#F5F3FF", fontSize: "0.86rem", fontWeight: 700 }}>{a.title}</span>
-                {a.course && <span style={{ ...s.badgeDefault, marginRight: "0.4rem" }}>{a.course.icon} {a.course.title}</span>}
+                {a.course && <span style={{ ...s.badgeDefault, marginRight: "0.4rem" }}>{a.course.title}</span>}
                 {a.message && <p style={{ color: "#A79FC4", fontSize: "0.8rem", margin: "0.35rem 0 0" }}>{a.message}</p>}
                 <p style={{ ...s.mono, margin: "0.35rem 0 0" }}>{fmtDateTime(a.created_at)}</p>
               </div>

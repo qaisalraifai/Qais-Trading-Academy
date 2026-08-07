@@ -1,4 +1,5 @@
 "use client";
+import { Medal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
@@ -10,7 +11,8 @@ function fmt(n) {
   return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-const MEDALS = { 1: "🥇", 2: "🥈", 3: "🥉" };
+/* ألوان مراكز الصدارة الثلاثة — ذهبي / فضي / برونزي */
+const MEDAL_COLORS = { 1: "#D4AF37", 2: "#B8BCC4", 3: "#B07A45" };
 
 export default function Leaderboard() {
   const { t } = useLocale();
@@ -46,7 +48,16 @@ export default function Leaderboard() {
           <tbody>
             {data.leaderboard.map((a) => (
               <tr key={a.id}>
-                <td style={s.td}>{MEDALS[a.rank] || a.rank}</td>
+                <td style={s.td}>
+                  {MEDAL_COLORS[a.rank] ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      <Medal size={15} strokeWidth={1.75} color={MEDAL_COLORS[a.rank]} aria-hidden />
+                      {a.rank}
+                    </span>
+                  ) : (
+                    a.rank
+                  )}
+                </td>
                 <td style={s.td}>{a.username || t("affiliate.marketerFallback")}</td>
                 <td style={s.td}>{a.referrals}</td>
                 <td style={s.td}>${fmt(a.totalEarned)}</td>

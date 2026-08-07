@@ -17,7 +17,7 @@ export default function ReferralLink({ link, clicks, code }) {
   async function shareLink() {
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Qais Trading Academy", text: "انضم لأكاديمية Qais Trading عن طريق رابطي 👇", url: link });
+        await navigator.share({ title: "Qais Trading Academy", text: "انضم لأكاديمية Qais Trading عن طريق رابطي", url: link });
       } catch {
         // المستخدم ألغى المشاركة — تجاهل
       }
@@ -69,7 +69,7 @@ export default function ReferralLink({ link, clicks, code }) {
                 {showQr ? "إخفاء QR" : "عرض QR Code"}
               </button>
               <a
-                href={`https://wa.me/?text=${encodeURIComponent("انضم لأكاديمية Qais Trading عن طريق رابطي 👇\n" + link)}`}
+                href={`https://wa.me/?text=${encodeURIComponent("انضم لأكاديمية Qais Trading عن طريق رابطي\n" + link)}`}
                 target="_blank"
                 rel="noreferrer"
                 style={{ ...btnGhost, textDecoration: "none", display: "inline-flex", alignItems: "center" }}
@@ -77,7 +77,7 @@ export default function ReferralLink({ link, clicks, code }) {
                 واتساب
               </a>
               <a
-                href={`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("انضم لأكاديمية Qais Trading 👇")}`}
+                href={`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("انضم لأكاديمية Qais Trading")}`}
                 target="_blank"
                 rel="noreferrer"
                 style={{ ...btnGhost, textDecoration: "none", display: "inline-flex", alignItems: "center" }}

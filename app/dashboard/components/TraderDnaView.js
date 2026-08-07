@@ -1,5 +1,5 @@
 "use client";
-import { Dna } from "lucide-react";
+import { BarChart3, CalendarDays, CalendarX2, Clock3, Crosshair, Dna, Flag, Globe2, Medal, Puzzle, TriangleAlert, Waves, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
@@ -26,13 +26,21 @@ const cardStyle = {
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
 };
 
-function SectionCard({ title, icon, children, style, right }) {
+/* أيقونة كل نمط تداول — منفصلة عن lib/trader-dna حتى يضل الملف خالي من React */
+const TRADER_TYPE_ICONS = {
+  sniper: Crosshair,
+  scalper: Zap,
+  day_trader: CalendarDays,
+  swing_trader: Waves,
+};
+
+function SectionCard({ title, icon: Icon, children, style, right }) {
   return (
     <div style={{ ...cardStyle, padding: "1.4rem 1.6rem", marginBottom: "1.2rem", ...style }}>
       {title && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 17 }}>{icon}</span>
+            {Icon && <Icon size={17} strokeWidth={1.75} color={GOLD} aria-hidden />}
             <span style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>{title}</span>
           </div>
           {right}
@@ -108,7 +116,7 @@ function Pill({ children, color = GOLD }) {
   );
 }
 
-function StatBlock({ icon, label, value, sub }) {
+function StatBlock({ icon: Icon, label, value, sub }) {
   return (
     <div
       style={{
@@ -120,7 +128,7 @@ function StatBlock({ icon, label, value, sub }) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#A79FC4", fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
-        <span>{icon}</span>
+        {Icon && <Icon size={14} strokeWidth={1.75} color={GOLD_DARK} aria-hidden />}
         <span>{label}</span>
       </div>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>{value}</div>
@@ -148,7 +156,7 @@ function QuizFlow({ onFinish, onCancel }) {
   }
 
   return (
-    <SectionCard title={t("traderDna.quizTitle")} icon="🧬">
+    <SectionCard title={t("traderDna.quizTitle")} icon={Dna}>
       <div style={{ marginBottom: "1.2rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#A79FC4", marginBottom: 6 }}>
           <span>{t("traderDna.questionOf", { current: step + 1, total: DNA_QUESTIONS.length })}</span>
@@ -217,6 +225,7 @@ function QuizFlow({ onFinish, onCancel }) {
 function DnaCard({ profile, insights, onRetake }) {
   const { t } = useLocale();
   const typeInfo = TRADER_TYPES[profile.trader_type] || {};
+  const TypeIcon = TRADER_TYPE_ICONS[profile.trader_type] || null;
   return (
     <div
       style={{
@@ -241,11 +250,12 @@ function DnaCard({ profile, insights, onRetake }) {
       />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.2rem", position: "relative" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 26 }}><Dna size={14} aria-hidden /></span>
+          <Dna size={24} strokeWidth={1.75} color={GOLD} aria-hidden />
           <div>
             <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>Trader DNA</div>
-            <div style={{ fontSize: 12.5, color: "#A79FC4" }}>
-              {typeInfo.icon} {typeInfo.label}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#A79FC4" }}>
+              {TypeIcon && <TypeIcon size={14} strokeWidth={1.75} aria-hidden />}
+              <span>{typeInfo.label}</span>
             </div>
           </div>
         </div>
@@ -417,7 +427,7 @@ export default function TraderDnaView({ userId: userIdProp }) {
       <DnaCard profile={profile} insights={insights} onRetake={() => setShowQuiz(true)} />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.2rem" }}>
-        <SectionCard title={t("traderDna.strengthsTitle")} icon="💪">
+        <SectionCard title={t("traderDna.strengthsTitle")} icon={Zap}>
           {profile.strengths?.length ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {profile.strengths.map((s, i) => (
@@ -432,7 +442,7 @@ export default function TraderDnaView({ userId: userIdProp }) {
           )}
         </SectionCard>
 
-        <SectionCard title={t("traderDna.weaknessesTitle")} icon="️">
+        <SectionCard title={t("traderDna.weaknessesTitle")} icon={TriangleAlert}>
           {profile.weaknesses?.length ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {profile.weaknesses.map((w, i) => (
@@ -449,7 +459,7 @@ export default function TraderDnaView({ userId: userIdProp }) {
       </div>
 
       {weeklyPlanCache?.length > 0 && (
-        <SectionCard title={t("traderDna.weeklyPlanTitle")} icon="📌">
+        <SectionCard title={t("traderDna.weeklyPlanTitle")} icon={Flag}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {weeklyPlanCache.map((item, i) => (
               <div
@@ -474,24 +484,24 @@ export default function TraderDnaView({ userId: userIdProp }) {
         </SectionCard>
       )}
 
-      <SectionCard title={t("traderDna.bestEnvTitle")} icon="🌍">
+      <SectionCard title={t("traderDna.bestEnvTitle")} icon={Globe2}>
         {insights?.hasEnoughData ? (
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.9rem" }}>
-            <StatBlock icon="📊" label={t("traderDna.overallWinRate")} value={`${insights.winRate}%`} sub={t("traderDna.tradesRecorded", { count: insights.totalTrades })} />
+            <StatBlock icon={BarChart3} label={t("traderDna.overallWinRate")} value={`${insights.winRate}%`} sub={t("traderDna.tradesRecorded", { count: insights.totalTrades })} />
             {insights.bestAsset && (
-              <StatBlock icon="🥇" label={t("traderDna.bestAsset")} value={insights.bestAsset.name} sub={t("traderDna.winRateWithSample", { rate: insights.bestAsset.winRate, sample: insights.bestAsset.sample })} />
+              <StatBlock icon={Medal} label={t("traderDna.bestAsset")} value={insights.bestAsset.name} sub={t("traderDna.winRateWithSample", { rate: insights.bestAsset.winRate, sample: insights.bestAsset.sample })} />
             )}
             {insights.bestSetup && (
-              <StatBlock icon="🧩" label={t("traderDna.bestSetup")} value={insights.bestSetup.name} sub={t("traderDna.winRateWithSample", { rate: insights.bestSetup.winRate, sample: insights.bestSetup.sample })} />
+              <StatBlock icon={Puzzle} label={t("traderDna.bestSetup")} value={insights.bestSetup.name} sub={t("traderDna.winRateWithSample", { rate: insights.bestSetup.winRate, sample: insights.bestSetup.sample })} />
             )}
             {insights.bestSession && (
-              <StatBlock icon="🕒" label={t("traderDna.bestSession")} value={SESSION_LABELS[insights.bestSession.name] || insights.bestSession.name} sub={t("traderDna.winRateOnly", { rate: insights.bestSession.winRate })} />
+              <StatBlock icon={Clock3} label={t("traderDna.bestSession")} value={SESSION_LABELS[insights.bestSession.name] || insights.bestSession.name} sub={t("traderDna.winRateOnly", { rate: insights.bestSession.winRate })} />
             )}
             {insights.bestDay && (
-              <StatBlock icon="📅" label={t("traderDna.bestDay")} value={insights.bestDay.name} sub={t("traderDna.winRateOnly", { rate: insights.bestDay.winRate })} />
+              <StatBlock icon={CalendarDays} label={t("traderDna.bestDay")} value={insights.bestDay.name} sub={t("traderDna.winRateOnly", { rate: insights.bestDay.winRate })} />
             )}
             {insights.worstDay && (
-              <StatBlock icon="🔻" label={t("traderDna.worstDay")} value={insights.worstDay.name} sub={t("traderDna.winRateOnly", { rate: insights.worstDay.winRate })} />
+              <StatBlock icon={CalendarX2} label={t("traderDna.worstDay")} value={insights.worstDay.name} sub={t("traderDna.winRateOnly", { rate: insights.worstDay.winRate })} />
             )}
           </div>
         ) : (

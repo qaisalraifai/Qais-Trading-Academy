@@ -35,7 +35,7 @@ export async function POST(request) {
     .insert({
       code: code.trim().toLowerCase(),
       title_ar,
-      badge_icon: badge_icon || "🏅",
+      badge_icon: badge_icon || "medal",
       color_hex: color_hex || "#DCD4F7",
       min_active_clients: Number(min_active_clients) || 0,
       signup_amount: Number(signup_amount) || 0,

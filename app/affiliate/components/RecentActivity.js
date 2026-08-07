@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { BadgeCheck, CircleCheck, CircleDollarSign, CircleX, Dot, Gift, Landmark, Ticket, UserPlus } from "lucide-react";
 import { playBeep } from "@/lib/beep";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
@@ -8,14 +9,25 @@ const CARD = "#0A0614";
 const BORDER = "#241C3E";
 
 const ICONS = {
-  commission: "💰",
-  badge: "🏅",
-  wheel_credit: "🎡",
-  wheel_spin: "🎁",
-  referral_joined: "👋",
-  application_approved: "✅",
-  application_rejected: "️",
-  payout: "🏦",
+  commission: CircleDollarSign,
+  badge: BadgeCheck,
+  wheel_credit: Ticket,
+  wheel_spin: Gift,
+  referral_joined: UserPlus,
+  application_approved: CircleCheck,
+  application_rejected: CircleX,
+  payout: Landmark,
+};
+
+const ICON_COLORS = {
+  commission: GOLD,
+  badge: GOLD,
+  wheel_credit: "#7C4DFF",
+  wheel_spin: "#7C4DFF",
+  referral_joined: "#10E5A0",
+  application_approved: "#10E5A0",
+  application_rejected: "#FF453A",
+  payout: "#7C4DFF",
 };
 
 function timeAgo(dateStr, t) {
@@ -75,7 +87,10 @@ export default function RecentActivity() {
         <div style={{ maxHeight: 320, overflowY: "auto" }}>
           {items.map((n, i) => (
             <div key={n.id} style={{ ...s.row, borderBottom: i < items.length - 1 ? `1px solid #141024` : "none" }}>
-              <span style={s.icon}>{ICONS[n.type] || "⚪"}</span>
+              {(() => {
+                const Icon = ICONS[n.type] || Dot;
+                return <Icon size={16} strokeWidth={1.75} color={ICON_COLORS[n.type] || "#6E6690"} style={s.icon} aria-hidden />;
+              })()}
               <div style={{ flex: 1 }}>
                 <p style={s.title}>{n.title}</p>
                 {n.message && <p style={s.msg}>{n.message}</p>}
@@ -97,7 +112,7 @@ const s = {
   liveDot: { width: 6, height: 6, borderRadius: "50%", background: "#10E5A0", boxShadow: "0 0 6px #10E5A0" },
   empty: { color: "#4A4368", fontSize: "0.85rem" },
   row: { display: "flex", gap: 10, padding: "0.7rem 0" },
-  icon: { fontSize: "1rem" },
+  icon: { flexShrink: 0, marginTop: 2 },
   title: { fontSize: "0.85rem", color: "#F5F3FF", fontWeight: 600 },
   msg: { fontSize: "0.78rem", color: "#A79FC4", marginTop: 2, lineHeight: 1.5 },
   time: { fontSize: "0.7rem", color: "#4A4368", marginTop: 3 },

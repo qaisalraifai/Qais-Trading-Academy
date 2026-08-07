@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Trophy } from "lucide-react";
+import { ICON_OPTIONS, resolveIcon } from "@/lib/icon-registry";
 import { gold, s as baseStyles, glass } from "../styles";
 
-const EMPTY = { code: "", title_ar: "", description_ar: "", icon: "🏆", metric: "total_referrals", threshold: 10, bonus_amount: 0, sort_order: 0 };
+const EMPTY = { code: "", title_ar: "", description_ar: "", icon: "trophy", metric: "total_referrals", threshold: 10, bonus_amount: 0, sort_order: 0 };
 
 const METRIC_LABELS = {
   total_referrals: "إجمالي عدد الإحالات (تراكمي)",
@@ -115,8 +117,14 @@ export default function AchievementsManager() {
           <Field label="العنوان">
             <input style={styles.input} value={form.title_ar} onChange={(e) => setForm({ ...form, title_ar: e.target.value })} />
           </Field>
-          <Field label="الأيقونة (إيموجي)">
-            <input style={styles.input} value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} />
+          <Field label="الأيقونة">
+            <select style={styles.input} value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })}>
+              {ICON_OPTIONS.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="المقياس">
             <select style={styles.input} value={form.metric} onChange={(e) => setForm({ ...form, metric: e.target.value })}>
@@ -164,7 +172,15 @@ export default function AchievementsManager() {
             <tbody>
               {items.map((a) => (
                 <tr key={a.id}>
-                  <td style={styles.td}>{a.icon} {a.title_ar}</td>
+                  <td style={styles.td}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                      {(() => {
+                        const AchIcon = resolveIcon(a.icon, Trophy);
+                        return <AchIcon size={15} strokeWidth={1.75} aria-hidden />;
+                      })()}
+                      {a.title_ar}
+                    </span>
+                  </td>
                   <td style={styles.td}>{METRIC_LABELS[a.metric] || a.metric} — {a.threshold}</td>
                   <td style={styles.td}>{a.bonus_amount > 0 ? `$${a.bonus_amount}` : "—"}</td>
                   <td style={styles.td}>

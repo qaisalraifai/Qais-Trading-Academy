@@ -1,4 +1,5 @@
 "use client";
+import { Inbox } from "lucide-react";
 import { gold, ink, glass, shadowLuxe, shadowGold, gradientGold, displayStack, monoStack, transition } from "@/app/admin/styles";
 
 export const GOLD = gold;
@@ -141,10 +142,23 @@ export function ShimmerStyles() {
   );
 }
 
-export function EmptyState({ icon = "📭", title, desc }) {
+export function EmptyState({ icon: Icon = Inbox, title, desc }) {
   return (
     <div style={{ textAlign: "center", padding: "2.2rem 1rem" }}>
-      <div style={{ fontSize: "2rem", marginBottom: 10, opacity: 0.7 }}>{icon}</div>
+      <div
+        style={{
+          width: 46,
+          height: 46,
+          margin: "0 auto 12px",
+          display: "grid",
+          placeItems: "center",
+          borderRadius: 12,
+          border: `1px solid ${BORDER}`,
+          background: CARD_BG,
+        }}
+      >
+        <Icon size={20} strokeWidth={1.75} color="#6E6690" aria-hidden />
+      </div>
       <p style={{ color: "#A79FC4", fontWeight: 700, fontSize: "0.9rem", marginBottom: 4 }}>{title}</p>
       {desc && <p style={{ color: "#6E6690", fontSize: "0.78rem" }}>{desc}</p>}
     </div>

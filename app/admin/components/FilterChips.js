@@ -6,7 +6,7 @@ export const chipDefs = [
   ["expired", "Expired"],
   ["trial", "Trial"],
   ["elite", "Elite"],
-  ["pending", "⏳ Pending"],
+  ["pending", "Pending"],
   ["cancelled", "Cancelled"],
 ];
 

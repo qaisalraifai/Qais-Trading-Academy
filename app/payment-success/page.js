@@ -20,7 +20,7 @@ export default function PaymentSuccessPage() {
         error: userError,
       } = await supabase.auth.getUser();
 
-      // 🔍 تشخيص مؤقت — احذفيه بعد ما نحل المشكلة
+      // تشخيص مؤقت — احذفيه بعد ما نحل المشكلة
       console.log("DEBUG user:", user ? { id: user.id, aud: user.aud, role: user.role } : null);
       console.log("DEBUG userError:", userError);
 
@@ -35,7 +35,7 @@ export default function PaymentSuccessPage() {
         .eq("id", user.id)
         .maybeSingle();
 
-      // 🔍 تشخيص مؤقت — احذفيه بعد ما نحل المشكلة
+      // تشخيص مؤقت — احذفيه بعد ما نحل المشكلة
       console.log("DEBUG profile:", profile);
       console.log("DEBUG profileError:", profileError);
 

@@ -12,7 +12,7 @@ const emptyForm = {
 };
 
 const VIDEO_PROVIDER_OPTIONS = [
-  { value: "youtube", label: "▶️ يوتيوب (رابط عادي أو غير مدرج)" },
+  { value: "youtube", label: "يوتيوب (رابط عادي أو غير مدرج)" },
   { value: "drive", label: "Google Drive" },
 ];
 
@@ -388,14 +388,14 @@ export default function AdminLecturesPage() {
                   <tr key={lecture.id} style={s.tr}>
                     <td style={s.td}><span style={s.mono}>{lecture.order_index}</span></td>
                     <td style={s.td}><span style={s.username}>{lecture.title}</span></td>
-                    <td style={s.td}><span style={s.mono}>{course ? `${course.icon} ${course.title}` : "—"}</span></td>
+                    <td style={s.td}><span style={s.mono}>{course ? course.title : "—"}</span></td>
                     <td style={s.td}>
                       {batch ? <span style={s.mono}>{batch.name}</span> : <span style={s.badgeShared}>مشتركة</span>}
                     </td>
                     <td style={s.td}><span style={s.mono}>{lecture.chapter || "—"}</span></td>
                     <td style={s.td}>
                       <span style={s.mono}>
-                        {lecture.video_provider === "drive" ? "Drive" : "▶️ يوتيوب"}
+                        {lecture.video_provider === "drive" ? "Drive" : "يوتيوب"}
                       </span>
                     </td>
                     <td style={s.td}><span style={s.mono}>{diff?.value ? diff.label : "—"}</span></td>

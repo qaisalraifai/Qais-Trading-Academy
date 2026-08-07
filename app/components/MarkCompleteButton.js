@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase-client";
 
@@ -33,7 +34,12 @@ export default function MarkCompleteButton({ lectureId, isCompleted }) {
 
   return (
     <button onClick={handleMark} disabled={loading} style={styles.button}>
-      {loading ? "جاري الحفظ..." : "✔️ علّمها كمكتملة"}
+      {loading ? "جاري الحفظ..." : (
+        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+          <Check size={15} strokeWidth={2} aria-hidden />
+          علّمها كمكتملة
+        </span>
+      )}
     </button>
   );
 }

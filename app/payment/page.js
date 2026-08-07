@@ -1,5 +1,5 @@
 "use client";
-import { Crown, Settings } from "lucide-react";
+import { Bitcoin, CreditCard, Crown, Settings, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -114,7 +114,13 @@ export default function PaymentPage() {
               providers.map((p) => (
                 <button key={p.code} style={styles.providerBtn} onClick={() => handlePayment(p.code)} disabled={loading}>
                   <div style={styles.providerBtnMain}>
-                    <span>{providerIcon(p.type)} {p.name}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                      {(() => {
+                        const ProviderIcon = providerIcon(p.type);
+                        return <ProviderIcon size={16} strokeWidth={1.75} aria-hidden />;
+                      })()}
+                      {p.name}
+                    </span>
                     {loading && <span style={{ fontSize: "0.75rem" }}>جاري التحويل...</span>}
                   </div>
                   {p.description && <div style={styles.providerBtnDesc}>{p.description}</div>}
@@ -156,9 +162,9 @@ export default function PaymentPage() {
 }
 
 function providerIcon(type) {
-  if (type === "card") return "💳";
-  if (type === "crypto_manual" || type === "crypto_auto") return "🪙";
-  return "💰";
+  if (type === "card") return CreditCard;
+  if (type === "crypto_manual" || type === "crypto_auto") return Bitcoin;
+  return Wallet;
 }
 
 const gold = "#DCD4F7";

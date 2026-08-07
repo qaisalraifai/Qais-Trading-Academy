@@ -1,4 +1,5 @@
 "use client";
+import { Ban, Eye, Gift, Mail, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { gold, glass, transition, monoStack, statusColors, planColors, daysLeftColor, timeAgo } from "../styles";
 
@@ -38,13 +39,13 @@ function Avatar({ user }) {
 }
 
 const actionsList = [
-  ["view", "👁", "عرض"],
-  ["edit", "✏", "تعديل"],
- ["renew","","تجديد"],
- ["activate_free","","تفعيل مجاني"],
-  ["email", "📧", "إشعار"],
-  ["suspend", "🚫", "إيقاف"],
- ["delete","","حذف"],
+  ["view", Eye, "عرض"],
+  ["edit", Pencil, "تعديل"],
+  ["renew", RefreshCw, "تجديد"],
+  ["activate_free", Gift, "تفعيل مجاني"],
+  ["email", Mail, "إشعار"],
+  ["suspend", Ban, "إيقاف"],
+  ["delete", Trash2, "حذف"],
 ];
 
 async function activateFreeDirect(user) {
@@ -72,7 +73,7 @@ function ActionsBar({ user, onAction }) {
       onClick={(e) => e.stopPropagation()}
       style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", justifyContent: "flex-start" }}
     >
-      {actionsList.map(([key, icon, label]) => {
+      {actionsList.map(([key, Icon, label]) => {
         if (key === "activate_free" && user.role === "admin") return null; // ما تظهر لحساب الأدمن، مو محتاجها
         const isFree = key === "activate_free";
         return (
@@ -98,7 +99,7 @@ function ActionsBar({ user, onAction }) {
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = key === "delete" ? "#FF453A" : gold; e.currentTarget.style.background = "#141024"; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1E1836"; e.currentTarget.style.background = "none"; }}
           >
-            {icon}
+            <Icon size={14} strokeWidth={1.75} aria-hidden />
           </button>
         );
       })}

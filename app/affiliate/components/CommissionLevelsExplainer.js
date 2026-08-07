@@ -1,5 +1,5 @@
 "use client";
-import { Lightbulb, Link2 } from "lucide-react";
+import { Award, Crown, GitFork, Handshake, Infinity as InfinityIcon, Lightbulb, Link2, Medal, Repeat, Target, Trophy, Zap } from "lucide-react";
 import { useState } from "react";
 import {
   GOLD,
@@ -38,55 +38,55 @@ const LEVEL_ROWS = (settings) => [
 
 const BONUS_ITEMS = [
   {
-    icon: "⚡",
+    icon: Zap,
     title: "Fast Start — انطلاقة سريعة",
     when: "مرة وحدة، أول اشتراك ناجح لعضو جديد جبته",
     desc: "مكافأة فورية بتوصلك لحظة ما أول شخص تدعوه يدفع اشتراكه لأول مرة. هدفها تحفّزك تبلّش بسرعة.",
   },
   {
-    icon: "🎯",
+    icon: Target,
     title: "Direct Bonus — عمولة مباشرة",
     when: "على كل عضو تدعوه إنت بنفسك",
     desc: "عمولة ثابتة أو نسبة من كل عضو ينضم مباشرة تحتك بالشجرة الثنائية (مو زي عمولة المستوى 1 بمسار الإحالة البسيط — هاي جزء من نظام الشبكة).",
   },
   {
-    icon: "🌳",
+    icon: GitFork,
     title: "Binary Bonus — عمولة ثنائية",
     when: "أسبوعي/دوري، حسب توازن فريقك",
     desc: "شجرتك مقسومة لرجلين: يسار ويمين. العمولة بتنحسب على «الرجل الأضعف» (الأقل إنتاجاً)، والفائض من الرجل الأقوى بيترحّل تلقائياً للدورة الجاية (Carry Forward) بدل ما يضيع.",
   },
   {
-    icon: "🔁",
+    icon: Repeat,
     title: "Renewal Bonus — عمولة تجديد",
     when: "شهري، عند كل تجديد اشتراك بفريقك",
     desc: "دخل متكرر: كل مرة عضو بفريقك (مو بس اللي دعوتهم مباشرة) يجدّد اشتراكه الشهري، بتاخذ نسبة من قيمة التجديد.",
   },
   {
-    icon: "🤝",
+    icon: Handshake,
     title: "Matching Bonus — عمولة مطابقة",
     when: "شهري، مبني على أرباح فريقك المباشر",
     desc: "نسبة من إجمالي العمولات (Direct + Binary) يلي كسبها الأشخاص يلي رعيتهم إنت مباشرة. يعني كل ما ساعدت فريقك يكسب أكتر، إنت كمان بتكسب أكتر.",
   },
   {
-    icon: "🏅",
+    icon: Medal,
     title: "Rank Bonus — مكافأة رتبة",
     when: "مرة وحدة، عند كل ترقية رتبة",
     desc: "مبلغ مقطوع بينصرف مرة وحدة أول ما تحقق شروط رتبة جديدة (عدد مباشرين + إجمالي CV بالفريقين).",
   },
   {
-    icon: "👑",
+    icon: Crown,
     title: "Leadership Pool — صندوق القيادة",
     when: "شهري، توزيع من صندوق مشترك",
     desc: "نسبة من إجمالي مبيعات الأكاديمية بتتجمع بصندوق شهري، وبتنوزّع على القادة يلي وصلوا لرتب عليا حسب نقاطهم — دخل إضافي فوق كل شي فوق.",
   },
   {
-    icon: "️",
+    icon: InfinityIcon,
     title: "Infinity Bonus",
     when: "شهري، لأعلى الرتب بس",
     desc: "لما توصل لأعلى رتبة، بتاخذ نسبة من إنتاج فريقك الكامل بدون حد أقصى بالعمق (يعني حتى لو الفريق كبير جداً وامتد أجيال كتير تحتك).",
   },
   {
-    icon: "🏆",
+    icon: Trophy,
     title: "Achievement Bonus — مكافأة إنجاز",
     when: "عند تحقيق أهداف/تحديات محددة",
     desc: "مكافآت إضافية بتحطها الإدارة أحياناً كتحديات موسمية أو أهداف نمو معينة (مو دخل ثابت شهري).",
@@ -240,7 +240,7 @@ export default function CommissionLevelsExplainer({ settings }) {
         {showMlm && (
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: "1.1rem" }}>🌳</span>
+              <GitFork size={17} strokeWidth={1.75} color={GOLD} aria-hidden />
               <h3 style={{ fontSize: "0.98rem", fontWeight: 800, fontFamily: displayStack, margin: 0 }}>
                 المسار الثاني: الشبكة الثنائية (نظام النقاط والرتب)
               </h3>
@@ -266,7 +266,7 @@ export default function CommissionLevelsExplainer({ settings }) {
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                    <span style={{ fontSize: "1.05rem" }}>{b.icon}</span>
+                    {b.icon && <b.icon size={16} strokeWidth={1.75} color={GOLD} aria-hidden />}
                     <span style={{ fontWeight: 700, fontSize: "0.82rem", color: "#F5F3FF" }}>{b.title}</span>
                   </div>
                   <p style={{ fontSize: "0.72rem", color: GOLD, marginBottom: 4, fontFamily: monoStack, letterSpacing: 0.3 }}>{b.when}</p>

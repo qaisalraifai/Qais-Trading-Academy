@@ -1,5 +1,7 @@
 "use client";
 
+import { BookOpen, Users } from "lucide-react";
+import { resolveIcon } from "@/lib/icon-registry";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -56,7 +58,12 @@ export default function BatchSelectClient({ course, batches }) {
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.75rem" }}>
-          <div style={{ fontSize: 36 }}>{course.icon}</div>
+          <div style={{ display: "flex" }}>
+            {(() => {
+              const CourseIcon = resolveIcon(course.icon, BookOpen);
+              return <CourseIcon size={34} strokeWidth={1.5} color="#F5F3FF" aria-hidden />;
+            })()}
+          </div>
           <div>
             <p style={{ color: "#DCD4F7", fontSize: 11, letterSpacing: 2, margin: 0 }}>QAIS TRADING ACADEMY</p>
             <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800 }}>{course.title}</h1>
@@ -126,8 +133,8 @@ export default function BatchSelectClient({ course, batches }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.9rem", marginTop: 6, fontSize: 12.5, color: "#6E6690" }}>
                     <span>تبدأ: {formatDate(batch.start_date)}</span>
                     {batch.end_date && <span>تنتهي: {formatDate(batch.end_date)}</span>}
-                    <span>
-                      🪑{" "}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      <Users size={13} strokeWidth={1.75} aria-hidden />
                       {batch.seats_total != null ? `${batch.seats_remaining} مقعد متبقي من ${batch.seats_total}` : "مقاعد غير محدودة"}
                     </span>
                   </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { BookOpen } from "lucide-react";
+import { resolveIcon } from "@/lib/icon-registry";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
@@ -75,7 +77,12 @@ export default function CalendarClient({ course, batch, events }) {
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
         <div style={s.header}>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <div style={{ fontSize: 32 }}>{course.icon}</div>
+            <div style={{ display: "flex" }}>
+              {(() => {
+                const CourseIcon = resolveIcon(course.icon, BookOpen);
+                return <CourseIcon size={30} strokeWidth={1.5} color="#F5F3FF" aria-hidden />;
+              })()}
+            </div>
             <div>
               <p style={s.headerSub}>QAIS TRADING ACADEMY</p>
               <h1 style={s.headerTitle}>تقويم {batch?.name ? `دفعة ${batch.name}` : "الدفعة"}</h1>

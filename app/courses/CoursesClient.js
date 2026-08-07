@@ -1,5 +1,6 @@
 "use client";
-import { GraduationCap, Star } from "lucide-react";
+import { Award, BookOpen, CircleCheck, ClipboardCheck, Clock, GraduationCap, Play, Star, TrendingUp } from "lucide-react";
+import { resolveIcon } from "@/lib/icon-registry";
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
@@ -367,15 +368,22 @@ function LecturesView({
                           width: 36, height: 36, borderRadius: "50%",
                           background: isCompleted ? "#10E5A022" : `#2A2145`,
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 15, flexShrink: 0,
+                          flexShrink: 0,
                         }}>
-                          {isCompleted ? "✅" : "▶️"}
+                          {isCompleted
+                            ? <CircleCheck size={16} strokeWidth={1.75} color="#10E5A0" aria-hidden />
+                            : <Play size={14} strokeWidth={1.75} color={GOLD_LIGHT} fill={GOLD_LIGHT} aria-hidden />}
                         </div>
 
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>{lecture.title}</div>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.55rem", marginTop: 4, fontSize: 11, color: "#6E6690" }}>
-                            {duration && <span>⏱ {duration}</span>}
+                            {duration && (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <Clock size={11} strokeWidth={1.75} aria-hidden />
+                                {duration}
+                              </span>
+                            )}
                             {diff && <span style={{ color: diff.color }}>{t(diff.labelKey)}</span>}
                             {lecture.practice_type && <span>{t("courses.practiceExercise")}</span>}
                             {lastWatched && <span>{t("courses.lastWatchedLabel", { date: lastWatched })}</span>}
@@ -464,7 +472,7 @@ function LecturesView({
           }}
         >
           <span>{continueLecture ? t("courses.continueLearning") : t("courses.startNow")}</span>
-          <span>▶️</span>
+          <Play size={13} strokeWidth={2} fill="currentColor" aria-hidden />
         </div>
       </div>
 
@@ -558,10 +566,13 @@ function LecturesView({
                 <div
                   style={{
                     width: 46, height: 46, borderRadius: 3, background: course.color.soft,
-                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                   }}
                 >
-                  {course.icon}
+                  {(() => {
+                    const CourseIcon = resolveIcon(course.icon, BookOpen);
+                    return <CourseIcon size={22} strokeWidth={1.75} color={GOLD_LIGHT} aria-hidden />;
+                  })()}
                 </div>
                 {course.difficultyLabel && (
                   <span
@@ -583,7 +594,10 @@ function LecturesView({
                 )}
                 <div style={{ display: "flex", gap: "0.9rem", fontSize: 11.5, color: "#A79FC4", marginTop: 8 }}>
                   <span>{t("courses.lessonsSuffix", { count: course.totalLessons })}</span>
-                  <span>⏱ {t("courses.hoursShort", { hours: course.totalHours.toFixed(1) })}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <Clock size={12} strokeWidth={1.75} aria-hidden />
+                    {t("courses.hoursShort", { hours: course.totalHours.toFixed(1) })}
+                  </span>
                 </div>
               </div>
 
@@ -619,19 +633,19 @@ function LecturesView({
       {/* شريط الميزات */}
       <div style={{ ...cardStyle, padding: "1.2rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem" }}>
         {[
-          { icon: "🎓", label: t("courses.featureCertTitle"), sub: t("courses.featureCertSub") },
-          { icon: "🏆", label: t("courses.featureQuizTitle"), sub: t("courses.featureQuizSub") },
-          { icon: "📈", label: t("courses.featurePracticeTitle"), sub: t("courses.featurePracticeSub") },
-          { icon: "⭐", label: t("courses.featureRewardsTitle"), sub: t("courses.featureRewardsSub") },
+          { icon: GraduationCap, label: t("courses.featureCertTitle"), sub: t("courses.featureCertSub") },
+          { icon: ClipboardCheck, label: t("courses.featureQuizTitle"), sub: t("courses.featureQuizSub") },
+          { icon: TrendingUp, label: t("courses.featurePracticeTitle"), sub: t("courses.featurePracticeSub") },
+          { icon: Award, label: t("courses.featureRewardsTitle"), sub: t("courses.featureRewardsSub") },
         ].map((f, i) => (
           <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 6 }}>
             <div
               style={{
                 width: 46, height: 46, borderRadius: "50%", background: `#2A2145`,
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
-              {f.icon}
+              <f.icon size={20} strokeWidth={1.75} color={GOLD_LIGHT} aria-hidden />
             </div>
             <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#F5F3FF" }}>{f.label}</p>
             <p style={{ margin: 0, fontSize: 10.5, color: "#6E6690", lineHeight: 1.4 }}>{f.sub}</p>

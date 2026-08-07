@@ -19,7 +19,7 @@ export async function PUT(request, { params }) {
     updateData.title = title;
   }
   if (description !== undefined) updateData.description = description || null;
-  if (icon !== undefined) updateData.icon = icon || "📚";
+  if (icon !== undefined) updateData.icon = icon || "book-open";
   if (order_index !== undefined && order_index !== "") updateData.order_index = order_index;
 
   const supabase = createAdminClient();

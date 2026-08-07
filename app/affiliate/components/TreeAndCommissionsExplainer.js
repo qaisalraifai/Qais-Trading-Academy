@@ -1,9 +1,22 @@
 "use client";
+import { Crown, GitFork, Handshake, Infinity as InfinityIcon, Medal, Repeat, Target, Zap } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 const GOLD = "#DCD4F7";
 const CARD = "#0A0614";
 const BORDER = "#241C3E";
+
+/* أيقونة كل نوع بونص — مربوطة بالعنوان لأنه ثابت بكل اللغات */
+const BONUS_ICONS = {
+  "Fast Start": Zap,
+  "Direct Bonus": Target,
+  "Binary Bonus": GitFork,
+  "Renewal Bonus": Repeat,
+  "Matching Bonus": Handshake,
+  "Rank Bonus": Medal,
+  "Leadership Pool": Crown,
+  "Infinity Bonus": InfinityIcon,
+};
 
 export default function TreeAndCommissionsExplainer() {
   const { t, raw } = useLocale();
@@ -33,7 +46,13 @@ export default function TreeAndCommissionsExplainer() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.8rem", marginBottom: "1.6rem" }}>
         {BONUS_ITEMS.map((b) => (
           <div key={b.title} style={{ background: "#141024", border: `1px solid ${BORDER}`, borderRadius: 3, padding: "0.9rem 1rem" }}>
-            <div style={{ fontSize: "1.1rem", marginBottom: 4 }}>{b.icon} <span style={{ fontWeight: 700, fontSize: "0.85rem" }}>{b.title}</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
+              {(() => {
+                const BonusIcon = BONUS_ICONS[b.title];
+                return BonusIcon ? <BonusIcon size={15} strokeWidth={1.75} color={GOLD} aria-hidden /> : null;
+              })()}
+              <span style={{ fontWeight: 700, fontSize: "0.85rem" }}>{b.title}</span>
+            </div>
             <div style={{ fontSize: "0.75rem", color: "#6E6690", lineHeight: 1.6 }}>{b.desc}</div>
           </div>
         ))}

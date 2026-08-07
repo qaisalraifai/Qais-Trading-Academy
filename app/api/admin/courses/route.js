@@ -49,7 +49,7 @@ export async function POST(request) {
     .insert({
       title,
       description: description || null,
-      icon: icon || "📚",
+      icon: icon || "book-open",
       order_index: finalOrder,
     })
     .select()

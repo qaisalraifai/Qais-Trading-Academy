@@ -23,7 +23,9 @@ import {
   Loader2,
 } from "lucide-react";
 
-const REACTIONS = ["👍", "️", "😂", "👏", "🔥", "🎉"];
+/* ردود فعل البث المباشر — ميزة تفاعلية للمشاركين (مثل Zoom)، مش زخرفة واجهة.
+   منخليها إيموجي عن قصد لأنها محتوى بيتبعت بين المشاركين أثناء البث. */
+const REACTIONS = ["👍", "❤️", "😂", "👏", "🔥", "🎉"];
 
 function CtrlBtn({ active, danger, onClick, children, label, disabled }) {
   return (

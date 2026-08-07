@@ -1,5 +1,5 @@
 "use client";
-import { CheckCircle2, MessageCircle } from "lucide-react";
+import { BadgePercent, CheckCircle2, CircleAlert, CreditCard, Crown, Download, Gem, ListChecks, MessageCircle, Plus, ReceiptText, RefreshCw, ShieldCheck, Sparkles, Star, Ticket } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
@@ -18,10 +18,10 @@ const cardStyle = {
 };
 
 const PLAN_INFO = {
-  member: { label: "Member", icon: "⭐", color: "#A79FC4" },
-  trial: { label: "Trial", icon: "🔷", color: BLUE },
-  elite: { label: "Elite Access", icon: "👑", color: GOLD },
-  vip: { label: "VIP", icon: "💎", color: BLUE },
+  member: { label: "Member", icon: Star, color: "#A79FC4" },
+  trial: { label: "Trial", icon: Sparkles, color: BLUE },
+  elite: { label: "Elite Access", icon: Crown, color: GOLD },
+  vip: { label: "VIP", icon: Gem, color: BLUE },
 };
 
 function fmtDate(d, locale) {
@@ -29,12 +29,12 @@ function fmtDate(d, locale) {
   return new Date(d).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
-function SectionCard({ title, icon, children, style }) {
+function SectionCard({ title, icon: Icon, children, style }) {
   return (
     <div style={{ ...cardStyle, padding: "1.4rem 1.6rem", marginBottom: "1.2rem", ...style }}>
       {title && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
-          <span style={{ fontSize: 17 }}>{icon}</span>
+          {Icon && <Icon size={17} strokeWidth={1.75} color={GOLD} aria-hidden />}
           <span style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>{title}</span>
         </div>
       )}
@@ -151,7 +151,7 @@ export default function SettingsView({ username }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 20 }}>{planInfo.icon}</span>
+              {planInfo.icon && <planInfo.icon size={19} strokeWidth={1.75} color={planInfo.color} aria-hidden />}
               <span style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>{planInfo.label}</span>
               <span
                 style={{
@@ -197,7 +197,7 @@ export default function SettingsView({ username }) {
       </SectionCard>
 
       {/* 2. معلومات الفاتورة */}
-      <SectionCard title={t("settings.billingInfoTitle")} icon="💳">
+      <SectionCard title={t("settings.billingInfoTitle")} icon={ReceiptText}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: lastPayment?.invoice_url ? "1rem" : 0 }}>
           <InfoField label={t("settings.lastPayment")} value={lastPayment ? `$${Number(lastPayment.amount).toFixed(2)}` : "—"} />
           <InfoField label={t("settings.paymentMethod")} value={lastPayment?.method === "whop" ? t("settings.cardViaWhop") : lastPayment?.method || "—"} />
@@ -222,13 +222,13 @@ export default function SettingsView({ username }) {
               textDecoration: "none",
             }}
           >
-            <span>⬇️</span><span>{t("settings.downloadInvoice")}</span>
+            <Download size={15} strokeWidth={1.75} aria-hidden /><span>{t("settings.downloadInvoice")}</span>
           </a>
         )}
       </SectionCard>
 
       {/* 2.5 طريقة الدفع */}
-      <SectionCard title={t("settings.paymentMethodTitle")} icon="💳">
+      <SectionCard title={t("settings.paymentMethodTitle")} icon={CreditCard}>
         {hasWhopMembership ? (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
             <div>
@@ -279,14 +279,14 @@ export default function SettingsView({ username }) {
                 textDecoration: "none",
               }}
             >
-              <span>➕</span><span>{t("settings.subscribeNow")}</span>
+              <Plus size={15} strokeWidth={1.75} aria-hidden /><span>{t("settings.subscribeNow")}</span>
             </a>
           </div>
         )}
       </SectionCard>
 
       {/* 3. التجديد */}
-      <SectionCard title={t("settings.renewalTitle")} icon="🔄">
+      <SectionCard title={t("settings.renewalTitle")} icon={RefreshCw}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#fff" }}>
@@ -321,7 +321,7 @@ export default function SettingsView({ username }) {
       </SectionCard>
 
       {/* 4. تغيير الخطة */}
-      <SectionCard title={t("settings.changePlanTitle")} icon="🎫">
+      <SectionCard title={t("settings.changePlanTitle")} icon={Ticket}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.9rem" }}>
           {["member", "elite", "vip"].map((key) => {
             const info = PLAN_INFO[key];
@@ -337,7 +337,9 @@ export default function SettingsView({ username }) {
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: 22, marginBottom: 4 }}>{info.icon}</div>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 6 }}>
+                  {info.icon && <info.icon size={20} strokeWidth={1.75} color={isCurrent ? GOLD_LIGHT : "#8A7CB8"} aria-hidden />}
+                </div>
                 <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: isCurrent ? GOLD_LIGHT : "#A79FC4" }}>{info.label}</p>
                 {isCurrent ? (
                   <span
@@ -369,7 +371,7 @@ export default function SettingsView({ username }) {
       </SectionCard>
 
       {/* 5. المزايا الحالية */}
-      <SectionCard title={t("settings.benefitsTitle")} icon="📋">
+      <SectionCard title={t("settings.benefitsTitle")} icon={ListChecks}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
           {[
             t("settings.benefitLectures"),
@@ -387,7 +389,7 @@ export default function SettingsView({ username }) {
       </SectionCard>
 
       {/* 6. سجل المدفوعات */}
-      <SectionCard title={t("settings.paymentHistoryTitle")} icon="📄">
+      <SectionCard title={t("settings.paymentHistoryTitle")} icon={ShieldCheck}>
         {payments && payments.length > 0 ? (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -417,7 +419,7 @@ export default function SettingsView({ username }) {
       </SectionCard>
 
       {/* 7. كود الخصم */}
-      <SectionCard title={t("settings.couponTitle")} icon="️">
+      <SectionCard title={t("settings.couponTitle")} icon={BadgePercent}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input
             value={couponCode}
@@ -454,8 +456,11 @@ export default function SettingsView({ username }) {
           </button>
         </div>
         {couponResult && (
-          <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: couponResult.valid ? GREEN : RED }}>
-            {couponResult.valid ? "✅" : "️"} {couponResult.message}
+          <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: couponResult.valid ? GREEN : RED, display: "flex", alignItems: "center", gap: 6 }}>
+            {couponResult.valid
+              ? <CheckCircle2 size={14} strokeWidth={1.75} aria-hidden />
+              : <CircleAlert size={14} strokeWidth={1.75} aria-hidden />}
+            <span>{couponResult.message}</span>
           </p>
         )}
       </SectionCard>

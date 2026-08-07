@@ -1,4 +1,5 @@
 "use client";
+import { ArrowUpRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
@@ -104,7 +105,10 @@ export default function AdminMarketingPage() {
             <div key={a.id} style={s.card}>
               <p style={s.cardTitle}>{a.title}</p>
               <p style={s.cardType}>{TYPES.find((t) => t.v === a.type)?.label || a.type}</p>
-              <a href={a.file_url} target="_blank" rel="noreferrer" style={s.link}>معاينة الملف ↗</a>
+              <a href={a.file_url} target="_blank" rel="noreferrer" style={{ ...s.link, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                معاينة الملف
+                <ArrowUpRight size={13} strokeWidth={1.75} aria-hidden />
+              </a>
               <button onClick={() => handleDelete(a.id)} style={s.deleteBtn}>حذف</button>
             </div>
           ))}

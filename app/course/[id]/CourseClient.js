@@ -1,6 +1,7 @@
 "use client";
 
-import { Star } from "lucide-react";
+import { BookOpen, CircleCheck, Clock, Play, Star } from "lucide-react";
+import { resolveIcon } from "@/lib/icon-registry";
 import { useState, useMemo } from "react";
 import Link from "next/link";
 
@@ -78,7 +79,12 @@ export default function CourseClient({ course, chapters }) {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <div style={{ fontSize: 36 }}>{course.icon}</div>
+            <div style={{ display: "flex" }}>
+              {(() => {
+                const CourseIcon = resolveIcon(course.icon, BookOpen);
+                return <CourseIcon size={34} strokeWidth={1.5} color="#F5F3FF" aria-hidden />;
+              })()}
+            </div>
             <div>
               <p style={{ color: "#DCD4F7", fontSize: 11, letterSpacing: 2, margin: 0 }}>QAIS TRADING ACADEMY</p>
               <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800 }}>{course.title}</h1>
@@ -189,16 +195,23 @@ export default function CourseClient({ course, chapters }) {
                             width: 40, height: 40, borderRadius: "50%",
                             background: isCompleted ? "#10E5A022" : "#2A2145",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 16, flexShrink: 0,
+                            flexShrink: 0,
                           }}>
-                            {isCompleted ? "✅" : "▶️"}
+                            {isCompleted
+                              ? <CircleCheck size={17} strokeWidth={1.75} color="#10E5A0" aria-hidden />
+                              : <Play size={15} strokeWidth={1.75} color="#F5F3FF" fill="#F5F3FF" aria-hidden />}
                           </div>
 
                           {/* Info */}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 700, fontSize: 15, color: "#fff" }}>{lecture.title}</div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", marginTop: 5, fontSize: 12, color: "#6E6690" }}>
-                              {duration && <span>⏱ {duration}</span>}
+                              {duration && (
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <Clock size={12} strokeWidth={1.75} aria-hidden />
+                                  {duration}
+                                </span>
+                              )}
                               {diff && (
                                 <span style={{ color: diff.color }}>{diff.label}</span>
                               )}

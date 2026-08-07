@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
+import { ICON_OPTIONS, resolveTierIcon } from "@/lib/icon-registry";
 import { gold, s as baseStyles, glass, transition } from "../styles";
 
-const EMPTY = { code: "", title_ar: "", badge_icon: "🏅", color_hex: "#DCD4F7", min_active_clients: 0, signup_amount: 30, renewal_amount: 8, sort_order: 0 };
+const EMPTY = { code: "", title_ar: "", badge_icon: "medal", color_hex: "#DCD4F7", min_active_clients: 0, signup_amount: 30, renewal_amount: 8, sort_order: 0 };
 
 export default function TiersManager() {
   const [tiers, setTiers] = useState([]);
@@ -101,8 +102,14 @@ export default function TiersManager() {
           <Field label="الاسم بالعربي/الإنجليزي">
             <input style={styles.input} value={form.title_ar} onChange={(e) => setForm({ ...form, title_ar: e.target.value })} />
           </Field>
-          <Field label="الشارة (إيموجي)">
-            <input style={styles.input} value={form.badge_icon} onChange={(e) => setForm({ ...form, badge_icon: e.target.value })} />
+          <Field label="الشارة">
+            <select style={styles.input} value={form.badge_icon} onChange={(e) => setForm({ ...form, badge_icon: e.target.value })}>
+              {ICON_OPTIONS.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="اللون">
             <input type="color" style={{ ...styles.input, padding: 4, height: 42 }} value={form.color_hex} onChange={(e) => setForm({ ...form, color_hex: e.target.value })} />
@@ -151,7 +158,10 @@ export default function TiersManager() {
               {tiers.map((t) => (
                 <tr key={t.id}>
                   <td style={styles.td}>
-                    <span style={{ fontSize: "1.3rem" }}>{t.badge_icon}</span>
+                    {(() => {
+                      const TierIcon = resolveTierIcon(t);
+                      return <TierIcon size={18} strokeWidth={1.75} color={t.color_hex} aria-hidden />;
+                    })()}
                   </td>
                   <td style={styles.td}>
                     <span style={{ color: t.color_hex, fontWeight: 700 }}>{t.title_ar}</span>

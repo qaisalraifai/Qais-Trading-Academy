@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { resolveTierIcon } from "@/lib/icon-registry";
 import {
   GOLD,
   BORDER,
@@ -57,7 +58,10 @@ export default function TiersPageClient() {
             <div style={{ ...card, marginBottom: "1.6rem", border: `1px solid ${data.myStatus.current.color_hex}55` }} className="qta-animate-in">
               <p style={{ color: "#A79FC4", fontSize: "0.8rem", marginBottom: 6 }}>مستواك الحالي</p>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 26 }}>{data.myStatus.current.badge_icon}</span>
+                {(() => {
+                  const TierIcon = resolveTierIcon(data.myStatus.current);
+                  return <TierIcon size={26} strokeWidth={1.75} color={data.myStatus.current.color_hex} aria-hidden />;
+                })()}
                 <span style={{ fontSize: "1.3rem", fontWeight: 800, color: data.myStatus.current.color_hex }}>
                   {data.myStatus.current.title_ar}
                 </span>
@@ -114,7 +118,12 @@ export default function TiersPageClient() {
                   )}
 
                   <div style={{ textAlign: "center", marginBottom: "1rem", marginTop: isCurrent ? "1.4rem" : 0 }}>
-                    <div style={{ fontSize: "2.2rem", marginBottom: 6 }}>{t.badge_icon}</div>
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                      {(() => {
+                        const TierIcon = resolveTierIcon(t);
+                        return <TierIcon size={30} strokeWidth={1.5} color={t.color_hex} aria-hidden />;
+                      })()}
+                    </div>
                     <h3 style={{ fontSize: "1.15rem", fontWeight: 800, color: t.color_hex, margin: 0 }}>{t.title_ar}</h3>
                     <p style={{ color: "#6E6690", fontSize: "0.75rem", marginTop: 4 }}>
                       {t.min_active_clients === 0 ? "المستوى الافتتاحي" : `${t.min_active_clients}+ عميل نشط`}

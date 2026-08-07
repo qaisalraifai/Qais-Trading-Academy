@@ -39,7 +39,7 @@ export async function POST(request) {
       code: code.trim().toLowerCase().replace(/\s+/g, "_"),
       title_ar,
       description_ar: description_ar || "",
-      icon: icon || "🏆",
+      icon: icon || "trophy",
       metric,
       threshold: Number(threshold) || 0,
       bonus_amount: Number(bonus_amount) || 0,

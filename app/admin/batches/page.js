@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight, Square } from "lucide-react";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
@@ -1146,7 +1147,12 @@ export default function AdminBatchesPage() {
                         disabled={liveBusyId === batch.id}
                         style={{ ...s.btnDanger, width: "100%", padding: "0.55rem" }}
                       >
-                        {liveBusyId === batch.id ? "جاري الإنهاء..." : "⏹ إنهاء البث"}
+                        {liveBusyId === batch.id ? "جاري الإنهاء..." : (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <Square size={13} strokeWidth={2} fill="currentColor" aria-hidden />
+                            إنهاء البث
+                          </span>
+                        )}
                       </button>
                     ) : (
                       <button
@@ -1160,8 +1166,9 @@ export default function AdminBatchesPage() {
                   )}
 
                   <div style={s.cardActions}>
-                    <Link href={`/admin/batches/${batch.id}`} style={{ ...s.btnEdit, textDecoration: "none", backgroundColor: "#141024", color: gold, borderColor: "#1C1630" }}>
-                      ↗ فتح الدفعة
+                    <Link href={`/admin/batches/${batch.id}`} style={{ ...s.btnEdit, textDecoration: "none", backgroundColor: "#141024", color: gold, borderColor: "#1C1630", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <ArrowUpRight size={14} strokeWidth={1.75} aria-hidden />
+                      فتح الدفعة
                     </Link>
                     <Link href={`/admin/batches/${batch.id}?tab=settings`} style={{ ...s.btnEdit, textDecoration: "none" }}>تعديل</Link>
                     <Link href={`/admin/batches/${batch.id}?tab=live`} style={{ ...s.btnEdit, textDecoration: "none" }}>الحضور</Link>

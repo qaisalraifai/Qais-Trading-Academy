@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { resolveTierIcon } from "@/lib/icon-registry";
 import { GOLD, BORDER, card, sectionTitle, sectionEyebrow, monoStack, fmt, InfoDot } from "./shared";
 
 export default function TierProgress({ tier }) {
@@ -53,7 +54,10 @@ export default function TierProgress({ tier }) {
               flexShrink: 0,
             }}
           >
-            {current.badge_icon}
+            {(() => {
+              const TierIcon = resolveTierIcon(current);
+              return <TierIcon size={26} strokeWidth={1.75} color={current.color_hex} aria-hidden />;
+            })()}
           </div>
           <div>
             <h2 style={{ ...sectionTitle, color: current.color_hex, marginBottom: 2 }}>{current.title_ar}</h2>
@@ -85,8 +89,12 @@ export default function TierProgress({ tier }) {
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
               <span style={{ fontSize: "0.78rem", color: "#A79FC4" }}>
                 تبقى <b style={{ color: GOLD }}>{remaining}</b> {remaining === 1 ? "عميل" : "عملاء"} نشط للوصول إلى{" "}
-                <b style={{ color: next.color_hex }}>
-                  {next.badge_icon} {next.title_ar}
+                <b style={{ color: next.color_hex, display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "middle" }}>
+                  {(() => {
+                    const NextIcon = resolveTierIcon(next);
+                    return <NextIcon size={14} strokeWidth={1.75} aria-hidden />;
+                  })()}
+                  {next.title_ar}
                 </b>
               </span>
               <span style={{ fontFamily: monoStack, fontSize: "0.75rem", color: "#6E6690" }}>{progressPct}%</span>
@@ -112,8 +120,12 @@ export default function TierProgress({ tier }) {
                 padding: "0.9rem 1.1rem",
               }}
             >
-              <p style={{ fontSize: "0.8rem", color: "#F5F3FF", fontWeight: 700, marginBottom: 6 }}>
-                {next.badge_icon} بعد الترقية لـ {next.title_ar}:
+              <p style={{ fontSize: "0.8rem", color: "#F5F3FF", fontWeight: 700, marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                {(() => {
+                  const NextIcon = resolveTierIcon(next);
+                  return <NextIcon size={15} strokeWidth={1.75} color={next.color_hex} aria-hidden />;
+                })()}
+                <span>بعد الترقية لـ {next.title_ar}:</span>
               </p>
               <div style={{ display: "flex", gap: "1.4rem", flexWrap: "wrap", fontSize: "0.78rem", color: "#A79FC4" }}>
                 <span>
@@ -153,7 +165,12 @@ export default function TierProgress({ tier }) {
                     opacity: reached ? 1 : 0.45,
                   }}
                 >
-                  <div style={{ fontSize: 18 }}>{t.badge_icon}</div>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 2 }}>
+                    {(() => {
+                      const TierIcon = resolveTierIcon(t);
+                      return <TierIcon size={17} strokeWidth={1.75} color={reached ? t.color_hex : "#6E6690"} aria-hidden />;
+                    })()}
+                  </div>
                   <div style={{ fontSize: "0.68rem", color: reached ? "#F5F3FF" : "#6E6690", fontWeight: 700, marginTop: 2 }}>
                     {t.title_ar}
                   </div>

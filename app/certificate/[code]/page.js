@@ -1,4 +1,5 @@
-import { XCircle } from "lucide-react";
+import { GraduationCap, XCircle } from "lucide-react";
+import { resolveIcon } from "@/lib/icon-registry";
 import { createAdminClient } from "@/lib/supabase-server";
 import PrintButton from "./CertificateClient";
 
@@ -63,7 +64,12 @@ export default async function CertificatePage({ params }) {
           <p style={styles.brand}>QAIS TRADING ACADEMY</p>
           <p style={styles.subBrand}>شهادة إتمام</p>
 
-          <div style={styles.icon}>{course?.icon || "🎓"}</div>
+          <div style={styles.icon}>
+            {(() => {
+              const CourseIcon = resolveIcon(course?.icon, GraduationCap);
+              return <CourseIcon size={40} strokeWidth={1.5} color="#8A7CB8" aria-hidden />;
+            })()}
+          </div>
 
           <p style={styles.grantedTo}>تشهد الأكاديمية بأن</p>
           <h1 style={styles.studentName}>{profile?.username || "طالب"}</h1>
@@ -119,7 +125,7 @@ const styles = {
   },
   brand: { color: "#8A7CB8", letterSpacing: 4, fontSize: 12, fontWeight: 700, margin: 0 },
   subBrand: { color: "#2A2145", fontSize: 22, fontWeight: 800, margin: "0.5rem 0 1.5rem" },
-  icon: { fontSize: 40, marginBottom: "1rem" },
+  icon: { display: "flex", justifyContent: "center", marginBottom: "1rem" },
   grantedTo: { color: "#4A4368", fontSize: 14, margin: 0 },
   studentName: { color: "#141024", fontSize: 32, fontWeight: 800, margin: "0.5rem 0 1.25rem" },
   body: { color: "#4A4368", fontSize: 15, lineHeight: 1.9, maxWidth: 520, margin: "0 auto" },

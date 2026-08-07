@@ -1,4 +1,5 @@
 "use client";
+import { FileText, Video } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
@@ -34,7 +35,11 @@ export default function MarketingKit() {
               {a.type === "banner" || a.type === "logo" ? (
                 <img src={a.thumbnail_url || a.file_url} alt={a.title} style={s.thumb} />
               ) : (
-                <div style={s.iconBox}>{a.type === "video" ? "🎬" : "📝"}</div>
+                <div style={s.iconBox}>
+                  {a.type === "video"
+                    ? <Video size={26} strokeWidth={1.5} color="#6E6690" aria-hidden />
+                    : <FileText size={26} strokeWidth={1.5} color="#6E6690" aria-hidden />}
+                </div>
               )}
               <p style={s.itemTitle}>{a.title}</p>
               <p style={s.itemType}>{TYPE_KEYS[a.type] ? t(TYPE_KEYS[a.type]) : a.type}</p>
@@ -53,7 +58,7 @@ const s = {
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "0.9rem" },
   item: { display: "block", background: "#0A0614", border: `1px solid ${BORDER}`, borderRadius: 3, padding: "0.8rem", textDecoration: "none", textAlign: "center" },
   thumb: { width: "100%", height: 80, objectFit: "cover", borderRadius: 3, marginBottom: 8, background: "#141024" },
-  iconBox: { width: "100%", height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", background: "#141024", borderRadius: 3, marginBottom: 8 },
+  iconBox: { width: "100%", height: 80, display: "flex", alignItems: "center", justifyContent: "center", background: "#141024", borderRadius: 3, marginBottom: 8 },
   itemTitle: { fontSize: "0.78rem", color: "#F5F3FF", fontWeight: 600, marginBottom: 2 },
   itemType: { fontSize: "0.68rem", color: "#6E6690" },
 };

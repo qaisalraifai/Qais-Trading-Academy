@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { AlertTriangle, Bell, Brain, ChevronDown, ChevronRight, CircleCheck as CheckCircle2, Crown, ExternalLink, Eye, Radio, RefreshCw, RotateCcw, Sparkles, Target, TrendingDown, TrendingUp, Zap } from "lucide-react";
+import { AlertTriangle, ArrowDownToLine, ArrowUpToLine, BarChart3, Bell, Blocks, Brain, ChevronDown, ChevronRight, CircleCheck as CheckCircle2, Clock, Crown, Droplets, ExternalLink, Eye, LayoutGrid, Radio, RefreshCw, RotateCcw, Rows3, Sparkles, Target, TrendingDown, TrendingUp, Zap } from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
 import { createClient } from "@/lib/supabase-client";
@@ -1994,7 +1994,7 @@ export function CurrencyHeatMapCard({ snapshot, trend = {} }) {
   }
 
   return (
-    <CardShell title={t("radar.currencyHeatMap")} icon="🔥">
+    <CardShell title={t("radar.currencyHeatMap")} icon={LayoutGrid}>
       {entries.length === 0 ? (
         <EmptyNote text={t("radar.loadingCurrencyStrength")} />
       ) : (
@@ -2047,7 +2047,7 @@ export function SessionMapCard({ sessions, nowTick }) {
   }, [next, nowTick]);
 
   return (
-    <CardShell title={t("radar.sessionMap")} icon="🕐">
+    <CardShell title={t("radar.sessionMap")} icon={Clock}>
       <div style={{ fontSize: 10.5, color: "#6E6690", marginBottom: 10, lineHeight: 1.6 }}>
         A live 24-hour view of the four major FX sessions. The white line is right now — watch for the gold-striped zone, that's when two sessions overlap and liquidity is highest.
       </div>
@@ -2236,7 +2236,7 @@ function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
   const visible = showAll ? sorted : sorted.slice(0, OPP_PREVIEW_COUNT);
 
   return (
-    <CardShell title={t("radar.activeOpportunities")} icon="⚡">
+    <CardShell title={t("radar.activeOpportunities")} icon={Zap}>
       {items.length === 0 ? (
         <EmptyNote text={t("radar.noMonitoredAssets")} />
       ) : sorted.length === 0 ? (
@@ -2338,19 +2338,19 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <div className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
         <SectionHeader
-          icon="💧"
+          icon={Droplets}
           title={t("radar.liquidityMap")}
           subtitle="Where price is hunting liquidity right now. Click any row to load its full breakdown in the Analysis Workspace below — nothing pops up, the page just updates."
         />
 
         {/* -------- كروت شرح المفاهيم (بدل الفقرة الطويلة) -------- */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, margin: "16px 0 18px" }}>
-          <ConceptCard icon="️" title={t("radar.aboveHigh")} lines={[t("radar.sweptHighs"), t("radar.takesBuySide")]} color={RED} />
-          <ConceptCard icon="️" title={t("radar.belowLow")} lines={[t("radar.sweptLows"), t("radar.takesSellSide")]} color={GREEN} />
-          <ConceptCard icon="🧱" title={t("radar.orderBlock")} lines={[t("radar.obDesc")]} color={GOLD_LIGHT} />
-          <ConceptCard icon="⚡" title={t("radar.fvg")} lines={[t("radar.fvgDesc")]} color={BLUE} />
-          <ConceptCard icon="🎯" title={t("radar.qualityScore")} lines={[t("radar.qualityDescLong")]} color={GOLD} />
-          <ConceptCard icon="🧠" title={t("radar.aiConfidence")} lines={[t("radar.confidenceDescLong")]} color={GOLD_LIGHT} />
+          <ConceptCard icon={ArrowUpToLine} title={t("radar.aboveHigh")} lines={[t("radar.sweptHighs"), t("radar.takesBuySide")]} color={RED} />
+          <ConceptCard icon={ArrowDownToLine} title={t("radar.belowLow")} lines={[t("radar.sweptLows"), t("radar.takesSellSide")]} color={GREEN} />
+          <ConceptCard icon={Blocks} title={t("radar.orderBlock")} lines={[t("radar.obDesc")]} color={GOLD_LIGHT} />
+          <ConceptCard icon={Rows3} title={t("radar.fvg")} lines={[t("radar.fvgDesc")]} color={BLUE} />
+          <ConceptCard icon={Target} title={t("radar.qualityScore")} lines={[t("radar.qualityDescLong")]} color={GOLD} />
+          <ConceptCard icon={Brain} title={t("radar.aiConfidence")} lines={[t("radar.confidenceDescLong")]} color={GOLD_LIGHT} />
         </div>
 
         {sorted.length === 0 ? (
@@ -2621,7 +2621,7 @@ const BRIEFING_TONE = {
   range: { color: AMBER, bg: "rgba(245,158,11,0.08)" },
 };
 
-function BriefingCard({ emoji, title, color, delay, confidence, children }) {
+function BriefingCard({ icon: Icon, title, color, delay, confidence, children }) {
   const confColor = confidence == null ? "#6E6690" : confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : AMBER;
   return (
     <div
@@ -2637,7 +2637,7 @@ function BriefingCard({ emoji, title, color, delay, confidence, children }) {
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 9 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <span style={{ fontSize: 15 }}>{emoji}</span>
+          {Icon && <Icon size={15} strokeWidth={1.75} color={color} aria-hidden />}
           <span style={{ fontSize: 11.5, fontWeight: 800, color, letterSpacing: 0.4, textTransform: "uppercase" }}>{title}</span>
         </div>
         {confidence != null && (
@@ -2690,12 +2690,12 @@ function AiBriefing({ item, d }) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {/* 1. Current Market Situation */}
-        <BriefingCard emoji="🧠" title={t("radar.currentSituation")} color={BLUE} delay={0} confidence={briefing.confidence.score}>
+        <BriefingCard icon={Brain} title={t("radar.currentSituation")} color={BLUE} delay={0} confidence={briefing.confidence.score}>
           <div style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.8 }}>{briefing.situation}</div>
         </BriefingCard>
 
         {/* 2. What Are We Waiting For */}
-        <BriefingCard emoji="👀" title="What Are We Waiting For" color={BLUE} delay={60} confidence={briefing.confidence.score}>
+        <BriefingCard icon={Eye} title="What Are We Waiting For" color={BLUE} delay={60} confidence={briefing.confidence.score}>
           {briefing.waitingFor.length === 0 ? (
             <div style={{ fontSize: 12, color: GREEN, lineHeight: 1.8, display: "flex", alignItems: "center", gap: 6 }}>
               <CheckCircle2 size={13} color={GREEN} /> All entry confirmations are complete — nothing left to wait for.
@@ -2712,17 +2712,17 @@ function AiBriefing({ item, d }) {
         </BriefingCard>
 
         {/* 3. Bullish Scenario */}
-        <BriefingCard emoji="📈" title={t("radar.bullishScenario")} color={GREEN} delay={120} confidence={briefing.confidence.score}>
+        <BriefingCard icon={TrendingUp} title={t("radar.bullishScenario")} color={GREEN} delay={120} confidence={briefing.confidence.score}>
           <div style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.8 }}>{briefing.bullish}</div>
         </BriefingCard>
 
         {/* 4. Bearish Scenario */}
-        <BriefingCard emoji="📉" title={t("radar.bearishScenario")} color={RED} delay={180} confidence={briefing.confidence.score}>
+        <BriefingCard icon={TrendingDown} title={t("radar.bearishScenario")} color={RED} delay={180} confidence={briefing.confidence.score}>
           <div style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.8 }}>{briefing.bearish}</div>
         </BriefingCard>
 
         {/* 5. Risk Factors */}
-        <BriefingCard emoji="️" title={t("radar.riskFactors")} color={AMBER} delay={240} confidence={briefing.confidence.score}>
+        <BriefingCard icon={AlertTriangle} title={t("radar.riskFactors")} color={AMBER} delay={240} confidence={briefing.confidence.score}>
           <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 5 }}>
             {briefing.riskFactors.map((r, i) => (
               <li key={i} style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.7 }}>
@@ -2733,7 +2733,7 @@ function AiBriefing({ item, d }) {
         </BriefingCard>
 
         {/* 6. AI Recommendation */}
-        <BriefingCard emoji="🎯" title={t("radar.aiRecommendation")} color={tone.color} delay={300} confidence={briefing.confidence.score}>
+        <BriefingCard icon={Target} title={t("radar.aiRecommendation")} color={tone.color} delay={300} confidence={briefing.confidence.score}>
           <div
             style={{
               display: "flex",
@@ -2779,7 +2779,7 @@ function AnalysisWorkspace({ item }) {
   if (!item) {
     return (
       <div className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
-        <SectionHeader icon="🧠" title={t("radar.analysisWorkspace")} subtitle={t("radar.clickAsset")} />
+        <SectionHeader icon={Brain} title={t("radar.analysisWorkspace")} subtitle={t("radar.clickAsset")} />
         <EmptyNote text={t("radar.noAssetSelected")} />
       </div>
     );
@@ -2838,7 +2838,7 @@ function AnalysisWorkspace({ item }) {
 
   return (
     <div key={item.symbol} className="qmi-anim" style={{ ...glass, padding: "1.1rem" }}>
-      <SectionHeader icon="🧠" title={t("radar.analysisWorkspace")} subtitle={`Full breakdown for ${item.symbol} — always visible, refreshes automatically when you pick another asset above.`} />
+      <SectionHeader icon={Brain} title={t("radar.analysisWorkspace")} subtitle={`Full breakdown for ${item.symbol} — always visible, refreshes automatically when you pick another asset above.`} />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10, marginTop: 14 }}>
         <WorkspaceStat label={t("radar.liquidityStatus")} value={d?.liquidityStatus || "—"} explain={explain.liqType} />
@@ -2873,11 +2873,11 @@ function WorkspaceStat({ label, value, color, explain }) {
 }
 
 /* -------------------- كرت شرح مفهوم واحد (تعليمي، بدون بيانات حيّة) -------------------- */
-function ConceptCard({ icon, title, lines, color }) {
+function ConceptCard({ icon: Icon, title, lines, color }) {
   return (
     <div className="qmi-concept-card" style={{ background: "#141024", border: `1px solid ${color}33`, borderRadius: 0, padding: "12px 14px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
-        <span style={{ fontSize: 15 }}>{icon}</span>
+        {Icon && <Icon size={15} strokeWidth={1.75} color={color} aria-hidden />}
         <span style={{ fontSize: 12, fontWeight: 800, color: color || "#F5F3FF" }}>{title}</span>
       </div>
       {lines.map((l, i) => (
@@ -2889,10 +2889,10 @@ function ConceptCard({ icon, title, lines, color }) {
   );
 }
 
-function SectionHeader({ icon, title, subtitle }) {
+function SectionHeader({ icon: Icon, title, subtitle }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
-      <span style={{ fontSize: 18 }}>{icon}</span>
+      {Icon && <Icon size={18} strokeWidth={1.75} color={GOLD_LIGHT} style={{ marginTop: 1, flexShrink: 0 }} aria-hidden />}
       <div>
         <div style={{ fontSize: 14.5, fontWeight: 800, color: "#F5F3FF" }}>{title}</div>
         {subtitle && <div style={{ fontSize: 11, color: "#6E6690", marginTop: 2, lineHeight: 1.6 }}>{subtitle}</div>}
@@ -2920,7 +2920,7 @@ function MarketSummaryCard({ snapshot, radarItems, newsToday }) {
   const biasColor = biasLabel === "Bullish" ? GREEN : biasLabel === "Bearish" ? RED : "#6E6690";
 
   return (
-    <CardShell title={t("radar.marketSummary")} icon="📊">
+    <CardShell title={t("radar.marketSummary")} icon={BarChart3}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
         <SummaryStat label={t("radar.overallBias")} value={biasLabel} sub={total ? `${biasPct}% confidence` : t("radar.notEnoughDataShort")} color={biasColor} />
         <SummaryStat label={t("radar.strongestCurrency")} value={strongest ? strongest[0] : "—"} sub={strongest ? `${strongest[1]}` : ""} color={GREEN} />
@@ -2957,7 +2957,7 @@ function LiveNotificationsCard({ items, onOpen }) {
   );
 
   return (
-    <CardShell title={t("radar.liveNotifications")} icon="🔔">
+    <CardShell title={t("radar.liveNotifications")} icon={Bell}>
       {notifs.length === 0 ? (
         <EmptyNote text={t("radar.noNewNotifications")} />
       ) : (
@@ -2986,11 +2986,11 @@ function LiveNotificationsCard({ items, onOpen }) {
 /* ============================================================================
    عناصر مشتركة
    ============================================================================ */
-export function CardShell({ title, icon, children }) {
+export function CardShell({ title, icon: Icon, children }) {
   return (
     <div style={{ ...glass, padding: "1rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
-        <span style={{ fontSize: 14 }}>{icon}</span>
+        {Icon && <Icon size={15} strokeWidth={1.75} color={GOLD_LIGHT} aria-hidden />}
         <span style={{ fontSize: 12.5, fontWeight: 800, color: "#F5F3FF" }}>{title}</span>
       </div>
       {children}

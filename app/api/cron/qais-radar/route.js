@@ -207,7 +207,7 @@ export async function GET(request) {
           } else {
             await createNotification(supabase, userId, {
               type: "qais_radar_signal",
-              title: `${symbol} — ${result.radarSignalLabel} ${result.direction === "up" ? "🟢" : "🔴"}`,
+              title: `${symbol} — ${result.radarSignalLabel} (${result.direction === "up" ? "Long" : "Short"})`,
               message: `Confidence: ${result.radarScore}% — ${result.sessionLabel} — Tap to open chart`,
               link: `/trading-radar?symbol=${symbol}`,
             });

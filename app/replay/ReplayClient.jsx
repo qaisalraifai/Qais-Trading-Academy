@@ -1,5 +1,5 @@
 "use client";
-import { ClipboardList, Settings, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Bell, CalendarDays, Check, ClipboardList, CornerUpLeft, Dices, MoveVertical, Pause, PenLine, Play, Settings, SkipForward, SlidersHorizontal, Tag, Trash2, TrendingUp } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets";
@@ -2088,7 +2088,7 @@ export default function ReplayClient({ userId }) {
         setLineStyle({ ...style, dash: style.dash || "dashed" });
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
         ctx.setLineDash([]);
-        const roleLabel = d.tradeRole === "tp" ? "هدف (TP): " : d.tradeRole === "sl" ? "إيقاف (SL): " : d.tradeRole === "entry" ? "▶ دخول: " : "";
+        const roleLabel = d.tradeRole === "tp" ? "هدف (TP): " : d.tradeRole === "sl" ? "إيقاف (SL): " : d.tradeRole === "entry" ? "دخول: " : "";
         /* السعر بيظهر بصندوق واضح ملاصق لمحور السعر يمين الشارت (مش على
            الحافة الشمال يلي بتضيع لما تكبري/تزحفي بالشارت) */
         ctx.font = "bold 11px sans-serif";
@@ -6033,11 +6033,13 @@ export default function ReplayClient({ userId }) {
         {mode === "training" && (
           <>
             <div style={{ width: 1, height: 22, background: "#1C1630" }} />
-            <button onClick={handleRandomStart} className={iconBtnClass(false)} style={iconBtn(false)} title="بداية عشوائية جديدة">🎲</button>
+            <button onClick={handleRandomStart} className={iconBtnClass(false)} style={iconBtn(false)} title="بداية عشوائية جديدة"><Dices size={15} strokeWidth={1.75} aria-hidden /></button>
             <button onClick={togglePlay} disabled={finished || loading} className={iconBtnClass(isPlaying)} style={iconBtn(isPlaying)} title={isPlaying ? "إيقاف" : "تشغيل تلقائي"}>
-              {isPlaying ? "⏸" : "▶"}
+              {isPlaying
+                ? <Pause size={15} strokeWidth={1.75} fill="currentColor" aria-hidden />
+                : <Play size={15} strokeWidth={1.75} fill="currentColor" aria-hidden />}
             </button>
-            <button onClick={handleNext} disabled={finished || loading} className={iconBtnClass(false)} style={iconBtn(false)} title="الشمعة التالية">⏭</button>
+            <button onClick={handleNext} disabled={finished || loading} className={iconBtnClass(false)} style={iconBtn(false)} title="الشمعة التالية"><SkipForward size={15} strokeWidth={1.75} fill="currentColor" aria-hidden /></button>
             <button onClick={() => switchMode("live")} className={iconBtnClass(false)} style={iconBtn(false)} title="ارجعي للمتابعة المباشرة للسوق"><span aria-hidden style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#FF453A", flexShrink: 0 }} /></button>
           </>
         )}
@@ -7008,7 +7010,12 @@ export default function ReplayClient({ userId }) {
         </label>
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
           <button onClick={confirmQuickTrade} disabled={savingTrade || !tradeReason.trim()} style={{ ...btnStyle("primary"), flex: 1, opacity: !tradeReason.trim() ? 0.5 : 1 }}>
-            {savingTrade ? "...جاري الحفظ" : "✔ تأكيد وتسجيل"}
+            {savingTrade ? "...جاري الحفظ" : (
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Check size={14} strokeWidth={2} aria-hidden />
+                تأكيد وتسجيل
+              </span>
+            )}
           </button>
           <button onClick={cancelQuickTrade} disabled={savingTrade} style={{ ...btnStyle("secondary"), flex: 1 }}>
             ✕ إلغاء
@@ -7772,7 +7779,10 @@ export default function ReplayClient({ userId }) {
               padding: "10px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer",
             }}
           >
-            ↩️ الرجوع لمكان التوقف
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <CornerUpLeft size={14} strokeWidth={1.75} aria-hidden />
+              الرجوع لمكان التوقف
+            </span>
           </button>
           <button
             onClick={startFreshCut}
@@ -7831,13 +7841,13 @@ export default function ReplayClient({ userId }) {
     );
 
     const TABS = [
-      { key: "symbol", label: "رمز", icon: "𝍖" },
-      { key: "status", label: "خط الحالة", icon: "≡" },
-      { key: "scales", label: "المقاييس والخطوط", icon: "↕" },
-      { key: "canvas", label: "لوحة", icon: "✎" },
-      { key: "trading", label: "تداول", icon: "⤯" },
- { key:"alerts", label:"تنبيهات", icon:"" },
-      { key: "events", label: "أحداث", icon: "🗓" },
+      { key: "symbol", label: "رمز", icon: Tag },
+      { key: "status", label: "خط الحالة", icon: SlidersHorizontal },
+      { key: "scales", label: "المقاييس والخطوط", icon: MoveVertical },
+      { key: "canvas", label: "لوحة", icon: PenLine },
+      { key: "trading", label: "تداول", icon: TrendingUp },
+      { key: "alerts", label: "تنبيهات", icon: Bell },
+      { key: "events", label: "أحداث", icon: CalendarDays },
     ];
 
     function tabContent() {
@@ -7960,7 +7970,9 @@ export default function ReplayClient({ userId }) {
                     fontSize: 13, fontWeight: settingsTab === t.key ? 700 : 500,
                   }}
                 >
-                  <span style={{ width: 18, textAlign: "center", flexShrink: 0 }}>{t.icon}</span>
+                  <span style={{ width: 18, display: "inline-flex", justifyContent: "center", flexShrink: 0 }}>
+                    {t.icon && <t.icon size={15} strokeWidth={1.75} aria-hidden />}
+                  </span>
                   {t.label}
                 </button>
               ))}
@@ -8440,7 +8452,7 @@ export default function ReplayClient({ userId }) {
                 style={{ display: maximizedPane === "main" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
               >
                 <div style={paneCornerBadgeStyle()}>
-                  <span>🔀</span>
+                  <ArrowLeftRight size={13} strokeWidth={1.75} aria-hidden />
                   <select
                     value={compareSymbol}
                     onChange={(e) => setCompareSymbol(e.target.value)}

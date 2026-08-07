@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { gold, glass, transition, monoStack, displayStack, shadowLuxe, shadowGold } from "../styles";
 
 // عدّاد أرقام متحرك بسيط (بدون مكتبة خارجية)
@@ -57,7 +58,7 @@ function Sparkline({ data, color }) {
   );
 }
 
-export default function StatCard({ icon, label, value, prefix = "", suffix = "", delta, color = gold, sparkline, sub }) {
+export default function StatCard({ icon: Icon, label, value, prefix = "", suffix = "", delta, color = gold, sparkline, sub }) {
   const [hover, setHover] = useState(false);
   const animated = useCountUp(typeof value === "number" ? value : 0);
   const display = typeof value === "number" ? animated.toLocaleString("en-US") : value;
@@ -99,7 +100,7 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
             gap: "0.4rem",
           }}
         >
-          <span style={{ fontSize: "1rem" }}>{icon}</span>
+          {Icon && <Icon size={15} strokeWidth={1.75} color={color} aria-hidden />}
           {label}
         </span>
 
@@ -119,7 +120,8 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
               background: deltaUp ? "#10E5A022" : "#FF453A22",
             }}
           >
-            {deltaUp ? "↗" : "↘"} {Math.abs(delta)}%
+            {deltaUp ? <ArrowUpRight size={13} strokeWidth={2} aria-hidden /> : <ArrowDownRight size={13} strokeWidth={2} aria-hidden />}
+            {Math.abs(delta)}%
           </span>
         )}
       </div>

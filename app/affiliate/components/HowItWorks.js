@@ -1,40 +1,41 @@
 "use client";
+import { CircleCheck, CreditCard, Hourglass, Landmark, Link2, Share2, UserPlus } from "lucide-react";
 import { GOLD, BORDER, card, sectionTitle, sectionEyebrow, displayStack } from "./shared";
 
 export default function HowItWorks({ settings }) {
   const steps = [
     {
-      icon: "🔗",
+      icon: Link2,
       title: "خذ رابط الإحالة تبعك",
       desc: "من قسم «رابط الإحالة» تحت، رابطك جاهز أوتوماتيكياً بمجرد ما تصير مسوّق مفعّل.",
     },
     {
-      icon: "📤",
+      icon: Share2,
       title: "شاركه مع أصدقائك ومتابعينك",
       desc: "انسخه أو استخدم أزرار المشاركة السريعة أو كود QR — على واتساب، تيليجرام، أو أي منصة.",
     },
     {
-      icon: "👤",
+      icon: UserPlus,
       title: "لما حدا يسجّل عن طريقه",
       desc: "بينحسب تلقائياً كإحالة تبعك (مستوى 1)، وبتظهر بجدول «الإحالات» فوراً.",
     },
     {
-      icon: "💳",
+      icon: CreditCard,
       title: "لما يشترك ويدفع",
       desc: `بتنحسب عمولتك فوراً كـ «معلّقة» — ${settings?.level1Percent || 0}% من قيمة اشتراكه المباشر، ونسب أقل من شبكته (مستوى 2 و3).`,
     },
     {
-      icon: "⏳",
+      icon: Hourglass,
       title: "فترة الانتظار",
       desc: `العمولة تضل «معلّقة» لحد أقرب دورة دفع (كل ${settings?.payoutCycleDays || 14} يوم تقريباً)، وقتها منتأكد إنه الاشتراك فعلي وما انلغى.`,
     },
     {
-      icon: "✅",
+      icon: CircleCheck,
       title: "تصبح قابلة للسحب",
       desc: `إذا وصل إجمالي عمولاتك المعلّقة الحد الأدنى ($${settings?.minPayoutUsd || 0}) وعندك طريقة استلام محفوظة، بتتحول لـ «جاهزة للسحب».`,
     },
     {
-      icon: "🏦",
+      icon: Landmark,
       title: "استلام الأرباح",
       desc: "بندفعلك عبر الطريقة يلي اخترتها (PayPal / Wise / تحويل بنكي)، وبتنسجل بسجل المدفوعات فوراً.",
     },
@@ -46,7 +47,7 @@ export default function HowItWorks({ settings }) {
         <p style={sectionEyebrow}>خطوة بخطوة</p>
         <h2 style={sectionTitle}>كيف يعمل برنامج العمولة؟</h2>
         <p style={{ color: "#A79FC4", fontSize: "0.82rem", marginBottom: "1.3rem" }}>
-          افهم البرنامج كامل بأقل من دقيقة 👇
+          افهم البرنامج كامل بأقل من دقيقة
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "0.9rem" }}>
@@ -80,7 +81,7 @@ export default function HowItWorks({ settings }) {
                 >
                   {i + 1}
                 </span>
-                <span style={{ fontSize: "1.15rem" }}>{st.icon}</span>
+                {st.icon && <st.icon size={17} strokeWidth={1.75} color={GOLD} aria-hidden />}
               </div>
               <p style={{ fontWeight: 700, fontSize: "0.86rem", color: "#F5F3FF", marginBottom: 5 }}>{st.title}</p>
               <p style={{ color: "#A79FC4", fontSize: "0.76rem", lineHeight: 1.7 }}>{st.desc}</p>
