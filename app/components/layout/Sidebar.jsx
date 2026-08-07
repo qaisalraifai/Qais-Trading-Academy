@@ -46,10 +46,7 @@ function NavButton({ item, isActive, onNavigate, t }) {
 
 function FooterLink({ item, t }) {
   const Icon = item.icon;
-  const tone =
-    item.color === "discord"
-      ? "text-discord hover:text-discord/80"
-      : "text-text-muted hover:text-text-secondary";
+  const tone = "text-text-muted hover:text-text-secondary";
 
   const content = (
     <div className={cn("nav-item nav-item-inactive w-full text-start", tone)}>

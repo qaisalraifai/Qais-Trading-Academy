@@ -10,7 +10,6 @@ import {
   FileText,
   Settings,
   Handshake,
-  MessageCircle,
   HelpCircle,
   LogOut,
   Crown,
@@ -67,7 +66,6 @@ export const NAV_ITEMS = [
 ];
 
 export const FOOTER_LINKS = [
-  { key: "discord", label: "مجتمع Discord", labelKey: "footer.discord", icon: MessageCircle, href: "/discord", color: "discord" },
   { key: "help", label: "مركز المساعدة", labelKey: "footer.help", icon: HelpCircle, href: null, color: "muted" },
 ];
 

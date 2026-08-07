@@ -49,10 +49,7 @@ function SidebarFooter({ t, daysLeft, onNavigate, onLogout, collapsed }) {
               href={item.href}
               onClick={onNavigate}
               title={t(item.labelKey)}
-              className={cn(
-                "grid h-9 w-9 place-items-center transition-colors duration-base",
-                item.color === "discord" ? "text-discord hover:text-discord/80" : "text-text-muted hover:text-text-secondary"
-              )}
+              className="grid h-9 w-9 place-items-center text-text-muted transition-colors duration-base hover:text-text-secondary"
             >
               <Icon className="h-[18px] w-[18px]" aria-hidden />
             </Link>
@@ -99,9 +96,8 @@ function SidebarFooter({ t, daysLeft, onNavigate, onLogout, collapsed }) {
       <div className="flex flex-col gap-0.5">
         {FOOTER_LINKS.map((item) => {
           const Icon = item.icon;
-          const tone = item.color === "discord" ? "text-discord hover:text-discord/80" : "text-text-muted hover:text-text-secondary";
           const body = (
-            <div className={cn("flex items-center gap-2.5 px-2.5 py-2 text-caption transition-colors duration-base", tone)}>
+            <div className="flex items-center gap-2.5 px-2.5 py-2 text-caption text-text-muted transition-colors duration-base hover:text-text-secondary">
               <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
               <span className="truncate">{t(item.labelKey)}</span>
             </div>

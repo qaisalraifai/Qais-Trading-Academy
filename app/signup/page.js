@@ -207,7 +207,7 @@ useEffect(() => {
               "تدريب 6 أشهر على حساب ديمو",
               "منهجيات ICT و SK و Elliott Wave",
               "Backtest مستمر لكل استراتيجية",
-              "دعم مباشر من المدرب على Discord",
+              "دعم مباشر من المدرب",
             ].map((f, i) => (
               <div key={i} style={s.featureItem}>
                 <span style={s.featureDot}>◆</span>

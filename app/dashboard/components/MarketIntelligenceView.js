@@ -370,6 +370,10 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   const resultRef = useRef(null);
   const displayTFRef = useRef(displayTF);
   const candlesRef = useRef({});
+  /* الفريم اللي فعلاً محمّل بسلسلة الشارت حالياً. مصدر الحقيقة الوحيد لكل
+     الرسم فوق الشارت — لأنه setData ممكن ما تنفّذ (شموع فاضية) فيبقى الشارت
+     على فريم قديم بينما الحالة قالت غيره. */
+  const renderedTFRef = useRef(null);
   const rafRef = useRef(null);
   const animStartRef = useRef(0);
   const chartCardRef = useRef(null);
@@ -746,12 +750,27 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
     const r = resultRef.current;
     if (!r) return;
-    const candles = candlesRef.current[displayTFRef.current];
+    /* نرسم دايماً على الفريم اللي فعلاً محمّل بالسلسلة — مش المطلوب */
+    const renderedTF = renderedTFRef.current;
+    if (!renderedTF) return;
+    const candles = candlesRef.current[renderedTF];
     if (!candles || !candles.length) return;
 
     const ts = chart.timeScale();
     const priceToY = (p) => series.priceToCoordinate(p);
     const timeToX = (t) => ts.timeToCoordinate(t);
+
+    /* عرض منطقة الرسم فعلياً = عرض الحاوية ناقص محور السعر اليمين.
+       كنا نمرّر عرض الحاوية كامل، فليبلات TP1..TP4 كانت ترتسم فوق أرقام
+       المحور (4600 / 4800 / 5000...) وفوق تاغ السعر الحالي — وهاد سبب
+       التراكب والفوضى على يمين الشارت. */
+    let priceAxisW = 0;
+    try {
+      priceAxisW = chart.priceScale("right").width() || 0;
+    } catch {
+      /* نسخة قديمة من المكتبة ما بتدعم width() — منكمل بدون خصم */
+    }
+    const plotW = Math.max(120, w - priceAxisW);
 
     const elapsed = performance.now() - animStartRef.current;
     const progress = Math.max(0, Math.min(1, elapsed / ANIM_MS));
@@ -762,23 +781,37 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     if (lastX == null) return;
 
     const seq = r.sequence;
-    if (seq?.points && seq.displayTF && seq.displayTF === displayTFRef.current) {
+    if (seq?.points && seq.displayTF && seq.displayTF === renderedTF) {
       drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t);
       // أهداف السيكونز (TP1..TP4) — تترسم تلقائياً فور تأكيد C، بغض النظر عن
       // اكتمال شروط الصفقة الكاملة (Entry/SL) — هاي أهداف الـ QAIS SK Engine
       // الرسمية المسقطة من C مباشرة (تاسع عشر)
       if (seq.stage === "confirmed" && seq.targets?.length) {
-        drawSequenceProjection(ctx, seq, timeToX, priceToY, w, h, ease);
+        drawSequenceProjection(ctx, seq, timeToX, priceToY, plotW, h, ease);
       }
     }
-    drawProjection(ctx, r, priceToY, lastX, w, h, ease);
+    drawProjection(ctx, r, priceToY, lastX, plotW, h, ease);
   }
 
   useLayoutEffect(() => {
     if (!seriesRef.current) return;
     const candles = allCandles[displayTF];
-    if (!candles || candles.length === 0) return;
+    if (!candles || candles.length === 0) {
+      /* ما في شموع للفريم المطلوب (فشل جلبها مثلاً). الشارت بيضل عارض شموع
+         الفريم القديم — فلازم نلغي ختم "الفريم المرسوم" حتى الأوفرلاي ما
+         يرسم نقاط A/B/C على مقياس زمني مش تبعها. هاي كانت المشكلة: أوقات
+         الفريم الأعلى موجودة أصلاً بالفريم الأصغر (حدود H4 هي كمان حدود M15)،
+         فـ timeToCoordinate كان يلاقيها ويرجّع إحداثي صحيح شكلاً بس بمكان
+         غلط تماماً — فتطلع النقاط طايرة يمين بعيد عن الشموع. */
+      renderedTFRef.current = null;
+      return;
+    }
     seriesRef.current.setData(candles.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close })));
+    /* ختم الفريم اللي فعلاً انرسم على الشارت — كل الأوفرلاي بيتحاكم عليه، مش
+       على displayTF المطلوب ولا على ref بينتحدّث بعد الرسم */
+    renderedTFRef.current = displayTF;
+    displayTFRef.current = displayTF;
+    candlesRef.current = allCandles;
     chartRef.current?.timeScale().fitContent();
     applyContextPriceLines();
     draw(); // رسم متزامن فوري (قبل أي paint) — الحلقة الدائمة بترسم كل فريم بعدين
@@ -1500,14 +1533,25 @@ function drawSequenceProjection(ctx, seq, timeToX, priceToY, chartW, chartH, eas
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Decluttering: نفس منطق مسقط الصفقة — نفصل موقع الليبل عن السعر الحقيقي
-  // عشان الأهداف المتقاربة (TP2/TP3 مثلاً) ما تتراكب ليبلاتها فوق بعض
+  // Decluttering: نفصل موقع الليبل عن السعر الحقيقي عشان الأهداف المتقاربة
+  // (TP2/TP3 مثلاً) ما تتراكب ليبلاتها فوق بعض.
+  // الصندوق ارتفاعه 32px، فالفجوة لازم تكون أكبر منه — كانت 34 يعني 2px بس
+  // بين صندوق وصندوق، وبتبيّن ملزوقين. وكمان كان الترتيب بيدفع لتحت بس،
+  // فآخر ليبل ممكن ينزل برّا الشارت. هلأ منوزّعهم ومنحصرهم جوّا الحدود.
   const sorted = [...rows].sort((a, b) => a.y - b.y);
-  const rowGap = 34;
+  const rowGap = 40;
+  const halfBox = 20;
   let prevLabelY = -Infinity;
   sorted.forEach((row) => {
     row.labelY = Math.max(row.y, prevLabelY + rowGap);
     prevLabelY = row.labelY;
+  });
+  // لو الكومة طلعت من تحت الشارت، ارفعها كلها لفوق بنفس المقدار
+  const overflowBottom = sorted[sorted.length - 1].labelY - (chartH - halfBox);
+  if (overflowBottom > 0) sorted.forEach((row) => (row.labelY -= overflowBottom));
+  // وبعدها تأكد ما في ولا واحد طالع من فوق
+  sorted.forEach((row) => {
+    row.labelY = Math.max(halfBox, Math.min(chartH - halfBox, row.labelY));
   });
 
   sorted.forEach((row) => {
@@ -1572,11 +1616,19 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
   // Decluttering: بنفصل موقع الليبل (labelY) عن موقع السعر الحقيقي (y) عشان
   // ولا ليبل يتراكب فوق التاني، بغض النظر قد إيش المستويات قريبة من بعض.
   const sorted = [...rows].sort((a, b) => a.y - b.y);
-  const rowGap = 38;
+  const rowGap = 42;
+  const halfBox = 22;
   let prevLabelY = -Infinity;
   sorted.forEach((row) => {
     row.labelY = Math.max(row.y, prevLabelY + rowGap);
     prevLabelY = row.labelY;
+  });
+  // نفس معالجة مسقط السيكونز: لو الكومة طلعت تحت حدود الشارت ارفعها كلها،
+  // وبعدين احصر كل ليبل جوّا الحدود حتى ما ينقص واحد منهم من الشاشة
+  const overflowBottom = sorted[sorted.length - 1].labelY - (chartH - halfBox);
+  if (overflowBottom > 0) sorted.forEach((row) => (row.labelY -= overflowBottom));
+  sorted.forEach((row) => {
+    row.labelY = Math.max(halfBox, Math.min(chartH - halfBox, row.labelY));
   });
 
   ctx.save();

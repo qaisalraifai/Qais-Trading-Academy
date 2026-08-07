@@ -99,7 +99,6 @@ export default function PaymentPage() {
         </div>
         <ul style={styles.features}>
           <li style={styles.feature}><span style={styles.check}>◆</span> وصول فوري لجميع المحاضرات</li>
-          <li style={styles.feature}><span style={styles.check}>◆</span> عضوية Discord الحصرية</li>
           <li style={styles.feature}><span style={styles.check}>◆</span> دعم مباشر من المدرب</li>
           <li style={styles.feature}><span style={styles.check}>◆</span> شروحات وتحليلات تعليمية حصرية</li>
         </ul>

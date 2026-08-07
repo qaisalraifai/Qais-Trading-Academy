@@ -378,7 +378,6 @@ export default function SettingsView({ username }) {
             t("settings.benefitCalendar"),
             t("settings.benefitReplay"),
             t("settings.benefitReports"),
-            t("settings.benefitDiscord"),
           ].map((f) => (
             <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#A79FC4" }}>
               <span style={{ color: GREEN }}><CheckCircle2 size={14} aria-hidden /></span>
