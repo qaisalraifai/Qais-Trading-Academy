@@ -39,6 +39,17 @@ const TF_LABELS = { m5: "M5", m15: "M15", h1: "H1", h4: "H4", daily: "D1" };
 const TF_TOOLBAR_ORDER = ["m5", "m15", "h1", "h4", "daily"];
 const YAHOO_OVERRIDE = { XAUEUR: "XAUEUR=X" };
 
+/* مترجم على مستوى الموديول: الدوال يلي فوق (radarStatusMeta وغيرها) هي دوال
+   خارج الكومبوننت وما فيها وصول مباشر لـ useLocale، فبنمررلها آخر ترجمة "t"
+   محفوظة عبر setRadarTranslator (بتنعمل مزامنة كل رندر بالكومبوننت تحت). */
+let _radarT = (key) => key;
+function setRadarTranslator(fn) {
+  if (typeof fn === "function") _radarT = fn;
+}
+function _t(...args) {
+  return _radarT(...args);
+}
+
 async function fetchCandles(yahoo, interval, count = 5000) {
   try {
     const res = await fetch(`/api/replay-candles?symbol=${encodeURIComponent(yahoo)}&interval=${interval}&count=${count}`);
