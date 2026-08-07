@@ -39,6 +39,17 @@ const TF_LABELS = { m5: "M5", m15: "M15", h1: "H1", h4: "H4", daily: "D1" };
 const TF_TOOLBAR_ORDER = ["m5", "m15", "h1", "h4", "daily"];
 const YAHOO_OVERRIDE = { XAUEUR: "XAUEUR=X" };
 
+/* مترجم على مستوى الموديول: الدوال يلي فوق (radarStatusMeta وغيرها) هي دوال
+   خارج الكومبوننت وما فيها وصول مباشر لـ useLocale، فبنمررلها آخر ترجمة "t"
+   محفوظة عبر setRadarTranslator (بتنعمل مزامنة كل رندر بالكومبوننت تحت). */
+let _radarT = (key) => key;
+function setRadarTranslator(fn) {
+  if (typeof fn === "function") _radarT = fn;
+}
+function _t(...args) {
+  return _radarT(...args);
+}
+
 async function fetchCandles(yahoo, interval, count = 5000) {
   try {
     const res = await fetch(`/api/replay-candles?symbol=${encodeURIComponent(yahoo)}&interval=${interval}&count=${count}`);
@@ -776,25 +787,38 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     lines.push(
       marketStatus.biasLbl === "Neutral"
         ? t("radar.mixedMarket")
-        : `The market remains ${marketStatus.biasLbl.toLowerCase()} overall across watched assets.`
+        : t("radar.marketRemainsOverall", { bias: t(marketStatus.biasLbl === "Bullish" ? "radar.dBullish" : "radar.dBearish") })
     );
     if (leadAsset) {
       const zone = leadAsset.decision?.premiumDiscount;
-      const dirTxt = leadAsset.direction === "up" ? "building bullish momentum" : leadAsset.direction === "down" ? "under bearish pressure" : "in a ranging structure";
-      lines.push(`${leadAssetSymbol} is the strongest setup on the radar right now, ${dirTxt}${zone && zone !== "—" ? ` inside the ${zone.toLowerCase()}` : ""}.`);
+      const dirTxt =
+        leadAsset.direction === "up"
+          ? t("radar.dirTxtBullish")
+          : leadAsset.direction === "down"
+          ? t("radar.dirTxtBearish")
+          : t("radar.dirTxtRanging");
+      const zoneNote =
+        zone && zone !== "—"
+          ? t("radar.leadSetupZoneNote", { zone: (zone === "Premium Zone" ? t("radar.dPremiumZone") : zone === "Discount Zone" ? t("radar.dDiscountZone") : zone).toLowerCase() })
+          : "";
+      lines.push(t("radar.leadSetupLine", { symbol: leadAssetSymbol, dirTxt, zoneNote }));
     }
     if (strongestCcy) {
-      lines.push(`${strongestCcy[0]} remains the strongest currency at the moment, which tends to weigh on pairs quoted against it.`);
+      lines.push(t("radar.strongestCurrencyLine", { currency: strongestCcy[0] }));
     }
     lines.push(
       qualitySetups > 0
-        ? `${qualitySetups} high-quality setup${qualitySetups === 1 ? "" : "s"} ${qualitySetups === 1 ? "is" : "are"} currently forming above 80% confidence.`
-        : "No high-quality setups (80%+ confidence) are currently forming — the engine is still scanning."
+        ? t("radar.qualitySetupsSome", {
+            count: qualitySetups,
+            plural: qualitySetups === 1 ? "" : "s",
+            verb: t(qualitySetups === 1 ? "radar.qualitySetupsSomeVerbSingle" : "radar.qualitySetupsSomeVerbPlural"),
+          })
+        : t("radar.qualitySetupsNone")
     );
     // فلتر الأخبار (الفصل ٩) — تحذير واضح لو أقوى فرصة حالياً محجوبة بسبب خبر مهم قريب
     const leadNewsBlock = leadAsset?.decision?.newsBlock;
     if (leadNewsBlock) {
-      lines.push(`${leadAssetSymbol} entries are on hold — a high-impact ${leadNewsBlock.currency} event ("${leadNewsBlock.title}") is within the news-safety window.`);
+      lines.push(t("radar.newsHoldLine", { symbol: leadAssetSymbol, currency: leadNewsBlock.currency, title: leadNewsBlock.title }));
     }
 
     return { lines, confidence: marketStatus.avgConfidence, biasLbl: marketStatus.biasLbl };
@@ -1062,7 +1086,7 @@ function AiSummaryCard({ summary }) {
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flex: "1 1 320px", minWidth: 260 }}>
           <span style={{ fontSize: 22, lineHeight: 1 }}><Brain size={14} aria-hidden /></span>
           <div>
-            <div style={{ fontSize: 14.5, fontWeight: 900, color: "#F5F3FF", letterSpacing: 0.2 }}>Today&apos;s AI Summary</div>
+            <div style={{ fontSize: 14.5, fontWeight: 900, color: "#F5F3FF", letterSpacing: 0.2 }}>{t("radar.todaysAiSummary")}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
               {lines.map((l, i) => (
                 <div key={i} style={{ fontSize: 12.5, color: "#F5F3FF", lineHeight: 1.75 }}>
@@ -1076,7 +1100,9 @@ function AiSummaryCard({ summary }) {
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           <div style={{ background: "#141024", border: `1px solid ${biasColor}40`, borderRadius: 0, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
             <div style={{ fontSize: 9, color: "#6E6690", letterSpacing: 0.4, textTransform: "uppercase" }}>{t("radar.marketBias")}</div>
-            <div style={{ fontSize: 14, fontWeight: 900, color: biasColor, marginTop: 3 }}>{biasLbl}</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: biasColor, marginTop: 3 }}>
+              {t(biasLbl === "Bullish" ? "radar.dBullish" : biasLbl === "Bearish" ? "radar.dBearish" : "radar.dNeutral")}
+            </div>
           </div>
           <div style={{ background: "#141024", border: `1px solid ${confColor}40`, borderRadius: 0, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
             <div style={{ fontSize: 9, color: "#6E6690", letterSpacing: 0.4, textTransform: "uppercase" }}>{t("radar.overallConfidence")}</div>
@@ -1113,7 +1139,12 @@ function LiveMarketStatusBar({ status }) {
       icon: <TrendingDown size={13} color={RED} />,
       color: RED,
     },
-    { label: t("radar.marketBias"), value: biasLbl, icon: <Target size={13} color={biasColor} />, color: biasColor },
+    {
+      label: t("radar.marketBias"),
+      value: t(biasLbl === "Bullish" ? "radar.dBullish" : biasLbl === "Bearish" ? "radar.dBearish" : "radar.dNeutral"),
+      icon: <Target size={13} color={biasColor} />,
+      color: biasColor,
+    },
     {
       label: t("radar.marketConfidence"),
       value: avgConfidence != null ? `${avgConfidence}%` : "—",
@@ -2408,31 +2439,61 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
    ============================================================================ */
 /* ثابت على مستوى الموديول — بينبنى وقت الاستيراد، قبل ما يكون في `t`.
    فالقيم بتضل نصوص، وبتنترجم وقت العرض عبر _t لو إلها مفتاح. */
-const CHECKLIST_LABELS = {
-  trend: "A clear directional trend on the main structure",
-  bosConfirmed: "Break of Structure (BOS) confirmation",
-  mssConfirmed: "Market Structure Shift (MSS/CHOCH) confirmation",
-  liquidityHit: "A liquidity sweep inside the point of interest",
-  priceLocationOk: "Price reaching a valid Fibonacci location",
-  smtPresent: "A confirmed SMT divergence",
-  obCreated: "A valid Order Block on the execution timeframe",
-  retest: "A retest of the Order Block",
-  riskOk: "Risk kept within 2% per trade",
-  targetsCalculated: "A calculated, confirmed target sequence",
+const CHECKLIST_KEYS = {
+  trend: "radar.checklistTrend",
+  bosConfirmed: "radar.bosConfirmation",
+  mssConfirmed: "radar.mssConfirmation",
+  liquidityHit: "radar.checklistLiquidityHit",
+  priceLocationOk: "radar.fibValid",
+  smtPresent: "radar.checklistSmt",
+  obCreated: "radar.checklistObCreated",
+  retest: "radar.checklistRetest",
+  riskOk: "radar.checklistRiskOk",
+  targetsCalculated: "radar.checklistTargets",
+  priceInWCL: "radar.checklistPriceInWcl",
+  newsClear: "radar.checklistNewsClear",
 };
+
+/* بيترجم قيمة سيشن خام جايه من lib/qais/session.js (مثلاً "London + New York"
+   أو "Market Closed") لنفس أسماء الجلسات المترجمة أصلاً بالقاموس، بدل ما تضل
+   إنجليزي دايماً جوا نص الإحاطة. */
+function translateSessionLabel(label) {
+  if (!label) return label;
+  if (label === "Market Closed") return _t("radar.sessionOff");
+  const map = {
+    Sydney: _t("radar.sessionSydney"),
+    Tokyo: _t("radar.sessionTokyo"),
+    London: _t("radar.sessionLondon"),
+    "New York": _t("radar.sessionNewYork"),
+  };
+  return label
+    .split(" + ")
+    .map((part) => map[part] || part)
+    .join(" + ");
+}
+
+/* بيترجم "Premium Zone" / "Discount Zone" الخام الجايه من lib/qais/decision.js
+   عبر نفس مفاتيح radar.dPremiumZone / radar.dDiscountZone الموجودة أصلاً. */
+function translateZoneLabel(zone) {
+  if (zone === "Premium Zone") return _t("radar.dPremiumZone").toLowerCase();
+  if (zone === "Discount Zone") return _t("radar.dDiscountZone").toLowerCase();
+  return zone;
+}
 
 function buildAiBriefing(item, d) {
   if (!d) return null;
 
   const symbol = item.symbol;
   const dir = d.direction; // 'up' | 'down' | null
-  const dirLabel = dir === "up" ? "bullish" : dir === "down" ? "bearish" : "neutral";
-  const htfLabel = d.htfTrend === "up" ? "bullish" : d.htfTrend === "down" ? "bearish" : null;
+  const dirKey = dir === "up" ? "radar.dBullish" : dir === "down" ? "radar.dBearish" : "radar.dNeutral";
+  const dirLabel = _t(dirKey);
+  const htfDirKey = d.htfTrend === "up" ? "radar.dBullish" : d.htfTrend === "down" ? "radar.dBearish" : null;
+  const htfLabel = htfDirKey ? _t(htfDirKey) : null;
   const liq = d.liquidityStatus || "";
   const swept = liq.startsWith("Swept");
   const approaching = liq === "Approaching";
   const zone = d.premiumDiscount;
-  const session = d.sessionLabel || "the current session";
+  const session = translateSessionLabel(d.sessionLabel) || _t("radar.rightNow");
   const bosOk = d.bosStatus === "Detected";
   const obReady = !!d.ob?.eligible && d.ob.status !== "Invalid";
   const obQuality = d.ob?.quality;
@@ -2449,94 +2510,97 @@ function buildAiBriefing(item, d) {
   /* ---------- 1) Current Market Situation ---------- */
   let situation;
   if (!dir) {
-    situation = `${symbol} does not have a clear directional trend on the main structure right now. Price is moving without a confirmed bias, so the market is best described as ranging while the Qais SK Engine keeps scanning for the next structural break.`;
+    situation = _t("radar.briefNoTrend", { symbol });
   } else {
-    let s = `${symbol} is currently showing a ${dirLabel} bias on the main structure`;
+    let s = _t("radar.briefSituationBase", { symbol, dir: dirLabel });
     if (swept) {
-      s += liq.includes("Below") ? ", after sweeping liquidity below the previous low" : liq.includes("Above") ? ", after sweeping liquidity above the previous high" : ", after sweeping a key liquidity zone";
+      s += liq.includes("Below") ? _t("radar.briefSweptBelow") : liq.includes("Above") ? _t("radar.briefSweptAbove") : _t("radar.briefSweptGeneric");
     } else if (approaching) {
-      s += ", and price is approaching a liquidity zone that has not been swept yet";
+      s += _t("radar.briefApproaching");
     }
     s += ".";
     if (htfLabel && htfLabel !== dirLabel) {
-      s += ` The higher-timeframe trend remains ${htfLabel}, so this move is currently going against the broader trend and should be treated with extra caution.`;
+      s += _t("radar.briefHtfAgainst", { trend: htfLabel });
     } else if (htfLabel && htfLabel === dirLabel) {
-      s += ` This lines up with the higher-timeframe trend, which is also ${htfLabel}, adding weight behind the current move.`;
+      s += _t("radar.briefHtfAlign", { trend: htfLabel });
     }
     if (zone && zone !== "—") {
       const favors = (dir === "up" && zone === "Discount Zone") || (dir === "down" && zone === "Premium Zone");
-      s += ` Price is trading inside the ${zone.toLowerCase()}${favors ? " — a favorable area for the current bias" : ""} during ${session}.`;
+      const zoneVars = { zone: translateZoneLabel(zone), session };
+      s += favors ? _t("radar.briefZoneFavor", zoneVars) : _t("radar.briefZoneNeutral", zoneVars);
     }
     situation = s;
   }
 
   /* ---------- 2) What Are We Waiting For ---------- */
-  const waitingFor = (d.reasonsChecklist || []).filter((c) => !c.ok).map((c) => CHECKLIST_LABELS[c.key] || c.label);
+  const waitingFor = (d.reasonsChecklist || []).filter((c) => !c.ok).map((c) => (CHECKLIST_KEYS[c.key] ? _t(CHECKLIST_KEYS[c.key]) : c.label));
 
   /* ---------- 3) Bullish Scenario ---------- */
   let bullish;
   if (dir === "up" && tradeValid && tp1) {
-    bullish = `Buyers are already in control here. If this holds, price is expected to continue toward TP1 near ${fmt(tp1.price)} first${
-      tpLast && tpLast !== tp1 ? `, and if momentum stays strong, extend toward the higher target near ${fmt(tpLast.price)}.` : "."
-    }`;
+    bullish =
+      tpLast && tpLast !== tp1
+        ? _t("radar.briefBullishInControlExtend", { price: fmt(tp1.price), price2: fmt(tpLast.price) })
+        : _t("radar.briefBullishInControlSingle", { price: fmt(tp1.price) });
   } else if (dir === "up" && !tradeValid) {
-    bullish = `If buyers confirm the missing conditions above — especially ${waitingFor[0] ? waitingFor[0].toLowerCase() : "the remaining checklist items"} — the bullish continuation becomes valid, and price could then push toward the next liquidity pool above. Until those confirmations land, this stays a conditional scenario rather than a live setup.`;
+    bullish = _t("radar.briefBullishConditional", { condition: waitingFor[0] ? waitingFor[0].toLowerCase() : _t("radar.briefRemainingChecklist") });
   } else {
-    bullish = `For the bullish case to develop, price would first need to reclaim the current ${dir === "down" ? "bearish" : ""} structure with a confirmed break above the recent swing high, followed by a BOS to the upside. Only then would upside continuation toward the next liquidity pool become realistic.`;
+    bullish = dir === "down" ? _t("radar.briefBullishNeedsReclaimBearish") : _t("radar.briefBullishNeedsReclaimPlain");
   }
 
   /* ---------- 4) Bearish Scenario ---------- */
   let bearish;
   if (dir === "down" && tradeValid && tp1) {
-    bearish = `Sellers are already in control here. If this holds, price is expected to continue toward TP1 near ${fmt(tp1.price)} first${
-      tpLast && tpLast !== tp1 ? `, and if momentum stays strong, extend toward the lower target near ${fmt(tpLast.price)}.` : "."
-    }`;
+    bearish =
+      tpLast && tpLast !== tp1
+        ? _t("radar.briefBearishInControlExtend", { price: fmt(tp1.price), price2: fmt(tpLast.price) })
+        : _t("radar.briefBearishInControlSingle", { price: fmt(tp1.price) });
   } else if (dir === "down" && !tradeValid) {
-    bearish = `If sellers confirm the missing conditions above — especially ${waitingFor[0] ? waitingFor[0].toLowerCase() : "the remaining checklist items"} — the bearish continuation becomes valid, and price could then push toward the next liquidity pool below. Until those confirmations land, this stays a conditional scenario rather than a live setup.`;
+    bearish = _t("radar.briefBearishConditional", { condition: waitingFor[0] ? waitingFor[0].toLowerCase() : _t("radar.briefRemainingChecklist") });
   } else {
-    bearish = `If price rejects the current area, the market could revisit the lower liquidity zone before attempting another move. A confirmed break of structure to the downside would be the first signal that sellers are taking back control.`;
+    bearish = _t("radar.briefBearishNeedsReject");
   }
 
   /* ---------- 5) AI Confidence ---------- */
   const confidenceLabel = score >= 80 ? _t("radar.levelHigh") : score >= 50 ? _t("radar.levelMedium") : _t("radar.levelLow");
   const confidenceReasons = [];
-  confidenceReasons.push(dir ? `Trend is ${dirLabel}` : _t("radar.noTrendYet"));
+  confidenceReasons.push(dir ? _t("radar.briefTrendIs", { dir: dirLabel }) : _t("radar.noTrendYet"));
   confidenceReasons.push(swept ? _t("radar.liquiditySwept") : approaching ? _t("radar.liquidityNotSwept") : _t("radar.noSweepYet"));
   confidenceReasons.push(bosOk ? _t("radar.bosConfirmed") : _t("radar.bosNotConfirmed"));
-  if (obReady) confidenceReasons.push(`Order Block quality is ${obQuality}%`);
+  if (obReady) confidenceReasons.push(_t("radar.briefObQualityReason", { quality: obQuality }));
   confidenceReasons.push(tradeValid ? _t("radar.entryComplete") : _t("radar.entryIncomplete"));
 
   /* ---------- 6) Recommendation ---------- */
   let recommendation;
   if (tradeValid && dir === "up") recommendation = { text: _t("radar.buyValid"), tone: "buy" };
   else if (tradeValid && dir === "down") recommendation = { text: _t("radar.sellValid"), tone: "sell" };
-  else if (!dir) recommendation = { text: "Market is ranging — avoid entering until a clear trend forms.", tone: "range" };
+  else if (!dir) recommendation = { text: _t("radar.briefRecRanging"), tone: "range" };
   else if (approaching) recommendation = { text: _t("radar.waitSweep"), tone: "wait" };
   else if (!bosOk) recommendation = { text: _t("radar.waitBos"), tone: "wait" };
-  else recommendation = { text: "Wait for confirmation — avoid entering early.", tone: "wait" };
+  else recommendation = { text: _t("radar.briefRecDefaultWait"), tone: "wait" };
 
   /* ---------- 7) Risk Factors ---------- */
   const riskFactors = [];
   if (htfLabel && dir && htfLabel !== dirLabel) {
-    riskFactors.push(`Trading against the higher-timeframe trend (${htfLabel}) — counter-trend moves reverse faster and can invalidate quickly.`);
+    riskFactors.push(_t("radar.briefRiskCounterTrend", { trend: htfLabel }));
   }
   if (obReady && obQuality != null && obQuality < 60) {
-    riskFactors.push(`Order Block quality is only ${obQuality}% — a lower-quality zone increases the chance of a false reaction.`);
+    riskFactors.push(_t("radar.briefRiskObQuality", { quality: obQuality }));
   }
   if (!swept && approaching) {
-    riskFactors.push("Liquidity hasn't been swept yet — entering before the sweep raises the risk of getting caught on the wrong side.");
+    riskFactors.push(_t("radar.briefRiskNoSweep"));
   }
   if (!bosOk) {
-    riskFactors.push("No confirmed Break of Structure yet — the current move could still be corrective rather than a real trend change.");
+    riskFactors.push(_t("radar.briefRiskNoBos"));
   }
   if (zone && ((dir === "up" && zone === "Premium Zone") || (dir === "down" && zone === "Discount Zone"))) {
-    riskFactors.push(`Price is trading in the ${zone.toLowerCase()}, which is a less favorable area for a ${dirLabel} continuation.`);
+    riskFactors.push(_t("radar.briefRiskZone", { zone: translateZoneLabel(zone), dir: dirLabel }));
   }
   if (score < 50) {
-    riskFactors.push("Overall confidence is low — treat this symbol as a watch-list item, not an active setup.");
+    riskFactors.push(_t("radar.briefRiskLowConfidence"));
   }
   if (riskFactors.length === 0) {
-    riskFactors.push("No major conflicting signals detected right now — risk is limited to normal market volatility and news events.");
+    riskFactors.push(_t("radar.briefRiskNone"));
   }
 
   return {

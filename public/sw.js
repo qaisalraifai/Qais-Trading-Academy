@@ -3,7 +3,7 @@
 // الأسعار/الاشتراك/الصفقات تضل حديثة دايماً وما تنكاش نسخة قديمة بالغلط.
 // بس الملفات الثابتة (أيقونات، صور، خطوط) بتتخزن (cache-first) لتحميل أسرع.
 
-const CACHE_VERSION = "qta-v1";
+const CACHE_VERSION = "qta-v2";
 const STATIC_CACHE = `qta-static-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [
@@ -62,9 +62,16 @@ self.addEventListener("fetch", (event) => {
       })
     );
   } else {
-    // network-first لكل باقي الصفحات — لو النت مقطوع، نرجع آخر نسخة محفوظة إذا موجودة
+    // network-first لكل باقي الصفحات — لو النت مقطوع، نرجع آخر نسخة محفوظة
+    // إذا موجودة، وإلا منسيب الطلب يفشل بشكل طبيعي (respondWith لازم ياخد
+    // Response دايماً — رجوع undefined هون كان يسبب "Failed to convert
+    // value to 'Response'" ويكسر الصفحة بشكل إضافي فوق أي خطأ أصلي).
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
+      fetch(event.request).catch(async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        return fetch(event.request);
+      })
     );
   }
 });
