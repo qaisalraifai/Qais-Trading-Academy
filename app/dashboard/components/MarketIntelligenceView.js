@@ -2406,12 +2406,14 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
    يبني بريفنغ مؤسسي كامل (وضع السوق الآن، ايش ناقص، سيناريو صعودي/هبوطي،
    شرح الثقة، وتوصية نهائية) من بيانات القرار الحقيقية (d) — ولا نص ثابت.
    ============================================================================ */
+/* ثابت على مستوى الموديول — بينبنى وقت الاستيراد، قبل ما يكون في `t`.
+   فالقيم بتضل نصوص، وبتنترجم وقت العرض عبر _t لو إلها مفتاح. */
 const CHECKLIST_LABELS = {
   trend: "A clear directional trend on the main structure",
-  bosConfirmed: t("radar.bosConfirmation"),
-  mssConfirmed: t("radar.mssConfirmation"),
+  bosConfirmed: "Break of Structure (BOS) confirmation",
+  mssConfirmed: "Market Structure Shift (MSS/CHOCH) confirmation",
   liquidityHit: "A liquidity sweep inside the point of interest",
-  priceLocationOk: t("radar.fibValid"),
+  priceLocationOk: "Price reaching a valid Fibonacci location",
   smtPresent: "A confirmed SMT divergence",
   obCreated: "A valid Order Block on the execution timeframe",
   retest: "A retest of the Order Block",
