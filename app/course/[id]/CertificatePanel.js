@@ -35,7 +35,7 @@ export default function CertificatePanel({ courseId }) {
           <div style={{ fontSize: 28 }}>🎓</div>
           <div style={{ flex: 1 }}>
             <div style={{ color: "#fff", fontWeight: 800, fontSize: 14 }}>مبروك! خلّصت متطلبات الدفعة</div>
-            <div style={{ color: "#999", fontSize: 12, marginTop: 2 }}>شهادتك جاهزة للتحميل والمشاركة</div>
+            <div style={{ color: "#93A0B8", fontSize: 12, marginTop: 2 }}>شهادتك جاهزة للتحميل والمشاركة</div>
           </div>
           <a
             href={`/certificate/${certificate.certificate_code}`}
@@ -56,7 +56,7 @@ export default function CertificatePanel({ courseId }) {
             <div style={styles.barTrack}>
               <div style={{ ...styles.barFill, width: `${progress.percent}%` }} />
             </div>
-            <div style={{ color: "#777", fontSize: 11.5, marginTop: 4 }}>
+            <div style={{ color: "#5D6880", fontSize: 11.5, marginTop: 4 }}>
               خلّصي كل محاضرات دفعتك عشان تحصلي على شهادة الإتمام تلقائيًا
             </div>
           </div>
@@ -71,9 +71,9 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "0.9rem",
-    background: "#111108",
-    border: "1px solid #E8B86D33",
-    borderRadius: 12,
+    background: "#111726",
+    border: "1px solid #26314A",
+    borderRadius: 0,
     padding: "1rem 1.1rem",
     marginBottom: "1.5rem",
   },
@@ -82,20 +82,20 @@ const styles = {
     width: "100%",
     maxWidth: 320,
     height: 6,
-    borderRadius: 4,
-    background: "#1a1a0a",
+    borderRadius: 3,
+    background: "#1B2438",
     overflow: "hidden",
   },
   barFill: {
     height: "100%",
-    background: "linear-gradient(90deg, #E8B86D, #D4A05A)",
-    borderRadius: 4,
+    background: "linear-gradient(90deg, #C9A860, #9C7F42)",
+    borderRadius: 3,
     transition: "width 0.3s ease",
   },
   btn: {
-    background: "linear-gradient(135deg, #E8B86D, #D4A05A)",
-    color: "#111",
-    borderRadius: 8,
+    background: "linear-gradient(135deg, #C9A860, #9C7F42)",
+    color: "#111726",
+    borderRadius: 3,
     padding: "0.55rem 1rem",
     fontSize: 12.5,
     fontWeight: 800,

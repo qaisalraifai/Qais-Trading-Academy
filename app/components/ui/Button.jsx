@@ -2,22 +2,34 @@
 
 import { cn } from "@/lib/cn";
 
-const variants = {
+/* ============================================================================
+   Button
+   ----------------------------------------------------------------------------
+   الجليد (ice) = التفاعل. الذهب (au) = القيمة المالية فقط — ما تستخدم variant
+   "value" إلا للأزرار يلي بتتعامل مع فلوس (اشتراك، سحب عمولة، ترقية).
+   الزر الأساسي مملوء بالجليد، وما بيلمع — الوهج انحذف من النظام.
+   ============================================================================ */
+
+const VARIANTS = {
   primary:
-    "gold-gradient-bg text-ink font-bold shadow-glow-sm hover:shadow-glow hover:brightness-110 active:scale-[0.98]",
+    "bg-ice-200 text-space-1 font-semibold hover:bg-ice-100 active:bg-ice-300 shadow-edge",
   secondary:
-    "border border-gold-400/25 bg-surface-1/80 text-gold-200 hover:border-gold-400/40 hover:bg-surface-2/80",
+    "border border-edge bg-module-1 text-text-primary hover:border-edge-lit hover:bg-module-2",
   ghost:
-    "border border-transparent bg-transparent text-text-muted hover:border-gold-400/10 hover:bg-white/[0.03] hover:text-text-secondary",
+    "border border-transparent bg-transparent text-text-muted hover:bg-white/[0.035] hover:text-text-secondary",
+  value:
+    "border border-au-300/60 bg-au-200/10 text-au-100 font-semibold hover:border-au-200 hover:bg-au-200/15",
   danger:
-    "border border-loss/30 bg-loss/10 text-loss hover:border-loss/50 hover:bg-loss/15",
+    "border border-loss/40 bg-loss/10 text-loss hover:border-loss/70 hover:bg-loss/15",
 };
 
-const sizes = {
-  sm: "h-8 px-3 text-xs rounded-sm gap-1.5",
-  md: "h-10 px-4 text-sm rounded-md gap-2",
-  lg: "h-12 px-6 text-sm rounded-md gap-2",
+const SIZES = {
+  sm: "h-7 px-2.5 text-caption gap-1.5",
+  md: "h-9 px-4 text-sm gap-2",
+  lg: "h-11 px-6 text-base gap-2",
 };
+
+const ICON_SIZES = { sm: "h-3.5 w-3.5", md: "h-4 w-4", lg: "h-[1.125rem] w-[1.125rem]" };
 
 export default function Button({
   children,
@@ -31,33 +43,73 @@ export default function Button({
   ...props
 }) {
   const isDisabled = disabled || loading;
+  const iconCls = cn("shrink-0", ICON_SIZES[size]);
 
   return (
     <button
       type="button"
       disabled={isDisabled}
       className={cn(
-        "group inline-flex items-center justify-center font-sans transition-all duration-300 ease-premium",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        variants[variant],
-        sizes[size],
+        "inline-flex items-center justify-center rounded-sm font-sans transition-colors duration-base ease-orbit",
+        "disabled:cursor-not-allowed disabled:opacity-45",
+        VARIANTS[variant],
+        SIZES[size],
         className
       )}
       {...props}
     >
       {loading ? (
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        <>
+          <span
+            className={cn(
+              "animate-[orbSpin_700ms_linear_infinite] rounded-full border-[1.5px] border-current border-t-transparent",
+              ICON_SIZES[size]
+            )}
+            aria-hidden
+          />
+          <span className="sr-only">…</span>
+        </>
       ) : (
         <>
-          {Icon && iconPosition === "start" && (
-            <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
-          )}
+          {Icon && iconPosition === "start" && <Icon className={iconCls} aria-hidden />}
           {children}
-          {Icon && iconPosition === "end" && (
-            <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
-          )}
+          {Icon && iconPosition === "end" && <Icon className={iconCls} aria-hidden />}
         </>
       )}
+    </button>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   IconButton — زر أيقونة مربّع. للأشرطة وأدوات التيرمنال.
+   --------------------------------------------------------------------------- */
+const ICON_BTN_SIZES = { sm: "h-7 w-7", md: "h-8 w-8", lg: "h-9 w-9" };
+
+export function IconButton({
+  icon: Icon,
+  label,
+  size = "md",
+  active = false,
+  className,
+  ...props
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-pressed={active || undefined}
+      className={cn(
+        "inline-grid shrink-0 place-items-center rounded-sm border transition-colors duration-base ease-orbit",
+        active
+          ? "border-edge-lit bg-ice-200/10 text-ice-200"
+          : "border-transparent text-text-muted hover:border-edge hover:bg-white/[0.035] hover:text-text-secondary",
+        ICON_BTN_SIZES[size],
+        className
+      )}
+      {...props}
+    >
+      <Icon className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"} aria-hidden />
     </button>
   );
 }

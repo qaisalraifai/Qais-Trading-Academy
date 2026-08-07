@@ -243,13 +243,11 @@ export default function AdminPage() {
           <h1 style={s.headerTitle}>Qais Trading Academy</h1>
         </div>
         <div style={{ display: "flex", gap: "0.75rem" }}>
-          <button onClick={() => setMainTab("overview")} style={{ ...s.btn, ...(mainTab === "overview" ? s.btnGold : {}) }}>
-            📊 نظرة عامة
+          <button onClick={() => setMainTab("overview")} style={{ ...s.btn, ...(mainTab === "overview" ? s.btnGold : {}) }}>نظرة عامة
           </button>
-          <button onClick={() => setMainTab("payments")} style={{ ...s.btn, ...(mainTab === "payments" ? s.btnGold : {}) }}>
-            💳 المدفوعات
+          <button onClick={() => setMainTab("payments")} style={{ ...s.btn, ...(mainTab === "payments" ? s.btnGold : {}) }}>المدفوعات
           </button>
-          <Link href="/admin/lectures" style={{ ...s.btn, textDecoration: "none" }}>📚 إدارة المحاضرات</Link>
+          <Link href="/admin/lectures" style={{ ...s.btn, textDecoration: "none" }}>إدارة المحاضرات</Link>
           <button onClick={() => { supabase.auth.signOut(); router.push("/login"); }} style={s.btn}>تسجيل الخروج</button>
         </div>
       </header>
@@ -265,13 +263,13 @@ export default function AdminPage() {
       {/* الإحصائيات */}
       <div style={{ ...s.section, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
         <StatCard icon="👥" label="إجمالي المستخدمين" value={cards?.totalUsers ?? 0} color={gold} sparkline={trend} sub="آخر 30 يوم" />
-        <StatCard icon="🟢" label="نشطون الآن" value={cards?.activeNow ?? 0} color="#4CAF50" sub="آخر 15 دقيقة" />
+        <StatCard icon="🟢" label="نشطون الآن" value={cards?.activeNow ?? 0} color="#1FBF87" sub="آخر 15 دقيقة" />
         <StatCard icon="💎" label="أعضاء VIP" value={cards?.vipCount ?? 0} color="#B26FE0" />
-        <StatCard icon="📈" label="معدل التجديد" value={cards?.renewalRate ?? 0} suffix="%" color="#4FA8E0" />
+        <StatCard icon="📈" label="معدل التجديد" value={cards?.renewalRate ?? 0} suffix="%" color="#5FA8E8" />
         <StatCard icon="💰" label="الإيرادات الشهرية" value={cards?.monthlyRevenue ?? 0} prefix="$" color={gold} />
         <StatCard icon="💵" label="الإيرادات الكلية" value={cards?.totalRevenue ?? 0} prefix="$" color={gold} />
         <StatCard icon="⌛" label="تنتهي خلال 7 أيام" value={cards?.expiringSoon ?? 0} color="#FF9800" />
-        <StatCard icon="❌" label="اشتراكات منتهية" value={cards?.expiredCount ?? 0} color="#8b8b8b" />
+        <StatCard icon="❌" label="اشتراكات منتهية" value={cards?.expiredCount ?? 0} color="#5D6880" />
       </div>
 
       <div style={s.divider} />
@@ -339,8 +337,8 @@ export default function AdminPage() {
         <div style={{
           position: "fixed", bottom: 28, right: 28, zIndex: 300,
           ...glass, padding: "0.8rem 1.3rem",
-          color: toast.isError ? "#ef5350" : "#4CAF50",
-          borderColor: toast.isError ? "#ef535055" : "#4CAF5055",
+          color: toast.isError ? "#E8495F" : "#1FBF87",
+          borderColor: toast.isError ? "#E8495F55" : "#1FBF8755",
           fontSize: "0.85rem", transition,
         }}>
           {toast.msg}

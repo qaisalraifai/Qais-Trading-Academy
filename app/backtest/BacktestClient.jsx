@@ -625,50 +625,50 @@ export default function BacktestClient({ userId, username, initialBalance, initi
     <div style={{ direction: dir }}>
       <style>{`
         :root{
-          --bg:#0D0E10; --panel:linear-gradient(145deg, #111108, #0D0E10); --panel2:#15151a;
-          --border:#E8B86D22; --border-strong:#E8B86D55; --gold:#E8B86D; --gold-dark:#D4A05A;
-          --green:#3DBB6E; --red:#E5484D; --text:#EAECEF; --muted:#666666;
+          --bg:#0C1220; --panel:#111726; --panel2:#111726;
+          --border:#26314A; --border-strong:#3E5478; --gold:#C9A860; --gold-dark:#9C7F42;
+          --green:#1FBF87; --red:#E8495F; --text:#EDF1F8; --muted:#5D6880;
         }
-        .qta-root{ background:radial-gradient(ellipse at top, #1A1408 0%, #0D0E10 60%); color:var(--text);
+        .qta-root{ background:radial-gradient(ellipse at top, #101828 0%, #0C1220 60%); color:var(--text);
           font-family:'Segoe UI', Tahoma, Arial, sans-serif; direction:${dir}; padding:1.5rem; min-height:100vh; }
         .qta-container{max-width:1400px;margin:0 auto;}
         .qta-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);}
         .qta-header-left{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
         .qta-header-title{display:flex;align-items:center;gap:0.8rem;}
-        .qta-header-logo{width:46px;height:46px;border-radius:50%;border:2px solid var(--gold);box-shadow:0 0 20px #E8B86D44;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#000;font-size:1.1rem;}
+        .qta-header-logo{width:46px;height:46px;border-radius:50%;border:2px solid var(--gold);box-shadow:0 0 20px #3E5478;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#000;font-size:1.1rem;}
         .qta-brand{color:var(--gold);font-size:11px;letter-spacing:3px;margin:0 0 4px;}
         .qta-header-title h1{font-size:1.4rem;margin:0;font-weight:800;}
         .qta-header-title p{margin:0.25rem 0 0;color:var(--muted);font-size:0.85rem;}
         .qta-badge{display:flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:20px;font-size:0.9rem;font-weight:bold;cursor:default;border:1px solid transparent;}
-        .qta-badge-user{background:#E8B86D14;color:var(--gold);border-color:var(--border);}
-        .qta-badge-balance{background:#0D1A12;color:var(--green);cursor:pointer;border-color:#3DBB6E33;}
+        .qta-badge-user{background:#26314A;color:var(--gold);border-color:var(--border);}
+        .qta-badge-balance{background:#111726;color:var(--green);cursor:pointer;border-color:#1FBF8733;}
         .qta-badge-balance:hover{filter:brightness(1.2);}
-        .qta-btn-logout{background:transparent;border:1px solid var(--border);color:var(--muted);padding:0.5rem 1rem;border-radius:8px;cursor:pointer;font-size:0.85rem;transition:all .15s;}
+        .qta-btn-logout{background:transparent;border:1px solid var(--border);color:var(--muted);padding:0.5rem 1rem;border-radius:3px;cursor:pointer;font-size:0.85rem;transition:all .15s;}
         .qta-btn-logout:hover{border-color:var(--red);color:var(--red);}
-        .qta-btn-settings{background:transparent;border:1px solid var(--border);color:var(--muted);padding:0.5rem 0.7rem;border-radius:8px;cursor:pointer;font-size:0.85rem;transition:all .15s;}
+        .qta-btn-settings{background:transparent;border:1px solid var(--border);color:var(--muted);padding:0.5rem 0.7rem;border-radius:3px;cursor:pointer;font-size:0.85rem;transition:all .15s;}
         .qta-btn-settings:hover{border-color:var(--gold);color:var(--gold);}
         .qta-stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0.75rem;margin-bottom:1.5rem;}
-        .qta-stat-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1.1rem 1rem;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
+        .qta-stat-card{background:var(--panel);border:1px solid var(--border);border-radius:0px;padding:1.1rem 1rem;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
         .qta-stat-label{color:var(--muted);font-size:0.78rem;margin-bottom:0.5rem;}
         .qta-stat-value{font-size:1.4rem;font-weight:800;}
-        .qta-live-banner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:0.6rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--muted);}
+        .qta-live-banner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:0.6rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--muted);}
         .qta-live-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;margin-left:6px;}
         .qta-live-dot.on{background:var(--green);box-shadow:0 0 6px var(--green);}
         .qta-live-dot.off{background:var(--red);}
-        .qta-form-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
+        .qta-form-box{background:var(--panel);border:1px solid var(--border);border-radius:0px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
         .qta-form-title{font-size:1rem;margin-bottom:1rem;color:#ddd;display:flex;justify-content:space-between;align-items:center;font-weight:700;}
         .qta-mode-toggle{display:flex;gap:0.4rem;}
-        .qta-mode-btn{background:#0D0E10;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.9rem;border-radius:8px;cursor:pointer;font-size:0.8rem;transition:all .15s;}
+        .qta-mode-btn{background:#0C1220;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.9rem;border-radius:3px;cursor:pointer;font-size:0.8rem;transition:all .15s;}
         .qta-mode-btn.active{background:linear-gradient(135deg, var(--gold), var(--gold-dark));color:#000;font-weight:bold;border-color:var(--gold);}
         .qta-form-row{display:grid;grid-template-columns:repeat(6,1fr);gap:0.75rem;margin-bottom:0.75rem;}
         .qta-field label{display:block;color:var(--muted);font-size:0.78rem;margin-bottom:0.3rem;}
-        .qta-field input, .qta-field select{width:100%;background:#0D0E10;border:1px solid var(--border);color:var(--text);padding:0.55rem 0.6rem;border-radius:8px;font-size:0.9rem;}
-        .qta-field input:focus, .qta-field select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px #E8B86D1a;}
-        .qta-btn-add{background:linear-gradient(135deg, var(--gold), var(--gold-dark));color:#000;border:none;border-radius:8px;font-weight:bold;font-size:0.95rem;cursor:pointer;height:38px;margin-top:1.4rem;box-shadow:0 4px 12px #E8B86D44;width:100%;}
+        .qta-field input, .qta-field select{width:100%;background:#0C1220;border:1px solid var(--border);color:var(--text);padding:0.55rem 0.6rem;border-radius:3px;font-size:0.9rem;}
+        .qta-field input:focus, .qta-field select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px #26314A;}
+        .qta-btn-add{background:linear-gradient(135deg, var(--gold), var(--gold-dark));color:#000;border:none;border-radius:3px;font-weight:bold;font-size:0.95rem;cursor:pointer;height:38px;margin-top:1.4rem;box-shadow:0 4px 12px #3E5478;width:100%;}
         .qta-btn-add:hover{filter:brightness(1.1);}
-        .qta-btn-add.live{background:var(--green);box-shadow:0 4px 12px #3DBB6E44;}
-        .qta-preview-box{margin-top:0.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;border:1px solid var(--green);background:#0f1f17;border-radius:12px;padding:1rem 1.5rem;}
-        .qta-preview-box.risk-high{border-color:var(--red);background:#1f0f0f;}
+        .qta-btn-add.live{background:var(--green);box-shadow:0 4px 12px #1FBF8744;}
+        .qta-preview-box{margin-top:0.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;border:1px solid var(--green);background:#111726;border-radius:0px;padding:1rem 1.5rem;}
+        .qta-preview-box.risk-high{border-color:var(--red);background:#111726;}
         .qta-preview-left{display:flex;gap:1.8rem;flex-wrap:wrap;}
         .qta-preview-item{text-align:center;}
         .qta-preview-item .l{color:var(--muted);font-size:0.75rem;display:block;margin-bottom:0.2rem;}
@@ -679,36 +679,36 @@ export default function BacktestClient({ userId, username, initialBalance, initi
         .qta-check-circle{width:26px;height:26px;border-radius:50%;background:var(--green);color:#000;display:flex;align-items:center;justify-content:center;font-weight:bold;}
         .risk-high .qta-check-circle{background:var(--red);color:#fff;}
         .qta-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;gap:0.75rem;}
-        .qta-search-input{flex:1;min-width:220px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:0.6rem 1rem;border-radius:8px;}
+        .qta-search-input{flex:1;min-width:220px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:0.6rem 1rem;border-radius:3px;}
         .qta-search-input:focus{outline:none;border-color:var(--gold);}
         .qta-filter-group{display:flex;gap:0.4rem;flex-wrap:wrap;}
-        .qta-filter-btn{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:0.5rem 1rem;border-radius:8px;cursor:pointer;font-size:0.85rem;transition:all .15s;}
+        .qta-filter-btn{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:0.5rem 1rem;border-radius:3px;cursor:pointer;font-size:0.85rem;transition:all .15s;}
         .qta-filter-btn.active{background:linear-gradient(135deg, var(--gold), var(--gold-dark));color:#000;border-color:var(--gold);font-weight:bold;}
-        .qta-table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:16px;overflow-x:auto;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
+        .qta-table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:0px;overflow-x:auto;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
         .qta-table{width:100%;border-collapse:collapse;min-width:1100px;}
         .qta-table th, .qta-table td{padding:0.85rem 0.6rem;text-align:center;font-size:0.85rem;white-space:nowrap;}
         .qta-table th{color:var(--gold);border-bottom:1px solid var(--border);font-weight:600;font-size:0.78rem;letter-spacing:0.5px;}
-        .qta-table tbody tr{border-bottom:1px solid #1a1a0f;}
-        .qta-table tbody tr:hover{background:#E8B86D0d;}
-        .qta-table tbody tr.live-row{background:#101a16;}
+        .qta-table tbody tr{border-bottom:1px solid #1B2438;}
+        .qta-table tbody tr:hover{background:#26314A;}
+        .qta-table tbody tr.live-row{background:#111726;}
         .qta-empty-row td{padding:3rem 0;color:var(--muted);}
-        .pill{padding:0.25rem 0.6rem;border-radius:6px;font-size:0.78rem;font-weight:bold;background:#222;color:#999;}
-        .pill-win{background:#0D1A12;color:var(--green);}
-        .pill-loss{background:#3d0f0f;color:var(--red);}
-        .pill-live{background:#1d3a2f;color:var(--green);animation:qtaPulse 1.5s infinite;}
+        .pill{padding:0.25rem 0.6rem;border-radius:3px;font-size:0.78rem;font-weight:bold;background:#1B2438;color:#93A0B8;}
+        .pill-win{background:#111726;color:var(--green);}
+        .pill-loss{background:#1E2941;color:var(--red);}
+        .pill-live{background:#182033;color:var(--green);animation:qtaPulse 1.5s infinite;}
         @keyframes qtaPulse{0%{opacity:1;}50%{opacity:0.5;}100%{opacity:1;}}
         .pill-buy{color:var(--green);}
         .pill-sell{color:var(--red);}
         .qta-del-btn{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:1rem;}
         .qta-bottom-actions{display:flex;gap:0.75rem;}
-        .qta-btn-secondary{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:0.6rem 1.2rem;border-radius:8px;cursor:pointer;font-size:0.85rem;transition:all .15s;}
+        .qta-btn-secondary{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:0.6rem 1.2rem;border-radius:3px;cursor:pointer;font-size:0.85rem;transition:all .15s;}
         .qta-btn-secondary:hover{border-color:var(--gold);color:var(--gold);}
         .qta-btn-danger:hover{border-color:var(--red);color:var(--red);}
         .qta-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:50;}
         .qta-modal-overlay.open{display:flex;}
-        .qta-modal-box{background:linear-gradient(145deg, #151007, #0D0E10);border:1px solid var(--border-strong);border-radius:16px;padding:1.5rem;width:340px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.6);}
+        .qta-modal-box{background:#111726;border:1px solid var(--border-strong);border-radius:0px;padding:1.5rem;width:340px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.6);}
         .qta-modal-box h3{margin-top:0;color:var(--gold);}
-        .qta-modal-box input{width:100%;background:#0D0E10;border:1px solid var(--border);color:var(--text);padding:0.6rem;border-radius:8px;margin:0.5rem 0 1rem;font-size:0.95rem;}
+        .qta-modal-box input{width:100%;background:#0C1220;border:1px solid var(--border);color:var(--text);padding:0.6rem;border-radius:3px;margin:0.5rem 0 1rem;font-size:0.95rem;}
         .qta-modal-box input:focus{outline:none;border-color:var(--gold);}
         .qta-modal-actions{display:flex;gap:0.6rem;justify-content:flex-end;}
         .qta-modal-box small{color:var(--muted);display:block;margin-top:-0.5rem;margin-bottom:0.8rem;line-height:1.6;}
@@ -724,8 +724,7 @@ export default function BacktestClient({ userId, username, initialBalance, initi
             <div className="qta-header-left">
               <button className="qta-btn-logout" onClick={handleLogout}>{t("backtest.logout")}</button>
               <div className="qta-badge qta-badge-user">👤 <span>{username}</span></div>
-              <div className="qta-badge qta-badge-balance" onClick={openBalanceModal} title={t("backtest.editBalanceHint")}>
-                💰 ${fmtBalance(balance)} ✎
+              <div className="qta-badge qta-badge-balance" onClick={openBalanceModal} title={t("backtest.editBalanceHint")}>${fmtBalance(balance)} ✎
               </div>
               <button className="qta-btn-settings" onClick={openSettingsModal} title={t("backtest.marketSettingsHint")}>{t("backtest.marketSettings")}</button>
             </div>

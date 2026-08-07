@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import QrCodeBox from "../components/QrCodeBox";
 
-const gold = "#E8B86D";
+const gold = "#C9A860";
 
 export default function CryptoAutoPaymentPage() {
   const router = useRouter();
@@ -135,7 +135,7 @@ export default function CryptoAutoPaymentPage() {
 
         {step === "error" && (
           <>
-            <p style={styles.configError}>⚠️ {error}</p>
+            <p style={styles.configError}>{error}</p>
             <Link href="/payment" style={styles.linkBtn}>← رجوع لصفحة الدفع</Link>
           </>
         )}
@@ -155,7 +155,7 @@ export default function CryptoAutoPaymentPage() {
                   disabled={creatingPayment}
                 >
                   <div style={{ fontWeight: "bold" }}>{c.label}</div>
-                  <div style={{ fontSize: "0.72rem", color: "#888" }}>{c.network}</div>
+                  <div style={{ fontSize: "0.72rem", color: "#5D6880" }}>{c.network}</div>
                 </button>
               ))}
             </div>
@@ -182,10 +182,10 @@ export default function CryptoAutoPaymentPage() {
                   <button onClick={copyAddress} style={styles.copyBtn}>{copied ? "✓ تم النسخ" : "نسخ"}</button>
                 </div>
                 {payment.payinExtraId && (
-                  <p style={styles.warnNote}>⚠️ لازم تضيف Memo/Tag: <strong>{payment.payinExtraId}</strong> مع التحويل</p>
+                  <p style={styles.warnNote}>لازم تضيف Memo/Tag: <strong>{payment.payinExtraId}</strong> مع التحويل</p>
                 )}
                 {secondsLeft !== null && (
-                  <p style={{ ...styles.note, color: secondsLeft < 120 ? "#FF9800" : "#666" }}>
+                  <p style={{ ...styles.note, color: secondsLeft < 120 ? "#FF9800" : "#5D6880" }}>
                     الوقت المتبقي: {formatTime(secondsLeft)}
                   </p>
                 )}
@@ -207,7 +207,7 @@ export default function CryptoAutoPaymentPage() {
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#0D0E10",
+    backgroundColor: "#0C1220",
     color: "#fff",
     direction: "rtl",
     fontFamily: "'Georgia', serif",
@@ -218,11 +218,11 @@ const styles = {
   },
   header: { textAlign: "center", marginBottom: "2rem" },
   logoText: { fontSize: "2.2rem", fontWeight: "bold", color: gold, letterSpacing: "6px" },
-  logoSub: { color: "#888", fontSize: "0.85rem", marginTop: "0.4rem" },
+  logoSub: { color: "#5D6880", fontSize: "0.85rem", marginTop: "0.4rem" },
   card: {
-    backgroundColor: "#0f0f0f",
+    backgroundColor: "#080B14",
     border: `1px solid ${gold}`,
-    borderRadius: "4px",
+    borderRadius: "3px",
     padding: "2.5rem",
     width: "100%",
     maxWidth: "460px",
@@ -233,11 +233,11 @@ const styles = {
     boxShadow: `0 0 60px ${gold}22`,
   },
   title: { fontSize: "1.2rem", fontWeight: "bold", textAlign: "center" },
-  subtitle: { color: "#888", fontSize: "0.9rem", textAlign: "center", lineHeight: 1.6 },
+  subtitle: { color: "#5D6880", fontSize: "0.9rem", textAlign: "center", lineHeight: 1.6 },
   currencyGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.7rem", width: "100%" },
   currencyBtn: {
     padding: "0.9rem 0.5rem",
-    borderRadius: "6px",
+    borderRadius: "3px",
     border: `1px solid ${gold}55`,
     background: "transparent",
     color: "#fff",
@@ -250,17 +250,17 @@ const styles = {
     alignItems: "center",
     gap: "0.5rem",
     width: "100%",
-    background: "#0b0b0b",
-    border: "1px solid #2B2F36",
-    borderRadius: 8,
+    background: "#080B14",
+    border: "1px solid #1E2941",
+    borderRadius: 3,
     padding: "0.6rem 0.8rem",
   },
-  addressText: { flex: 1, fontSize: "0.75rem", wordBreak: "break-all", color: "#ccc" },
+  addressText: { flex: 1, fontSize: "0.75rem", wordBreak: "break-all", color: "#93A0B8" },
   copyBtn: {
     background: "transparent",
     border: `1px solid ${gold}`,
     color: gold,
-    borderRadius: 6,
+    borderRadius: 3,
     padding: "0.4rem 0.8rem",
     fontSize: "0.75rem",
     cursor: "pointer",
@@ -272,14 +272,14 @@ const styles = {
   spinnerIconSmall: { fontSize: "1.5rem" },
   linkBtn: { color: gold, fontSize: "0.85rem", textDecoration: "none" },
   configError: {
-    color: "#E5484D",
+    color: "#E8495F",
     fontSize: "0.78rem",
     textAlign: "center",
     lineHeight: 1.7,
-    background: "#E5484D14",
-    border: "1px solid #E5484D44",
-    borderRadius: 6,
+    background: "#E8495F14",
+    border: "1px solid #E8495F44",
+    borderRadius: 3,
     padding: "0.6rem 0.9rem",
   },
-  note: { color: "#555", fontSize: "0.8rem", textAlign: "center" },
+  note: { color: "#3E4761", fontSize: "0.8rem", textAlign: "center" },
 };

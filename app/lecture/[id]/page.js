@@ -31,7 +31,7 @@ export default async function LecturePage({ params }) {
     <PageShell {...shellProfile}>
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1A1408 0%, #0D0E10 60%)",
+      background: "radial-gradient(ellipse at top, #101828 0%, #0C1220 60%)",
       color: "#fff",
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
@@ -40,24 +40,24 @@ export default async function LecturePage({ params }) {
       {/* Sidebar */}
       <div style={{
         width: 280,
-        background: "linear-gradient(180deg, #111108 0%, #0D0E10 100%)",
-        borderLeft: "1px solid #E8B86D22",
+        background: "linear-gradient(180deg, #111726 0%, #0C1220 100%)",
+        borderLeft: "1px solid #26314A",
         padding: "1.5rem 1rem",
         display: "flex", flexDirection: "column", gap: "0.5rem",
         overflowY: "auto",
       }}>
         {/* Logo + Title */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "1px solid #1a1a0a" }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #E8B86D", overflow: "hidden", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "1px solid #1B2438" }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #C9A860", overflow: "hidden", flexShrink: 0 }}>
             <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
           <div>
-            <p style={{ color: "#E8B86D", fontSize: 9, letterSpacing: 2, margin: 0 }}>QTA</p>
+            <p style={{ color: "#C9A860", fontSize: 9, letterSpacing: 2, margin: 0 }}>QTA</p>
             <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, margin: 0 }}>المحاضرات</p>
           </div>
         </div>
 
-        <Link href="/lecture" style={{ color: "#E8B86D", textDecoration: "none", fontSize: 12, marginBottom: "0.5rem", display: "block" }}>
+        <Link href="/lecture" style={{ color: "#C9A860", textDecoration: "none", fontSize: 12, marginBottom: "0.5rem", display: "block" }}>
           ← قائمة المحاضرات
         </Link>
 
@@ -65,19 +65,19 @@ export default async function LecturePage({ params }) {
           <Link key={l.id} href={`/lecture/${l.id}`} style={{ textDecoration: "none" }}>
             <div style={{
               padding: "0.75rem 1rem",
-              borderRadius: 10,
-              background: l.id === params.id ? "linear-gradient(135deg, #E8B86D22, #D4A05A11)" : "transparent",
-              border: l.id === params.id ? "1px solid #E8B86D44" : "1px solid transparent",
-              color: l.id === params.id ? "#E8B86D" : "#666",
+              borderRadius: 3,
+              background: l.id === params.id ? "linear-gradient(135deg, #26314A, #9C7F4211)" : "transparent",
+              border: l.id === params.id ? "1px solid #3E5478" : "1px solid transparent",
+              color: l.id === params.id ? "#C9A860" : "#5D6880",
               fontSize: 13,
               cursor: "pointer",
               display: "flex", alignItems: "center", gap: 10,
             }}>
               <div style={{
                 width: 26, height: 26, borderRadius: "50%",
-                background: l.id === params.id ? "linear-gradient(135deg, #E8B86D, #D4A05A)" : "#1a1a0a",
+                background: l.id === params.id ? "linear-gradient(135deg, #C9A860, #9C7F42)" : "#1B2438",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 700, color: l.id === params.id ? "#000" : "#555",
+                fontSize: 11, fontWeight: 700, color: l.id === params.id ? "#000" : "#3E4761",
                 flexShrink: 0,
               }}>
                 {index + 1}
@@ -92,19 +92,19 @@ export default async function LecturePage({ params }) {
       <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column" }}>
         {/* Header */}
         <div style={{ marginBottom: "1.5rem" }}>
-          <p style={{ color: "#E8B86D", fontSize: 11, letterSpacing: 3, margin: "0 0 8px" }}>QAIS TRADING ACADEMY</p>
+          <p style={{ color: "#C9A860", fontSize: 11, letterSpacing: 3, margin: "0 0 8px" }}>QAIS TRADING ACADEMY</p>
           <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>{lecture.title}</h2>
           {lecture.description && (
-            <p style={{ color: "#666", margin: "8px 0 0", fontSize: 14 }}>{lecture.description}</p>
+            <p style={{ color: "#5D6880", margin: "8px 0 0", fontSize: 14 }}>{lecture.description}</p>
           )}
         </div>
 
         {/* Video */}
         <div style={{
           position: "relative", width: "100%", paddingTop: "56.25%",
-          background: "#000", borderRadius: 16, overflow: "hidden",
+          background: "#000", borderRadius: 0, overflow: "hidden",
           boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-          border: "1px solid #E8B86D22",
+          border: "1px solid #26314A",
         }}>
           <iframe
             src={
@@ -118,8 +118,7 @@ export default async function LecturePage({ params }) {
           />
         </div>
 
-        <p style={{ color: "#444", fontSize: 12, marginTop: "0.75rem" }}>
-          💡 اضغط على أيقونة التكبير ⛶ بالفيديو للعرض بشاشة كاملة
+        <p style={{ color: "#3E4761", fontSize: 12, marginTop: "0.75rem" }}>اضغط على أيقونة التكبير ⛶ بالفيديو للعرض بشاشة كاملة
         </p>
 
         <LectureCompleteButton lectureId={params.id} initialCompleted={!!progress?.completed} />

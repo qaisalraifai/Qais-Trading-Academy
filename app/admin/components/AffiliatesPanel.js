@@ -13,10 +13,10 @@ const STATUS_LABELS = {
 };
 
 const STATUS_COLORS = {
-  pending: "#eab308",
-  approved: "#4CAF50",
-  rejected: "#F6465D",
-  suspended: "#888",
+  pending: "#E0A44A",
+  approved: "#1FBF87",
+  rejected: "#E8495F",
+  suspended: "#5D6880",
 };
 
 function fmt(n) {
@@ -166,7 +166,7 @@ export default function AffiliatesPanel() {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
-        <h2 style={{ color: "#EAECEF", fontSize: "1.1rem", margin: 0 }}>🤝 برنامج التسويق بالعمولة</h2>
+        <h2 style={{ color: "#EDF1F8", fontSize: "1.1rem", margin: 0 }}>برنامج التسويق بالعمولة</h2>
         <div style={{ ...styles.tabs }}>
           {[
             { key: "applications", label: "طلبات المسوّقين" },
@@ -190,7 +190,7 @@ export default function AffiliatesPanel() {
         {error && <div style={styles.errorBox}>{error}</div>}
 
         {loading ? (
-          <p style={{ color: "#666" }}>جاري التحميل...</p>
+          <p style={{ color: "#5D6880" }}>جاري التحميل...</p>
         ) : tab === "tiers" ? (
           <TiersManager />
         ) : tab === "achievements" ? (
@@ -219,7 +219,7 @@ export default function AffiliatesPanel() {
                     <td style={styles.td}>{a.username}</td>
                     <td style={{ ...styles.td, fontFamily: "monospace" }}>{a.affiliate_code || "-"}</td>
                     <td style={styles.td}>
-                      <span style={{ color: STATUS_COLORS[a.affiliate_status] || "#888" }}>
+                      <span style={{ color: STATUS_COLORS[a.affiliate_status] || "#5D6880" }}>
                         {STATUS_LABELS[a.affiliate_status] || a.affiliate_status}
                       </span>
                     </td>
@@ -280,7 +280,7 @@ export default function AffiliatesPanel() {
                   )}
                   {payouts.map((p) => (
                     <tr key={p.id}>
-                      <td style={styles.td}>{p.affiliate_username} <span style={{ color: "#555", fontFamily: "monospace", fontSize: "0.75rem" }}>({p.affiliate_code})</span></td>
+                      <td style={styles.td}>{p.affiliate_username} <span style={{ color: "#3E4761", fontFamily: "monospace", fontSize: "0.75rem" }}>({p.affiliate_code})</span></td>
                       <td style={styles.td}>${fmt(p.amount)}</td>
                       <td style={styles.td}>
                         {p.method}
@@ -309,7 +309,7 @@ export default function AffiliatesPanel() {
           </>
         ) : tab === "settings" && settings ? (
           <div style={{ ...glass, padding: "2rem", maxWidth: 480 }}>
-            <p style={{ color: "#888", fontSize: "0.85rem", marginBottom: "1.5rem", lineHeight: 1.8 }}>
+            <p style={{ color: "#5D6880", fontSize: "0.85rem", marginBottom: "1.5rem", lineHeight: 1.8 }}>
               عمولات التسجيل والتجديد صارت تُدار من تبويب «المستويات» (بالدولار، حسب مستوى كل مسوّق).
               هون بس الإعدادات العامة: الحد الأدنى للمبلغ حتى يتجهز للصرف، ودورة الصرف بالأيام (14 = كل أسبوعين).
             </p>
@@ -318,7 +318,7 @@ export default function AffiliatesPanel() {
               { key: "payout_cycle_days", label: "دورة الصرف (أيام)" },
             ].map((f) => (
               <div key={f.key} style={{ marginBottom: "1.1rem" }}>
-                <label style={{ display: "block", color: "#888", fontSize: "0.8rem", marginBottom: 6 }}>{f.label}</label>
+                <label style={{ display: "block", color: "#5D6880", fontSize: "0.8rem", marginBottom: 6 }}>{f.label}</label>
                 <input
                   type="number"
                   value={settings[f.key]}
@@ -334,7 +334,7 @@ export default function AffiliatesPanel() {
                 checked={settings.leaderboard_show_names !== false}
                 onChange={(e) => setSettings({ ...settings, leaderboard_show_names: e.target.checked })}
               />
-              <label htmlFor="leaderboard_show_names" style={{ color: "#888", fontSize: "0.82rem" }}>
+              <label htmlFor="leaderboard_show_names" style={{ color: "#5D6880", fontSize: "0.82rem" }}>
                 إظهار أسماء المسوّقين الحقيقية بلوحة الصدارة (لو ألغيتها، بيظهروا بمعرّف مموّه)
               </label>
             </div>
@@ -350,11 +350,11 @@ export default function AffiliatesPanel() {
 
 const styles = {
   tabs: { display: "flex", gap: 8, flexWrap: "wrap" },
-  tab: { padding: "0.6rem 1.1rem", borderRadius: 10, border: "1px solid #222", color: "#888", fontSize: "0.85rem", cursor: "pointer", transition },
+  tab: { padding: "0.6rem 1.1rem", borderRadius: 3, border: "1px solid #1B2438", color: "#5D6880", fontSize: "0.85rem", cursor: "pointer", transition },
   tabActive: { color: gold, borderColor: `${gold}66`, background: `${gold}11` },
-  errorBox: { background: "#2a0d0d", border: "1px solid #F6465D44", color: "#F6465D", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: "1.2rem", fontSize: "0.85rem" },
+  errorBox: { background: "#111726", border: "1px solid #E8495F44", color: "#E8495F", padding: "0.8rem 1rem", borderRadius: 3, marginBottom: "1.2rem", fontSize: "0.85rem" },
   table: { width: "100%", borderCollapse: "collapse" },
-  th: { textAlign: "right", color: "#666", fontSize: "0.75rem", padding: "0.7rem", borderBottom: "1px solid #1c1c1c" },
-  td: { padding: "0.7rem", fontSize: "0.85rem", color: "#C8C0B0", borderBottom: "1px solid #1c1c1c" },
-  input: { width: "100%", background: "#080808", border: "1px solid #22252B", color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 6, fontSize: "0.9rem" },
+  th: { textAlign: "right", color: "#5D6880", fontSize: "0.75rem", padding: "0.7rem", borderBottom: "1px solid #111726" },
+  td: { padding: "0.7rem", fontSize: "0.85rem", color: "#93A0B8", borderBottom: "1px solid #111726" },
+  input: { width: "100%", background: "#080B14", border: "1px solid #182033", color: "#EDF1F8", padding: "0.7rem 1rem", borderRadius: 3, fontSize: "0.9rem" },
 };

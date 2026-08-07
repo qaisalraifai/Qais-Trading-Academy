@@ -1,32 +1,35 @@
 import "./globals.css";
-import { Cairo, Plus_Jakarta_Sans, JetBrains_Mono, Inter } from "next/font/google";
+import { IBM_Plex_Sans_Arabic, Archivo, IBM_Plex_Mono } from "next/font/google";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import { getServerLocale } from "@/lib/i18n/get-server-locale";
 import { dirFor } from "@/lib/i18n/config";
 
-const cairo = Cairo({
+/* ============================================================================
+   ORBIT — نظام الخطوط
+   ----------------------------------------------------------------------------
+   عائلة واحدة للواجهة بتغطّي العربي واللاتيني (IBM Plex Sans Arabic) — يعني
+   ما في "خط عربي" و"خط إنجليزي" منفصلين ولا تبديل بينهم، نفس البنية الحرفية
+   ونفس الأوزان بالحالتين. Archivo للعناوين والأرقام الكبيرة (أرقام جدولية
+   ممتازة + عرض صناعي بيعطي إحساس أجهزة قياس). IBM Plex Mono لرموز الأزواج
+   والتوقيتات والمعرّفات.
+   ============================================================================ */
+
+const plexArabic = IBM_Plex_Sans_Arabic({
   subsets: ["arabic", "latin"],
-  variable: "--font-arabic",
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-ui",
   display: "swap",
 });
 
-// خط احترافي مخصص للإنجليزية — بيحل محل Cairo تلقائياً وقت locale = "en"
-// (عبر قاعدة html.lang-en بملف globals.css)، بدون أي تعديل على Tailwind أو
-// أي كلاس موجود بأي صفحة.
-const inter = Inter({
+const archivo = Archivo({
   subsets: ["latin"],
-  variable: "--font-en",
+  variable: "--font-display",
   display: "swap",
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
+const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
-  variable: "--font-num",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
+  weight: ["400", "500", "600"],
   variable: "--font-mono",
   display: "swap",
 });
@@ -65,7 +68,7 @@ export default function RootLayout({ children }) {
     <html
       lang={locale}
       dir={dirFor(locale)}
-      className={`${locale === "ar" ? "lang-ar" : "lang-en"} ${cairo.variable} ${inter.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
+      className={`${locale === "ar" ? "lang-ar" : "lang-en"} ${plexArabic.variable} ${archivo.variable} ${plexMono.variable}`}
     >
       <body style={{ margin: 0 }}>
         <LocaleProvider initialLocale={locale}>{children}</LocaleProvider>

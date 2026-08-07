@@ -88,7 +88,7 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.6rem" }}>
         <span
           style={{
-            color: "#777",
+            color: "#5D6880",
             fontSize: "0.72rem",
             fontWeight: 700,
             letterSpacing: "1.2px",
@@ -115,8 +115,8 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
               fontSize: "0.72rem",
               fontWeight: 700,
               fontFamily: monoStack,
-              color: deltaUp ? "#4CAF50" : "#ef5350",
-              background: deltaUp ? "#4CAF5022" : "#ef535022",
+              color: deltaUp ? "#1FBF87" : "#E8495F",
+              background: deltaUp ? "#1FBF8722" : "#E8495F22",
             }}
           >
             {deltaUp ? "↗" : "↘"} {Math.abs(delta)}%
@@ -125,7 +125,7 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
       </div>
 
       <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
-        <span style={{ fontFamily: displayStack, fontSize: "2rem", fontWeight: 800, color: "#F5F0E4", letterSpacing: "-0.01em" }}>
+        <span style={{ fontFamily: displayStack, fontSize: "2rem", fontWeight: 800, color: "#F6F0E1", letterSpacing: "-0.01em" }}>
           {prefix}
           <span style={{ fontFamily: monoStack, fontWeight: 700 }}>{display}</span>
           {suffix}
@@ -134,7 +134,7 @@ export default function StatCard({ icon, label, value, prefix = "", suffix = "",
 
       {(sub || sparkline) && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
-          <span style={{ color: "#5a5a5a", fontSize: "0.78rem" }}>{sub}</span>
+          <span style={{ color: "#3E4761", fontSize: "0.78rem" }}>{sub}</span>
           {sparkline && <Sparkline data={sparkline} color={color} />}
         </div>
       )}

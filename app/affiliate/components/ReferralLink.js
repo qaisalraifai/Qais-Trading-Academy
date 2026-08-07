@@ -31,7 +31,7 @@ export default function ReferralLink({ link, clicks, code }) {
       <div style={card} className="qta-animate-in">
         <p style={sectionEyebrow}>رابطك الخاص</p>
         <h2 style={sectionTitle}>رابط الإحالة</h2>
-        <p style={{ color: "#9A9A9A", fontSize: "0.82rem", marginBottom: "1.2rem" }}>شاركه بأي وسيلة، وكل تسجيل يصير من خلاله بينحسب لصالحك تلقائياً.</p>
+        <p style={{ color: "#93A0B8", fontSize: "0.82rem", marginBottom: "1.2rem" }}>شاركه بأي وسيلة، وكل تسجيل يصير من خلاله بينحسب لصالحك تلقائياً.</p>
 
         <div
           style={{
@@ -49,24 +49,24 @@ export default function ReferralLink({ link, clicks, code }) {
                 alignItems: "center",
                 background: "rgba(255,255,255,0.03)",
                 border: `1px solid ${BORDER}`,
-                borderRadius: 12,
+                borderRadius: 0,
                 padding: "0.9rem 1.1rem",
                 flexWrap: "wrap",
               }}
             >
-              <span style={{ fontFamily: monoStack, fontSize: "0.85rem", color: "#C8C0B0", direction: "ltr", flex: 1, wordBreak: "break-all" }}>
+              <span style={{ fontFamily: monoStack, fontSize: "0.85rem", color: "#93A0B8", direction: "ltr", flex: 1, wordBreak: "break-all" }}>
                 {link}
               </span>
               <button onClick={copyLink} style={btnGhost}>{copyState || "نسخ"}</button>
             </div>
 
             <div style={{ display: "flex", gap: "0.7rem", flexWrap: "wrap" }}>
-              <button onClick={shareLink} style={btnPrimary}>📤 مشاركة سريعة</button>
+              <button onClick={shareLink} style={btnPrimary}>مشاركة سريعة</button>
               <button
                 onClick={() => setShowQr((v) => !v)}
                 style={btnGhost}
               >
-                {showQr ? "إخفاء QR" : "📱 عرض QR Code"}
+                {showQr ? "إخفاء QR" : "عرض QR Code"}
               </button>
               <a
                 href={`https://wa.me/?text=${encodeURIComponent("انضم لأكاديمية Qais Trading عن طريق رابطي 👇\n" + link)}`}
@@ -96,12 +96,12 @@ export default function ReferralLink({ link, clicks, code }) {
               }}
             >
               <div>
-                <p style={{ color: "#6E7177", fontSize: "0.7rem", marginBottom: 4 }}>كود الإحالة</p>
+                <p style={{ color: "#5D6880", fontSize: "0.7rem", marginBottom: 4 }}>كود الإحالة</p>
                 <p style={{ color: GOLD, fontFamily: monoStack, fontWeight: 700, fontSize: "0.85rem" }}>{code || "—"}</p>
               </div>
               <div>
-                <p style={{ color: "#6E7177", fontSize: "0.7rem", marginBottom: 4 }}>عدد مرات الضغط على الرابط</p>
-                <p style={{ color: "#EAECEF", fontFamily: monoStack, fontWeight: 700, fontSize: "0.85rem" }}>{clicks ?? 0}</p>
+                <p style={{ color: "#5D6880", fontSize: "0.7rem", marginBottom: 4 }}>عدد مرات الضغط على الرابط</p>
+                <p style={{ color: "#EDF1F8", fontFamily: monoStack, fontWeight: 700, fontSize: "0.85rem" }}>{clicks ?? 0}</p>
               </div>
             </div>
           </div>

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-const gold = "#E8B86D";
+const gold = "#C9A860";
 
 /**
  * مكوّن مشترك لعرض صفحات قانونية (شروط، خصوصية، استرجاع) بلغتين
@@ -62,7 +62,7 @@ export default function LegalPage({ titleAr, titleEn, sectionsAr, sectionsEn, la
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#0D0E10",
+    backgroundColor: "#0C1220",
     color: "#ddd",
     fontFamily: "'Georgia', serif",
     padding: "2rem 1.5rem 4rem",
@@ -89,7 +89,7 @@ const styles = {
     backgroundColor: "transparent",
     border: `1px solid ${gold}`,
     color: gold,
-    borderRadius: "4px",
+    borderRadius: "3px",
     padding: "0.4rem 1rem",
     fontSize: "0.85rem",
     cursor: "pointer",
@@ -102,13 +102,13 @@ const styles = {
     marginBottom: "2.5rem",
   },
   title: { fontSize: "2rem", fontWeight: "bold", color: "#fff", marginBottom: "0.5rem" },
-  updated: { color: "#666", fontSize: "0.85rem" },
+  updated: { color: "#5D6880", fontSize: "0.85rem" },
   content: {
     width: "100%",
     maxWidth: "720px",
-    backgroundColor: "#0f0f0f",
-    border: "1px solid #2B2F36",
-    borderRadius: "6px",
+    backgroundColor: "#080B14",
+    border: "1px solid #1E2941",
+    borderRadius: "3px",
     padding: "2.5rem",
     display: "flex",
     flexDirection: "column",
@@ -123,11 +123,11 @@ const styles = {
     marginTop: "1.5rem",
     textAlign: "center",
     padding: "1.25rem",
-    border: "1px solid #2B2F36",
-    borderRadius: "6px",
-    backgroundColor: "#0f0f0f",
+    border: "1px solid #1E2941",
+    borderRadius: "3px",
+    backgroundColor: "#080B14",
   },
-  contactLabel: { color: "#666", fontSize: "0.85rem", margin: "0 0 0.4rem" },
+  contactLabel: { color: "#5D6880", fontSize: "0.85rem", margin: "0 0 0.4rem" },
   contactEmail: { color: gold, fontSize: "1rem", textDecoration: "none", fontWeight: "bold" },
   footerLinks: {
     marginTop: "2.5rem",
@@ -137,6 +137,6 @@ const styles = {
     flexWrap: "wrap",
     justifyContent: "center",
   },
-  footerLink: { color: "#666", fontSize: "0.85rem", textDecoration: "none" },
-  dot: { color: "#333" },
+  footerLink: { color: "#5D6880", fontSize: "0.85rem", textDecoration: "none" },
+  dot: { color: "#26314A" },
 };

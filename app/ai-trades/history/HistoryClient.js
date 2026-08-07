@@ -5,16 +5,16 @@ import Link from "next/link";
 import { TrendingUp, TrendingDown, ExternalLink, BarChart3 } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#E8B86D";
-const GOLD_LIGHT = "#F0C588";
-const GREEN = "#3DBB6E";
-const RED = "#E5484D";
-const BLUE = "#3D8BFD";
+const GOLD = "#C9A860";
+const GOLD_LIGHT = "#E4CD95";
+const GREEN = "#1FBF87";
+const RED = "#E8495F";
+const BLUE = "#5FA8E8";
 
 const glass = {
-  background: "linear-gradient(145deg, rgba(34,37,43,0.9), rgba(20,22,26,0.92))",
-  border: `1px solid ${GOLD}22`,
-  borderRadius: 16,
+  background: "#111726",
+  border: `1px solid #26314A`,
+  borderRadius: 0,
   boxShadow: "0 8px 30px rgba(0,0,0,0.4)",
   backdropFilter: "blur(10px)",
 };
@@ -29,7 +29,7 @@ function fmt(n) {
 function statusColor(status) {
   if (status === "Closed Winner") return GREEN;
   if (status === "Stopped Out") return RED;
-  if (status === "Open") return "#999";
+  if (status === "Open") return "#93A0B8";
   return GOLD_LIGHT;
 }
 
@@ -145,7 +145,7 @@ export default function HistoryClient() {
     <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem", padding: "1.2rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <BarChart3 size={20} color={GOLD} />
-        <h1 style={{ fontSize: 18, fontWeight: 900, color: "#f0f0f0", margin: 0 }}>{t("aiTrades.historyTitle")}</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 900, color: "#EDF1F8", margin: 0 }}>{t("aiTrades.historyTitle")}</h1>
       </div>
 
       {error && <div style={{ ...glass, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
@@ -170,34 +170,34 @@ export default function HistoryClient() {
         <FilterSelect label={t("aiTrades.filterResult")} value={resultFilter} onChange={setResultFilter} options={[{ v: "all", l: t("aiTrades.optAll") }, { v: "win", l: t("aiTrades.optWin") }, { v: "loss", l: t("aiTrades.optLoss") }]} />
         <FilterSelect label="Confidence" value={confFilter} onChange={setConfFilter} options={CONFIDENCE_BUCKETS.map((b) => ({ v: b.key, l: t(b.labelKey) }))} />
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 10.5, color: "#888" }}>{t("aiTrades.fromDate")}</label>
+          <label style={{ fontSize: 10.5, color: "#5D6880" }}>{t("aiTrades.fromDate")}</label>
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={inputStyle} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 10.5, color: "#888" }}>{t("aiTrades.toDate")}</label>
+          <label style={{ fontSize: 10.5, color: "#5D6880" }}>{t("aiTrades.toDate")}</label>
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={inputStyle} />
         </div>
       </div>
 
       {/* ================= الجدول ================= */}
       {loading ? (
-        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#888" }}>{t("aiTrades.loading")}</div>
+        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#5D6880" }}>{t("aiTrades.loading")}</div>
       ) : filtered.length === 0 ? (
-        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#888" }}>{t("aiTrades.noMatchingTrades")}</div>
+        <div style={{ ...glass, padding: "2rem", textAlign: "center", color: "#5D6880" }}>{t("aiTrades.noMatchingTrades")}</div>
       ) : (
         <div style={{ ...glass, padding: "0.5rem", overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
             <thead>
-              <tr style={{ color: "#888", textAlign: "right" }}>
+              <tr style={{ color: "#5D6880", textAlign: "right" }}>
                 {[t("aiTrades.colSymbol"), t("aiTrades.colDirection"), t("aiTrades.colTimeframe"), "Confidence", "R/R", t("aiTrades.colStatus"), t("aiTrades.colDate"), ""].map((h) => (
-                  <th key={h} style={{ padding: "10px 12px", fontWeight: 700, borderBottom: "1px solid #34373B" }}>{h}</th>
+                  <th key={h} style={{ padding: "10px 12px", fontWeight: 700, borderBottom: "1px solid #1E2941" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map((tr) => (
-                <tr key={tr.id} style={{ borderBottom: "1px solid #22242a" }}>
-                  <td style={{ padding: "9px 12px", fontWeight: 800, color: "#f0f0f0" }}>{tr.symbol}</td>
+                <tr key={tr.id} style={{ borderBottom: "1px solid #182033" }}>
+                  <td style={{ padding: "9px 12px", fontWeight: 800, color: "#EDF1F8" }}>{tr.symbol}</td>
                   <td style={{ padding: "9px 12px" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: tr.direction === "up" ? GREEN : RED, fontWeight: 700 }}>
                       {tr.direction === "up" ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
@@ -206,13 +206,13 @@ export default function HistoryClient() {
                   </td>
                   <td style={{ padding: "9px 12px", color: "#aaa" }}>{tr.timeframe}</td>
                   <td style={{ padding: "9px 12px", color: GOLD_LIGHT, fontWeight: 700 }}>{tr.confidence != null ? `${tr.confidence}%` : "—"}</td>
-                  <td style={{ padding: "9px 12px", color: "#ccc" }}>{tr.risk_reward != null ? `${tr.risk_reward}R` : "—"}</td>
+                  <td style={{ padding: "9px 12px", color: "#93A0B8" }}>{tr.risk_reward != null ? `${tr.risk_reward}R` : "—"}</td>
                   <td style={{ padding: "9px 12px" }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: statusColor(tr.status), background: `${statusColor(tr.status)}1a`, border: `1px solid ${statusColor(tr.status)}55`, borderRadius: 6, padding: "3px 8px" }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: statusColor(tr.status), background: `${statusColor(tr.status)}1a`, border: `1px solid ${statusColor(tr.status)}55`, borderRadius: 3, padding: "3px 8px" }}>
                       {tr.status}
                     </span>
                   </td>
-                  <td style={{ padding: "9px 12px", color: "#888" }}>{new Date(tr.created_at).toLocaleDateString(locale === "ar" ? "ar-EG" : "en-GB")}</td>
+                  <td style={{ padding: "9px 12px", color: "#5D6880" }}>{new Date(tr.created_at).toLocaleDateString(locale === "ar" ? "ar-EG" : "en-GB")}</td>
                   <td style={{ padding: "9px 12px" }}>
                     <Link href={`/ai-trades/${tr.id}`} style={{ display: "flex", alignItems: "center", gap: 4, color: GOLD_LIGHT, fontSize: 11, textDecoration: "none" }}>
                       {t("aiTrades.detailsLink")} <ExternalLink size={11} />
@@ -229,14 +229,14 @@ export default function HistoryClient() {
 }
 
 const inputStyle = {
-  background: "#141517", border: "1px solid #34373B", color: "#ddd",
-  borderRadius: 6, padding: "6px 8px", fontSize: 11.5,
+  background: "#111726", border: "1px solid #1E2941", color: "#ddd",
+  borderRadius: 3, padding: "6px 8px", fontSize: 11.5,
 };
 
 function FilterSelect({ label, value, onChange, options }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <label style={{ fontSize: 10.5, color: "#888" }}>{label}</label>
+      <label style={{ fontSize: 10.5, color: "#5D6880" }}>{label}</label>
       <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...inputStyle, minWidth: 110 }}>
         {options.map((o) => (
           <option key={o.v} value={o.v}>{o.l}</option>
@@ -246,10 +246,10 @@ function FilterSelect({ label, value, onChange, options }) {
   );
 }
 
-function StatCard({ label, value, color = "#f0f0f0", small = false }) {
+function StatCard({ label, value, color = "#EDF1F8", small = false }) {
   return (
     <div style={{ ...glass, padding: "0.8rem 1rem" }}>
-      <div style={{ fontSize: 10.5, color: "#888", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 10.5, color: "#5D6880", marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: small ? 13 : 18, fontWeight: 900, color }}>{value}</div>
     </div>
   );

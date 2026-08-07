@@ -22,11 +22,11 @@ const sortOptions = [
 ];
 
 const fieldStyle = {
-  background: "#0d0d0d",
-  border: "1px solid #2B2F36",
-  color: "#EAECEF",
+  background: "#080B14",
+  border: "1px solid #1E2941",
+  color: "#EDF1F8",
   padding: "0.6rem 0.9rem",
-  borderRadius: 10,
+  borderRadius: 3,
   fontSize: "0.85rem",
   outline: "none",
   transition,
@@ -47,7 +47,7 @@ export default function Toolbar({ search, setSearch, period, setPeriod, statuses
       }}
     >
       <input
-        placeholder="🔍 بحث بالاسم أو الإيميل..."
+        placeholder="بحث بالاسم أو الإيميل..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         onFocus={() => setFocused(true)}
@@ -56,13 +56,13 @@ export default function Toolbar({ search, setSearch, period, setPeriod, statuses
           ...fieldStyle,
           flex: "1 1 220px",
           minWidth: 200,
-          borderColor: focused ? gold + "77" : "#2B2F36",
+          borderColor: focused ? gold + "77" : "#1E2941",
         }}
       />
 
       <Divider />
 
-      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#888" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#5D6880" }}>
         📅
         <select value={period} onChange={(e) => setPeriod(e.target.value)} style={{ ...fieldStyle, cursor: "pointer" }}>
           {periods.map(([v, l]) => (
@@ -75,7 +75,7 @@ export default function Toolbar({ search, setSearch, period, setPeriod, statuses
 
       <div style={{ display: "flex", gap: "0.9rem", alignItems: "center" }}>
         {statusOptions.map(([v, l]) => (
-          <label key={v} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", color: "#999", cursor: "pointer" }}>
+          <label key={v} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", color: "#93A0B8", cursor: "pointer" }}>
             <input type="checkbox" checked={statuses.includes(v)} onChange={() => toggleStatus(v)} style={{ accentColor: gold }} />
             {l}
           </label>
@@ -84,7 +84,7 @@ export default function Toolbar({ search, setSearch, period, setPeriod, statuses
 
       <Divider />
 
-      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#888" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#5D6880" }}>
         ترتيب
         <select value={sort} onChange={(e) => setSort(e.target.value)} style={{ ...fieldStyle, cursor: "pointer" }}>
           {sortOptions.map(([v, l]) => (
@@ -95,13 +95,12 @@ export default function Toolbar({ search, setSearch, period, setPeriod, statuses
 
       <Divider />
 
-      <button onClick={onExport} style={{ ...s.btn, marginRight: "auto" }}>
-        📤 Export Excel
+      <button onClick={onExport} style={{ ...s.btn, marginRight: "auto" }}>Export Excel
       </button>
     </div>
   );
 }
 
 function Divider() {
-  return <div style={{ width: 1, height: 22, background: "#1c1c1c" }} />;
+  return <div style={{ width: 1, height: 22, background: "#111726" }} />;
 }

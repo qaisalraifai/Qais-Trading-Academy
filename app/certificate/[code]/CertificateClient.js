@@ -8,18 +8,17 @@ export default function PrintButton() {
       onClick={() => window.print()}
       style={{
         marginTop: "1.5rem",
-        background: "linear-gradient(135deg, #E8B86D, #D4A05A)",
-        color: "#111",
+        background: "linear-gradient(135deg, #C9A860, #9C7F42)",
+        color: "#111726",
         border: "none",
-        borderRadius: 10,
+        borderRadius: 3,
         padding: "0.75rem 1.75rem",
         fontWeight: 800,
         fontSize: 14,
         cursor: "pointer",
       }}
       className="no-print"
-    >
-      🖨 طباعة / حفظ كـ PDF
+    >طباعة / حفظ كـ PDF
     </button>
   );
 }

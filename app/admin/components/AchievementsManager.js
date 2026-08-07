@@ -99,7 +99,7 @@ export default function AchievementsManager() {
 
   return (
     <div>
-      <p style={{ color: "#888", fontSize: "0.85rem", marginBottom: "1.3rem", lineHeight: 1.8 }}>
+      <p style={{ color: "#5D6880", fontSize: "0.85rem", marginBottom: "1.3rem", lineHeight: 1.8 }}>
         كل الإنجازات تراكمية (Lifetime) — أول مرة يتحقق الشرط تُصرف المكافأة (لو موجودة) للمحفظة مباشرة، ولا تُفقد أبداً حتى لو تراجعت أرقام المسوّق لاحقاً.
         سيب "مكافأة مالية" على 0 لو بدك يكون إنجاز شارة بس بدون بونص.
       </p>
@@ -138,7 +138,7 @@ export default function AchievementsManager() {
             <input style={styles.input} value={form.description_ar} onChange={(e) => setForm({ ...form, description_ar: e.target.value })} />
           </Field>
         </div>
-        {error && <p style={{ color: "#F6465D", fontSize: "0.78rem", marginBottom: 8 }}>{error}</p>}
+        {error && <p style={{ color: "#E8495F", fontSize: "0.78rem", marginBottom: 8 }}>{error}</p>}
         <div style={{ display: "flex", gap: 8 }}>
           <button disabled={saving} onClick={save} style={{ ...baseStyles.btn, ...baseStyles.btnGold }}>
             {saving ? "جاري الحفظ..." : editingId ? "حفظ التعديل" : "إضافة"}
@@ -148,7 +148,7 @@ export default function AchievementsManager() {
       </div>
 
       {loading ? (
-        <p style={{ color: "#666" }}>جاري التحميل...</p>
+        <p style={{ color: "#5D6880" }}>جاري التحميل...</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={styles.table}>
@@ -168,7 +168,7 @@ export default function AchievementsManager() {
                   <td style={styles.td}>{METRIC_LABELS[a.metric] || a.metric} — {a.threshold}</td>
                   <td style={styles.td}>{a.bonus_amount > 0 ? `$${a.bonus_amount}` : "—"}</td>
                   <td style={styles.td}>
-                    <span style={{ color: a.is_active ? "#4CAF50" : "#888" }}>{a.is_active ? "مفعّل" : "معطّل"}</span>
+                    <span style={{ color: a.is_active ? "#1FBF87" : "#5D6880" }}>{a.is_active ? "مفعّل" : "معطّل"}</span>
                   </td>
                   <td style={styles.td}>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -190,7 +190,7 @@ export default function AchievementsManager() {
 function Field({ label, children }) {
   return (
     <div>
-      <label style={{ display: "block", color: "#888", fontSize: "0.75rem", marginBottom: 5 }}>{label}</label>
+      <label style={{ display: "block", color: "#5D6880", fontSize: "0.75rem", marginBottom: 5 }}>{label}</label>
       {children}
     </div>
   );
@@ -198,7 +198,7 @@ function Field({ label, children }) {
 
 const styles = {
   table: { width: "100%", borderCollapse: "collapse" },
-  th: { textAlign: "right", color: "#666", fontSize: "0.75rem", padding: "0.7rem", borderBottom: "1px solid #1c1c1c" },
-  td: { padding: "0.7rem", fontSize: "0.85rem", color: "#C8C0B0", borderBottom: "1px solid #1c1c1c" },
-  input: { width: "100%", background: "#080808", border: "1px solid #22252B", color: "#EAECEF", padding: "0.6rem 0.8rem", borderRadius: 6, fontSize: "0.85rem" },
+  th: { textAlign: "right", color: "#5D6880", fontSize: "0.75rem", padding: "0.7rem", borderBottom: "1px solid #111726" },
+  td: { padding: "0.7rem", fontSize: "0.85rem", color: "#93A0B8", borderBottom: "1px solid #111726" },
+  input: { width: "100%", background: "#080B14", border: "1px solid #182033", color: "#EDF1F8", padding: "0.6rem 0.8rem", borderRadius: 3, fontSize: "0.85rem" },
 };

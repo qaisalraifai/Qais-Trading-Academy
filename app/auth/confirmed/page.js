@@ -10,23 +10,23 @@ export default function EmailConfirmedPage() {
   );
 }
 
-const gold = "#E8B86D";
+const gold = "#C9A860";
 const s = {
   page: {
-    backgroundColor: "#0B0E11",
+    backgroundColor: "#080B14",
     minHeight: "100vh",
     direction: "rtl",
     fontFamily: "'Inter', sans-serif",
-    color: "#EAECEF",
+    color: "#EDF1F8",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     padding: "2rem",
   },
   card: {
-    backgroundColor: "#0D0E10",
-    border: "1px solid #2B2F36",
-    borderRadius: "8px",
+    backgroundColor: "#0C1220",
+    border: "1px solid #1E2941",
+    borderRadius: "3px",
     padding: "3rem 2.5rem",
     maxWidth: "380px",
     textAlign: "center",
@@ -42,5 +42,5 @@ const s = {
     display: "block",
   },
   title: { fontSize: "1.5rem", fontWeight: 800, marginBottom: "0.75rem", color: gold },
-  text: { color: "#9a9285", fontSize: "0.9rem", lineHeight: 1.8 },
+  text: { color: "#5D6880", fontSize: "0.9rem", lineHeight: 1.8 },
 };

@@ -18,7 +18,7 @@ export default async function CertificatePage({ params }) {
         <div style={styles.notFound}>
           <p style={{ fontSize: 40 }}>❌</p>
           <h1 style={{ color: "#fff", fontSize: 20 }}>هاد الكود مو موجود</h1>
-          <p style={{ color: "#888", fontSize: 14 }}>تأكد من رابط الشهادة وحاول مرة ثانية.</p>
+          <p style={{ color: "#5D6880", fontSize: 14 }}>تأكد من رابط الشهادة وحاول مرة ثانية.</p>
         </div>
       </div>
     );
@@ -69,8 +69,8 @@ export default async function CertificatePage({ params }) {
 
           <p style={styles.body}>
             قد أتمّ بنجاح جميع متطلبات دفعة{" "}
-            <strong style={{ color: "#111" }}>{batch?.name || "—"}</strong> ضمن دورة{" "}
-            <strong style={{ color: "#111" }}>{course?.title || "—"}</strong>
+            <strong style={{ color: "#111726" }}>{batch?.name || "—"}</strong> ضمن دورة{" "}
+            <strong style={{ color: "#111726" }}>{course?.title || "—"}</strong>
           </p>
 
           <p style={styles.date}>{issuedDate}</p>
@@ -82,7 +82,7 @@ export default async function CertificatePage({ params }) {
       </div>
 
       <PrintButton />
-      <p style={{ ...styles.date, color: "#666", fontSize: 12, marginTop: "0.75rem" }} className="no-print">
+      <p style={{ ...styles.date, color: "#5D6880", fontSize: 12, marginTop: "0.75rem" }} className="no-print">
         شارك رابط هاي الصفحة مع أي جهة تبي تتحقق من صحة الشهادة.
       </p>
     </div>
@@ -92,7 +92,7 @@ export default async function CertificatePage({ params }) {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#0D0E10",
+    background: "#0C1220",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -105,23 +105,23 @@ const styles = {
   card: {
     width: "100%",
     maxWidth: 720,
-    background: "linear-gradient(135deg, #fdf9ee, #f5ecd2)",
-    borderRadius: 18,
+    background: "linear-gradient(135deg, #F6F0E1, #F6F0E1)",
+    borderRadius: 0,
     padding: 10,
     boxShadow: "0 30px 80px rgba(0,0,0,0.5)",
   },
   borderInner: {
-    border: "2px solid #B7952F",
-    borderRadius: 12,
+    border: "2px solid #9C7F42",
+    borderRadius: 0,
     padding: "3rem 2rem",
     textAlign: "center",
   },
-  brand: { color: "#8a6d1f", letterSpacing: 4, fontSize: 12, fontWeight: 700, margin: 0 },
-  subBrand: { color: "#333", fontSize: 22, fontWeight: 800, margin: "0.5rem 0 1.5rem" },
+  brand: { color: "#9C7F42", letterSpacing: 4, fontSize: 12, fontWeight: 700, margin: 0 },
+  subBrand: { color: "#26314A", fontSize: 22, fontWeight: 800, margin: "0.5rem 0 1.5rem" },
   icon: { fontSize: 40, marginBottom: "1rem" },
-  grantedTo: { color: "#555", fontSize: 14, margin: 0 },
-  studentName: { color: "#111", fontSize: 32, fontWeight: 800, margin: "0.5rem 0 1.25rem" },
-  body: { color: "#444", fontSize: 15, lineHeight: 1.9, maxWidth: 520, margin: "0 auto" },
-  date: { color: "#8a6d1f", fontSize: 13, fontWeight: 700, marginTop: "1.5rem" },
-  footer: { marginTop: "2rem", paddingTop: "1rem", borderTop: "1px dashed #B7952F", color: "#777", fontSize: 12 },
+  grantedTo: { color: "#3E4761", fontSize: 14, margin: 0 },
+  studentName: { color: "#111726", fontSize: 32, fontWeight: 800, margin: "0.5rem 0 1.25rem" },
+  body: { color: "#3E4761", fontSize: 15, lineHeight: 1.9, maxWidth: 520, margin: "0 auto" },
+  date: { color: "#9C7F42", fontSize: 13, fontWeight: 700, marginTop: "1.5rem" },
+  footer: { marginTop: "2rem", paddingTop: "1rem", borderTop: "1px dashed #9C7F42", color: "#5D6880", fontSize: 12 },
 };

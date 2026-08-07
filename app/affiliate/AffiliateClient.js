@@ -158,7 +158,7 @@ export default function AffiliateClient({ embedded = false }) {
         <div style={{ ...card, textAlign: "center", padding: "2.4rem 1.8rem" }} className="qta-animate-in">
           <p style={{ fontFamily: monoStack, color: GOLD, fontSize: 11, letterSpacing: 3, marginBottom: 10 }}>QAIS TRADING ACADEMY</p>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 800, fontFamily: displayStack, marginBottom: 12 }}>{t("affiliate.programTitleShort")}</h1>
-          <p style={{ color: "#B8B0A0", fontSize: "0.9rem", lineHeight: 1.9, marginBottom: "1.4rem", maxWidth: 480, margin: "0 auto 1.4rem" }}>
+          <p style={{ color: "#93A0B8", fontSize: "0.9rem", lineHeight: 1.9, marginBottom: "1.4rem", maxWidth: 480, margin: "0 auto 1.4rem" }}>
             {t("affiliate.noneIntro")}
           </p>
           <button onClick={handleApply} disabled={applying} style={btnPrimary}>
@@ -169,21 +169,21 @@ export default function AffiliateClient({ embedded = false }) {
 
       {status === "pending" && (
         <div style={card} className="qta-animate-in">
-          <p style={{ color: "#eab308", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{STATUS_LABELS.pending}</p>
-          <p style={{ color: "#9A9A9A", fontSize: "0.85rem" }}>{t("affiliate.pendingText")}</p>
+          <p style={{ color: "#E0A44A", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{STATUS_LABELS.pending}</p>
+          <p style={{ color: "#93A0B8", fontSize: "0.85rem" }}>{t("affiliate.pendingText")}</p>
         </div>
       )}
 
       {status === "rejected" && (
         <div style={card} className="qta-animate-in">
-          <p style={{ color: "#F6465D", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{STATUS_LABELS.rejected}</p>
-          <p style={{ color: "#9A9A9A", fontSize: "0.85rem" }}>{t("affiliate.rejectedText")}</p>
+          <p style={{ color: "#E8495F", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{STATUS_LABELS.rejected}</p>
+          <p style={{ color: "#93A0B8", fontSize: "0.85rem" }}>{t("affiliate.rejectedText")}</p>
         </div>
       )}
 
       {status === "suspended" && (
         <div style={card} className="qta-animate-in">
-          <p style={{ color: "#F6465D", fontWeight: 700, fontSize: "0.95rem" }}>{STATUS_LABELS.suspended}</p>
+          <p style={{ color: "#E8495F", fontWeight: 700, fontSize: "0.95rem" }}>{STATUS_LABELS.suspended}</p>
         </div>
       )}
 
@@ -202,7 +202,7 @@ export default function AffiliateClient({ embedded = false }) {
           <div id="payout-method" style={{ ...card, marginBottom: "1.4rem", scrollMarginTop: 90 }} className="qta-animate-in">
             <p style={sectionEyebrow}>{t("affiliate.payoutSettingsEyebrow")}</p>
             <h2 style={sectionTitle}>{t("affiliate.payoutMethodTitle")}</h2>
-            <p style={{ color: "#9A9A9A", fontSize: "0.8rem", lineHeight: 1.7, margin: "0.6rem 0 1.1rem" }}>
+            <p style={{ color: "#93A0B8", fontSize: "0.8rem", lineHeight: 1.7, margin: "0.6rem 0 1.1rem" }}>
               {t("affiliate.payoutMethodHint")}
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -222,7 +222,7 @@ export default function AffiliateClient({ embedded = false }) {
               </button>
             </div>
             {data.payoutMethod && (
-              <p style={{ color: "#9A9A9A", fontSize: "0.78rem", marginTop: "0.8rem" }}>
+              <p style={{ color: "#93A0B8", fontSize: "0.78rem", marginTop: "0.8rem" }}>
                 {t("affiliate.savedCurrently", { method: data.payoutMethod === "paypal" ? "PayPal" : data.payoutMethod === "wise" ? "Wise" : t("affiliate.bankTransfer") })}
                 {data.payoutDetails?.email ? ` — ${data.payoutDetails.email}` : ""}
                 {data.payoutDetails?.account ? ` — ${data.payoutDetails.account}` : ""}
@@ -244,10 +244,10 @@ export default function AffiliateClient({ embedded = false }) {
 }
 
 const s = {
-  page: { color: "#EAECEF", padding: "2rem 1.5rem 4rem", maxWidth: 1150, margin: "0 auto" },
-  pageEmbedded: { color: "#EAECEF", maxWidth: "100%" },
-  errorBox: { background: "#2a0d0d", border: "1px solid #F6465D44", color: "#F6465D", padding: "0.8rem 1rem", borderRadius: 10, marginBottom: "1.2rem", fontSize: "0.85rem" },
-  select: { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,162,75,0.14)", color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 8, fontSize: "0.85rem" },
-  input: { flex: 1, minWidth: 200, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,162,75,0.14)", color: "#EAECEF", padding: "0.7rem 1rem", borderRadius: 8, fontSize: "0.85rem", direction: "ltr", textAlign: "right" },
-  backLink: { display: "block", textAlign: "center", color: "#666", fontSize: "0.85rem", textDecoration: "none", marginTop: "1.5rem" },
+  page: { color: "#EDF1F8", padding: "2rem 1.5rem 4rem", maxWidth: 1150, margin: "0 auto" },
+  pageEmbedded: { color: "#EDF1F8", maxWidth: "100%" },
+  errorBox: { background: "#111726", border: "1px solid #E8495F44", color: "#E8495F", padding: "0.8rem 1rem", borderRadius: 3, marginBottom: "1.2rem", fontSize: "0.85rem" },
+  select: { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,162,75,0.14)", color: "#EDF1F8", padding: "0.7rem 1rem", borderRadius: 3, fontSize: "0.85rem" },
+  input: { flex: 1, minWidth: 200, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,162,75,0.14)", color: "#EDF1F8", padding: "0.7rem 1rem", borderRadius: 3, fontSize: "0.85rem", direction: "ltr", textAlign: "right" },
+  backLink: { display: "block", textAlign: "center", color: "#5D6880", fontSize: "0.85rem", textDecoration: "none", marginTop: "1.5rem" },
 };

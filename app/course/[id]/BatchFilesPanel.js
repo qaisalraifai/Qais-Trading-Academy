@@ -34,9 +34,9 @@ export default function BatchFilesPanel({ courseId }) {
 
   return (
     <div style={{
-      background: "#111108",
-      border: "1px solid #E8B86D33",
-      borderRadius: 12,
+      background: "#111726",
+      border: "1px solid #26314A",
+      borderRadius: 0,
       marginBottom: "1.5rem",
       overflow: "hidden",
     }}>
@@ -55,8 +55,8 @@ export default function BatchFilesPanel({ courseId }) {
           fontFamily: "inherit",
         }}
       >
-        <span style={{ fontSize: 14, fontWeight: 800 }}>📁 ملفات الدفعة ({files.length})</span>
-        <span style={{ color: "#E8B86D", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
+        <span style={{ fontSize: 14, fontWeight: 800 }}>ملفات الدفعة ({files.length})</span>
+        <span style={{ color: "#C9A860", fontSize: 12 }}>{open ? "إخفاء ▲" : "إظهار ▼"}</span>
       </button>
 
       {open && (
@@ -71,17 +71,17 @@ export default function BatchFilesPanel({ courseId }) {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                background: "#0D0E10",
-                border: "1px solid #E8B86D22",
-                borderRadius: 8,
+                background: "#0C1220",
+                border: "1px solid #26314A",
+                borderRadius: 3,
                 padding: "0.65rem 0.9rem",
-                color: "#eee",
+                color: "#EDF1F8",
                 textDecoration: "none",
                 fontSize: 13,
               }}
             >
-              <span>📄 {f.file_name}</span>
-              <span style={{ color: "#888", fontSize: 11 }}>{formatSize(f.file_size)} — تحميل ⬇</span>
+              <span>{f.file_name}</span>
+              <span style={{ color: "#5D6880", fontSize: 11 }}>{formatSize(f.file_size)} — تحميل ⬇</span>
             </a>
           ))}
         </div>

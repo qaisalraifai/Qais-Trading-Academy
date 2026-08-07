@@ -2,10 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#D4AF37";
-const CARD = "#0d0d0d";
-const BORDER = "#2B2F36";
-const SLICE_COLORS = ["#D4AF37", "#7A5F14", "#D4AF37", "#6B5010", "#D4AF37", "#7A5F14", "#4a3a08"];
+const GOLD = "#C9A860";
+const CARD = "#080B14";
+const BORDER = "#1E2941";
+const SLICE_COLORS = ["#C9A860", "#5E4C27", "#C9A860", "#26314A", "#C9A860", "#5E4C27", "#26314A"];
 
 export default function BonusWheel() {
   const { t } = useLocale();
@@ -113,15 +113,15 @@ export default function BonusWheel() {
 }
 
 const s = {
-  card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "1.6rem", marginBottom: "1.2rem", textAlign: "center" },
+  card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 0, padding: "1.6rem", marginBottom: "1.2rem", textAlign: "center" },
   sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD, marginBottom: "0.6rem" },
-  desc: { color: "#9a9488", fontSize: "0.82rem", lineHeight: 1.6, marginBottom: "1.2rem" },
-  error: { color: "#F6465D", fontSize: "0.8rem", marginBottom: "1rem" },
+  desc: { color: "#93A0B8", fontSize: "0.82rem", lineHeight: 1.6, marginBottom: "1.2rem" },
+  error: { color: "#E8495F", fontSize: "0.8rem", marginBottom: "1rem" },
   wheelWrap: { position: "relative", width: 240, height: 240, margin: "0 auto 1.4rem" },
-  pointer: { position: "absolute", top: -6, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderTop: "18px solid #EAECEF", zIndex: 5 },
+  pointer: { position: "absolute", top: -6, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderTop: "18px solid #EDF1F8", zIndex: 5 },
   wheel: { width: 240, height: 240, borderRadius: "50%", position: "relative", overflow: "hidden", border: `3px solid ${GOLD}`, boxShadow: "0 0 30px rgba(201,162,75,0.25)" },
   slice: { position: "absolute", width: "50%", height: "50%", top: 0, left: "50%", transformOrigin: "0% 100%", clipPath: "polygon(0 0, 100% 0, 0 100%)" },
-  sliceLabel: { position: "absolute", top: "20%", left: "-30%", fontSize: "0.6rem", color: "#080600", fontWeight: 700, whiteSpace: "nowrap" },
-  btn: { background: GOLD, color: "#080600", border: "none", padding: "0.8rem 1.8rem", borderRadius: 8, fontWeight: 700, fontSize: "0.9rem", cursor: "pointer" },
-  resultBox: { marginTop: "1.2rem", background: "#1a1400", border: `1px solid ${GOLD}66`, color: GOLD, padding: "0.8rem 1rem", borderRadius: 8, fontSize: "0.88rem" },
+  sliceLabel: { position: "absolute", top: "20%", left: "-30%", fontSize: "0.6rem", color: "#0C1220", fontWeight: 700, whiteSpace: "nowrap" },
+  btn: { background: GOLD, color: "#0C1220", border: "none", padding: "0.8rem 1.8rem", borderRadius: 3, fontWeight: 700, fontSize: "0.9rem", cursor: "pointer" },
+  resultBox: { marginTop: "1.2rem", background: "#111726", border: `1px solid #3E5478`, color: GOLD, padding: "0.8rem 1rem", borderRadius: 3, fontSize: "0.88rem" },
 };

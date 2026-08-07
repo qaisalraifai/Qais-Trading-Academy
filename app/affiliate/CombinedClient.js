@@ -42,7 +42,7 @@ export default function CombinedClient() {
         <h1 style={{ fontSize: "1.7rem", fontWeight: 800, fontFamily: displayStack, margin: 0 }}>
           {t("affiliate.programTitle")}
         </h1>
-        <p style={{ color: "#9A9A9A", fontSize: "0.85rem", marginTop: 8, lineHeight: 1.8, maxWidth: 680 }}>
+        <p style={{ color: "#93A0B8", fontSize: "0.85rem", marginTop: 8, lineHeight: 1.8, maxWidth: 680 }}>
           {t("affiliate.programIntro")}
         </p>
       </div>
@@ -65,6 +65,6 @@ export default function CombinedClient() {
 }
 
 const s = {
-  page: { color: "#EAECEF", padding: "2rem 1.5rem 4rem", maxWidth: 1150, margin: "0 auto" },
-  backLink: { display: "block", textAlign: "center", color: "#666", fontSize: "0.85rem", textDecoration: "none", marginTop: "1.5rem" },
+  page: { color: "#EDF1F8", padding: "2rem 1.5rem 4rem", maxWidth: 1150, margin: "0 auto" },
+  backLink: { display: "block", textAlign: "center", color: "#5D6880", fontSize: "0.85rem", textDecoration: "none", marginTop: "1.5rem" },
 };

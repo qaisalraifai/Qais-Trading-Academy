@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Bell, MessageSquare, Menu } from "lucide-react";
+import { Search, Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { Avatar, Badge, Input } from "@/app/components/ui";
+import { Avatar, IconButton, Input } from "@/app/components/ui";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "./LanguageSwitcher";
+
+/* ============================================================================
+   Header — الشريط العلوي. زجاجي، رفيع، بلا وهج.
+   ============================================================================ */
 
 export default function Header({
   username,
@@ -20,29 +24,34 @@ export default function Header({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 flex h-header shrink-0 items-center justify-between gap-3",
-        "border-b border-gold-400/10 bg-gradient-to-b from-surface-3/95 to-surface-0/95",
-        "px-4 shadow-header backdrop-blur-glass md:gap-4 md:px-6",
+        "sticky top-0 z-header flex h-header shrink-0 items-center justify-between gap-3",
+        "glass border-b border-edge px-3 md:gap-4 md:px-5",
         className
       )}
     >
-      <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
+      <div className="flex min-w-0 items-center gap-2.5">
         {showMenuButton && (
-          <button
-            type="button"
+          <IconButton
+            icon={Menu}
+            label={t("header.openMenu")}
             onClick={onMenuToggle}
-            className="flex h-10 w-10 items-center justify-center rounded-md border border-gold-400/15 bg-surface-1 text-text-secondary transition-all duration-300 ease-premium hover:scale-110 hover:border-gold-400/40 hover:text-gold-200 lg:hidden"
-            aria-label={t("header.openMenu")}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
+            className="lg:hidden"
+          />
         )}
 
         <div className="flex items-center gap-2.5">
-          <Avatar src="/logo.jpg" alt="QTA" size="sm" className="h-9 w-9 border-gold-400/60" />
+          <img
+            src="/logo.jpg"
+            alt="QTA"
+            className="h-7 w-7 shrink-0 rounded-sm border border-edge-lit object-cover"
+          />
           <div className="hidden min-w-0 sm:block">
-            <p className="eyebrow mb-0 leading-none">QAIS TRADING</p>
-            <p className="text-xs font-bold text-text-primary">ACADEMY</p>
+            <p className="text-[9px] uppercase leading-tight tracking-[0.16em] text-text-muted">
+              Qais Trading
+            </p>
+            <p className="font-num text-[11px] font-semibold leading-tight tracking-wide text-text-primary">
+              ACADEMY
+            </p>
           </div>
         </div>
       </div>
@@ -55,37 +64,16 @@ export default function Header({
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           aria-label={t("common.search")}
+          className="h-8 bg-space-2/70"
         />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 md:gap-3">
+      <div className="flex shrink-0 items-center gap-2">
         <LanguageSwitcher />
-
-        <button
-          type="button"
-          className="hidden h-10 w-10 items-center justify-center rounded-full border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 ease-premium hover:scale-110 hover:border-gold-400/40 hover:text-gold-200 hover:shadow-glow-sm sm:flex"
-          aria-label={t("header.notifications")}
-        >
-          <Bell className="h-5 w-5" />
-        </button>
-
-        <button
-          type="button"
-          className="hidden h-10 w-10 items-center justify-center rounded-full border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 ease-premium hover:scale-110 hover:border-gold-400/40 hover:text-gold-200 hover:shadow-glow-sm sm:flex"
-          aria-label={t("header.messages")}
-        >
-          <MessageSquare className="h-5 w-5" />
-        </button>
-
-        <div className="hidden items-center gap-2 md:flex">
-          <span className="max-w-[8rem] truncate text-sm font-bold text-text-primary">
-            {username}
-          </span>
-          <Badge variant="vip" size="sm" dot>
-            VIP
-          </Badge>
-        </div>
-
+        <IconButton icon={Bell} label={t("header.notifications")} className="hidden sm:inline-grid" />
+        <span className="hidden max-w-[8rem] truncate text-caption text-text-secondary md:block">
+          {username}
+        </span>
         <Avatar initials={initials} size="sm" alt={username} />
       </div>
     </header>

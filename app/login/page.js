@@ -32,7 +32,7 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1A1408 0%, #0D0E10 60%)",
+      background: "radial-gradient(ellipse at top, #101828 0%, #0C1220 60%)",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: "'Segoe UI', sans-serif", direction: "rtl", padding: "2rem",
     }}>
@@ -42,8 +42,8 @@ export default function LoginPage() {
         <div style={{ position: "relative" }}>
           <div style={{
             width: 100, height: 100, borderRadius: "50%",
-            border: "2px solid #E8B86D",
-            boxShadow: "0 0 30px #E8B86D55, 0 0 60px #E8B86D22",
+            border: "2px solid #C9A860",
+            boxShadow: "0 0 30px #3E5478, 0 0 60px #26314A",
             overflow: "hidden",
           }}>
             <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -51,51 +51,51 @@ export default function LoginPage() {
         </div>
 
         <div style={{ textAlign: "center" }}>
-          <p style={{ color: "#E8B86D", letterSpacing: 4, fontSize: 11, margin: "0 0 8px" }}>Q T A</p>
+          <p style={{ color: "#C9A860", letterSpacing: 4, fontSize: 11, margin: "0 0 8px" }}>Q T A</p>
           <h1 style={{ color: "#fff", fontSize: 28, margin: "0 0 6px", fontWeight: 800 }}>تسجيل الدخول</h1>
-          <p style={{ color: "#555", fontSize: 14, margin: 0 }}>أهلاً بعودتك لأكاديمية Qais Trading</p>
+          <p style={{ color: "#3E4761", fontSize: 14, margin: 0 }}>أهلاً بعودتك لأكاديمية Qais Trading</p>
         </div>
 
         {/* Card */}
         <div style={{
           width: "100%",
-          background: "linear-gradient(145deg, #111108, #0D0E10)",
-          border: "1px solid #E8B86D33",
-          borderRadius: 16,
+          background: "#111726",
+          border: "1px solid #26314A",
+          borderRadius: 0,
           padding: "2rem",
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
             <div>
-              <label style={{ color: "#888", fontSize: 13, display: "block", marginBottom: 6 }}>البريد الإلكتروني</label>
+              <label style={{ color: "#5D6880", fontSize: 13, display: "block", marginBottom: 6 }}>البريد الإلكتروني</label>
               <input
                 type="email" placeholder="example@email.com"
                 value={email} onChange={e => setEmail(e.target.value)}
                 style={{
-                  width: "100%", background: "#080808", border: "1px solid #222",
-                  color: "#fff", padding: "0.75rem 1rem", borderRadius: 8,
+                  width: "100%", background: "#080B14", border: "1px solid #1B2438",
+                  color: "#fff", padding: "0.75rem 1rem", borderRadius: 3,
                   fontSize: 14, outline: "none", direction: "ltr", boxSizing: "border-box",
                 }}
               />
             </div>
             <div>
-              <label style={{ color: "#888", fontSize: 13, display: "block", marginBottom: 6 }}>كلمة المرور</label>
+              <label style={{ color: "#5D6880", fontSize: 13, display: "block", marginBottom: 6 }}>كلمة المرور</label>
               <input
                 type="password" placeholder="••••••••"
                 value={password} onChange={e => setPassword(e.target.value)}
                 style={{
-                  width: "100%", background: "#080808", border: "1px solid #222",
-                  color: "#fff", padding: "0.75rem 1rem", borderRadius: 8,
+                  width: "100%", background: "#080B14", border: "1px solid #1B2438",
+                  color: "#fff", padding: "0.75rem 1rem", borderRadius: 3,
                   fontSize: 14, outline: "none", direction: "ltr", boxSizing: "border-box",
                 }}
               />
             </div>
 
-            {error && <p style={{ color: "#E5484D", fontSize: 13, textAlign: "center", margin: 0 }}>{error}</p>}
+            {error && <p style={{ color: "#E8495F", fontSize: 13, textAlign: "center", margin: 0 }}>{error}</p>}
 
             <button onClick={handleLogin} disabled={loading} style={{
-              background: "linear-gradient(135deg, #E8B86D, #D4A05A)",
-              color: "#000", border: "none", borderRadius: 8,
+              background: "linear-gradient(135deg, #C9A860, #9C7F42)",
+              color: "#000", border: "none", borderRadius: 3,
               padding: "0.9rem", fontWeight: 700, fontSize: 15,
               cursor: "pointer", opacity: loading ? 0.7 : 1, marginTop: "0.5rem",
             }}>
@@ -104,9 +104,9 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p style={{ color: "#444", fontSize: 13 }}>
+        <p style={{ color: "#3E4761", fontSize: 13 }}>
           ما عندك حساب؟{" "}
-          <Link href="/signup" style={{ color: "#E8B86D", textDecoration: "none" }}>اشترك الآن</Link>
+          <Link href="/signup" style={{ color: "#C9A860", textDecoration: "none" }}>اشترك الآن</Link>
         </p>
       </div>
     </div>

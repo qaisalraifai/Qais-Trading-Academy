@@ -3,12 +3,12 @@ import { useState } from "react";
 import { gold, glass, transition, monoStack, statusColors, planColors, daysLeftColor, timeAgo } from "../styles";
 
 const roleBadge = {
-  admin: { label: "🟣 ADMIN", ...planColors.admin },
+  admin: { label: "ADMIN", ...planColors.admin },
 };
 
 function PlanBadge({ plan }) {
   const conf = planColors[plan] || planColors.member;
-  const labels = { owner: "🟡 OWNER", admin: "🟣 ADMIN", vip: "🔵 VIP", elite: "🟡 ELITE", member: "⚪ MEMBER", trial: "🔷 TRIAL" };
+  const labels = { owner: "OWNER", admin: "ADMIN", vip: "VIP", elite: "ELITE", member: "MEMBER", trial: "TRIAL" };
   return (
     <span style={{ background: conf.bg, color: conf.fg, border: `1px solid ${conf.border}`, padding: "0.28rem 0.7rem", borderRadius: 999, fontSize: "0.72rem", fontWeight: 600 }}>
       {labels[plan] || plan}
@@ -18,11 +18,11 @@ function PlanBadge({ plan }) {
 
 function StatusDot({ user }) {
   let color, label;
-  if (user.suspended) { color = statusColors.suspended; label = "⚫ Suspended"; }
-  else if (user.subscription_status !== "active") { color = statusColors.expired; label = "🔴 Expired"; }
-  else if (user.plan === "vip" || user.plan === "elite") { color = statusColors.vip; label = "🟣 VIP"; }
-  else if (user.daysLeft !== null && user.daysLeft <= 7) { color = statusColors.expiring; label = "🟡 Expiring Soon"; }
-  else { color = statusColors.active; label = "🟢 Active"; }
+  if (user.suspended) { color = statusColors.suspended; label = "Suspended"; }
+  else if (user.subscription_status !== "active") { color = statusColors.expired; label = "Expired"; }
+  else if (user.plan === "vip" || user.plan === "elite") { color = statusColors.vip; label = "VIP"; }
+  else if (user.daysLeft !== null && user.daysLeft <= 7) { color = statusColors.expiring; label = "Expiring Soon"; }
+  else { color = statusColors.active; label = "Active"; }
   return <span style={{ color, fontSize: "0.8rem", fontWeight: 500 }}>{label}</span>;
 }
 
@@ -31,7 +31,7 @@ function Avatar({ user }) {
   return user.avatar_url ? (
     <img src={user.avatar_url} alt="" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: `1px solid ${gold}44` }} />
   ) : (
-    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#1c1c1c,#181A20)", border: `1px solid ${gold}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", color: gold, fontWeight: 700 }}>
+    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#111726,#111726)", border: `1px solid ${gold}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", color: gold, fontWeight: 700 }}>
       {initial}
     </div>
   );
@@ -56,13 +56,13 @@ async function activateFreeDirect(user) {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      alert(`✅ تم تفعيل وصول مجاني لحساب ${user.username}`);
+      alert(`تم تفعيل وصول مجاني لحساب ${user.username}`);
       window.location.reload();
     } else {
-      alert(`❌ فشل الطلب (${res.status}): ${data.error || "خطأ غير معروف"}`);
+      alert(`فشل الطلب (${res.status}): ${data.error || "خطأ غير معروف"}`);
     }
   } catch (err) {
-    alert(`❌ خطأ بالاتصال: ${err.message}`);
+    alert(`خطأ بالاتصال: ${err.message}`);
   }
 }
 
@@ -82,12 +82,12 @@ function ActionsBar({ user, onAction }) {
             onClick={() => (isFree ? activateFreeDirect(user) : onAction(key, user))}
             style={{
               background: "none",
-              border: "1px solid #222",
-              color: key === "delete" ? "#ef5350" : "#999",
+              border: "1px solid #1B2438",
+              color: key === "delete" ? "#E8495F" : "#93A0B8",
               width: 28,
               height: 28,
               minWidth: 28,
-              borderRadius: 7,
+              borderRadius: 3,
               cursor: "pointer",
               fontSize: "0.85rem",
               display: "flex",
@@ -95,8 +95,8 @@ function ActionsBar({ user, onAction }) {
               justifyContent: "center",
               transition,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = key === "delete" ? "#ef5350" : gold; e.currentTarget.style.background = "#161616"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#222"; e.currentTarget.style.background = "none"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = key === "delete" ? "#E8495F" : gold; e.currentTarget.style.background = "#111726"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1B2438"; e.currentTarget.style.background = "none"; }}
           >
             {icon}
           </button>
@@ -112,14 +112,14 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
   return (
     <div style={{ ...glass, overflow: "hidden" }}>
       {loading ? (
-        <p style={{ textAlign: "center", padding: "3rem", color: "#444" }}>جاري التحميل...</p>
+        <p style={{ textAlign: "center", padding: "3rem", color: "#3E4761" }}>جاري التحميل...</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1180 }}>
             <thead>
               <tr>
                 {["", "الاسم", "الرتبة", "الخطة", "البداية", "النهاية", "الأيام المتبقية", "المدفوع", "الحالة", "آخر دخول", ""].map((h, i) => (
-                  <th key={i} style={{ background: "#181A20", padding: "0.9rem 1.1rem", textAlign: "right", fontSize: "0.74rem", color: "#444", fontWeight: 500, borderBottom: "1px solid #111", whiteSpace: "nowrap" }}>
+                  <th key={i} style={{ background: "#111726", padding: "0.9rem 1.1rem", textAlign: "right", fontSize: "0.74rem", color: "#3E4761", fontWeight: 500, borderBottom: "1px solid #111726", whiteSpace: "nowrap" }}>
                     {h}
                   </th>
                 ))}
@@ -133,22 +133,22 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
                   onMouseLeave={() => setHoverRow(null)}
                   onClick={() => onOpenUser(user)}
                   style={{
-                    borderBottom: "1px solid #0d0d0d",
+                    borderBottom: "1px solid #080B14",
                     cursor: "pointer",
                     background: hoverRow === user.id ? "rgba(201,162,75,0.045)" : "transparent",
                     transition,
                   }}
                 >
                   <td style={{ padding: "0.85rem 1.1rem" }}><Avatar user={user} /></td>
-                  <td style={{ padding: "0.85rem 1.1rem", fontWeight: 500, color: "#EAECEF" }}>{user.username || "—"}</td>
+                  <td style={{ padding: "0.85rem 1.1rem", fontWeight: 500, color: "#EDF1F8" }}>{user.username || "—"}</td>
                   <td style={{ padding: "0.85rem 1.1rem" }}>
-                    {user.role === "admin" ? <PlanBadge plan="admin" /> : <span style={{ color: "#555", fontSize: "0.8rem" }}>Student</span>}
+                    {user.role === "admin" ? <PlanBadge plan="admin" /> : <span style={{ color: "#3E4761", fontSize: "0.8rem" }}>Student</span>}
                   </td>
                   <td style={{ padding: "0.85rem 1.1rem" }}><PlanBadge plan={user.plan} /></td>
-                  <td style={{ padding: "0.85rem 1.1rem", fontFamily: monoStack, color: "#666", fontSize: "0.8rem" }}>
+                  <td style={{ padding: "0.85rem 1.1rem", fontFamily: monoStack, color: "#5D6880", fontSize: "0.8rem" }}>
                     {user.subscription_start ? new Date(user.subscription_start).toLocaleDateString("ar") : "—"}
                   </td>
-                  <td style={{ padding: "0.85rem 1.1rem", fontFamily: monoStack, color: "#666", fontSize: "0.8rem" }}>
+                  <td style={{ padding: "0.85rem 1.1rem", fontFamily: monoStack, color: "#5D6880", fontSize: "0.8rem" }}>
                     {user.subscription_end ? new Date(user.subscription_end).toLocaleDateString("ar") : "—"}
                   </td>
                   <td style={{ padding: "0.85rem 1.1rem" }}>
@@ -160,14 +160,14 @@ export default function UsersTable({ users, loading, onOpenUser, onAction }) {
                   </td>
                   <td style={{ padding: "0.85rem 1.1rem", fontFamily: monoStack, color: gold, fontSize: "0.85rem" }}>${user.totalPaid.toLocaleString("en-US")}</td>
                   <td style={{ padding: "0.85rem 1.1rem" }}><StatusDot user={user} /></td>
-                  <td style={{ padding: "0.85rem 1.1rem", color: "#555", fontSize: "0.78rem" }}>{timeAgo(user.last_login_at)}</td>
+                  <td style={{ padding: "0.85rem 1.1rem", color: "#3E4761", fontSize: "0.78rem" }}>{timeAgo(user.last_login_at)}</td>
                   <td style={{ padding: "0.85rem 1.1rem" }} onClick={(e) => e.stopPropagation()}>
                     <ActionsBar user={user} onAction={onAction} />
                   </td>
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={11} style={{ textAlign: "center", color: "#444", padding: "3rem" }}>لا يوجد مستخدمون</td></tr>
+                <tr><td colSpan={11} style={{ textAlign: "center", color: "#3E4761", padding: "3rem" }}>لا يوجد مستخدمون</td></tr>
               )}
             </tbody>
           </table>

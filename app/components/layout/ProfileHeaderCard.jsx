@@ -1,60 +1,58 @@
-import { Bell, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { Avatar, Badge, Card } from "@/app/components/ui";
+import { Avatar, Badge } from "@/app/components/ui";
+
+/* ============================================================================
+   ProfileHeaderCard — شريط ترحيب. صار خفيف بلا بطاقة، لأن مركز القيادة
+   لازم يبلّش بالبيانات المهمّة مش ببطاقة ترحيب بتاخد مساحة.
+   ============================================================================ */
 
 export default function ProfileHeaderCard({
   username,
   initials,
   balance,
   balanceLabel,
-  subtitle = "متداول محترف",
+  subtitle,
   welcomeTitle,
-  welcomeSubtitle = "نظرة عامة على أدائك في التداول",
+  welcomeSubtitle,
   className,
 }) {
   return (
-    <Card
-      variant="elevated"
-      padding="md"
+    <div
       className={cn(
-        "mb-5 flex flex-wrap items-center justify-between gap-4 animate-fade-in",
+        "mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-edge pb-4",
         className
       )}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <Avatar initials={initials} size="lg" alt={username} />
-        <div>
+        <div className="min-w-0">
+          <p className="text-[9px] uppercase tracking-[0.16em] text-text-muted">
+            {welcomeSubtitle || "Command Center"}
+          </p>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-base font-extrabold text-text-primary">{username}</span>
-            <Badge variant="vip" size="sm" dot>
+            <h1 className="truncate text-xl font-semibold text-text-primary">
+              {welcomeTitle || username}
+            </h1>
+            <Badge variant="value" size="sm">
               VIP
             </Badge>
           </div>
-          <p className="mt-0.5 text-xs text-text-muted">{subtitle}</p>
-          {balanceLabel && (
-            <div className="mt-2 inline-flex items-center rounded-full border border-profit/25 bg-profit/10 px-3 py-1 text-xs font-bold text-profit">
-              {balanceLabel}
-            </div>
-          )}
+          {subtitle && <p className="mt-0.5 text-caption text-text-muted">{subtitle}</p>}
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="text-right">
-          <p className="text-lg font-extrabold text-text-primary md:text-xl">
-            {welcomeTitle || `مرحباً بك ${username}،`}
-          </p>
-          <p className="mt-1 text-xs text-text-muted md:text-sm">{welcomeSubtitle}</p>
+      {balanceLabel && (
+        <div className="flex flex-col items-start gap-0.5">
+          <span className="text-micro uppercase text-text-muted">الرصيد</span>
+          <span
+            dir="ltr"
+            className="font-num text-xl font-semibold tabular-nums text-au-200"
+            style={{ unicodeBidi: "isolate" }}
+          >
+            {balanceLabel}
+          </span>
         </div>
-        <Sparkles className="hidden h-6 w-6 animate-pulse-soft text-gold-300/70 sm:block" aria-hidden />
-        <button
-          type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 ease-premium hover:scale-110 hover:border-gold-400/40 hover:text-gold-200 hover:shadow-glow-sm"
-          aria-label="الإشعارات"
-        >
-          <Bell className="h-5 w-5" />
-        </button>
-      </div>
-    </Card>
+      )}
+    </div>
   );
 }

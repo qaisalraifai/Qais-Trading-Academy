@@ -2,10 +2,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ASSETS } from "@/lib/assets";
 
-const GOLD = "#E8B86D";
-const GOLD_LIGHT = "#F0C588";
-const GREEN = "#3DBB6E";
-const RED = "#E5484D";
+const GOLD = "#C9A860";
+const GOLD_LIGHT = "#E4CD95";
+const GREEN = "#1FBF87";
+const RED = "#E8495F";
 
 const COLLAPSE_STORAGE_KEY = "qais_watchlist_collapsed_groups_v1";
 const POLL_MS = 10000; // كل 10 ثواني - توازن بين الحيوية وتجنّب حظر يوهو لكتر طلبات
@@ -40,7 +40,7 @@ function AssetBadge({ label }) {
       style={{
         width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 10, fontWeight: 800, color: "#1A1408",
+        fontSize: 10, fontWeight: 800, color: "#101828",
         background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`,
       }}
     >
@@ -106,26 +106,26 @@ export default function WatchlistPanel({ activeSymbol, onSelectSymbol, onClose }
     <div
       style={{
         flex: "0 0 300px", alignSelf: "stretch", display: "flex", flexDirection: "column",
-        background: "#131722", border: "1px solid #2a2e39", borderRadius: 6,
+        background: "#0C1220", border: "1px solid #26314A", borderRadius: 3,
         overflow: "hidden", minWidth: 0,
       }}
     >
       <div
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "8px 10px", borderBottom: "1px solid #2a2e39", flexShrink: 0,
+          padding: "8px 10px", borderBottom: "1px solid #26314A", flexShrink: 0,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>قائمة المتابعة</span>
-          {loading && <span style={{ fontSize: 10.5, color: "#777" }}>...تحديث</span>}
+          {loading && <span style={{ fontSize: 10.5, color: "#5D6880" }}>...تحديث</span>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             type="button"
             onClick={fetchQuotes}
             title="تحديث الآن"
-            style={{ background: "transparent", border: "none", color: "#8a8f9c", cursor: "pointer", fontSize: 13, padding: 2 }}
+            style={{ background: "transparent", border: "none", color: "#5D6880", cursor: "pointer", fontSize: 13, padding: 2 }}
           >
             🔄
           </button>
@@ -134,7 +134,7 @@ export default function WatchlistPanel({ activeSymbol, onSelectSymbol, onClose }
               type="button"
               onClick={onClose}
               title="إخفاء لوحة المتابعة"
-              style={{ background: "transparent", border: "none", color: "#8a8f9c", cursor: "pointer", fontSize: 13, padding: 2 }}
+              style={{ background: "transparent", border: "none", color: "#5D6880", cursor: "pointer", fontSize: 13, padding: 2 }}
             >
               ✕
             </button>
@@ -143,13 +143,13 @@ export default function WatchlistPanel({ activeSymbol, onSelectSymbol, onClose }
       </div>
 
       {error && (
-        <div style={{ padding: "6px 10px", fontSize: 11, color: RED, background: "#E5484D14", flexShrink: 0 }}>
+        <div style={{ padding: "6px 10px", fontSize: 11, color: RED, background: "#E8495F14", flexShrink: 0 }}>
           {error}
         </div>
       )}
 
       <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", fontSize: 10.5, color: "#5d6270", position: "sticky", top: 0, background: "#131722", zIndex: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", fontSize: 10.5, color: "#3E5478", position: "sticky", top: 0, background: "#0C1220", zIndex: 1 }}>
           <span style={{ width: 18, flexShrink: 0 }} />
           <span style={{ flex: 1, minWidth: 60 }}>الرمز</span>
           <span style={{ width: 40, textAlign: "left", flexShrink: 0 }}>%</span>
@@ -165,21 +165,21 @@ export default function WatchlistPanel({ activeSymbol, onSelectSymbol, onClose }
                 onClick={() => toggleGroup(group.group)}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "6px 10px", cursor: "pointer", background: "#171b26",
-                  borderTop: "1px solid #2a2e39", borderBottom: "1px solid #2a2e39",
+                  padding: "6px 10px", cursor: "pointer", background: "#111726",
+                  borderTop: "1px solid #26314A", borderBottom: "1px solid #26314A",
                 }}
               >
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#9599a3", letterSpacing: 0.3 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#5D6880", letterSpacing: 0.3 }}>
                   {group.group}
                 </span>
-                <span style={{ fontSize: 10, color: "#5d6270" }}>{isCollapsed ? "▸" : "▾"}</span>
+                <span style={{ fontSize: 10, color: "#3E5478" }}>{isCollapsed ? "▸" : "▾"}</span>
               </div>
               {!isCollapsed &&
                 group.items.map((it) => {
                   const q = quotes[it.v];
                   const up = q && q.changePercent > 0;
                   const down = q && q.changePercent < 0;
-                  const color = up ? GREEN : down ? RED : "#8a8f9c";
+                  const color = up ? GREEN : down ? RED : "#5D6880";
                   const isActive = it.v === activeSymbol;
                   const disabled = !it.yahoo && !it.yahooSpot;
                   return (
@@ -190,14 +190,14 @@ export default function WatchlistPanel({ activeSymbol, onSelectSymbol, onClose }
                       style={{
                         display: "flex", alignItems: "center", gap: 6, padding: "6px 8px",
                         cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1,
-                        background: isActive ? "#20242f" : "transparent",
+                        background: isActive ? "#182033" : "transparent",
                         borderInlineStart: isActive ? `2px solid ${GOLD}` : "2px solid transparent",
                       }}
-                      onMouseEnter={(e) => { if (!isActive && !disabled) e.currentTarget.style.background = "#1a1e28"; }}
+                      onMouseEnter={(e) => { if (!isActive && !disabled) e.currentTarget.style.background = "#111726"; }}
                       onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
                     >
                       <AssetBadge label={it.v} />
-                      <span style={{ flex: 1, minWidth: 60, fontSize: 12, fontWeight: 600, color: isActive ? GOLD_LIGHT : "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ flex: 1, minWidth: 60, fontSize: 12, fontWeight: 600, color: isActive ? GOLD_LIGHT : "#EDF1F8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {it.v}
                       </span>
                       <span style={{ width: 40, textAlign: "left", fontSize: 10.5, fontWeight: 700, color, flexShrink: 0 }}>
@@ -206,7 +206,7 @@ export default function WatchlistPanel({ activeSymbol, onSelectSymbol, onClose }
                       <span style={{ width: 54, textAlign: "left", fontSize: 10.5, color, flexShrink: 0, fontFamily: "monospace" }}>
                         {q ? fmtChange(q.change, it.mult) : disabled ? "—" : "..."}
                       </span>
-                      <span style={{ width: 62, textAlign: "left", fontSize: 11, color: "#c7cad1", flexShrink: 0, fontFamily: "monospace" }}>
+                      <span style={{ width: 62, textAlign: "left", fontSize: 11, color: "#93A0B8", flexShrink: 0, fontFamily: "monospace" }}>
                         {q ? fmtPrice(q.price, it.mult) : disabled ? "—" : "..."}
                       </span>
                     </div>

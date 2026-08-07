@@ -1,50 +1,85 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import {
+  BarChart3,
+  Bell,
+  Calendar,
+  Dna,
+  FileText,
+  Flame,
+  GraduationCap,
+  Handshake,
+  Radar,
+  Radio,
+  Target,
+  TrendingUp,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import AppShell from "../components/layout/AppShell";
+import {
+  Badge,
+  Button,
+  Delta,
+  Module,
+  ModuleBody,
+  ModuleHeader,
+  ModuleRow,
+  ModuleTitle,
+  Skeleton,
+  SkeletonStatGrid,
+  Stat,
+  StatCell,
+  StatGrid,
+  Table,
+  TableBody,
+  TableEmpty,
+  TableHead,
+  TableRow,
+  TableTd,
+  TableTh,
+} from "@/app/components/ui";
 
 /* ============================================================================
-   DashboardClient — صارت "Overview" فقط (نظرة عامة سريعة)، مو داشبورد فيها كل
-   الأدوات. كل أداة (Trading Radar, Replay, التقويم
-   الاقتصادي, الكورسات...) أصبحت Workspace مستقلة بمسارها الخاص (راجع الروابط
-   بقسم "الاختصارات" تحت). ما تغيّر أي منطق حسابي أو استعلام قاعدة بيانات هون —
-   فقط أعيد تنظيم نفس البيانات المحسوبة أصلاً داخل كروت أوضح.
+   مركز القيادة — Overview.
+   ----------------------------------------------------------------------------
+   التسلسل البصري ثلاث درجات، مش صف بطاقات متطابقة:
+     ١· وحدة بطل واحدة (primary) — الأداء + ملخّص الذكاء الاصطناعي مع بعض
+     ٢· أربع قراءات ثانوية بكتلة وحدة مفصولة بخطوط شعرية
+     ٣· عمودين ثم صفوف هادية
+
+   المنطق الحسابي والاستعلامات ما تغيّر منها ولا سطر — نفس الأرقام بالضبط،
+   بس معروضة بنظام.
    ============================================================================ */
 
-const GOLD = "#E8B86D";
-const GOLD_LIGHT = "#F0C588";
-const GOLD_DARK = "#D4A05A";
-const GREEN = "#3DBB6E";
-const RED = "#E5484D";
-
 const MARKETS = [
-  { symbol: "EUR/USD", price: "1.0850", change: "+0.12%", up: true },
-  { symbol: "GBP/USD", price: "1.2700", change: "-0.05%", up: false },
-  { symbol: "XAU/USD", price: "2,045.50", change: "+0.85%", up: true },
-  { symbol: "BTC/USD", price: "43,250", change: "+2.15%", up: true },
+  { symbol: "EUR/USD", price: "1.0850", change: 0.12 },
+  { symbol: "GBP/USD", price: "1.2700", change: -0.05 },
+  { symbol: "XAU/USD", price: "2,045.50", change: 0.85 },
+  { symbol: "BTC/USD", price: "43,250", change: 2.15 },
 ];
 
-/* اختصارات لكل الـ Workspaces المستقلة — نفس الأدوات اللي كانت تبويبات قبل هيك
-   labelKey بيرجع لنفس مفاتيح nav.* (اسم الأداة موحّد بكل مكان بالمنصة) */
 const SHORTCUTS_META = [
-  { href: "/trading-radar", icon: "📡", labelKey: "nav.radar", descKey: "dashboard.shortcuts.radar" },
-  { href: "/replay", icon: "🎯", labelKey: "nav.replay", descKey: "dashboard.shortcuts.replay" },
-  { href: "/economic-calendar", icon: "📅", labelKey: "nav.calendar", descKey: "dashboard.shortcuts.calendar" },
-  { href: "/courses", icon: "🎓", labelKey: "nav.lectures", descKey: "dashboard.shortcuts.lectures" },
-  { href: "/live-sessions", icon: "🔴", labelKey: "nav.live", descKey: "dashboard.shortcuts.live" },
-  { href: "/backtest", icon: "📊", labelKey: "nav.trades", descKey: "dashboard.shortcuts.trades" },
-  { href: "/reports", icon: "📋", labelKey: "nav.reports", descKey: "dashboard.shortcuts.reports" },
-  { href: "/trader-dna", icon: "🧬", labelKey: "nav.traderDna", descKey: "dashboard.shortcuts.traderDna" },
-  { href: "/affiliate", icon: "🔗", labelKey: "nav.affiliateNetwork", descKey: "dashboard.shortcuts.affiliateNetwork" },
+  { href: "/trading-radar", icon: Radar, labelKey: "nav.radar", descKey: "dashboard.shortcuts.radar" },
+  { href: "/replay", icon: Target, labelKey: "nav.replay", descKey: "dashboard.shortcuts.replay" },
+  { href: "/economic-calendar", icon: Calendar, labelKey: "nav.calendar", descKey: "dashboard.shortcuts.calendar" },
+  { href: "/courses", icon: GraduationCap, labelKey: "nav.lectures", descKey: "dashboard.shortcuts.lectures" },
+  { href: "/live-sessions", icon: Radio, labelKey: "nav.live", descKey: "dashboard.shortcuts.live" },
+  { href: "/backtest", icon: BarChart3, labelKey: "nav.trades", descKey: "dashboard.shortcuts.trades" },
+  { href: "/reports", icon: FileText, labelKey: "nav.reports", descKey: "dashboard.shortcuts.reports" },
+  { href: "/trader-dna", icon: Dna, labelKey: "nav.traderDna", descKey: "dashboard.shortcuts.traderDna" },
+  { href: "/affiliate", icon: Handshake, labelKey: "nav.affiliateNetwork", descKey: "dashboard.shortcuts.affiliateNetwork" },
 ];
 
 function fmt(n) {
-  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Number(n || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
-/* تحويل صف قاعدة البيانات (snake_case) لشكل الأداة الداخلي */
 function rowToTrade(row) {
   return {
     id: row.id,
@@ -61,73 +96,18 @@ function rowToTrade(row) {
   };
 }
 
-/* بطاقة عامة موحّدة بالتصميم الذهبي */
-const cardStyle = {
-  background: "linear-gradient(145deg, #141517, #0D0E10)",
-  border: `1px solid ${GOLD}26`,
-  borderRadius: 18,
-  boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
-};
-
-const cellStyle = { padding: "0.7rem", fontSize: 12, textAlign: "center", borderBottom: "1px solid #1a1a0f" };
-
-/* أيقونة عَلَم/شارة ذهبية صغيرة تُستخدم بزاوية بطاقات الإحصائيات - العنصر البصري المميز للتصميم */
-function FlagBadge({ children }) {
-  return (
-    <div
-      style={{
-        width: 26,
-        height: 26,
-        borderRadius: 7,
-        background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 12,
-        flexShrink: 0,
-        boxShadow: `0 2px 8px ${GOLD}55`,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-/* زر "Open Workspace →" موحّد لكل الكروت */
-function OpenWorkspaceLink({ href, label }) {
-  return (
-    <Link
-      href={href}
-      style={{
-        marginTop: "1rem",
-        display: "block",
-        textAlign: "center",
-        border: `1px solid ${GOLD}44`,
-        color: GOLD_LIGHT,
-        fontSize: 12,
-        fontWeight: 700,
-        padding: "0.6rem",
-        borderRadius: 10,
-        textDecoration: "none",
-      }}
-    >
-      {label} →
-    </Link>
-  );
-}
-
-function SectionTitle({ children }) {
-  return <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: "0 0 1rem" }}>{children}</p>;
-}
-
-export default function DashboardClient({ username, isAdmin = false, subscriptionEnd = null, currentStreak = 0 }) {
+export default function DashboardClient({
+  username,
+  isAdmin = false,
+  subscriptionEnd = null,
+  currentStreak = 0,
+}) {
   const { t } = useLocale();
   const [trades, setTrades] = useState([]);
   const [rawTrades, setRawTrades] = useState([]);
   const [balance, setBalance] = useState(3000);
   const [loading, setLoading] = useState(true);
 
-  // بث مباشر نشط هلأ؟ (نفس المنطق القديم تماماً — بس هلأ فعلاً بنعرضه بكرت الاختصارات)
   const [liveSession, setLiveSession] = useState(null);
   useEffect(() => {
     let cancelled = false;
@@ -146,8 +126,6 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
     };
   }, []);
 
-  // آخر الإشعارات — نفس API الموجود أصلاً (/api/notifications) والمستخدم بمركز
-  // الإشعارات، فقط بنستهلكه هون كمان لعرض "آخر الإشعارات" بالـ Overview.
   const [notifications, setNotifications] = useState([]);
   const [notifLoading, setNotifLoading] = useState(true);
   useEffect(() => {
@@ -192,49 +170,54 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
     };
   }, []);
 
+  /* ---------- الحسابات (بدون أي تغيير) ---------- */
   const total = trades.length;
-  const wins = trades.filter((t) => t.result === "win").length;
-  const losses = trades.filter((t) => t.result === "loss").length;
-  const openTrades = trades.filter((t) => !t.result || t.result === "open").length;
+  const wins = trades.filter((x) => x.result === "win").length;
+  const losses = trades.filter((x) => x.result === "loss").length;
+  const openTrades = trades.filter((x) => !x.result || x.result === "open").length;
   const decided = wins + losses;
   const winRate = decided > 0 ? ((wins / decided) * 100).toFixed(1) : "0.0";
-  const netPnL = trades.reduce((acc, t) => {
-    if (t.result === "win") return acc + (t.rewardAmount || 0);
-    if (t.result === "loss") return acc - (t.riskAmount || 0);
+  const netPnL = trades.reduce((acc, x) => {
+    if (x.result === "win") return acc + (x.rewardAmount || 0);
+    if (x.result === "loss") return acc - (x.riskAmount || 0);
     return acc;
   }, 0);
 
-  const winTrades = trades.filter((t) => t.result === "win");
-  const lossTrades = trades.filter((t) => t.result === "loss");
-  const bestTrade = winTrades.length ? Math.max(...winTrades.map((t) => t.rewardAmount || 0)) : 0;
-  const worstTrade = lossTrades.length ? Math.max(...lossTrades.map((t) => t.riskAmount || 0)) : 0;
-  const avgWin = winTrades.length ? winTrades.reduce((a, t) => a + (t.rewardAmount || 0), 0) / winTrades.length : 0;
-  const avgLoss = lossTrades.length ? lossTrades.reduce((a, t) => a + (t.riskAmount || 0), 0) / lossTrades.length : 0;
+  const winTrades = trades.filter((x) => x.result === "win");
+  const lossTrades = trades.filter((x) => x.result === "loss");
+  const bestTrade = winTrades.length ? Math.max(...winTrades.map((x) => x.rewardAmount || 0)) : 0;
+  const worstTrade = lossTrades.length ? Math.max(...lossTrades.map((x) => x.riskAmount || 0)) : 0;
+  const avgWin = winTrades.length
+    ? winTrades.reduce((a, x) => a + (x.rewardAmount || 0), 0) / winTrades.length
+    : 0;
+  const avgLoss = lossTrades.length
+    ? lossTrades.reduce((a, x) => a + (x.riskAmount || 0), 0) / lossTrades.length
+    : 0;
 
   const now = new Date();
-  const monthTrades = trades.filter((t) => {
-    const d = new Date(t.date);
+  const monthTrades = trades.filter((x) => {
+    const d = new Date(x.date);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
-  const monthPnL = monthTrades.reduce((acc, t) => {
-    if (t.result === "win") return acc + (t.rewardAmount || 0);
-    if (t.result === "loss") return acc - (t.riskAmount || 0);
+  const monthPnL = monthTrades.reduce((acc, x) => {
+    if (x.result === "win") return acc + (x.rewardAmount || 0);
+    if (x.result === "loss") return acc - (x.riskAmount || 0);
     return acc;
   }, 0);
 
   const startingCapital = balance - netPnL;
 
   let running = 0;
-  const chartPoints = trades.map((t, i) => {
-    if (t.result === "win") running += t.rewardAmount || 0;
-    if (t.result === "loss") running -= t.riskAmount || 0;
+  const chartPoints = trades.map((x, i) => {
+    if (x.result === "win") running += x.rewardAmount || 0;
+    if (x.result === "loss") running -= x.riskAmount || 0;
     return { i, pnl: running, bal: startingCapital + running };
   });
   const maxBal = Math.max(1, startingCapital, ...chartPoints.map((p) => p.bal));
   const minBal = Math.min(startingCapital, ...chartPoints.map((p) => p.bal), 0);
   const balRange = Math.max(1, maxBal - minBal);
-  const chartW = 560,
-    chartH = 200;
+  const chartW = 560;
+  const chartH = 200;
 
   function lineFor(key) {
     if (chartPoints.length < 2) return "";
@@ -248,6 +231,7 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
   }
   const balPath = lineFor("bal");
   const pnlPath = lineFor("pnl");
+  const balArea = balPath ? `${balPath} L${chartW},${chartH} L0,${chartH} Z` : "";
 
   const allTradesDesc = [...trades].reverse();
   const recentTrades = allTradesDesc.slice(0, 5);
@@ -259,372 +243,409 @@ export default function DashboardClient({ username, isAdmin = false, subscriptio
     daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
   }
 
-  return (
-    <AppShell username={username} initials={initials} isAdmin={isAdmin} daysLeft={daysLeft} showProfileHeader={false}>
-      <div style={{ flex: 1, padding: "1.6rem 2rem", overflowY: "auto" }}>
-        {/* ============ Welcome Card ============ */}
-        <div
-          style={{
-            ...cardStyle,
-            padding: "1.1rem 1.6rem",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "1rem",
-            marginBottom: "1.4rem",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: "50%",
-                background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 20,
-                fontWeight: 800,
-                color: "#1A1408",
-                flexShrink: 0,
-                border: `2px solid ${GOLD}`,
-              }}
-            >
-              {initials}
-            </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 16, fontWeight: 800 }}>{username}</span>
-                <span
-                  style={{
-                    background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-                    color: "#1A1408",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    padding: "2px 8px",
-                    borderRadius: 6,
-                  }}
-                >
-                  VIP
-                </span>
-              </div>
-              <p style={{ color: "#888", fontSize: 12, margin: "3px 0 0" }}>{t("dashboard.role")}</p>
-              <div
-                style={{
-                  marginTop: 6,
-                  display: "inline-block",
-                  background: "#0D1A12",
-                  border: `1px solid ${GREEN}33`,
-                  color: GREEN,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  padding: "0.3rem 0.8rem",
-                  borderRadius: 20,
-                }}
-              >
-                💰 ${fmt(balance)}
-              </div>
-            </div>
-          </div>
+  const monthPct = balance ? ((monthPnL / balance) * 100).toFixed(2) : "0.00";
+  const netPct = startingCapital ? ((netPnL / startingCapital) * 100).toFixed(2) : "0.00";
 
-          <div style={{ textAlign: "right", display: "flex", alignItems: "center", gap: 10 }}>
-            <div>
-              <p style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>{t("dashboard.greeting", { name: username })}</p>
-              <p style={{ color: "#555", fontSize: 13, margin: "4px 0 0" }}>{t("dashboard.subtitle")}</p>
-            </div>
-            <span style={{ fontSize: 22 }}>✨</span>
-          </div>
+  return (
+    <AppShell
+      username={username}
+      initials={initials}
+      isAdmin={isAdmin}
+      daysLeft={daysLeft}
+      balance={balance}
+      showProfileHeader={false}
+    >
+      {/* ---------- ترويسة ---------- */}
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4 border-b border-edge pb-4">
+        <div className="min-w-0">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-text-muted">Command Center</p>
+          <h1 className="truncate text-xl font-semibold text-text-primary">
+            {t("dashboard.greeting", { name: username })}
+          </h1>
+          <p className="mt-0.5 text-caption text-text-muted">{t("dashboard.subtitle")}</p>
         </div>
 
-        {loading ? (
-          <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>{t("dashboard.loadingData")}</div>
-        ) : (
-          <>
-            {/* ============ AI Daily Summary ============ */}
-            <div style={{ ...cardStyle, padding: "1.3rem", marginBottom: "1.4rem" }}>
-              <SectionTitle>🧠 AI Daily Summary</SectionTitle>
-              <p style={{ color: "#ccc", fontSize: 13, lineHeight: 1.9, margin: 0 }}>
-                {total === 0
-                  ? t("dashboard.aiSummaryEmpty")
-                  : t("dashboard.aiSummaryText", {
-                      sign: monthPnL >= 0 ? t("dashboard.aiSummaryPositive") : t("dashboard.aiSummaryNegative"),
-                      amount: `${monthPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(monthPnL))}`,
-                      rate: winRate,
-                      total,
-                    })}
-              </p>
-              <OpenWorkspaceLink href="/trading-radar" label={t("dashboard.openWorkspace")} />
-            </div>
+        {/* شريط الأسواق */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          {MARKETS.map((m) => (
+            <span key={m.symbol} className="flex items-baseline gap-1.5">
+              <span className="font-mono text-micro text-text-muted">{m.symbol}</span>
+              <span className="ltr-num font-num text-caption text-text-secondary">{m.price}</span>
+              <Delta value={m.change} size="sm" />
+            </span>
+          ))}
+        </div>
+      </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem", marginBottom: "1.4rem" }}>
-              {/* ============ Market Snapshot ============ */}
-              <div style={{ ...cardStyle, padding: "1.3rem" }}>
-                <SectionTitle>🌐 Market Snapshot</SectionTitle>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                  {MARKETS.map((m) => (
-                    <div
-                      key={m.symbol}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "0.7rem 0.9rem",
-                        background: "#0D0E10",
-                        borderRight: `3px solid ${m.up ? GREEN : RED}`,
-                        borderRadius: 8,
-                      }}
-                    >
-                      <span style={{ fontSize: 13, fontWeight: 700 }}>{m.symbol}</span>
-                      <span style={{ fontSize: 13, color: "#ccc" }}>{m.price}</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: m.up ? GREEN : RED }}>{m.change}</span>
-                    </div>
-                  ))}
-                </div>
-                <OpenWorkspaceLink href="/trading-radar" label={t("dashboard.openWorkspace")} />
-              </div>
+      {loading ? (
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-56 w-full" />
+          <SkeletonStatGrid cols={4} />
+        </div>
+      ) : (
+        <div className="stagger flex flex-col gap-4">
+          {/* ============ ١ · وحدة البطل ============ */}
+          <Module level="primary">
+            <ModuleHeader meta={t("dashboard.performance12Months")}>
+              <ModuleTitle>{t("dashboard.performanceTitle")}</ModuleTitle>
+            </ModuleHeader>
 
-              {/* ============ Today's Signals ============ */}
-              <div style={{ ...cardStyle, padding: "1.3rem" }}>
-                <SectionTitle>👀 Today's Signals</SectionTitle>
-                <p style={{ color: "#ccc", fontSize: 13, lineHeight: 1.9, margin: 0 }}>
-                  {t("dashboard.todaySignalsDesc")}
-                </p>
-                <OpenWorkspaceLink href="/trading-radar" label={t("dashboard.openWorkspace")} />
-              </div>
-            </div>
+            <div className="grid gap-0 px-4 pb-4 pt-3 lg:grid-cols-[1.4fr_1fr]">
+              {/* الأداء */}
+              <div className="lg:pe-5">
+                <Stat
+                  label={t("dashboard.statCurrentCapital")}
+                  value={`$${fmt(balance)}`}
+                  tone="value"
+                  size="hero"
+                  delta={Number(monthPct)}
+                  sub={t("dashboard.statCurrentCapitalSub", { amount: `$${fmt(startingCapital)}` })}
+                />
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.9rem", marginBottom: "1.4rem" }}>
-              {/* ============ Quick Stats ============ */}
-              {[
-                {
-                  label: t("dashboard.statMonthProfit"),
-                  value: `${monthPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(monthPnL))}`,
-                  icon: "💵",
-                  color: monthPnL >= 0 ? GREEN : RED,
-                  sub: t("dashboard.statMonthProfitSub", { pct: `${monthPnL >= 0 ? "+" : ""}${balance ? ((monthPnL / balance) * 100).toFixed(2) : "0.00"}` }),
-                },
-                {
-                  label: t("dashboard.statCurrentCapital"),
-                  value: `$${fmt(balance)}`,
-                  icon: "💼",
-                  color: GOLD_LIGHT,
-                  sub: t("dashboard.statCurrentCapitalSub", { amount: `$${fmt(startingCapital)}` }),
-                },
-                {
-                  label: t("dashboard.statNetPnl"),
-                  value: `${netPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(netPnL))}`,
-                  icon: "📈",
-                  color: netPnL >= 0 ? GREEN : RED,
-                  sub: t("dashboard.statNetPnlSub", { pct: `${netPnL >= 0 ? "+" : ""}${startingCapital ? ((netPnL / startingCapital) * 100).toFixed(2) : "0.00"}` }),
-                },
-                {
-                  label: t("dashboard.statWinRate"),
-                  value: `${winRate}%`,
-                  icon: "🎯",
-                  color: "#fff",
-                  sub: t("dashboard.statWinRateSub"),
-                },
-                {
-                  label: t("dashboard.statTotalTrades"),
-                  value: total,
-                  icon: "📷",
-                  color: "#fff",
-                  sub: t("dashboard.statOpenTradesSub", { count: openTrades }),
-                },
-              ].map((s, i) => (
-                <div key={i} style={{ ...cardStyle, padding: "1rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <FlagBadge>{s.icon}</FlagBadge>
-                  </div>
-                  <p style={{ color: "#777", fontSize: 11, margin: "0.7rem 0 0.3rem" }}>{s.label}</p>
-                  <p style={{ color: s.color, fontSize: 21, fontWeight: 800, margin: 0 }}>{s.value}</p>
-                  <p style={{ color: "#555", fontSize: 10, margin: "0.4rem 0 0" }}>{s.sub}</p>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "0.9rem", marginBottom: "1.4rem", alignItems: "stretch" }}>
-              <div style={{ ...cardStyle, padding: "1.3rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: 8 }}>
-                  <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: 0 }}>{t("dashboard.performanceTitle")}</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#888", fontSize: 11 }}>
-                      <span style={{ width: 9, height: 9, borderRadius: 3, background: GOLD_LIGHT, display: "inline-block" }} /> {t("dashboard.performanceBalance")}
-                    </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#888", fontSize: 11 }}>
-                      <span style={{ width: 9, height: 9, borderRadius: 3, background: GREEN, display: "inline-block" }} /> {t("dashboard.performanceProfit")}
-                    </span>
-                    <div style={{ background: "#111", border: `1px solid ${GOLD}33`, color: "#aaa", fontSize: 11, padding: "0.35rem 0.8rem", borderRadius: 20 }}>{t("dashboard.performanceDetailed")}</div>
-                    <div style={{ background: `${GOLD}18`, border: `1px solid ${GOLD}44`, color: GOLD_LIGHT, fontSize: 11, fontWeight: 700, padding: "0.35rem 0.8rem", borderRadius: 20 }}>{t("dashboard.performance12Months")}</div>
-                  </div>
-                </div>
                 {chartPoints.length > 1 ? (
-                  <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width: "100%", height: 230 }}>
-                    <line x1="0" y1={chartH - 10} x2={chartW} y2={chartH - 10} stroke="#221c0c" strokeWidth="1" />
-                    <path d={balPath} fill="none" stroke={GOLD_LIGHT} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-                    <path d={pnlPath} fill="none" stroke={GREEN} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                  <svg
+                    viewBox={`0 0 ${chartW} ${chartH}`}
+                    className="mt-4 h-[168px] w-full"
+                    preserveAspectRatio="none"
+                    role="img"
+                    aria-label={t("dashboard.performanceTitle")}
+                  >
+                    <defs>
+                      <linearGradient id="qtaBal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stopColor="#5FA8E8" stopOpacity="0.22" />
+                        <stop offset="1" stopColor="#5FA8E8" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    {[0.25, 0.5, 0.75].map((f) => (
+                      <line
+                        key={f}
+                        x1="0"
+                        y1={chartH * f}
+                        x2={chartW}
+                        y2={chartH * f}
+                        stroke="#1B2438"
+                        strokeWidth="1"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    ))}
+                    {balArea && <path d={balArea} fill="url(#qtaBal)" />}
+                    <path
+                      d={balPath}
+                      fill="none"
+                      stroke="#5FA8E8"
+                      strokeWidth="1.6"
+                      strokeLinejoin="round"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <path
+                      d={pnlPath}
+                      fill="none"
+                      stroke="#1FBF87"
+                      strokeWidth="1.2"
+                      strokeDasharray="4 3"
+                      strokeLinejoin="round"
+                      vectorEffect="non-scaling-stroke"
+                    />
                   </svg>
                 ) : (
-                  <div style={{ height: 190, display: "flex", alignItems: "center", justifyContent: "center", color: "#444", fontSize: 12 }}>
+                  <p className="mt-4 flex h-[168px] items-center justify-center text-caption text-text-faint">
                     {t("dashboard.performanceNoData")}
-                  </div>
+                  </p>
                 )}
-              </div>
 
-              <div style={{ ...cardStyle, padding: "1.3rem", display: "flex", flexDirection: "column" }}>
-                <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: "0 0 0.9rem" }}>{t("dashboard.quickSummaryTitle")}</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem", flex: 1 }}>
-                  {[
-                    { label: t("dashboard.bestTrade"), value: `$${fmt(bestTrade)}`, color: GREEN, icon: "🏆" },
-                    { label: t("dashboard.worstTrade"), value: `$${fmt(worstTrade)}`, color: RED, icon: "🛡️" },
-                    { label: t("dashboard.avgWin"), value: `$${fmt(avgWin)}`, color: GREEN, icon: "📈" },
-                    { label: t("dashboard.avgLoss"), value: `$${fmt(avgLoss)}`, color: RED, icon: "📉" },
-                  ].map((row, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < 3 ? "1px solid #1a1a0f" : "none", paddingBottom: "0.6rem" }}>
-                      <div>
-                        <p style={{ color: "#777", fontSize: 11, margin: 0 }}>{row.label}</p>
-                        <p style={{ color: row.color, fontSize: 15, fontWeight: 800, margin: "2px 0 0" }}>{row.value}</p>
-                      </div>
-                      <span style={{ fontSize: 16, opacity: 0.7 }}>{row.icon}</span>
-                    </div>
-                  ))}
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span className="flex items-center gap-1.5 text-micro text-text-muted">
+                    <span className="h-px w-3.5 bg-ice-200" aria-hidden />
+                    {t("dashboard.performanceBalance")}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-micro text-text-muted">
+                    <span className="h-px w-3.5 bg-profit" aria-hidden />
+                    {t("dashboard.performanceProfit")}
+                  </span>
                 </div>
-                <OpenWorkspaceLink href="/reports" label={t("dashboard.viewFullReport")} />
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "0.9rem", marginBottom: "1.4rem" }}>
-              {/* ============ Recent Activity ============ */}
-              <div style={{ ...cardStyle, padding: "1.3rem" }}>
-                <SectionTitle>📊 Recent Activity</SectionTitle>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 480 }}>
-                    <thead>
-                      <tr>
-                        {[
-                          t("dashboard.recentActivityAsset"),
-                          t("dashboard.recentActivityDirection"),
-                          t("dashboard.recentActivityLot"),
-                          t("dashboard.recentActivityEntry"),
-                          t("dashboard.recentActivityExit"),
-                          t("dashboard.recentActivityDate"),
-                        ].map((h) => (
-                          <th key={h} style={{ color: "#666", fontSize: 11, padding: "0.6rem", borderBottom: "1px solid #1a1a0a", textAlign: "center" }}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentTrades.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} style={{ textAlign: "center", color: "#444", padding: "2.2rem 0" }}>
-                            📈
-                            <br />
-                            {t("dashboard.recentActivityEmpty1")}
-                            <br />
-                            {t("dashboard.recentActivityEmpty2")}
-                          </td>
-                        </tr>
-                      ) : (
-                        recentTrades.map((t2) => (
-                          <tr key={t2.id}>
-                            <td style={cellStyle}>{t2.asset}</td>
-                            <td style={{ ...cellStyle, color: t2.direction === "buy" ? GREEN : RED }}>{t2.direction === "buy" ? t("dashboard.buy") : t("dashboard.sell")}</td>
-                            <td style={cellStyle}>{t2.lot}</td>
-                            <td style={cellStyle}>{t2.entry}</td>
-                            <td style={cellStyle}>{t2.tp}</td>
-                            <td style={cellStyle}>{t2.date}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                <OpenWorkspaceLink href="/backtest" label={t("dashboard.viewAllTrades")} />
               </div>
 
-              {/* ============ Continue Learning ============ */}
-              <div style={{ ...cardStyle, padding: "1.3rem", display: "flex", flexDirection: "column" }}>
-                <SectionTitle>🎓 Continue Learning</SectionTitle>
-                <p style={{ color: "#ccc", fontSize: 13, lineHeight: 1.9, margin: 0, flex: 1 }}>
-                  {currentStreak > 0
-                    ? t("dashboard.streakText", { days: currentStreak })
-                    : t("dashboard.noStreakText")}
+              {/* الملخّص الذكي + الملخّص السريع */}
+              <div className="mt-5 border-t border-edge pt-4 lg:mt-0 lg:border-s lg:border-t-0 lg:ps-5 lg:pt-0">
+                <p className="mb-2.5 text-micro uppercase text-text-muted">AI Daily Summary</p>
+                <p className="text-sm leading-relaxed text-text-secondary">
+                  {total === 0
+                    ? t("dashboard.aiSummaryEmpty")
+                    : t("dashboard.aiSummaryText", {
+                        sign:
+                          monthPnL >= 0
+                            ? t("dashboard.aiSummaryPositive")
+                            : t("dashboard.aiSummaryNegative"),
+                        amount: `${monthPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(monthPnL))}`,
+                        rate: winRate,
+                        total,
+                      })}
                 </p>
-                <OpenWorkspaceLink href="/courses" label={t("dashboard.openWorkspace")} />
-              </div>
-            </div>
 
-            {/* ============ Latest Notifications ============ */}
-            <div style={{ ...cardStyle, padding: "1.3rem", marginBottom: "1.4rem" }}>
-              <SectionTitle>🔔 Latest Notifications</SectionTitle>
-              {notifLoading ? (
-                <p style={{ color: "#555", fontSize: 12, margin: 0 }}>{t("dashboard.notificationsLoading")}</p>
-              ) : notifications.length === 0 ? (
-                <p style={{ color: "#555", fontSize: 12, margin: 0 }}>{t("dashboard.notificationsEmpty")}</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                  {notifications.map((n) => (
+                <div className="mt-4 border-t border-edge pt-3">
+                  <p className="mb-1.5 text-micro uppercase text-text-muted">
+                    {t("dashboard.quickSummaryTitle")}
+                  </p>
+                  {[
+                    [t("dashboard.bestTrade"), `$${fmt(bestTrade)}`, "profit"],
+                    [t("dashboard.worstTrade"), `$${fmt(worstTrade)}`, "loss"],
+                    [t("dashboard.avgWin"), `$${fmt(avgWin)}`, "profit"],
+                    [t("dashboard.avgLoss"), `$${fmt(avgLoss)}`, "loss"],
+                  ].map(([label, value, tone]) => (
                     <div
-                      key={n.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "0.7rem 0.9rem",
-                        background: "#0D0E10",
-                        borderRight: `3px solid ${n.read ? "#333" : GOLD}`,
-                        borderRadius: 8,
-                        gap: 10,
-                      }}
+                      key={label}
+                      className="flex items-baseline justify-between gap-3 border-b border-edge py-1.5 last:border-b-0"
                     >
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: n.read ? "#999" : "#fff" }}>{n.title}</p>
-                        {n.message && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#666" }}>{n.message}</p>}
-                      </div>
-                      {!n.read && <span style={{ width: 8, height: 8, borderRadius: "50%", background: GOLD_LIGHT, flexShrink: 0 }} />}
+                      <span className="text-caption text-text-muted">{label}</span>
+                      <span
+                        dir="ltr"
+                        className={`font-num text-sm font-medium tabular-nums ${
+                          tone === "profit" ? "text-profit" : "text-loss"
+                        }`}
+                        style={{ unicodeBidi: "isolate" }}
+                      >
+                        {value}
+                      </span>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
 
-            {/* ============ Shortcuts ============ */}
-            <div style={{ ...cardStyle, padding: "1.3rem" }}>
-              <SectionTitle>{t("dashboard.shortcutsTitle")}</SectionTitle>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.8rem" }}>
-                {SHORTCUTS_META.map((s) => (
+                <div className="mt-4 flex gap-2">
+                  <Link href="/reports" className="flex-1">
+                    <Button size="sm" variant="secondary" className="w-full">
+                      {t("dashboard.viewFullReport")}
+                    </Button>
+                  </Link>
+                  <Link href="/trading-radar" className="flex-1">
+                    <Button size="sm" variant="ghost" className="w-full" icon={Radar}>
+                      Radar
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </Module>
+
+          {/* ============ ٢ · القراءات الثانوية ============ */}
+          <StatGrid cols={4}>
+            <StatCell>
+              <Stat
+                label={t("dashboard.statMonthProfit")}
+                value={`${monthPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(monthPnL))}`}
+                tone={monthPnL >= 0 ? "profit" : "loss"}
+                sub={t("dashboard.statMonthProfitSub", {
+                  pct: `${monthPnL >= 0 ? "+" : ""}${monthPct}`,
+                })}
+              />
+            </StatCell>
+            <StatCell>
+              <Stat
+                label={t("dashboard.statNetPnl")}
+                value={`${netPnL >= 0 ? "$" : "-$"}${fmt(Math.abs(netPnL))}`}
+                tone={netPnL >= 0 ? "profit" : "loss"}
+                sub={t("dashboard.statNetPnlSub", { pct: `${netPnL >= 0 ? "+" : ""}${netPct}` })}
+              />
+            </StatCell>
+            <StatCell>
+              <Stat
+                label={t("dashboard.statWinRate")}
+                value={`${winRate}%`}
+                sub={t("dashboard.statWinRateSub")}
+              />
+            </StatCell>
+            <StatCell>
+              <Stat
+                label={t("dashboard.statTotalTrades")}
+                value={total}
+                tone="ice"
+                sub={t("dashboard.statOpenTradesSub", { count: openTrades })}
+              />
+            </StatCell>
+          </StatGrid>
+
+          {/* ============ ٣ · عمودين ============ */}
+          <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+            {/* آخر الصفقات */}
+            <Module level="secondary">
+              <ModuleHeader meta={total ? `${Math.min(5, total)} / ${total}` : undefined}>
+                <ModuleTitle ring={false} tick="ice">
+                  {t("dashboard.recentActivityAsset")}
+                </ModuleTitle>
+              </ModuleHeader>
+              <div className="px-4 pb-2">
+                <Table>
+                  <TableHead>
+                    <TableTh>{t("dashboard.recentActivityAsset")}</TableTh>
+                    <TableTh>{t("dashboard.recentActivityDirection")}</TableTh>
+                    <TableTh align="end">{t("dashboard.recentActivityLot")}</TableTh>
+                    <TableTh align="end">{t("dashboard.recentActivityEntry")}</TableTh>
+                    <TableTh align="end">{t("dashboard.recentActivityExit")}</TableTh>
+                    <TableTh align="end">{t("dashboard.recentActivityDate")}</TableTh>
+                  </TableHead>
+                  <TableBody>
+                    {recentTrades.length === 0 ? (
+                      <TableEmpty colSpan={6}>
+                        {t("dashboard.recentActivityEmpty1")}
+                        <br />
+                        {t("dashboard.recentActivityEmpty2")}
+                      </TableEmpty>
+                    ) : (
+                      recentTrades.map((x) => (
+                        <TableRow key={x.id}>
+                          <TableTd strong className="font-mono">
+                            {x.asset}
+                          </TableTd>
+                          <TableTd
+                            className={x.direction === "buy" ? "text-profit" : "text-loss"}
+                          >
+                            {x.direction === "buy" ? t("dashboard.buy") : t("dashboard.sell")}
+                          </TableTd>
+                          <TableTd numeric align="end">
+                            {x.lot}
+                          </TableTd>
+                          <TableTd numeric align="end">
+                            {x.entry}
+                          </TableTd>
+                          <TableTd numeric align="end">
+                            {x.tp}
+                          </TableTd>
+                          <TableTd numeric align="end" className="text-text-muted">
+                            {x.date}
+                          </TableTd>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="border-t border-edge p-3">
+                <Link href="/backtest">
+                  <Button variant="ghost" size="sm" className="w-full" icon={TrendingUp}>
+                    {t("dashboard.viewAllTrades")}
+                  </Button>
+                </Link>
+              </div>
+            </Module>
+
+            {/* التعلّم + الإشعارات */}
+            <div className="flex flex-col gap-4">
+              <Module level="secondary">
+                <ModuleHeader
+                  meta={
+                    currentStreak > 0 ? (
+                      <span className="flex items-center gap-1 text-au-200">
+                        <Flame className="h-3 w-3" aria-hidden />
+                        <span className="ltr-num">{currentStreak}</span>
+                      </span>
+                    ) : undefined
+                  }
+                >
+                  <ModuleTitle ring={false} tick="au">
+                    {t("nav.lectures")}
+                  </ModuleTitle>
+                </ModuleHeader>
+                <ModuleBody>
+                  <p className="text-sm leading-relaxed text-text-secondary">
+                    {currentStreak > 0
+                      ? t("dashboard.streakText", { days: currentStreak })
+                      : t("dashboard.noStreakText")}
+                  </p>
+                  <Link href="/courses" className="mt-3 block">
+                    <Button variant="secondary" size="sm" className="w-full" icon={GraduationCap}>
+                      {t("dashboard.openWorkspace")}
+                    </Button>
+                  </Link>
+                </ModuleBody>
+              </Module>
+
+              <Module level="secondary" className="flex-1">
+                <ModuleHeader meta={notifications.length || undefined}>
+                  <ModuleTitle ring={false} tick="ice">
+                    <Bell className="me-1 inline h-3 w-3" aria-hidden />
+                    {t("header.notifications")}
+                  </ModuleTitle>
+                </ModuleHeader>
+                <div className="px-4 pb-3">
+                  {notifLoading ? (
+                    <div className="flex flex-col gap-2 py-1">
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-8 w-full" />
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <p className="py-4 text-center text-caption text-text-faint">
+                      {t("dashboard.notificationsEmpty")}
+                    </p>
+                  ) : (
+                    notifications.map((n) => (
+                      <ModuleRow key={n.id}>
+                        <span
+                          className={`tick shrink-0 ${n.read ? "" : "tick-ice"}`}
+                          aria-hidden
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className={`block truncate text-caption ${
+                              n.read ? "text-text-muted" : "font-medium text-text-primary"
+                            }`}
+                          >
+                            {n.title}
+                          </span>
+                          {n.message && (
+                            <span className="block truncate text-micro text-text-faint">
+                              {n.message}
+                            </span>
+                          )}
+                        </span>
+                      </ModuleRow>
+                    ))
+                  )}
+                </div>
+              </Module>
+            </div>
+          </div>
+
+          {/* ============ ٤ · الاختصارات ============ */}
+          <Module level="secondary">
+            <ModuleHeader>
+              <ModuleTitle ring={false} tick="">
+                {t("dashboard.shortcutsTitle")}
+              </ModuleTitle>
+            </ModuleHeader>
+            <div className="grid gap-px bg-edge p-px sm:grid-cols-2 lg:grid-cols-3">
+              {SHORTCUTS_META.map((s) => {
+                const Icon = s.icon;
+                const isLive = s.href === "/live-sessions" && liveSession;
+                return (
                   <Link
                     key={s.href}
                     href={s.href}
-                    style={{
-                      display: "block",
-                      background: "#0D0E10",
-                      border: `1px solid ${GOLD}22`,
-                      borderRadius: 12,
-                      padding: "0.9rem 1rem",
-                      textDecoration: "none",
-                      color: "inherit",
-                    }}
+                    className="group flex items-start gap-3 bg-module-1 p-3.5 transition-colors duration-base ease-orbit hover:bg-module-2"
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 17 }}>{s.icon}</span>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{t(s.labelKey)}</span>
-                      {s.href === "/live-sessions" && liveSession && (
-                        <span style={{ fontSize: 9, fontWeight: 800, color: RED, border: `1px solid ${RED}55`, borderRadius: 20, padding: "1px 6px" }}>{t("dashboard.liveNow")}</span>
-                      )}
-                    </div>
-                    <p style={{ margin: 0, fontSize: 11.5, color: "#777", lineHeight: 1.6 }}>{t(s.descKey)}</p>
+                    <span className="grid h-8 w-8 shrink-0 place-items-center border border-edge text-text-muted transition-colors duration-base group-hover:border-edge-lit group-hover:text-ice-200">
+                      <Icon className="h-4 w-4" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="text-caption font-medium text-text-primary">
+                          {t(s.labelKey)}
+                        </span>
+                        {isLive && (
+                          <Badge variant="live" size="sm">
+                            {t("dashboard.liveNow")}
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="mt-0.5 block text-micro leading-relaxed text-text-muted">
+                        {t(s.descKey)}
+                      </span>
+                    </span>
                   </Link>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          </>
-        )}
-      </div>
+          </Module>
+        </div>
+      )}
     </AppShell>
   );
 }

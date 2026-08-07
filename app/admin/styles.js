@@ -1,15 +1,15 @@
 // تصميم فخم مطابق لنظام Aureus: أسود+ذهبي، خطوط Sora/Inter/JetBrains Mono،
 // زجاج (glass) بتشبع لوني، وظلال فخمة (luxe/gold). كل الألوان مركزية هون.
 //
-// ملاحظة مهمة: `gold` تبقى hex عادي (#D4AF37) عن قصد — كذا كل مكان بالكود
+// ملاحظة مهمة: `gold` تبقى hex عادي (#C9A860) عن قصد — كذا كل مكان بالكود
 // القديم بيعمل `${gold}55` أو `gold + "44"` (ألفا بصيغة hex) بضل شغال متل
 // ما هو. التدرجات/الظلال الجديدة (OKLCH) منفصلة بتوكنز جديدة تحت.
 
-export const gold = "#D4AF37";
-export const goldLight = "#E4C97A";
-export const ink = "#0B0E11";
-export const panel = "#0b0b0a";
-export const panelElevated = "#111110";
+export const gold = "#C9A860";
+export const goldLight = "#E4CD95";
+export const ink = "#080B14";
+export const panel = "#080B14";
+export const panelElevated = "#0C1220";
 
 // نسخة OKLCH من نفس الذهب (نفس قيم Aureus بالضبط) — تُستخدم بس بالتدرجات
 // والظلال الجديدة (كخلفيات/box-shadow كاملة)، مش بتركيبات ألفا-hex
@@ -18,21 +18,21 @@ export const goldSoft = "oklch(0.88 0.09 90)";
 export const goldDeep = "oklch(0.66 0.14 78)";
 
 export const statusColors = {
-  active: "#4CAF50",
+  active: "#1FBF87",
   expiring: "#FF9800",
-  expired: "#8b8b8b",
+  expired: "#5D6880",
   vip: "#B26FE0",
-  trial: "#4FA8E0",
-  suspended: "#555555",
+  trial: "#5FA8E8",
+  suspended: "#3E4761",
 };
 
 export const planColors = {
-  owner: { bg: "#3a2a0044", fg: "#F3C339", border: "#F3C33955" },
+  owner: { bg: "#3a2a0044", fg: "#E0A44A", border: "#E0A44A55" },
   admin: { bg: "#2a1a3a44", fg: "#B26FE0", border: "#B26FE055" },
-  vip: { bg: "#1a2a3a44", fg: "#4FA8E0", border: "#4FA8E055" },
+  vip: { bg: "#11172644", fg: "#5FA8E8", border: "#5FA8E855" },
   elite: { bg: "#3a2a0044", fg: gold, border: gold + "55" },
-  member: { bg: "#1c1c1c", fg: "#9a9a9a", border: "#2A2E39" },
-  trial: { bg: "#12242f", fg: "#4FA8E0", border: "#1c3d4f" },
+  member: { bg: "#111726", fg: "#93A0B8", border: "#26314A" },
+  trial: { bg: "#111726", fg: "#5FA8E8", border: "#182033" },
 };
 
 // خلفية الصفحة: نفس التدرج الأساسي + شعاعين ذهبيين خافتين (Ambient glow) متل Aureus
@@ -49,7 +49,7 @@ export const glass = {
   backdropFilter: "blur(20px) saturate(140%)",
   WebkitBackdropFilter: "blur(20px) saturate(140%)",
   border: "1px solid rgba(201,162,75,0.14)",
-  borderRadius: 18,
+  borderRadius: 0,
 };
 
 export const goldBorder = {
@@ -61,7 +61,7 @@ export const goldBorder = {
 
 // التدرجات والظلال الفخمة (مطابقة لـ --gradient-gold / --shadow-luxe / --shadow-gold بـ Aureus)
 export const gradientGold = `linear-gradient(135deg, ${goldSoft} 0%, ${goldDeep} 100%)`;
-export const gradientSurface = `linear-gradient(180deg, ${panelElevated} 0%, #0e0e0d 100%)`;
+export const gradientSurface = `linear-gradient(180deg, ${panelElevated} 0%, #080B14 100%)`;
 export const shadowLuxe = "0 24px 60px -20px rgba(0,0,0,0.6), 0 2px 0 0 rgba(255,255,255,0.04) inset";
 export const shadowGold = "0 8px 40px -12px oklch(0.82 0.14 88 / 0.35)";
 
@@ -76,7 +76,7 @@ export const s = {
   page: {
     backgroundColor: ink,
     backgroundImage: noiseBg,
-    color: "#EAECEF",
+    color: "#EDF1F8",
     direction: "rtl",
     fontFamily: fontStack,
     minHeight: "100vh",
@@ -87,7 +87,7 @@ export const s = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "2rem 3rem",
-    borderBottom: "1px solid #181A20",
+    borderBottom: "1px solid #111726",
     flexWrap: "wrap",
     gap: "1rem",
   },
@@ -102,7 +102,7 @@ export const s = {
   section: { margin: "2rem 3rem" },
   sectionTitle: {
     fontSize: "0.85rem",
-    color: "#666",
+    color: "#5D6880",
     marginBottom: "0.9rem",
     display: "flex",
     alignItems: "center",
@@ -111,7 +111,7 @@ export const s = {
     letterSpacing: "0.5px",
     fontFamily: displayStack,
   },
-  divider: { height: 1, background: "linear-gradient(90deg, transparent, #1c1c1c 15%, #1c1c1c 85%, transparent)", margin: "2.5rem 3rem" },
+  divider: { height: 1, background: "linear-gradient(90deg, transparent, #111726 15%, #111726 85%, transparent)", margin: "2.5rem 3rem" },
   card: {
     ...glass,
     boxShadow: shadowLuxe,
@@ -119,10 +119,10 @@ export const s = {
   },
   btn: {
     background: "none",
-    border: "1px solid #222",
-    color: "#999",
+    border: "1px solid #1B2438",
+    color: "#93A0B8",
     padding: "0.55rem 1.1rem",
-    borderRadius: 10,
+    borderRadius: 3,
     cursor: "pointer",
     fontSize: "0.85rem",
     transition,
@@ -133,12 +133,12 @@ export const s = {
   },
   btnGold: {
     backgroundImage: gradientGold,
-    color: "#16130a",
+    color: "#111726",
     border: "none",
     fontWeight: 700,
     boxShadow: shadowGold,
   },
-  btnDanger: { borderColor: "#4a2a2a", color: "#ef5350" },
+  btnDanger: { borderColor: "#1E2941", color: "#E8495F" },
 };
 
 export function daysLeftColor(days) {

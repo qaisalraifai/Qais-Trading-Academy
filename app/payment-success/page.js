@@ -21,8 +21,8 @@ export default function PaymentSuccessPage() {
       } = await supabase.auth.getUser();
 
       // 🔍 تشخيص مؤقت — احذفيه بعد ما نحل المشكلة
-      console.log("🔍 DEBUG user:", user ? { id: user.id, aud: user.aud, role: user.role } : null);
-      console.log("🔍 DEBUG userError:", userError);
+      console.log("DEBUG user:", user ? { id: user.id, aud: user.aud, role: user.role } : null);
+      console.log("DEBUG userError:", userError);
 
       if (!user) {
         setStatus("timeout");
@@ -36,8 +36,8 @@ export default function PaymentSuccessPage() {
         .maybeSingle();
 
       // 🔍 تشخيص مؤقت — احذفيه بعد ما نحل المشكلة
-      console.log("🔍 DEBUG profile:", profile);
-      console.log("🔍 DEBUG profileError:", profileError);
+      console.log("DEBUG profile:", profile);
+      console.log("DEBUG profileError:", profileError);
 
       if (profile?.subscription_status === "active") {
         setStatus("active");
@@ -69,7 +69,7 @@ export default function PaymentSuccessPage() {
 
         {status === "timeout" && (
           <>
-            <h1 style={s.timeoutTitle}>⚠️ التفعيل بياخد وقت أطول من المتوقع</h1>
+            <h1 style={s.timeoutTitle}>التفعيل بياخد وقت أطول من المتوقع</h1>
             <p style={s.timeoutSub}>
               دفعتك وصلت، بس تفعيل الاشتراك بياخد شوي وقت زيادة. جربي تحدّثي الصفحة بعد دقيقة، أو تواصلي معنا لو استمرت المشكلة.
             </p>
@@ -85,18 +85,18 @@ export default function PaymentSuccessPage() {
   );
 }
 
-const gold = "#E8B86D";
+const gold = "#C9A860";
 const s = {
-  page: { backgroundColor: "#0B0E11", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EAECEF", display: "flex", alignItems: "center", justifyContent: "center" },
+  page: { backgroundColor: "#080B14", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EDF1F8", display: "flex", alignItems: "center", justifyContent: "center" },
   center: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem", padding: "2rem", textAlign: "center", maxWidth: "420px" },
   spinner: {
     width: "40px", height: "40px",
-    border: `3px solid #2B2F36`,
+    border: `3px solid #1E2941`,
     borderTopColor: gold,
     borderRadius: "50%",
     animation: "spin 0.8s linear infinite",
   },
   timeoutTitle: { fontSize: "1.3rem", fontWeight: 800, lineHeight: 1.3 },
-  timeoutSub: { color: "#777", fontSize: "0.95rem", lineHeight: 1.75 },
-  logoutBtn: { background: "none", border: "1px solid #222", color: "#999", padding: "0.6rem 1.4rem", borderRadius: "6px", cursor: "pointer", fontSize: "0.85rem" },
+  timeoutSub: { color: "#5D6880", fontSize: "0.95rem", lineHeight: 1.75 },
+  logoutBtn: { background: "none", border: "1px solid #1B2438", color: "#93A0B8", padding: "0.6rem 1.4rem", borderRadius: "3px", cursor: "pointer", fontSize: "0.85rem" },
 };

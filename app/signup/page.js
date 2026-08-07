@@ -155,8 +155,8 @@ useEffect(() => {
       <style>{`@keyframes qta-spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Floating background orbs */}
-      <div style={{ ...s.orb, width: "500px", height: "500px", top: "-100px", left: "-150px", background: "radial-gradient(circle, #C9A22722 0%, transparent 70%)" }} />
-      <div style={{ ...s.orb, width: "350px", height: "350px", top: "40%", right: "-100px", background: "radial-gradient(circle, #E8B86D18 0%, transparent 70%)" }} />
+      <div style={{ ...s.orb, width: "500px", height: "500px", top: "-100px", left: "-150px", background: "radial-gradient(circle, #26314A 0%, transparent 70%)" }} />
+      <div style={{ ...s.orb, width: "350px", height: "350px", top: "40%", right: "-100px", background: "radial-gradient(circle, #26314A 0%, transparent 70%)" }} />
       <div style={{ ...s.orb, width: "250px", height: "250px", bottom: "10%", left: "30%", background: "radial-gradient(circle, #7A5F1412 0%, transparent 70%)" }} />
 
       {/* Header */}
@@ -292,55 +292,55 @@ onChange={(e) => f.set(e.target.value)}
   );
 }
 
-const gold = "#E8B86D";
+const gold = "#C9A860";
 const s = {
-  page: { backgroundColor: "#0B0E11", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EAECEF", overflowX: "hidden", position: "relative" },
+  page: { backgroundColor: "#080B14", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EDF1F8", overflowX: "hidden", position: "relative" },
   orb: { position: "fixed", borderRadius: "50%", pointerEvents: "none", filter: "blur(80px)", zIndex: 0 },
 
-  header: { position: "relative", zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #0D0E10" },
+  header: { position: "relative", zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #0C1220" },
   logoBlock: { display: "flex", alignItems: "center", gap: "0.75rem" },
-  logoImg: { height: "34px", borderRadius: "4px" },
-  logoText: { fontSize: "0.95rem", fontWeight: 500, color: "#EAECEF" },
-  loginLink: { color: "#6E7177", textDecoration: "none", fontSize: "0.9rem" },
+  logoImg: { height: "34px", borderRadius: "3px" },
+  logoText: { fontSize: "0.95rem", fontWeight: 500, color: "#EDF1F8" },
+  loginLink: { color: "#5D6880", textDecoration: "none", fontSize: "0.9rem" },
 
   hero: { position: "relative", zIndex: 1, maxWidth: "680px", margin: "0 auto", padding: "5rem 3rem 3rem", textAlign: "center" },
   heroLogo: { width: "100px", height: "100px", objectFit: "cover", borderRadius: "50%", border: `2px solid ${gold}44`, boxShadow: `0 0 40px ${gold}33` },
   eyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1.25rem" },
   heroTitle: { fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 900, lineHeight: 1.2, marginBottom: "1.25rem", letterSpacing: "-0.5px" },
   heroGold: { color: gold, fontStyle: "italic" },
-  heroSub: { color: "#6E7177", fontSize: "1rem", lineHeight: 1.85, marginBottom: "2.5rem" },
+  heroSub: { color: "#5D6880", fontSize: "1rem", lineHeight: 1.85, marginBottom: "2.5rem" },
 
   features: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem", marginBottom: "2.5rem", textAlign: "right" },
-  featureItem: { display: "flex", alignItems: "center", gap: "0.6rem", color: "#C8C0B0", fontSize: "0.88rem" },
+  featureItem: { display: "flex", alignItems: "center", gap: "0.6rem", color: "#93A0B8", fontSize: "0.88rem" },
   featureDot: { color: gold, fontSize: "0.5rem", flexShrink: 0 },
 
-  priceCard: { backgroundColor: "#0D0E10", border: `1px solid ${gold}44`, borderRadius: "8px", padding: "2rem 2.5rem", display: "inline-block", textAlign: "center" },
-  priceLabel: { fontFamily: "'JetBrains Mono', monospace", color: "#555", fontSize: "0.72rem", letterSpacing: "2px", marginBottom: "0.75rem" },
+  priceCard: { backgroundColor: "#0C1220", border: `1px solid ${gold}44`, borderRadius: "3px", padding: "2rem 2.5rem", display: "inline-block", textAlign: "center" },
+  priceLabel: { fontFamily: "'JetBrains Mono', monospace", color: "#3E4761", fontSize: "0.72rem", letterSpacing: "2px", marginBottom: "0.75rem" },
   priceRow: { display: "flex", alignItems: "baseline", gap: "0.5rem", justifyContent: "center", marginBottom: "0.75rem" },
   priceNum: { fontFamily: "'JetBrains Mono', monospace", fontSize: "3.5rem", fontWeight: 700, color: gold },
-  priceCurrency: { color: "#888", fontSize: "1.1rem" },
-  priceNote: { color: "#444", fontSize: "0.78rem" },
-  pricePeriod: { color: "#666", fontSize: "0.85rem" },
-  priceTaxNote: { color: "#26282C", fontSize: "0.7rem", marginTop: "0.5rem", lineHeight: 1.5 },
+  priceCurrency: { color: "#5D6880", fontSize: "1.1rem" },
+  priceNote: { color: "#3E4761", fontSize: "0.78rem" },
+  pricePeriod: { color: "#5D6880", fontSize: "0.85rem" },
+  priceTaxNote: { color: "#26314A", fontSize: "0.7rem", marginTop: "0.5rem", lineHeight: 1.5 },
 
   formSection: { position: "relative", zIndex: 1, padding: "3rem", display: "flex", justifyContent: "center" },
-  card: { backgroundColor: "#0D0E10", border: "1px solid #2B2F36", borderRadius: "8px", padding: "3rem 2.5rem", width: "100%", maxWidth: "500px" },
+  card: { backgroundColor: "#0C1220", border: "1px solid #1E2941", borderRadius: "3px", padding: "3rem 2.5rem", width: "100%", maxWidth: "500px" },
   formEyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1rem", textAlign: "center" },
-  formTitle: { fontSize: "1.6rem", fontWeight: 800, color: "#EAECEF", textAlign: "center", marginBottom: "0.4rem" },
-  formSub: { color: "#555", fontSize: "0.88rem", textAlign: "center", marginBottom: "2rem" },
+  formTitle: { fontSize: "1.6rem", fontWeight: 800, color: "#EDF1F8", textAlign: "center", marginBottom: "0.4rem" },
+  formSub: { color: "#3E4761", fontSize: "0.88rem", textAlign: "center", marginBottom: "2rem" },
 
   form: { display: "flex", flexDirection: "column", gap: "1.25rem" },
   field: { display: "flex", flexDirection: "column", gap: "0.4rem" },
-  label: { color: "#888", fontSize: "0.8rem" },
-  input: { backgroundColor: "#080808", border: "1px solid #141517", color: "#EAECEF", padding: "0.8rem 1rem", borderRadius: "4px", fontSize: "0.95rem", outline: "none", direction: "ltr", textAlign: "right" },
-  btn: { backgroundColor: gold, color: "#080600", padding: "1rem", borderRadius: "4px", border: "none", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer", marginTop: "0.5rem" },
-  error: { color: "#E5484D", fontSize: "0.85rem", textAlign: "center" },
+  label: { color: "#5D6880", fontSize: "0.8rem" },
+  input: { backgroundColor: "#080B14", border: "1px solid #111726", color: "#EDF1F8", padding: "0.8rem 1rem", borderRadius: "3px", fontSize: "0.95rem", outline: "none", direction: "ltr", textAlign: "right" },
+  btn: { backgroundColor: gold, color: "#0C1220", padding: "1rem", borderRadius: "3px", border: "none", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer", marginTop: "0.5rem" },
+  error: { color: "#E8495F", fontSize: "0.85rem", textAlign: "center" },
   waitBox: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem", padding: "1.5rem 0" },
-  spinner: { width: "38px", height: "38px", borderRadius: "50%", border: "3px solid #141517", borderTopColor: gold, animation: "qta-spin 0.8s linear infinite" },
-  waitTitle: { color: "#EAECEF", fontSize: "1.05rem", fontWeight: 700 },
-  waitText: { color: "#6E7177", fontSize: "0.88rem", lineHeight: 1.8, textAlign: "center" },
-  linkText: { color: "#444", fontSize: "0.85rem", textAlign: "center", marginTop: "1.5rem" },
+  spinner: { width: "38px", height: "38px", borderRadius: "50%", border: "3px solid #111726", borderTopColor: gold, animation: "qta-spin 0.8s linear infinite" },
+  waitTitle: { color: "#EDF1F8", fontSize: "1.05rem", fontWeight: 700 },
+  waitText: { color: "#5D6880", fontSize: "0.88rem", lineHeight: 1.8, textAlign: "center" },
+  linkText: { color: "#3E4761", fontSize: "0.85rem", textAlign: "center", marginTop: "1.5rem" },
   link: { color: gold, textDecoration: "none" },
 
-  footer: { position: "relative", zIndex: 1, textAlign: "center", padding: "2rem", color: "#222", fontSize: "0.8rem", fontFamily: "'JetBrains Mono', monospace", borderTop: "1px solid #111", marginTop: "2rem" },
+  footer: { position: "relative", zIndex: 1, textAlign: "center", padding: "2rem", color: "#1B2438", fontSize: "0.8rem", fontFamily: "'JetBrains Mono', monospace", borderTop: "1px solid #111726", marginTop: "2rem" },
 };

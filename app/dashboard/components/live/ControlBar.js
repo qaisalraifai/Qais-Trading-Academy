@@ -23,7 +23,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-const REACTIONS = ["👍", "❤️", "😂", "👏", "🔥", "🎉"];
+const REACTIONS = ["👍", "️", "😂", "👏", "🔥", "🎉"];
 
 function CtrlBtn({ active, danger, onClick, children, label, disabled }) {
   return (

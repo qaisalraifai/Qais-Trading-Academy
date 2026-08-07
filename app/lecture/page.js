@@ -46,7 +46,7 @@ export default async function LecturesPage() {
     <PageShell {...shellProfile}>
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1A1408 0%, #0D0E10 60%)",
+      background: "radial-gradient(ellipse at top, #101828 0%, #0C1220 60%)",
       color: "#fff",
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
@@ -59,21 +59,21 @@ export default async function LecturesPage() {
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <div style={{
               width: 52, height: 52, borderRadius: "50%",
-              border: "2px solid #E8B86D",
-              boxShadow: "0 0 20px #E8B86D44",
+              border: "2px solid #C9A860",
+              boxShadow: "0 0 20px #3E5478",
               overflow: "hidden", flexShrink: 0,
             }}>
               <img src="/logo.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>
             <div>
-              <p style={{ color: "#E8B86D", fontSize: 11, letterSpacing: 3, margin: 0 }}>QAIS TRADING ACADEMY</p>
+              <p style={{ color: "#C9A860", fontSize: 11, letterSpacing: 3, margin: 0 }}>QAIS TRADING ACADEMY</p>
               <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>البرامج التعليمية</h1>
             </div>
           </div>
-          <Link href="/dashboard" style={{ color: "#555", fontSize: 13, textDecoration: "none" }}>← رجوع</Link>
+          <Link href="/dashboard" style={{ color: "#3E4761", fontSize: 13, textDecoration: "none" }}>← رجوع</Link>
         </div>
 
-        <p style={{ color: "#555", fontSize: 14, marginBottom: "2rem" }}>اختر البرنامج وابدأ رحلتك التعليمية</p>
+        <p style={{ color: "#3E4761", fontSize: 14, marginBottom: "2rem" }}>اختر البرنامج وابدأ رحلتك التعليمية</p>
 
         {/* Course Cards */}
         <div style={{
@@ -84,9 +84,9 @@ export default async function LecturesPage() {
           {courseStats.map((course) => (
             <Link key={course.id} href={`/course/${course.id}`} style={{ textDecoration: "none" }}>
               <div style={{
-                background: "linear-gradient(145deg, #111108, #0D0E10)",
-                border: "1px solid #E8B86D33",
-                borderRadius: 18,
+                background: "#111726",
+                border: "1px solid #26314A",
+                borderRadius: 0,
                 padding: "1.75rem",
                 cursor: "pointer",
                 boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
@@ -103,46 +103,46 @@ export default async function LecturesPage() {
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 19, color: "#fff", marginBottom: 6 }}>{course.title}</div>
                   {course.description && (
-                    <div style={{ color: "#777", fontSize: 13, lineHeight: 1.6 }}>{course.description}</div>
+                    <div style={{ color: "#5D6880", fontSize: 13, lineHeight: 1.6 }}>{course.description}</div>
                   )}
                 </div>
 
                 {/* Stats */}
-                <div style={{ display: "flex", gap: "1.25rem", fontSize: 12, color: "#999" }}>
-                  <span>📚 {course.totalLessons} درس</span>
+                <div style={{ display: "flex", gap: "1.25rem", fontSize: 12, color: "#93A0B8" }}>
+                  <span>{course.totalLessons} درس</span>
                   <span>⏱ {course.totalHours.toFixed(1)} ساعة</span>
                 </div>
 
                 {/* Progress bar */}
                 <div style={{ marginTop: "auto" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#E8B86D", marginBottom: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#C9A860", marginBottom: 6 }}>
                     <span>التقدم</span>
                     <span>{course.progressPct}%</span>
                   </div>
-                  <div style={{ width: "100%", height: 8, background: "#1a1a0a", borderRadius: 5, overflow: "hidden" }}>
+                  <div style={{ width: "100%", height: 8, background: "#1B2438", borderRadius: 3, overflow: "hidden" }}>
                     <div style={{
                       width: `${course.progressPct}%`,
                       height: "100%",
-                      background: "linear-gradient(90deg, #E8B86D, #e6c674)",
-                      borderRadius: 5,
+                      background: "linear-gradient(90deg, #C9A860, #E4CD95)",
+                      borderRadius: 3,
                       transition: "width 0.3s ease",
                     }} />
                   </div>
-                  <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: "#3E4761", marginTop: 4 }}>
                     {course.completedCount} / {course.totalLessons} درس
                   </div>
                 </div>
 
                 {/* Continue button */}
                 <div style={{
-                  background: "linear-gradient(135deg, #E8B86D, #D4A05A)",
+                  background: "linear-gradient(135deg, #C9A860, #9C7F42)",
                   color: "#000",
                   fontWeight: 700,
                   fontSize: 13,
                   textAlign: "center",
                   padding: "0.65rem",
-                  borderRadius: 10,
-                  boxShadow: "0 4px 12px #E8B86D33",
+                  borderRadius: 3,
+                  boxShadow: "0 4px 12px #26314A",
                 }}>
                   {course.progressPct > 0 ? "متابعة" : "ابدأ الآن"}
                 </div>
@@ -152,7 +152,7 @@ export default async function LecturesPage() {
         </div>
 
         {(!courseStats || courseStats.length === 0) && (
-          <div style={{ color: "#555", textAlign: "center", padding: "3rem 0" }}>
+          <div style={{ color: "#3E4761", textAlign: "center", padding: "3rem 0" }}>
             لا توجد برامج تعليمية بعد.
           </div>
         )}

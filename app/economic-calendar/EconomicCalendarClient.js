@@ -9,22 +9,22 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
    لتشغيله كصفحة مستقلة بكامل عرض الشاشة بدل تبويب داخل الداشبورد.
    ============================================================================ */
 
-const GOLD = "#E8B86D";
-const GOLD_LIGHT = "#F0C588";
-const GOLD_DARK = "#D4A05A";
+const GOLD = "#C9A860";
+const GOLD_LIGHT = "#E4CD95";
+const GOLD_DARK = "#9C7F42";
 
 const cardStyle = {
-  background: "linear-gradient(145deg, #141517, #0D0E10)",
-  border: `1px solid ${GOLD}26`,
-  borderRadius: 18,
+  background: "#111726",
+  border: `1px solid #26314A`,
+  borderRadius: 0,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
 };
 
 const IMPACT_KEYS = {
-  high: { labelKey: "calendar.impactHigh", color: "#E5484D", bg: "#E5484D22", dot: "🔴" },
-  medium: { labelKey: "calendar.impactMedium", color: "#F5A623", bg: "#F5A62322", dot: "🟡" },
-  low: { labelKey: "calendar.impactLow", color: "#3DBB6E", bg: "#3DBB6E22", dot: "🟢" },
-  holiday: { labelKey: "calendar.impactHoliday", color: "#3D8BFD", bg: "#3D8BFD22", dot: "🔵" },
+  high: { labelKey: "calendar.impactHigh", color: "#E8495F", bg: "#E8495F22", dot: "🔴" },
+  medium: { labelKey: "calendar.impactMedium", color: "#E0A44A", bg: "#E0A44A22", dot: "🟡" },
+  low: { labelKey: "calendar.impactLow", color: "#1FBF87", bg: "#1FBF8722", dot: "🟢" },
+  holiday: { labelKey: "calendar.impactHoliday", color: "#5FA8E8", bg: "#5FA8E822", dot: "🔵" },
 };
 
 const CURRENCY_FLAGS = {
@@ -33,9 +33,9 @@ const CURRENCY_FLAGS = {
 };
 
 const DIRECTION_STYLE = {
-  up: { arrow: "⬆️", color: "#3DBB6E" },
-  down: { arrow: "⬇️", color: "#E5484D" },
-  neutral: { arrow: "➖", color: "#999" },
+  up: { arrow: "⬆️", color: "#1FBF87" },
+  down: { arrow: "⬇️", color: "#E8495F" },
+  neutral: { arrow: "➖", color: "#93A0B8" },
 };
 
 const STRENGTH_KEYS = { strong: "calendar.strengthStrong", medium: "calendar.strengthMedium", weak: "calendar.strengthWeak" };
@@ -69,7 +69,7 @@ function formatCountdown(diffMs, dayLabel = "يوم") {
 }
 
 const PURPLE = "#7c5cff";
-const PURPLE_LIGHT = "#E8B86D";
+const PURPLE_LIGHT = "#C9A860";
 
 /* Mini Sparkline */
 function Sparkline({ data, color, width = 60, height = 24 }) {
@@ -111,7 +111,7 @@ function SemiGauge({ value, size = 150, colors, gradId }) {
           ))}
         </linearGradient>
       </defs>
-      <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} fill="none" stroke="#1a1a12" strokeWidth="13" strokeLinecap="round" />
+      <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} fill="none" stroke="#111726" strokeWidth="13" strokeLinecap="round" />
       <path
         d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
         fill="none"
@@ -130,7 +130,7 @@ const CCY_LIST = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD"];
 
 /* صف تحميل/خطأ موحّد لبطاقات البيانات الحية */
 function LiveCardStatus({ label }) {
-  return <p style={{ margin: 0, fontSize: 11, color: "#666", textAlign: "center", padding: "0.6rem 0" }}>{label}</p>;
+  return <p style={{ margin: 0, fontSize: 11, color: "#5D6880", textAlign: "center", padding: "0.6rem 0" }}>{label}</p>;
 }
 
 /* خريطة قوة العملات — بيانات حقيقية محسوبة من أزواج الفوركس الفعلية عبر Yahoo Finance */
@@ -147,7 +147,7 @@ function CurrencyStrengthMeter({ snapshot, loading, error }) {
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>{t("calendar.currencyStrengthTitle")}</p>
-        <span style={{ fontSize: 8.5, color: "#555" }}>Yahoo Finance</span>
+        <span style={{ fontSize: 8.5, color: "#3E4761" }}>Yahoo Finance</span>
       </div>
       {loading && !snapshot ? (
         <LiveCardStatus label={t("calendar.loadingLiveData")} />
@@ -156,17 +156,17 @@ function CurrencyStrengthMeter({ snapshot, loading, error }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
           {values.map((v) => {
-            const color = v.value >= 68 ? "#3DBB6E" : v.value >= 42 ? GOLD_LIGHT : "#E5484D";
+            const color = v.value >= 68 ? "#1FBF87" : v.value >= 42 ? GOLD_LIGHT : "#E8495F";
             return (
               <div key={v.code}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                  <span style={{ fontSize: 11.5, color: "#ccc", fontWeight: 700 }}>
+                  <span style={{ fontSize: 11.5, color: "#93A0B8", fontWeight: 700 }}>
                     {CURRENCY_FLAGS[v.code] || "🌐"} {v.code}
                   </span>
                   <span style={{ fontSize: 11.5, color, fontWeight: 700 }}>{v.value}%</span>
                 </div>
-                <div style={{ height: 6, borderRadius: 6, background: "#1a1a12", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${v.value}%`, background: color, borderRadius: 6 }} />
+                <div style={{ height: 6, borderRadius: 3, background: "#111726", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${v.value}%`, background: color, borderRadius: 3 }} />
                 </div>
               </div>
             );
@@ -189,7 +189,7 @@ function MarketHeatmap({ snapshot, loading, error }) {
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff" }}>{t("calendar.marketHeatmapTitle")}</p>
-        <span style={{ fontSize: 8.5, color: "#555" }}>Yahoo Finance</span>
+        <span style={{ fontSize: 8.5, color: "#3E4761" }}>Yahoo Finance</span>
       </div>
       {loading && !snapshot ? (
         <LiveCardStatus label={t("calendar.loadingLiveData")} />
@@ -201,19 +201,19 @@ function MarketHeatmap({ snapshot, loading, error }) {
             const v = values.find((x) => x.sector === sector);
             if (!v || v.pct == null) {
               return (
-                <div key={sector} style={{ background: "#0D0E10", border: `1px solid ${GOLD}18`, borderRadius: 10, padding: "0.7rem 0.4rem", textAlign: "center" }}>
-                  <p style={{ margin: 0, fontSize: 10.5, color: "#666", fontWeight: 600 }}>{sector}</p>
-                  <p style={{ margin: "5px 0 0", fontSize: 12, color: "#444" }}>--</p>
+                <div key={sector} style={{ background: "#0C1220", border: `1px solid #26314A`, borderRadius: 3, padding: "0.7rem 0.4rem", textAlign: "center" }}>
+                  <p style={{ margin: 0, fontSize: 10.5, color: "#5D6880", fontWeight: 600 }}>{sector}</p>
+                  <p style={{ margin: "5px 0 0", fontSize: 12, color: "#3E4761" }}>--</p>
                 </div>
               );
             }
             const up = v.pct >= 0;
             const bg = up ? `rgba(61,220,132,${Math.min(0.45, 0.15 + Math.abs(v.pct) / 8)})` : `rgba(239,83,80,${Math.min(0.45, 0.15 + Math.abs(v.pct) / 8)})`;
-            const border = up ? "#3DBB6E55" : "#E5484D55";
+            const border = up ? "#1FBF8755" : "#E8495F55";
             return (
-              <div key={sector} title={HEATMAP_SYMBOL_LABEL[sector]} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "0.7rem 0.4rem", textAlign: "center" }}>
+              <div key={sector} title={HEATMAP_SYMBOL_LABEL[sector]} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 3, padding: "0.7rem 0.4rem", textAlign: "center" }}>
                 <p style={{ margin: 0, fontSize: 10.5, color: "#ddd", fontWeight: 600 }}>{sector}</p>
-                <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 800, color: up ? "#3DBB6E" : "#E5484D", direction: "ltr" }}>
+                <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 800, color: up ? "#1FBF87" : "#E8495F", direction: "ltr" }}>
                   {up ? "+" : ""}
                   {v.pct}%
                 </p>
@@ -288,17 +288,17 @@ function PriceChart() {
           {t("calendar.dxyChartTitle")} {chartData?.points?.length ? <span style={{ color: GOLD_LIGHT }}>{points[points.length - 1]?.toFixed(2)}</span> : null}
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 8.5, color: "#555" }}>Yahoo Finance</span>
+          <span style={{ fontSize: 8.5, color: "#3E4761" }}>Yahoo Finance</span>
           <div style={{ display: "flex", gap: 4 }}>
             {["1D", "1W", "1M"].map((t) => (
               <button
                 key={t}
                 onClick={() => setTf(t)}
                 style={{
-                  background: tf === t ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0D0E10",
-                  color: tf === t ? "#000" : "#999",
-                  border: tf === t ? "none" : `1px solid ${GOLD}22`,
-                  borderRadius: 6,
+                  background: tf === t ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0C1220",
+                  color: tf === t ? "#000" : "#93A0B8",
+                  border: tf === t ? "none" : `1px solid #26314A`,
+                  borderRadius: 3,
                   padding: "3px 10px",
                   fontSize: 10.5,
                   fontWeight: 700,
@@ -329,10 +329,10 @@ function PriceChart() {
             />
           </svg>
           <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
-            <span style={{ fontSize: 10.5, color: "#888" }}>
+            <span style={{ fontSize: 10.5, color: "#5D6880" }}>
               <span style={{ color: GOLD_LIGHT }}>●</span> {t("calendar.actualPriceLegend")}
             </span>
-            <span style={{ fontSize: 10.5, color: "#888" }}>
+            <span style={{ fontSize: 10.5, color: "#5D6880" }}>
               <span style={{ color: PURPLE_LIGHT }}>●</span> {t("calendar.smaLegend")}
             </span>
           </div>
@@ -347,12 +347,12 @@ function FearGreedGauge({ snapshot, loading, error }) {
   const { t } = useLocale();
   const value = snapshot?.fearGreed;
   const label = value == null ? null : value >= 75 ? t("calendar.fgExtremeGreed") : value >= 55 ? t("calendar.fgGreed") : value >= 45 ? t("calendar.fgNeutral") : value >= 25 ? t("calendar.fgFear") : t("calendar.fgExtremeFear");
-  const color = value == null ? "#888" : value >= 75 ? "#22c55e" : value >= 55 ? "#84cc16" : value >= 45 ? "#eab308" : value >= 25 ? "#F5A623" : "#E5484D";
+  const color = value == null ? "#5D6880" : value >= 75 ? "#1FBF87" : value >= 55 ? "#1FBF87" : value >= 45 ? "#E0A44A" : value >= 25 ? "#E0A44A" : "#E8495F";
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
         <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.fearGreedTitle")}</p>
-        <span style={{ fontSize: 8.5, color: "#555" }}>VIX</span>
+        <span style={{ fontSize: 8.5, color: "#3E4761" }}>VIX</span>
       </div>
       {loading && !snapshot ? (
         <LiveCardStatus label={t("calendar.loadingGeneric")} />
@@ -360,10 +360,10 @@ function FearGreedGauge({ snapshot, loading, error }) {
         <LiveCardStatus label={t("calendar.vixError")} />
       ) : (
         <>
-          <SemiGauge value={value} colors={["#E5484D", "#F5A623", "#eab308", "#84cc16", "#22c55e"]} gradId="fg" />
+          <SemiGauge value={value} colors={["#E8495F", "#E0A44A", "#E0A44A", "#1FBF87", "#1FBF87"]} gradId="fg" />
           <p style={{ margin: "2px 0 0", fontSize: 22, fontWeight: 800, color }}>{value}</p>
           <p style={{ margin: "2px 0 0", fontSize: 11.5, color, fontWeight: 700 }}>{label}</p>
-          <p style={{ margin: "8px 0 0", fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
+          <p style={{ margin: "8px 0 0", fontSize: 10.5, color: "#5D6880", lineHeight: 1.6 }}>
             {t("calendar.fearGreedNote", { vix: snapshot.vix?.price ?? "--" })}
           </p>
         </>
@@ -407,16 +407,16 @@ function EconomicSurpriseIndex({ events }) {
         <LiveCardStatus label={t("calendar.surpriseNoData")} />
       ) : (
         <>
-          <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: positive ? "#3DBB6E" : "#E5484D", direction: "ltr" }}>
+          <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: positive ? "#1FBF87" : "#E8495F", direction: "ltr" }}>
             {positive ? "+" : ""}
             {value}
           </p>
           {series.length >= 2 && (
             <div style={{ margin: "8px 0" }}>
-              <Sparkline data={series} color={positive ? "#3DBB6E" : "#E5484D"} width={140} height={34} />
+              <Sparkline data={series} color={positive ? "#1FBF87" : "#E8495F"} width={140} height={34} />
             </div>
           )}
-          <p style={{ margin: 0, fontSize: 10.5, color: "#888", lineHeight: 1.6 }}>
+          <p style={{ margin: 0, fontSize: 10.5, color: "#5D6880", lineHeight: 1.6 }}>
             {positive ? t("calendar.surprisePositive") : t("calendar.surpriseNegative")}
           </p>
         </>
@@ -456,19 +456,19 @@ function TechnicalAnalysisPanel({ currency }) {
   }, [currency]);
 
   const rows = data && [
-    { label: "RSI (14)", value: data.rsi ?? "--", color: data.rsi > 70 ? "#E5484D" : data.rsi < 30 ? "#3DBB6E" : "#eee" },
-    { label: "MACD", value: data.macd || "--", color: data.macd === "Bullish" ? "#3DBB6E" : "#E5484D" },
-    { label: "EMA 20", value: data.emaUp == null ? "--" : data.emaUp ? t("calendar.aboveEma50") : t("calendar.belowEma50"), color: data.emaUp ? "#3DBB6E" : "#E5484D" },
+    { label: "RSI (14)", value: data.rsi ?? "--", color: data.rsi > 70 ? "#E8495F" : data.rsi < 30 ? "#1FBF87" : "#EDF1F8" },
+    { label: "MACD", value: data.macd || "--", color: data.macd === "Bullish" ? "#1FBF87" : "#E8495F" },
+    { label: "EMA 20", value: data.emaUp == null ? "--" : data.emaUp ? t("calendar.aboveEma50") : t("calendar.belowEma50"), color: data.emaUp ? "#1FBF87" : "#E8495F" },
     { label: t("calendar.generalTrendLabel"), value: data.trend || "--", color: GOLD_LIGHT },
-    { label: t("calendar.supportLabel"), value: data.support ?? "--", color: "#3D8BFD" },
-    { label: t("calendar.resistanceLabel"), value: data.resistance ?? "--", color: "#E5484D" },
+    { label: t("calendar.supportLabel"), value: data.support ?? "--", color: "#5FA8E8" },
+    { label: t("calendar.resistanceLabel"), value: data.resistance ?? "--", color: "#E8495F" },
   ];
 
   return (
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.7rem" }}>
         <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.technicalTitle", { symbol: data?.symbol || currency })}</p>
-        <span style={{ fontSize: 8.5, color: "#555" }}>{t("calendar.dailyYahoo")}</span>
+        <span style={{ fontSize: 8.5, color: "#3E4761" }}>{t("calendar.dailyYahoo")}</span>
       </div>
       {loading && !data ? (
         <LiveCardStatus label={t("calendar.calculatingIndicators")} />
@@ -483,11 +483,11 @@ function TechnicalAnalysisPanel({ currency }) {
                 display: "flex",
                 justifyContent: "space-between",
                 fontSize: 11.5,
-                borderBottom: i < rows.length - 1 ? "1px solid #1a1a0f" : "none",
+                borderBottom: i < rows.length - 1 ? "1px solid #1B2438" : "none",
                 paddingBottom: 5,
               }}
             >
-              <span style={{ color: "#999" }}>{r.label}</span>
+              <span style={{ color: "#93A0B8" }}>{r.label}</span>
               <span style={{ color: r.color, fontWeight: 700 }}>{r.value}</span>
             </div>
           ))}
@@ -514,7 +514,7 @@ function TradingPlanChecklist() {
               alignItems: "flex-start",
               gap: 8,
               fontSize: 11.5,
-              color: checked[i] ? "#666" : "#ccc",
+              color: checked[i] ? "#5D6880" : "#93A0B8",
               cursor: "pointer",
               textDecoration: checked[i] ? "line-through" : "none",
             }}
@@ -561,14 +561,14 @@ function BestOpportunitiesPanel({ events, snapshot }) {
 
   if (!snapshot) {
     return (
-      <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center", color: "#666", fontSize: 12 }}>
+      <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center", color: "#5D6880", fontSize: 12 }}>
         {t("calendar.bestOpportunitiesLoading")}
       </div>
     );
   }
   if (opportunities.length === 0) {
     return (
-      <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center", color: "#666", fontSize: 12 }}>
+      <div style={{ ...cardStyle, padding: "1.1rem 1.2rem", textAlign: "center", color: "#5D6880", fontSize: 12 }}>
         {t("calendar.bestOpportunitiesEmpty")}
       </div>
     );
@@ -577,7 +577,7 @@ function BestOpportunitiesPanel({ events, snapshot }) {
     <div style={{ ...cardStyle, padding: "1.1rem 1.2rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
         <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.bestOpportunitiesTitle")}</p>
-        <span style={{ fontSize: 8.5, color: "#555" }}>{t("calendar.basedOnLiveStrength")}</span>
+        <span style={{ fontSize: 8.5, color: "#3E4761" }}>{t("calendar.basedOnLiveStrength")}</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
         {opportunities.map((o, i) => (
@@ -587,9 +587,9 @@ function BestOpportunitiesPanel({ events, snapshot }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              background: "#0D0E10",
-              border: `1px solid ${GOLD}1a`,
-              borderRadius: 10,
+              background: "#0C1220",
+              border: `1px solid #26314A`,
+              borderRadius: 3,
               padding: "0.6rem 0.8rem",
             }}
           >
@@ -598,8 +598,8 @@ function BestOpportunitiesPanel({ events, snapshot }) {
                 style={{
                   width: 20,
                   height: 20,
-                  borderRadius: 6,
-                  background: `${GOLD}22`,
+                  borderRadius: 3,
+                  background: `#26314A`,
                   color: GOLD_LIGHT,
                   fontSize: 10,
                   fontWeight: 800,
@@ -610,16 +610,16 @@ function BestOpportunitiesPanel({ events, snapshot }) {
               >
                 {i + 1}
               </span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#eee" }}>{o.asset}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#EDF1F8" }}>{o.asset}</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: o.buy ? "#3DBB6E" : "#E5484D" }}>{o.buy ? t("calendar.buyLabel") : t("calendar.sellLabel")}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: o.buy ? "#1FBF87" : "#E8495F" }}>{o.buy ? t("calendar.buyLabel") : t("calendar.sellLabel")}</span>
               <span style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: 700 }}>{o.confidence}%</span>
             </div>
           </div>
         ))}
       </div>
-      <p style={{ margin: "10px 0 0", fontSize: 9.5, color: "#555" }}>{t("calendar.opportunitiesDisclaimer")}</p>
+      <p style={{ margin: "10px 0 0", fontSize: 9.5, color: "#3E4761" }}>{t("calendar.opportunitiesDisclaimer")}</p>
     </div>
   );
 }
@@ -659,14 +659,14 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
             color: "#000",
             background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${PURPLE_LIGHT})`,
             padding: "4px 10px",
-            borderRadius: 8,
+            borderRadius: 3,
           }}
         >
           MIC
         </span>
         <div>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#fff" }}>Market Intelligence Center</p>
-          <p style={{ margin: 0, fontSize: 10, color: "#888" }}>{t("calendar.micSubtitle")}</p>
+          <p style={{ margin: 0, fontSize: 10, color: "#5D6880" }}>{t("calendar.micSubtitle")}</p>
         </div>
       </div>
 
@@ -677,11 +677,11 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
           placeholder={t("calendar.searchPlaceholder")}
           style={{
             width: "100%",
-            background: "#0D0E10",
-            border: `1px solid ${GOLD}2a`,
-            borderRadius: 9,
+            background: "#0C1220",
+            border: `1px solid #26314A`,
+            borderRadius: 3,
             padding: "0.5rem 0.8rem",
-            color: "#ccc",
+            color: "#93A0B8",
             fontSize: 11.5,
             outline: "none",
           }}
@@ -698,11 +698,11 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
                 position: "absolute",
                 top: -6,
                 right: -8,
-                background: "#E5484D",
+                background: "#E8495F",
                 color: "#fff",
                 fontSize: 8,
                 fontWeight: 800,
-                borderRadius: 8,
+                borderRadius: 3,
                 padding: "1px 4px",
               }}
             >
@@ -713,7 +713,7 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
         <select
           value={tzOffset}
           onChange={(e) => setTzOffset(Number(e.target.value))}
-          style={{ background: "#0D0E10", border: `1px solid ${GOLD}2a`, borderRadius: 8, padding: "0.35rem 0.5rem", color: "#ccc", fontSize: 11 }}
+          style={{ background: "#0C1220", border: `1px solid #26314A`, borderRadius: 3, padding: "0.35rem 0.5rem", color: "#93A0B8", fontSize: 11 }}
         >
           {[-5, 0, 1, 2, 3, 4].map((o) => (
             <option key={o} value={o}>
@@ -721,11 +721,11 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
             </option>
           ))}
         </select>
-        <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: marketOpen ? "#3DBB6E" : "#E5484D" }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: marketOpen ? "#3DBB6E" : "#E5484D" }} />
+        <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: marketOpen ? "#1FBF87" : "#E8495F" }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: marketOpen ? "#1FBF87" : "#E8495F" }} />
           {marketOpen ? t("calendar.marketOpen") : t("calendar.marketClosed")}
         </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "#888" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "#5D6880" }}>
           <span>
             {t("calendar.lastUpdateLabel", { time: "" })}<span style={{ direction: "ltr", display: "inline-block" }}>{timeStr}</span>
           </span>
@@ -734,8 +734,8 @@ function MICHeaderBar({ search, setSearch, tzOffset, setTzOffset, now, onRefresh
             title={t("calendar.refreshTitle")}
             style={{
               background: "transparent",
-              border: `1px solid ${GOLD}33`,
-              borderRadius: 7,
+              border: `1px solid #26314A`,
+              borderRadius: 3,
               width: 24,
               height: 24,
               color: GOLD_LIGHT,
@@ -759,21 +759,21 @@ function KPICardsRow({ todayStats, activeCurrenciesCount, opportunitiesCount, op
   const { t } = useLocale();
   const cards = [
     { label: t("calendar.kpiActiveCurrencies"), value: activeCurrenciesCount, sub: t("calendar.kpiActiveCurrenciesSub"), color: PURPLE_LIGHT, icon: "🎯" },
-    { label: t("calendar.kpiLowImpact"), value: todayStats.low, sub: t("calendar.today"), color: "#3DBB6E", icon: "🟢" },
-    { label: t("calendar.kpiMediumImpact"), value: todayStats.medium, sub: t("calendar.today"), color: "#F5A623", icon: "🟡" },
-    { label: t("calendar.kpiHighImpact"), value: todayStats.high, sub: t("calendar.today"), color: "#E5484D", icon: "🔴" },
+    { label: t("calendar.kpiLowImpact"), value: todayStats.low, sub: t("calendar.today"), color: "#1FBF87", icon: "🟢" },
+    { label: t("calendar.kpiMediumImpact"), value: todayStats.medium, sub: t("calendar.today"), color: "#E0A44A", icon: "🟡" },
+    { label: t("calendar.kpiHighImpact"), value: todayStats.high, sub: t("calendar.today"), color: "#E8495F", icon: "🔴" },
     { label: t("calendar.kpiOpportunities"), value: opportunitiesReady ? opportunitiesCount : "--", sub: t("calendar.kpiOpportunitiesSub"), color: GOLD_LIGHT, icon: "💡" },
-    { label: t("calendar.kpiTodayNews"), value: todayStats.total, sub: t("calendar.kpiRemaining", { count: todayStats.upcoming }), color: "#3D8BFD", icon: "🗓️" },
+    { label: t("calendar.kpiTodayNews"), value: todayStats.total, sub: t("calendar.kpiRemaining", { count: todayStats.upcoming }), color: "#5FA8E8", icon: "🗓️" },
   ];
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "0.7rem", marginBottom: "1.1rem" }}>
       {cards.map((c, i) => (
         <div key={i} style={{ ...cardStyle, padding: "0.85rem 0.9rem" }}>
-          <p style={{ margin: 0, fontSize: 10, color: "#888" }}>
+          <p style={{ margin: 0, fontSize: 10, color: "#5D6880" }}>
             {c.icon} {c.label}
           </p>
           <p style={{ margin: "6px 0 0", fontSize: 21, fontWeight: 800, color: c.color }}>{c.value}</p>
-          <p style={{ margin: "2px 0 0", fontSize: 9.5, color: "#666" }}>{c.sub}</p>
+          <p style={{ margin: "2px 0 0", fontSize: 9.5, color: "#5D6880" }}>{c.sub}</p>
         </div>
       ))}
     </div>
@@ -794,15 +794,15 @@ function MICFooter({ tzOffset, lastUpdated }) {
         flexWrap: "wrap",
         gap: 10,
         fontSize: 10.5,
-        color: "#777",
+        color: "#5D6880",
       }}
     >
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         <span>
-          🟢 API Status: <span style={{ color: "#3DBB6E" }}>Live</span>
+          🟢 API Status: <span style={{ color: "#1FBF87" }}>Live</span>
         </span>
         <span>
-          🟢 Data Feed: <span style={{ color: "#3DBB6E" }}>{t("calendar.footerConnected")}</span>
+          🟢 Data Feed: <span style={{ color: "#1FBF87" }}>{t("calendar.footerConnected")}</span>
         </span>
         <span>{t("calendar.footerLastSync", { time: lastUpdated ? new Date(lastUpdated).toLocaleTimeString(locale === "ar" ? "ar-EG" : "en-US") : "--" })}</span>
         <span>
@@ -1051,7 +1051,7 @@ function CalendarView({ events, loading, isAdmin }) {
 
   if (loading) {
     return (
-      <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>
+      <div style={{ color: "#5D6880", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>
         {t("calendar.loadingCalendar")}
       </div>
     );
@@ -1112,7 +1112,7 @@ function CalendarView({ events, loading, isAdmin }) {
         {/* العمود الرئيسي */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", minWidth: 0 }}>
           {!selectedEvent ? (
-            <div style={{ ...cardStyle, padding: "3rem", textAlign: "center", color: "#666", fontSize: 13 }}>
+            <div style={{ ...cardStyle, padding: "3rem", textAlign: "center", color: "#5D6880", fontSize: 13 }}>
               {t("calendar.selectEventPrompt")}
             </div>
           ) : (
@@ -1132,7 +1132,7 @@ function CalendarView({ events, loading, isAdmin }) {
                         <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#fff" }}>
                           {flag} {selectedEvent.event_title}
                         </p>
-                        <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
+                        <p style={{ margin: "4px 0 0", fontSize: 12, color: "#5D6880" }}>
                           {selectedEvent.currency} · {formatArabicDate(selectedEvent.event_date)} · {selectedEvent.event_time}
                         </p>
                       </div>
@@ -1147,11 +1147,11 @@ function CalendarView({ events, loading, isAdmin }) {
                       { label: t("calendar.actualLabel"), value: selectedEvent.actual, gold: true },
                       { label: t("calendar.countdownLabel"), value: countdown, live: true },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: "#0D0E10", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.6rem", textAlign: "center" }}>
-                        <p style={{ margin: 0, fontSize: 10, color: "#888" }}>{s.label}</p>
+                      <div key={i} style={{ background: "#0C1220", border: `1px solid #26314A`, borderRadius: 3, padding: "0.6rem", textAlign: "center" }}>
+                        <p style={{ margin: 0, fontSize: 10, color: "#5D6880" }}>{s.label}</p>
                         <p style={{
                           margin: "5px 0 0", fontSize: 14, fontWeight: 800, direction: s.live ? "ltr" : undefined,
-                          color: s.value ? (s.gold ? GOLD_LIGHT : s.live ? impact.color : "#fff") : "#444",
+                          color: s.value ? (s.gold ? GOLD_LIGHT : s.live ? impact.color : "#fff") : "#3E4761",
                         }}>
                           {s.value || "--"}
                         </p>
@@ -1162,19 +1162,19 @@ function CalendarView({ events, loading, isAdmin }) {
                   {/* قوة التأثير + توزيع التأثير على الأصول */}
                   <div style={{ display: "flex", gap: "1rem", marginTop: "1rem", alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ textAlign: "center" }}>
-                      <SemiGauge value={impactPct} size={116} colors={["#3DBB6E", "#F5A623", "#E5484D"]} gradId="impact" />
+                      <SemiGauge value={impactPct} size={116} colors={["#1FBF87", "#E0A44A", "#E8495F"]} gradId="impact" />
                       <p style={{ margin: "2px 0 0", fontSize: 16, fontWeight: 800, color: impact.color }}>{impactPct}%</p>
-                      <p style={{ margin: 0, fontSize: 10, color: "#888" }}>{impactStrengthLabel}</p>
+                      <p style={{ margin: 0, fontSize: 10, color: "#5D6880" }}>{impactStrengthLabel}</p>
                     </div>
                     <div style={{ flex: 1, minWidth: 160, display: "flex", flexDirection: "column", gap: 6 }}>
-                      <p style={{ margin: "0 0 2px", fontSize: 10.5, color: "#888" }}>{t("calendar.impactDistributionTitle")}</p>
+                      <p style={{ margin: "0 0 2px", fontSize: 10.5, color: "#5D6880" }}>{t("calendar.impactDistributionTitle")}</p>
                       {assetDistribution.map((a, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ fontSize: 10, color: "#aaa", minWidth: 46 }}>{a.name}</span>
-                          <div style={{ flex: 1, height: 5, borderRadius: 5, background: "#1a1a12", overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: `${a.pct}%`, borderRadius: 5, background: GOLD_LIGHT }} />
+                          <div style={{ flex: 1, height: 5, borderRadius: 3, background: "#111726", overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${a.pct}%`, borderRadius: 3, background: GOLD_LIGHT }} />
                           </div>
-                          <span style={{ fontSize: 9.5, color: "#888", minWidth: 26, textAlign: "left" }}>{a.pct}%</span>
+                          <span style={{ fontSize: 9.5, color: "#5D6880", minWidth: 26, textAlign: "left" }}>{a.pct}%</span>
                         </div>
                       ))}
                     </div>
@@ -1184,14 +1184,14 @@ function CalendarView({ events, loading, isAdmin }) {
                 {/* بطاقة تحليل الذكاء الاصطناعي */}
                 <div style={{
                   ...cardStyle, padding: "1.2rem 1.4rem",
-                  background: "linear-gradient(135deg, #1a1030, #0D0E10)", border: "1px solid #7c5cff33",
+                  background: "linear-gradient(135deg, #111726, #0C1220)", border: "1px solid #7c5cff33",
                 }}>
                   <p style={{ color: PURPLE_LIGHT, fontSize: 13, fontWeight: 700, margin: "0 0 10px" }}>{t("calendar.aiAnalysisTitle")}</p>
                   {!aiData ? (
                     <>
-                      <p style={{ margin: 0, fontSize: 12.5, color: "#ccc", lineHeight: 1.85 }}>{buildFallbackAnalysis(selectedEvent, { t, raw })}</p>
+                      <p style={{ margin: 0, fontSize: 12.5, color: "#93A0B8", lineHeight: 1.85 }}>{buildFallbackAnalysis(selectedEvent, { t, raw })}</p>
                       {(selectedEvent.impact === "high" || selectedEvent.impact === "medium") && (
-                        <p style={{ margin: "12px 0 0", fontSize: 11, color: analyzingId === selectedEvent.id ? PURPLE_LIGHT : "#666" }}>
+                        <p style={{ margin: "12px 0 0", fontSize: 11, color: analyzingId === selectedEvent.id ? PURPLE_LIGHT : "#5D6880" }}>
                           {analyzingId === selectedEvent.id
                             ? t("calendar.aiPreparing")
                             : analysisFailedIds[selectedEvent.id]
@@ -1204,21 +1204,21 @@ function CalendarView({ events, loading, isAdmin }) {
                     <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
                       <div style={{
                         width: 76, height: 76, borderRadius: "50%", flexShrink: 0,
-                        background: `conic-gradient(${PURPLE} ${aiData.confidence * 3.6}deg, #1a1a2a 0deg)`,
+                        background: `conic-gradient(${PURPLE} ${aiData.confidence * 3.6}deg, #182033 0deg)`,
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>
-                        <div style={{ width: 58, height: 58, borderRadius: "50%", background: "#0d0d14", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: 58, height: 58, borderRadius: "50%", background: "#0C1220", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                           <span style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>{aiData.confidence}%</span>
-                          <span style={{ fontSize: 8, color: "#999" }}>{t("calendar.confidenceLabel")}</span>
+                          <span style={{ fontSize: 8, color: "#93A0B8" }}>{t("calendar.confidenceLabel")}</span>
                         </div>
                       </div>
                       <div style={{ flex: 1, minWidth: 180 }}>
-                        <p style={{ margin: "0 0 4px", fontSize: 11.5, color: "#eee" }}>
+                        <p style={{ margin: "0 0 4px", fontSize: 11.5, color: "#EDF1F8" }}>
                           {t("calendar.directionLabel")} <span style={{ color: PURPLE_LIGHT, fontWeight: 700 }}>
                             {aiData.direction === "down" ? t("calendar.directionDown") : aiData.direction === "up" ? t("calendar.directionUp") : t("calendar.directionNeutral")}
                           </span>
                         </p>
-                        <p style={{ margin: 0, fontSize: 12, color: "#ccc", lineHeight: 1.75 }}>{aiData.summary}</p>
+                        <p style={{ margin: 0, fontSize: 12, color: "#93A0B8", lineHeight: 1.75 }}>{aiData.summary}</p>
                       </div>
                     </div>
                   )}
@@ -1238,10 +1238,10 @@ function CalendarView({ events, loading, isAdmin }) {
                       key={t.key}
                       onClick={() => setAnalysisTab(t.key)}
                       style={{
-                        background: analysisTab === t.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0D0E10",
-                        color: analysisTab === t.key ? "#000" : "#999",
-                        border: analysisTab === t.key ? "none" : `1px solid ${GOLD}22`,
-                        borderRadius: 8, padding: "0.5rem 0.9rem", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        background: analysisTab === t.key ? `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})` : "#0C1220",
+                        color: analysisTab === t.key ? "#000" : "#93A0B8",
+                        border: analysisTab === t.key ? "none" : `1px solid #26314A`,
+                        borderRadius: 3, padding: "0.5rem 0.9rem", fontSize: 12, fontWeight: 700, cursor: "pointer",
                       }}
                     >
                       {t.icon} {t.label}
@@ -1256,17 +1256,17 @@ function CalendarView({ events, loading, isAdmin }) {
                         <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, margin: "0 0 0.9rem" }}>{t("calendar.scenariosTitle")}</p>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.8rem" }}>
                           {aiData.scenarios.map((sc, i) => (
-                            <div key={i} style={{ background: "#0D0E10", border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.9rem" }}>
-                              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#eee" }}>{sc.title}</p>
+                            <div key={i} style={{ background: "#0C1220", border: `1px solid #26314A`, borderRadius: 3, padding: "0.9rem" }}>
+                              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#EDF1F8" }}>{sc.title}</p>
                               <p style={{ margin: "8px 0 4px", fontSize: 20, fontWeight: 800, color: GOLD_LIGHT }}>{sc.probability}%</p>
-                              <p style={{ margin: "0 0 6px", fontSize: 11, color: "#f5c542" }}>{"⭐".repeat(Math.max(1, Math.min(5, sc.stars || 1)))}</p>
-                              <p style={{ margin: 0, fontSize: 11, color: "#888", lineHeight: 1.6 }}>{sc.description}</p>
+                              <p style={{ margin: "0 0 6px", fontSize: 11, color: "#E0A44A" }}>{"⭐".repeat(Math.max(1, Math.min(5, sc.stars || 1)))}</p>
+                              <p style={{ margin: 0, fontSize: 11, color: "#5D6880", lineHeight: 1.6 }}>{sc.description}</p>
                             </div>
                           ))}
                         </div>
                       </div>
                     ) : (
-                      <div style={{ padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
+                      <div style={{ padding: "1.5rem", textAlign: "center", color: "#5D6880", fontSize: 12.5 }}>
                         {t("calendar.scenariosEmpty")}
                       </div>
                     )}
@@ -1280,26 +1280,26 @@ function CalendarView({ events, loading, isAdmin }) {
                         const dir = DIRECTION_STYLE[a.direction] || DIRECTION_STYLE.neutral;
                         const strengthPct = a.strength === "strong" ? 90 : a.strength === "medium" ? 55 : 25;
                         return (
-                          <div key={i} style={{ padding: "0.6rem 0", borderBottom: i < aiData.assets.length - 1 ? "1px solid #1a1a0f" : "none" }}>
+                          <div key={i} style={{ padding: "0.6rem 0", borderBottom: i < aiData.assets.length - 1 ? "1px solid #1B2438" : "none" }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                 <span>{dir.arrow}</span>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: "#eee" }}>{a.name}</span>
-                                <span style={{ fontSize: 11, color: "#666" }}>{a.symbol}</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: "#EDF1F8" }}>{a.name}</span>
+                                <span style={{ fontSize: 11, color: "#5D6880" }}>{a.symbol}</span>
                               </div>
                               <span style={{ fontSize: 11.5, color: dir.color, fontWeight: 700 }}>
                                 {a.direction === "up" ? t("calendar.directionUp") : a.direction === "down" ? t("calendar.directionDown") : t("calendar.directionNeutral")} {STRENGTH_KEYS[a.strength] ? t(STRENGTH_KEYS[a.strength]) : ""}
                               </span>
                             </div>
-                            <div style={{ height: 6, borderRadius: 6, background: "#1a1a12", overflow: "hidden" }}>
-                              <div style={{ height: "100%", borderRadius: 6, background: dir.color, width: `${strengthPct}%` }} />
+                            <div style={{ height: 6, borderRadius: 3, background: "#111726", overflow: "hidden" }}>
+                              <div style={{ height: "100%", borderRadius: 3, background: dir.color, width: `${strengthPct}%` }} />
                             </div>
                           </div>
                         );
                       })}
                     </div>
                   ) : (
-                    <div style={{ padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
+                    <div style={{ padding: "1.5rem", textAlign: "center", color: "#5D6880", fontSize: 12.5 }}>
                       {t("calendar.noTechnicalYet")}
                     </div>
                   )
@@ -1308,7 +1308,7 @@ function CalendarView({ events, loading, isAdmin }) {
                 {analysisTab === "historical" && (
                   <div>
                     {(aiData?.historical_examples || []).length === 0 ? (
-                      <div style={{ padding: "1.5rem", textAlign: "center", color: "#666", fontSize: 12.5 }}>
+                      <div style={{ padding: "1.5rem", textAlign: "center", color: "#5D6880", fontSize: 12.5 }}>
                         {t("calendar.historicalEmpty")}
                       </div>
                     ) : (
@@ -1320,21 +1320,21 @@ function CalendarView({ events, loading, isAdmin }) {
                               const dir = DIRECTION_STYLE[h.direction] || DIRECTION_STYLE.neutral;
                               return (
                                 <div key={i} style={{
-                                  display: "flex", alignItems: "center", gap: 12, background: "#0D0E10",
-                                  border: `1px solid ${GOLD}22`, borderRadius: 10, padding: "0.7rem 0.9rem",
+                                  display: "flex", alignItems: "center", gap: 12, background: "#0C1220",
+                                  border: `1px solid #26314A`, borderRadius: 3, padding: "0.7rem 0.9rem",
                                 }}>
                                   <span style={{
                                     fontSize: 12, fontWeight: 800, color: GOLD_LIGHT, minWidth: 44, textAlign: "center",
-                                    border: `1px solid ${GOLD}33`, borderRadius: 8, padding: "3px 6px",
+                                    border: `1px solid #26314A`, borderRadius: 3, padding: "3px 6px",
                                   }}>
                                     {h.year}
                                   </span>
                                   <span style={{ fontSize: 15 }}>{dir.arrow}</span>
                                   <div style={{ flex: 1, minWidth: 0 }}>
-                                    <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#eee" }}>
-                                      {h.asset} {h.symbol && <span style={{ color: "#666", fontWeight: 400 }}>({h.symbol})</span>}
+                                    <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#EDF1F8" }}>
+                                      {h.asset} {h.symbol && <span style={{ color: "#5D6880", fontWeight: 400 }}>({h.symbol})</span>}
                                     </p>
-                                    {h.note && <p style={{ margin: "3px 0 0", fontSize: 11, color: "#888" }}>{h.note}</p>}
+                                    {h.note && <p style={{ margin: "3px 0 0", fontSize: 11, color: "#5D6880" }}>{h.note}</p>}
                                   </div>
                                   {h.change_pct && (
                                     <span style={{ fontSize: 13, fontWeight: 800, color: dir.color, direction: "ltr" }}>
@@ -1345,7 +1345,7 @@ function CalendarView({ events, loading, isAdmin }) {
                               );
                             })}
                         </div>
-                        <p style={{ margin: "0.9rem 0 0", fontSize: 10.5, color: "#555" }}>
+                        <p style={{ margin: "0.9rem 0 0", fontSize: 10.5, color: "#3E4761" }}>
                           {t("calendar.historicalDisclaimer")}
                         </p>
                       </>
@@ -1356,15 +1356,15 @@ function CalendarView({ events, loading, isAdmin }) {
                 {analysisTab === "plan" && (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.2rem" }}>
                     <div>
-                      <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#888", fontWeight: 700 }}>{t("calendar.beforeNewsTitle")}</p>
+                      <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#5D6880", fontWeight: 700 }}>{t("calendar.beforeNewsTitle")}</p>
                       {(aiData?.tips_before?.length > 0 ? aiData.tips_before : raw("calendar.genericTipsBefore") || []).map((tip, i) => (
-                        <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#ccc" }}>❌ {tip}</p>
+                        <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#93A0B8" }}>❌ {tip}</p>
                       ))}
                     </div>
                     <div>
-                      <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#888", fontWeight: 700 }}>{t("calendar.afterNewsTitle")}</p>
+                      <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "#5D6880", fontWeight: 700 }}>{t("calendar.afterNewsTitle")}</p>
                       {(aiData?.tips_after?.length > 0 ? aiData.tips_after : raw("calendar.genericTipsAfter") || []).map((tip, i) => (
-                        <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#ccc" }}>✅ {tip}</p>
+                        <p key={i} style={{ margin: "0 0 5px", fontSize: 12, color: "#93A0B8" }}>✅ {tip}</p>
                       ))}
                     </div>
                   </div>
@@ -1397,7 +1397,7 @@ function CalendarView({ events, loading, isAdmin }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
               <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{t("calendar.economicCalendarTitle")}</p>
               {nextHighImpactEvent && (
-                <span style={{ fontSize: 9.5, color: "#E5484D", fontWeight: 700, direction: "ltr" }}>
+                <span style={{ fontSize: 9.5, color: "#E8495F", fontWeight: 700, direction: "ltr" }}>
                   ⏱ {nextHighImpactCountdown || "--"}
                 </span>
               )}
@@ -1407,8 +1407,8 @@ function CalendarView({ events, loading, isAdmin }) {
               value={dayFilter}
               onChange={(e) => setDayFilter(e.target.value)}
               style={{
-                width: "100%", background: "#0D0E10", border: `1px solid ${GOLD}33`, borderRadius: 8,
-                padding: "0.5rem 0.6rem", color: "#ccc", fontSize: 11.5, marginBottom: 8,
+                width: "100%", background: "#0C1220", border: `1px solid #26314A`, borderRadius: 3,
+                padding: "0.5rem 0.6rem", color: "#93A0B8", fontSize: 11.5, marginBottom: 8,
               }}
             >
               <option value="all">{t("calendar.allDays")}</option>
@@ -1420,19 +1420,19 @@ function CalendarView({ events, loading, isAdmin }) {
             <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
               {[
                 { key: "all", labelKey: "calendar.filterAll", color: GOLD_LIGHT },
-                { key: "high", labelKey: "calendar.filterHigh", color: "#E5484D" },
-                { key: "medium", labelKey: "calendar.filterMedium", color: "#F5A623" },
-                { key: "low", labelKey: "calendar.filterLow", color: "#3DBB6E" },
+                { key: "high", labelKey: "calendar.filterHigh", color: "#E8495F" },
+                { key: "medium", labelKey: "calendar.filterMedium", color: "#E0A44A" },
+                { key: "low", labelKey: "calendar.filterLow", color: "#1FBF87" },
               ].map((f) => (
                 <button
                   key={f.key}
                   onClick={() => setImpactFilter(f.key)}
                   style={{
                     flex: 1,
-                    background: impactFilter === f.key ? `${f.color}22` : "#0D0E10",
-                    color: impactFilter === f.key ? f.color : "#999",
-                    border: impactFilter === f.key ? `1px solid ${f.color}66` : `1px solid ${GOLD}22`,
-                    borderRadius: 8, padding: "0.4rem 0.2rem", fontSize: 9.5, fontWeight: 700, cursor: "pointer",
+                    background: impactFilter === f.key ? `${f.color}22` : "#0C1220",
+                    color: impactFilter === f.key ? f.color : "#93A0B8",
+                    border: impactFilter === f.key ? `1px solid ${f.color}66` : `1px solid #26314A`,
+                    borderRadius: 3, padding: "0.4rem 0.2rem", fontSize: 9.5, fontWeight: 700, cursor: "pointer",
                   }}
                 >
                   {t(f.labelKey)}
@@ -1442,13 +1442,13 @@ function CalendarView({ events, loading, isAdmin }) {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", maxHeight: 560, overflowY: "auto", paddingLeft: 2 }}>
               {grouped.length === 0 && (
-                <div style={{ padding: "2rem 0.5rem", textAlign: "center", color: "#666", fontSize: 12 }}>
+                <div style={{ padding: "2rem 0.5rem", textAlign: "center", color: "#5D6880", fontSize: 12 }}>
                   {t("calendar.noMatchingEvents")}
                 </div>
               )}
               {grouped.map(([date, dayEvents]) => (
                 <div key={date}>
-                  <p style={{ color: "#666", fontSize: 11, fontWeight: 700, margin: "0 0 0.5rem" }}>{formatArabicDate(date)}</p>
+                  <p style={{ color: "#5D6880", fontSize: 11, fontWeight: 700, margin: "0 0 0.5rem" }}>{formatArabicDate(date)}</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                     {dayEvents.map((ev) => {
                       const impactStyle = IMPACT_KEYS[ev.impact] || IMPACT_KEYS.low;
@@ -1461,20 +1461,20 @@ function CalendarView({ events, loading, isAdmin }) {
                           key={ev.id}
                           onClick={() => setSelectedId(ev.id)}
                           style={{
-                            background: isSelected ? `${GOLD}14` : "#0D0E10",
-                            border: isSelected ? `1px solid ${GOLD}66` : `1px solid ${GOLD}1a`,
-                            borderRadius: 10, padding: "0.65rem 0.8rem", cursor: "pointer",
+                            background: isSelected ? `#26314A` : "#0C1220",
+                            border: isSelected ? `1px solid #3E5478` : `1px solid #26314A`,
+                            borderRadius: 3, padding: "0.65rem 0.8rem", cursor: "pointer",
                           }}
                         >
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                              <span style={{ fontSize: 11, color: "#888" }}>{ev.event_time}</span>
+                              <span style={{ fontSize: 11, color: "#5D6880" }}>{ev.event_time}</span>
                               <span style={{ fontSize: 15 }}>{CURRENCY_FLAGS[ev.currency] || "🌐"}</span>
                             </div>
                             <span style={{ fontSize: 12 }}>{impactStyle.dot}</span>
                           </div>
-                          <p style={{ margin: "6px 0 0", fontSize: 12, fontWeight: 700, color: "#eee", lineHeight: 1.4 }}>{ev.event_title}</p>
-                          <div style={{ display: "flex", gap: "0.7rem", marginTop: 6, fontSize: 10, color: "#777", flexWrap: "wrap" }}>
+                          <p style={{ margin: "6px 0 0", fontSize: 12, fontWeight: 700, color: "#EDF1F8", lineHeight: 1.4 }}>{ev.event_title}</p>
+                          <div style={{ display: "flex", gap: "0.7rem", marginTop: 6, fontSize: 10, color: "#5D6880", flexWrap: "wrap" }}>
                             {ev.previous && <span>{t("calendar.previousShort")} {ev.previous}</span>}
                             {ev.forecast && <span>{t("calendar.forecastShort")} {ev.forecast}</span>}
                             {ev.actual && <span style={{ color: GOLD_LIGHT }}>{t("calendar.actualShort")} {ev.actual}</span>}

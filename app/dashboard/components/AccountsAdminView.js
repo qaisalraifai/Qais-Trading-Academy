@@ -283,11 +283,10 @@ export default function AccountsAdminView({ username }) {
             padding: "0.3rem 0.85rem",
             fontSize: "11px",
             letterSpacing: "1.5px",
-            color: "#a89b7f",
+            color: "#5D6880",
             fontFamily: monoStack,
           }}
-        >
-          ✨ لوحة حية
+        >لوحة حية
         </div>
 
         <div
@@ -305,26 +304,22 @@ export default function AccountsAdminView({ username }) {
               {greetingWord()}
               {username ? <span style={{ color: gold }}>، {username}</span> : null}
             </h2>
-            <p style={{ marginTop: "0.35rem", color: "#8a8a8a", fontSize: "0.9rem" }}>
+            <p style={{ marginTop: "0.35rem", color: "#5D6880", fontSize: "0.9rem" }}>
               نظرة سريعة على الاشتراكات، الأعضاء، والعمولات — محدّثة لحظيًا.
             </p>
           </div>
 
           <div style={{ display: "flex", gap: "0.6rem" }}>
-            <Link href="/admin/batches" style={{ ...s.btn, textDecoration: "none", display: "flex", alignItems: "center" }}>
-              🗂️ إدارة الدفعات
+            <Link href="/admin/batches" style={{ ...s.btn, textDecoration: "none", display: "flex", alignItems: "center" }}>إدارة الدفعات
             </Link>
-            <Link href="/admin/lectures" style={{ ...s.btn, textDecoration: "none", display: "flex", alignItems: "center" }}>
-              📚 إدارة المحاضرات
+            <Link href="/admin/lectures" style={{ ...s.btn, textDecoration: "none", display: "flex", alignItems: "center" }}>إدارة المحاضرات
             </Link>
-            <button onClick={() => { fetchUsers(); fetchStats(); fetchFeed(); fetchMlmStats(); }} style={s.btn}>
-              🔄 تحديث البيانات
+            <button onClick={() => { fetchUsers(); fetchStats(); fetchFeed(); fetchMlmStats(); }} style={s.btn}>تحديث البيانات
             </button>
             <button
               onClick={handleExport}
-              style={{ ...s.btn, backgroundImage: gradientGold, color: "#16130a", border: "none", fontWeight: 700, boxShadow: shadowGold }}
-            >
-              ⬇️ تصدير تقرير
+              style={{ ...s.btn, backgroundImage: gradientGold, color: "#111726", border: "none", fontWeight: 700, boxShadow: shadowGold }}
+            >تصدير تقرير
             </button>
           </div>
         </div>
@@ -344,13 +339,13 @@ export default function AccountsAdminView({ username }) {
       {/* الإحصائيات */}
       <div style={{ ...s.section, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
         <StatCard icon="👥" label="إجمالي المستخدمين" value={cards?.totalUsers ?? 0} color={gold} sparkline={trend} sub="آخر 30 يوم" delta={usersDelta} />
-        <StatCard icon="🟢" label="نشطون الآن" value={cards?.activeNow ?? 0} color="#3DBB6E" sub="آخر 15 دقيقة" />
-        <StatCard icon="💎" label="أعضاء VIP" value={cards?.vipCount ?? 0} color="#E8B86D" />
-        <StatCard icon="📈" label="معدل التجديد" value={cards?.renewalRate ?? 0} suffix="%" color="#3D8BFD" />
+        <StatCard icon="🟢" label="نشطون الآن" value={cards?.activeNow ?? 0} color="#1FBF87" sub="آخر 15 دقيقة" />
+        <StatCard icon="💎" label="أعضاء VIP" value={cards?.vipCount ?? 0} color="#C9A860" />
+        <StatCard icon="📈" label="معدل التجديد" value={cards?.renewalRate ?? 0} suffix="%" color="#5FA8E8" />
         <StatCard icon="💰" label="الإيرادات الشهرية" value={cards?.monthlyRevenue ?? 0} prefix="$" color={gold} />
         <StatCard icon="💵" label="الإيرادات الكلية" value={cards?.totalRevenue ?? 0} prefix="$" color={gold} />
         <StatCard icon="⌛" label="تنتهي خلال 7 أيام" value={cards?.expiringSoon ?? 0} color="#FF9800" />
-        <StatCard icon="❌" label="اشتراكات منتهية" value={cards?.expiredCount ?? 0} color="#8b8b8b" />
+        <StatCard icon="❌" label="اشتراكات منتهية" value={cards?.expiredCount ?? 0} color="#5D6880" />
       </div>
 
       <div style={s.divider} />
@@ -423,8 +418,8 @@ export default function AccountsAdminView({ username }) {
             zIndex: 300,
             ...glass,
             padding: "0.8rem 1.3rem",
-            color: toast.isError ? "#E5484D" : "#3DBB6E",
-            borderColor: toast.isError ? "#E5484D55" : "#3DBB6E55",
+            color: toast.isError ? "#E8495F" : "#1FBF87",
+            borderColor: toast.isError ? "#E8495F55" : "#1FBF8755",
             fontSize: "0.85rem",
             transition,
           }}

@@ -32,29 +32,29 @@ export function timeAgo(dateStr, t, locale = "ar") {
 }
 
 export const SUB_STATUS_LABELS = {
-  active: { labelKey: "affiliate.subActive", color: "#4CAF50" },
-  trial: { labelKey: "affiliate.subTrial", color: "#4FA8E0" },
+  active: { labelKey: "affiliate.subActive", color: "#1FBF87" },
+  trial: { labelKey: "affiliate.subTrial", color: "#5FA8E8" },
   expiring: { labelKey: "affiliate.subExpiring", color: "#FF9800" },
-  expired: { labelKey: "affiliate.subExpired", color: "#8b8b8b" },
-  suspended: { labelKey: "affiliate.subSuspended", color: "#F6465D" },
+  expired: { labelKey: "affiliate.subExpired", color: "#5D6880" },
+  suspended: { labelKey: "affiliate.subSuspended", color: "#E8495F" },
   vip: { labelKey: "affiliate.subVip", color: "#B26FE0" },
-  none: { labelKey: "affiliate.subNone", color: "#6E7177" },
+  none: { labelKey: "affiliate.subNone", color: "#5D6880" },
 };
 
 export const COMMISSION_STATUS_LABELS = {
-  none: { labelKey: "affiliate.commNone", color: "#6E7177" },
-  awaiting_lesson: { labelKey: "affiliate.commAwaitingLesson", color: "#4FA8E0" },
-  pending: { labelKey: "affiliate.commPending", color: "#eab308" },
-  ready: { labelKey: "affiliate.commReady", color: "#4CAF50" },
+  none: { labelKey: "affiliate.commNone", color: "#5D6880" },
+  awaiting_lesson: { labelKey: "affiliate.commAwaitingLesson", color: "#5FA8E8" },
+  pending: { labelKey: "affiliate.commPending", color: "#E0A44A" },
+  ready: { labelKey: "affiliate.commReady", color: "#1FBF87" },
   paid: { labelKey: "affiliate.commPaid", color: GOLD },
 };
 
 // Card / layout primitives shared across affiliate sections
-export const card = { ...glass, boxShadow: shadowLuxe, borderRadius: 18, padding: "1.6rem" };
-export const sectionTitle = { fontSize: "1.05rem", fontWeight: 800, color: "#EAECEF", fontFamily: displayStack, marginBottom: 4 };
+export const card = { ...glass, boxShadow: shadowLuxe, borderRadius: 0, padding: "1.6rem" };
+export const sectionTitle = { fontSize: "1.05rem", fontWeight: 800, color: "#EDF1F8", fontFamily: displayStack, marginBottom: 4 };
 export const sectionEyebrow = { fontFamily: monoStack, color: GOLD, fontSize: "0.68rem", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" };
-export const btnPrimary = { backgroundImage: gradientGold, boxShadow: shadowGold, color: "#16130a", border: "none", padding: "0.75rem 1.4rem", borderRadius: 10, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", transition, whiteSpace: "nowrap" };
-export const btnGhost = { background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, padding: "0.6rem 1.1rem", borderRadius: 10, cursor: "pointer", fontSize: "0.8rem", whiteSpace: "nowrap", transition, fontWeight: 600 };
+export const btnPrimary = { backgroundImage: gradientGold, boxShadow: shadowGold, color: "#111726", border: "none", padding: "0.75rem 1.4rem", borderRadius: 3, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", transition, whiteSpace: "nowrap" };
+export const btnGhost = { background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, padding: "0.6rem 1.1rem", borderRadius: 3, cursor: "pointer", fontSize: "0.8rem", whiteSpace: "nowrap", transition, fontWeight: 600 };
 
 // Simple inline tooltip: wraps children, shows a small label on hover/focus
 export function Tip({ text, children }) {
@@ -76,13 +76,13 @@ const tipStyles = {
     bottom: "calc(100% + 8px)",
     right: "50%",
     transform: "translateX(50%)",
-    background: "#1a1a1a",
+    background: "#111726",
     border: `1px solid ${BORDER}`,
-    color: "#C8C0B0",
+    color: "#93A0B8",
     fontSize: "0.7rem",
     lineHeight: 1.5,
     padding: "0.5rem 0.7rem",
-    borderRadius: 8,
+    borderRadius: 3,
     width: 200,
     textAlign: "center",
     zIndex: 20,
@@ -103,7 +103,7 @@ export function InfoDot({ text }) {
           height: 15,
           borderRadius: "50%",
           border: `1px solid ${BORDER}`,
-          color: "#8a8580",
+          color: "#5D6880",
           fontSize: "0.62rem",
           cursor: "help",
           marginInlineStart: 5,
@@ -145,8 +145,8 @@ export function EmptyState({ icon = "📭", title, desc }) {
   return (
     <div style={{ textAlign: "center", padding: "2.2rem 1rem" }}>
       <div style={{ fontSize: "2rem", marginBottom: 10, opacity: 0.7 }}>{icon}</div>
-      <p style={{ color: "#C8C0B0", fontWeight: 700, fontSize: "0.9rem", marginBottom: 4 }}>{title}</p>
-      {desc && <p style={{ color: "#6E7177", fontSize: "0.78rem" }}>{desc}</p>}
+      <p style={{ color: "#93A0B8", fontWeight: 700, fontSize: "0.9rem", marginBottom: 4 }}>{title}</p>
+      {desc && <p style={{ color: "#5D6880", fontSize: "0.78rem" }}>{desc}</p>}
     </div>
   );
 }

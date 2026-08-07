@@ -2,9 +2,9 @@
 import { GOLD, BORDER, card, sectionTitle, sectionEyebrow, monoStack, fmt, fmtDate, EmptyState, btnGhost } from "./shared";
 
 const PAYOUT_STATUS_LABELS = {
-  awaiting_transfer: { label: "بانتظار التحويل", color: "#eab308" },
-  paid: { label: "تم الدفع", color: "#4CAF50" },
-  failed: { label: "فشل التحويل", color: "#F6465D" },
+  awaiting_transfer: { label: "بانتظار التحويل", color: "#E0A44A" },
+  paid: { label: "تم الدفع", color: "#1FBF87" },
+  failed: { label: "فشل التحويل", color: "#E8495F" },
 };
 
 const METHOD_LABELS = { paypal: "PayPal", wise: "Wise", bank: "تحويل بنكي" };
@@ -18,13 +18,13 @@ function printReceipt(p) {
         <meta charset="utf-8" />
         <title>إيصال دفعة</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 30px; color: #111; }
-          h1 { font-size: 18px; color: #B8860B; margin-bottom: 4px; }
-          p.sub { color: #666; font-size: 12px; margin-top: 0; }
+          body { font-family: Arial, sans-serif; padding: 30px; color: #111726; }
+          h1 { font-size: 18px; color: #9C7F42; margin-bottom: 4px; }
+          p.sub { color: #5D6880; font-size: 12px; margin-top: 0; }
           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
           td { padding: 8px 4px; border-bottom: 1px solid #ddd; font-size: 13px; }
-          td.label { color: #666; }
-          .amount { font-size: 22px; font-weight: bold; color: #B8860B; margin: 16px 0; }
+          td.label { color: #5D6880; }
+          .amount { font-size: 22px; font-weight: bold; color: #9C7F42; margin: 16px 0; }
         </style>
       </head>
       <body>
@@ -51,7 +51,7 @@ export default function PayoutsHistory({ payouts = [] }) {
       <div style={card} className="qta-animate-in">
         <p style={sectionEyebrow}>سجل الاستلام</p>
         <h2 style={sectionTitle}>المدفوعات</h2>
-        <p style={{ color: "#9A9A9A", fontSize: "0.82rem", marginBottom: "1.2rem" }}>كل دفعة تم تجهيزها أو صرفها لك.</p>
+        <p style={{ color: "#93A0B8", fontSize: "0.82rem", marginBottom: "1.2rem" }}>كل دفعة تم تجهيزها أو صرفها لك.</p>
 
         {payouts.length === 0 ? (
           <EmptyState icon="🏦" title="ما في دفعات لسا" desc="أول ما تجمع عمولات كافية، رح تظهر هون." />
@@ -61,7 +61,7 @@ export default function PayoutsHistory({ payouts = [] }) {
               <thead>
                 <tr>
                   {["تاريخ الدفع", "المبلغ", "طريقة الدفع", "الحالة", "الفترة", ""].map((h) => (
-                    <th key={h} style={{ textAlign: "right", color: "#6E7177", fontSize: "0.72rem", padding: "0.6rem", borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap" }}>
+                    <th key={h} style={{ textAlign: "right", color: "#5D6880", fontSize: "0.72rem", padding: "0.6rem", borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap" }}>
                       {h}
                     </th>
                   ))}
@@ -69,7 +69,7 @@ export default function PayoutsHistory({ payouts = [] }) {
               </thead>
               <tbody>
                 {payouts.map((p) => {
-                  const st = PAYOUT_STATUS_LABELS[p.status] || { label: p.status, color: "#9A9A9A" };
+                  const st = PAYOUT_STATUS_LABELS[p.status] || { label: p.status, color: "#93A0B8" };
                   return (
                     <tr key={p.id}>
                       <td style={tdStyle}>{p.paid_at ? fmtDate(p.paid_at) : "—"}</td>
@@ -80,7 +80,7 @@ export default function PayoutsHistory({ payouts = [] }) {
                           {st.label}
                         </span>
                       </td>
-                      <td style={{ ...tdStyle, fontSize: "0.75rem", color: "#9A9A9A" }}>
+                      <td style={{ ...tdStyle, fontSize: "0.75rem", color: "#93A0B8" }}>
                         {fmtDate(p.period_start)} → {fmtDate(p.period_end)}
                       </td>
                       <td style={tdStyle}>
@@ -100,4 +100,4 @@ export default function PayoutsHistory({ payouts = [] }) {
   );
 }
 
-const tdStyle = { padding: "0.7rem 0.6rem", fontSize: "0.82rem", color: "#C8C0B0", borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap" };
+const tdStyle = { padding: "0.7rem 0.6rem", fontSize: "0.82rem", color: "#93A0B8", borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap" };

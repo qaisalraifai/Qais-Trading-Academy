@@ -1,18 +1,22 @@
 import { cn } from "@/lib/cn";
+import Module from "./Module";
 
-const variants = {
-  default: "glass-card",
-  elevated: "glass-card shadow-glow-sm hover:shadow-glow transition-shadow duration-300",
-  flat: "rounded-lg border border-gold-400/10 bg-surface-1",
-  vip: "rounded-lg border border-gold-400/25 bg-gradient-to-bl from-gold-400/15 to-surface-1 shadow-glow-sm",
+/* ============================================================================
+   Card — غلاف توافق خلفي فوق Module.
+   ----------------------------------------------------------------------------
+   الصفحات القديمة لسا بتستورد Card بنفس الـprops، فمنخليها شغّالة بس منمرّرها
+   على مستويات ORBIT الجديدة. الكود الجديد لازم يستخدم <Module> مباشرة —
+   إلها تحكّم أوضح بالمستوى والشطف.
+   ============================================================================ */
+
+const VARIANT_TO_LEVEL = {
+  default: "secondary",
+  flat: "secondary",
+  elevated: "primary",
+  vip: "primary",
 };
 
-const paddings = {
-  none: "",
-  sm: "p-3",
-  md: "p-4 md:p-5",
-  lg: "p-5 md:p-6",
-};
+const PADDINGS = { none: "", sm: "p-3", md: "p-4", lg: "p-5 md:p-6" };
 
 export default function Card({
   children,
@@ -22,18 +26,19 @@ export default function Card({
   hover = false,
   ...props
 }) {
+  const level = VARIANT_TO_LEVEL[variant] || "secondary";
+
   return (
-    <div
-      className={cn(
-        variants[variant],
-        paddings[padding],
-        hover && "transition-all duration-300 ease-premium hover:-translate-y-0.5 hover:border-gold-400/25",
-        className
-      )}
+    <Module
+      level={level}
+      padding={level === "primary" ? "none" : padding}
+      innerClassName={level === "primary" ? PADDINGS[padding] : undefined}
+      hover={hover}
+      className={cn(variant === "vip" && "mod-au", className)}
       {...props}
     >
       {children}
-    </div>
+    </Module>
   );
 }
 
@@ -46,17 +51,9 @@ export function CardHeader({ children, className }) {
 }
 
 export function CardTitle({ children, className }) {
-  return (
-    <h3 className={cn("text-base font-bold text-text-primary md:text-lg", className)}>
-      {children}
-    </h3>
-  );
+  return <h3 className={cn("text-lg font-semibold text-text-primary", className)}>{children}</h3>;
 }
 
 export function CardDescription({ children, className }) {
-  return (
-    <p className={cn("text-xs text-text-muted md:text-sm", className)}>
-      {children}
-    </p>
-  );
+  return <p className={cn("text-caption text-text-muted", className)}>{children}</p>;
 }

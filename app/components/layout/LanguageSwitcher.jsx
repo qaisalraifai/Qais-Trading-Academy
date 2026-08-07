@@ -1,63 +1,41 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import { Globe } from "lucide-react";
 import { SUPPORTED_LOCALES, LOCALE_META } from "@/lib/i18n/config";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { Dropdown, DropdownItem } from "@/app/components/ui";
+import { cn } from "@/lib/cn";
 
-export default function LanguageSwitcher({ className = "" }) {
+export default function LanguageSwitcher({ className }) {
   const { locale, meta, t, setLocale } = useLocale();
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    function onClickOutside(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, []);
 
   return (
-    <div ref={ref} className={`relative ${className}`}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-label={t("header.language")}
-        title={t("header.language")}
-        className="flex h-10 items-center gap-1.5 rounded-full border border-gold-400/15 bg-surface-1 px-3 text-xs font-bold text-text-muted transition-all duration-300 ease-premium hover:border-gold-400/40 hover:text-gold-200"
-      >
-        <Globe className="h-4 w-4" />
-        <span>{meta.flag}</span>
-      </button>
-
-      {open && (
-        <div
-          className="absolute z-50 mt-2 w-40 overflow-hidden rounded-lg border border-gold-400/20 bg-surface-2 shadow-header"
-          style={{ insetInlineEnd: 0 }}
+    <Dropdown
+      align="end"
+      className={className}
+      trigger={
+        <button
+          type="button"
+          aria-label={t("header.language")}
+          title={t("header.language")}
+          className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-edge bg-module-1 px-2.5 text-caption text-text-secondary transition-colors duration-base ease-orbit hover:border-edge-lit hover:text-text-primary"
         >
-          {SUPPORTED_LOCALES.map((code) => {
-            const m = LOCALE_META[code];
-            const active = code === locale;
-            return (
-              <button
-                key={code}
-                type="button"
-                onClick={() => {
-                  setLocale(code);
-                  setOpen(false);
-                }}
-                className={`flex w-full items-center gap-2 px-3 py-2.5 text-sm transition-colors ${
-                  active ? "bg-gold-400/10 font-bold text-gold-200" : "text-text-secondary hover:bg-white/5"
-                }`}
-              >
-                <span>{m.flag}</span>
-                <span>{m.nativeName}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
+          <Globe className="h-3.5 w-3.5" aria-hidden />
+          <span className="font-num font-medium uppercase">{locale}</span>
+        </button>
+      }
+    >
+      {SUPPORTED_LOCALES.map((code) => {
+        const m = LOCALE_META[code];
+        return (
+          <DropdownItem key={code} active={code === locale} onClick={() => setLocale(code)}>
+            <span className={cn("font-num me-2 text-micro uppercase", code === locale ? "text-ice-100" : "text-text-muted")}>
+              {code}
+            </span>
+            {m.nativeName}
+          </DropdownItem>
+        );
+      })}
+    </Dropdown>
   );
 }

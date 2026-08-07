@@ -8,10 +8,11 @@ import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import ProfileHeaderCard from "./ProfileHeaderCard";
 
-// غلاف موحّد لكل صفحة (Workspace مستقلة أو /dashboard) — نفس الـ Header والـ
-// Sidebar بكل مكان. التنقل بين الأدوات صار عبر روابط Next.js حقيقية (كل واحد
-// إله مساره الخاص)، فالـ Sidebar بيحدد العنصر النشط تلقائياً من الـ URL الحالي
-// بدل ما يعتمد على state يوصله من هون.
+/* ============================================================================
+   AppShell — غلاف الداشبورد (القائمة الكاملة). باقي الأدوات بتستخدم
+   WorkspaceShell (رِيل مصغّر) عشان تاخد كامل الشاشة.
+   ============================================================================ */
+
 export default function AppShell({
   username,
   initials,
@@ -34,7 +35,10 @@ export default function AppShell({
   const balanceLabel = formatBalance
     ? formatBalance(balance)
     : balance != null
-      ? `💰 $${Number(balance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      ? `$${Number(balance).toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
       : null;
 
   return (

@@ -28,7 +28,7 @@ export default function MarkCompleteButton({ lectureId, isCompleted }) {
   }
 
   if (completed) {
-    return <p style={styles.done}>✅ تم إكمال هذه المحاضرة</p>;
+    return <p style={styles.done}>تم إكمال هذه المحاضرة</p>;
   }
 
   return (
@@ -41,12 +41,12 @@ export default function MarkCompleteButton({ lectureId, isCompleted }) {
 const styles = {
   button: {
     padding: "0.75rem 1.5rem",
-    backgroundColor: "#3DBB6E",
+    backgroundColor: "#1FBF87",
     color: "#fff",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "3px",
     cursor: "pointer",
     fontWeight: "bold",
   },
-  done: { color: "#3DBB6E", fontWeight: "bold" },
+  done: { color: "#1FBF87", fontWeight: "bold" },
 };

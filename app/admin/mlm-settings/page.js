@@ -76,7 +76,7 @@ export default function MlmSettingsPage() {
       <div style={s.header}>
         <div>
           <div style={s.headerSub}>QAIS TRADING ACADEMY — إدارة</div>
-          <div style={s.headerTitle}>⚙️ إعدادات خطة العمولات (MLM)</div>
+          <div style={s.headerTitle}>إعدادات خطة العمولات (MLM)</div>
         </div>
         <a href="/admin" style={{ color: gold, textDecoration: "none", fontSize: "0.85rem" }}>
           ← رجوع للوحة الأدمن
@@ -89,11 +89,11 @@ export default function MlmSettingsPage() {
         </div>
 
         {error && (
-          <div style={{ color: "#F6465D", marginBottom: "1rem", fontSize: "0.85rem" }}>{error}</div>
+          <div style={{ color: "#E8495F", marginBottom: "1rem", fontSize: "0.85rem" }}>{error}</div>
         )}
 
         {loading ? (
-          <div style={{ color: "#888", padding: "2rem 0" }}>جاري التحميل...</div>
+          <div style={{ color: "#5D6880", padding: "2rem 0" }}>جاري التحميل...</div>
         ) : (
           <div style={{ display: "grid", gap: "1rem", maxWidth: 640 }}>
             {settings.map((row) => (
@@ -111,7 +111,7 @@ export default function MlmSettingsPage() {
               >
                 <div>
                   <div style={{ fontWeight: 700, marginBottom: 4 }}>{row.label_ar}</div>
-                  <div style={{ fontSize: "0.75rem", color: "#777", fontFamily: "monospace" }}>{row.key}</div>
+                  <div style={{ fontSize: "0.75rem", color: "#5D6880", fontFamily: "monospace" }}>{row.key}</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
                   <input
@@ -122,10 +122,10 @@ export default function MlmSettingsPage() {
                     style={{
                       width: 100,
                       padding: "0.5rem 0.7rem",
-                      borderRadius: 8,
-                      border: "1px solid #2A2E39",
-                      background: "#0d0d0c",
-                      color: "#EAECEF",
+                      borderRadius: 3,
+                      border: "1px solid #26314A",
+                      background: "#080B14",
+                      color: "#EDF1F8",
                       textAlign: "center",
                       fontFamily: "monospace",
                     }}
@@ -135,9 +135,9 @@ export default function MlmSettingsPage() {
                     disabled={savingKey === row.key || Number(drafts[row.key]) === Number(row.value)}
                     style={{
                       background: gold,
-                      color: "#111",
+                      color: "#111726",
                       border: "none",
-                      borderRadius: 8,
+                      borderRadius: 3,
                       padding: "0.55rem 1.1rem",
                       fontWeight: 700,
                       cursor: "pointer",
@@ -153,8 +153,7 @@ export default function MlmSettingsPage() {
           </div>
         )}
 
-        <div style={{ marginTop: "2rem", fontSize: "0.8rem", color: "#666", maxWidth: 640, lineHeight: 1.8 }}>
-          ⚠️ نسبة Infinity Bonus وآلية توزيع Leadership Pool لسا مبنية على افتراضات
+        <div style={{ marginTop: "2rem", fontSize: "0.8rem", color: "#5D6880", maxWidth: 640, lineHeight: 1.8 }}>نسبة Infinity Bonus وآلية توزيع Leadership Pool لسا مبنية على افتراضات
           مبدئية (مو محددة حرفيًا بخطة المشروع) — راجعيها قبل تفعيل مبالغ حقيقية.
         </div>
       </div>

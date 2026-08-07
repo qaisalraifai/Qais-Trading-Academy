@@ -1,18 +1,29 @@
 import { cn } from "@/lib/cn";
 
-const variants = {
-  default: "border-gold-400/20 bg-gold-400/10 text-gold-200",
-  vip: "gold-gradient-bg border-transparent text-ink",
-  profit: "border-profit/30 bg-profit/10 text-profit",
-  loss: "border-loss/30 bg-loss/10 text-loss",
-  info: "border-info/30 bg-info/10 text-info",
-  muted: "border-white/10 bg-white/5 text-text-muted",
+/* ============================================================================
+   Badge
+   ----------------------------------------------------------------------------
+   حواف قائمة (rounded-sm) مش حبوب مدوّرة — الشكل جزء من الهوية.
+   الاستثناء الوحيد: variant="live" بيستخدم نقطة نابضة وبيضل مستطيل كمان.
+   ============================================================================ */
+
+const VARIANTS = {
+  default: "border-edge bg-module-2 text-text-secondary",
+  value: "border-au-300/50 bg-au-200/10 text-au-100",
+  profit: "border-profit/35 bg-profit/10 text-profit",
+  loss: "border-loss/35 bg-loss/10 text-loss",
+  info: "border-ice-300/40 bg-ice-200/10 text-ice-100",
+  warning: "border-warning/35 bg-warning/10 text-warning",
+  muted: "border-edge-soft bg-white/[0.03] text-text-muted",
+  live: "border-ice-300/60 bg-ice-200/10 text-ice-100",
+  /* alias انتقالي */
+  vip: "border-au-300/50 bg-au-200/10 text-au-100",
 };
 
-const sizes = {
-  sm: "px-2 py-0.5 text-[10px]",
-  md: "px-2.5 py-1 text-xs",
-  lg: "px-3 py-1.5 text-sm",
+const SIZES = {
+  sm: "px-1.5 py-0.5 text-micro",
+  md: "px-2 py-0.5 text-caption",
+  lg: "px-2.5 py-1 text-sm",
 };
 
 export default function Badge({
@@ -22,25 +33,61 @@ export default function Badge({
   className,
   dot = false,
 }) {
+  const isLive = variant === "live";
+
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border font-bold tracking-wide",
-        variants[variant],
-        sizes[size],
+        "inline-flex items-center gap-1.5 rounded-sm border font-medium tracking-wide",
+        VARIANTS[variant] || VARIANTS.default,
+        SIZES[size],
         className
       )}
     >
-      {dot && (
+      {(dot || isLive) && (
         <span
           className={cn(
-            "h-1.5 w-1.5 rounded-full",
-            variant === "vip" ? "bg-ink" : "bg-current"
+            "h-1.5 w-1.5 shrink-0 rounded-full bg-current",
+            isLive && "animate-pulse-soft"
           )}
           aria-hidden
         />
       )}
       {children}
+    </span>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   Delta — تغيّر رقمي بإشارة ولون. أكثر عنصر بيتكرر بمنتج مالي.
+   بيتعامل مع الاتجاه صح: الرقم LTR معزول جوّا نص عربي.
+   --------------------------------------------------------------------------- */
+export function Delta({ value, suffix = "%", showSign = true, className, size = "md" }) {
+  const n = Number(value) || 0;
+  const up = n > 0;
+  const flat = n === 0;
+
+  const sizes = { sm: "text-caption", md: "text-sm", lg: "text-base" };
+
+  return (
+    <span
+      dir="ltr"
+      className={cn(
+        "inline-flex items-center gap-1 font-num tabular-nums font-medium",
+        flat ? "text-text-muted" : up ? "text-profit" : "text-loss",
+        sizes[size],
+        className
+      )}
+      style={{ unicodeBidi: "isolate" }}
+    >
+      {!flat && (
+        <svg width="9" height="9" viewBox="0 0 10 10" fill="currentColor" aria-hidden>
+          {up ? <path d="M5 1l4 7H1z" /> : <path d="M5 9L1 2h8z" />}
+        </svg>
+      )}
+      {showSign && up ? "+" : ""}
+      {n.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+      {suffix}
     </span>
   );
 }

@@ -2,12 +2,12 @@
 import { gold, transition } from "../styles";
 
 export const chipDefs = [
-  ["vip", "💎 VIP"],
-  ["expired", "❌ Expired"],
-  ["trial", "🔵 Trial"],
-  ["elite", "🟡 Elite"],
+  ["vip", "VIP"],
+  ["expired", "Expired"],
+  ["trial", "Trial"],
+  ["elite", "Elite"],
   ["pending", "⏳ Pending"],
-  ["cancelled", "🚫 Cancelled"],
+  ["cancelled", "Cancelled"],
 ];
 
 export default function FilterChips({ active, toggle }) {
@@ -21,8 +21,8 @@ export default function FilterChips({ active, toggle }) {
             onClick={() => toggle(key)}
             style={{
               background: isActive ? gold + "1c" : "transparent",
-              border: `1px solid ${isActive ? gold + "88" : "#222"}`,
-              color: isActive ? gold : "#888",
+              border: `1px solid ${isActive ? gold + "88" : "#1B2438"}`,
+              color: isActive ? gold : "#5D6880",
               padding: "0.4rem 0.9rem",
               borderRadius: 999,
               fontSize: "0.78rem",

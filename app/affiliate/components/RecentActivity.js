@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { playBeep } from "@/lib/beep";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#D4AF37";
-const CARD = "#0d0d0d";
-const BORDER = "#2B2F36";
+const GOLD = "#C9A860";
+const CARD = "#080B14";
+const BORDER = "#1E2941";
 
 const ICONS = {
   commission: "💰",
@@ -14,7 +14,7 @@ const ICONS = {
   wheel_spin: "🎁",
   referral_joined: "👋",
   application_approved: "✅",
-  application_rejected: "⚠️",
+  application_rejected: "️",
   payout: "🏦",
 };
 
@@ -74,7 +74,7 @@ export default function RecentActivity() {
       ) : (
         <div style={{ maxHeight: 320, overflowY: "auto" }}>
           {items.map((n, i) => (
-            <div key={n.id} style={{ ...s.row, borderBottom: i < items.length - 1 ? `1px solid #181A20` : "none" }}>
+            <div key={n.id} style={{ ...s.row, borderBottom: i < items.length - 1 ? `1px solid #111726` : "none" }}>
               <span style={s.icon}>{ICONS[n.type] || "⚪"}</span>
               <div style={{ flex: 1 }}>
                 <p style={s.title}>{n.title}</p>
@@ -90,15 +90,15 @@ export default function RecentActivity() {
 }
 
 const s = {
-  card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "1.6rem", marginBottom: "1.2rem" },
+  card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 0, padding: "1.6rem", marginBottom: "1.2rem" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" },
   sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD },
-  liveTag: { display: "flex", alignItems: "center", gap: 5, fontSize: "0.7rem", color: "#4CAF50" },
-  liveDot: { width: 6, height: 6, borderRadius: "50%", background: "#4CAF50", boxShadow: "0 0 6px #4CAF50" },
-  empty: { color: "#555", fontSize: "0.85rem" },
+  liveTag: { display: "flex", alignItems: "center", gap: 5, fontSize: "0.7rem", color: "#1FBF87" },
+  liveDot: { width: 6, height: 6, borderRadius: "50%", background: "#1FBF87", boxShadow: "0 0 6px #1FBF87" },
+  empty: { color: "#3E4761", fontSize: "0.85rem" },
   row: { display: "flex", gap: 10, padding: "0.7rem 0" },
   icon: { fontSize: "1rem" },
-  title: { fontSize: "0.85rem", color: "#EAECEF", fontWeight: 600 },
-  msg: { fontSize: "0.78rem", color: "#9a9488", marginTop: 2, lineHeight: 1.5 },
-  time: { fontSize: "0.7rem", color: "#555", marginTop: 3 },
+  title: { fontSize: "0.85rem", color: "#EDF1F8", fontWeight: 600 },
+  msg: { fontSize: "0.78rem", color: "#93A0B8", marginTop: 2, lineHeight: 1.5 },
+  time: { fontSize: "0.7rem", color: "#3E4761", marginTop: 3 },
 };

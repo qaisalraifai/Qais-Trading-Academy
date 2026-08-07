@@ -16,7 +16,7 @@ export default function QrCodeBox({ value, size = 180, filename = "qta-qr-code.p
       {
         width: size,
         margin: 1,
-        color: { dark: "#D4AF37", light: "#0B0E11" },
+        color: { dark: "#C9A860", light: "#080B14" },
       },
       (err) => setReady(!err)
     );
@@ -41,13 +41,13 @@ export default function QrCodeBox({ value, size = 180, filename = "qta-qr-code.p
         gap: "0.7rem",
         background: "rgba(255,255,255,0.02)",
         border: `1px solid ${BORDER}`,
-        borderRadius: 14,
+        borderRadius: 0,
         padding: "1.1rem",
         margin: "0 auto",
       }}
       className="qta-animate-in"
     >
-      <canvas ref={canvasRef} width={size} height={size} style={{ borderRadius: 8, display: "block" }} />
+      <canvas ref={canvasRef} width={size} height={size} style={{ borderRadius: 3, display: "block" }} />
       <button onClick={download} disabled={!ready} style={{ ...btnGhost, fontSize: "0.75rem" }}>
         تنزيل الصورة
       </button>

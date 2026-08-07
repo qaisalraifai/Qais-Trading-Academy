@@ -36,7 +36,7 @@ export default function TiersPageClient() {
         <h1 style={{ fontSize: "1.8rem", fontWeight: 800, fontFamily: displayStack, margin: 0 }}>
           مستويات المسوّقين
         </h1>
-        <p style={{ color: "#9A9A9A", fontSize: "0.85rem", marginTop: 8, lineHeight: 1.8, maxWidth: 680 }}>
+        <p style={{ color: "#93A0B8", fontSize: "0.85rem", marginTop: 8, lineHeight: 1.8, maxWidth: 680 }}>
           كل ما زاد عدد عملائك النشطين، ترقّى مستواك — وعمولتك على كل تسجيل وكل تجديد بتزيد معه فوراً.
           المستوى مبني على أدائك الحقيقي الحالي (عملاء نشطين فعلياً)، مو على عدد التسجيلات التاريخية —
           يعني استمراريتك بمتابعة عملائك هي اللي بتحافظلك على مستواك.
@@ -55,13 +55,13 @@ export default function TiersPageClient() {
         <>
           {data?.myStatus && (
             <div style={{ ...card, marginBottom: "1.6rem", border: `1px solid ${data.myStatus.current.color_hex}55` }} className="qta-animate-in">
-              <p style={{ color: "#9A9A9A", fontSize: "0.8rem", marginBottom: 6 }}>مستواك الحالي</p>
+              <p style={{ color: "#93A0B8", fontSize: "0.8rem", marginBottom: 6 }}>مستواك الحالي</p>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 26 }}>{data.myStatus.current.badge_icon}</span>
                 <span style={{ fontSize: "1.3rem", fontWeight: 800, color: data.myStatus.current.color_hex }}>
                   {data.myStatus.current.title_ar}
                 </span>
-                <span style={{ color: "#6E7177", fontSize: "0.82rem" }}>
+                <span style={{ color: "#5D6880", fontSize: "0.82rem" }}>
                   · {data.myStatus.activeClientsCount} عميل نشط
                 </span>
               </div>
@@ -69,8 +69,8 @@ export default function TiersPageClient() {
           )}
 
           {!data?.isAffiliate && (
-            <div style={{ ...card, marginBottom: "1.6rem", border: `1px solid ${GOLD}55`, background: "rgba(212,175,55,0.05)" }} className="qta-animate-in">
-              <p style={{ color: "#D8CBA0", fontSize: "0.85rem", lineHeight: 1.8, margin: 0 }}>
+            <div style={{ ...card, marginBottom: "1.6rem", border: `1px solid #3E5478`, background: "rgba(212,175,55,0.05)" }} className="qta-animate-in">
+              <p style={{ color: "#E4CD95", fontSize: "0.85rem", lineHeight: 1.8, margin: 0 }}>
                 لسا ما انضممت لبرنامج العمولة. <Link href="/affiliate" style={{ color: GOLD, fontWeight: 700 }}>سجّل من هون</Link> وابلّش من Bronze.
               </p>
             </div>
@@ -116,7 +116,7 @@ export default function TiersPageClient() {
                   <div style={{ textAlign: "center", marginBottom: "1rem", marginTop: isCurrent ? "1.4rem" : 0 }}>
                     <div style={{ fontSize: "2.2rem", marginBottom: 6 }}>{t.badge_icon}</div>
                     <h3 style={{ fontSize: "1.15rem", fontWeight: 800, color: t.color_hex, margin: 0 }}>{t.title_ar}</h3>
-                    <p style={{ color: "#6E7177", fontSize: "0.75rem", marginTop: 4 }}>
+                    <p style={{ color: "#5D6880", fontSize: "0.75rem", marginTop: 4 }}>
                       {t.min_active_clients === 0 ? "المستوى الافتتاحي" : `${t.min_active_clients}+ عميل نشط`}
                       {nextTier ? ` (لحد ${nextTier.min_active_clients - 1})` : " فأكثر"}
                     </p>
@@ -133,7 +133,7 @@ export default function TiersPageClient() {
                     </div>
                   </div>
 
-                  <p style={{ color: "#6E7177", fontSize: "0.72rem", textAlign: "center", marginTop: 8 }}>
+                  <p style={{ color: "#5D6880", fontSize: "0.72rem", textAlign: "center", marginTop: 8 }}>
                     شرط الوصول: {t.min_active_clients === 0 ? "تلقائي عند القبول بالبرنامج" : `${t.min_active_clients} عميل نشط بنفس الوقت`}
                   </p>
                 </div>
@@ -142,12 +142,12 @@ export default function TiersPageClient() {
           </div>
 
           <div style={{ ...card, marginTop: "1.6rem" }} className="qta-animate-in">
-            <h3 style={{ fontSize: "1rem", fontWeight: 800, marginBottom: 10, color: "#EAECEF" }}>كيف تُحسب المستويات؟</h3>
-            <ul style={{ color: "#9A9A9A", fontSize: "0.82rem", lineHeight: 2, paddingRight: 18, margin: 0 }}>
-              <li>المستوى يُحسب حيًّا من عدد عملائك <b style={{ color: "#EAECEF" }}>النشطين حالياً</b> — مو من إجمالي عدد من سجّل عن طريقك تاريخياً.</li>
+            <h3 style={{ fontSize: "1rem", fontWeight: 800, marginBottom: 10, color: "#EDF1F8" }}>كيف تُحسب المستويات؟</h3>
+            <ul style={{ color: "#93A0B8", fontSize: "0.82rem", lineHeight: 2, paddingRight: 18, margin: 0 }}>
+              <li>المستوى يُحسب حيًّا من عدد عملائك <b style={{ color: "#EDF1F8" }}>النشطين حالياً</b> — مو من إجمالي عدد من سجّل عن طريقك تاريخياً.</li>
               <li>لو زاد عدد عملائك النشطين، بترقّى تلقائياً — بدون أي طلب أو موافقة يدوية.</li>
               <li>لو قلّ عدد عملائك النشطين (مثلاً بسبب إلغاءات)، مستواك بيتحدّث تلقائياً ليعكس وضعك الحالي.</li>
-              <li>عمولتك الجديدة تنطبق فوراً على <b style={{ color: "#EAECEF" }}>كل عملياتك الجاية</b> — كل تسجيل جديد وكل تجديد شهري، حتى من عملاء قدامى.</li>
+              <li>عمولتك الجديدة تنطبق فوراً على <b style={{ color: "#EDF1F8" }}>كل عملياتك الجاية</b> — كل تسجيل جديد وكل تجديد شهري، حتى من عملاء قدامى.</li>
               <li>عمولات سبق واستحقيتها (قبل الترقية) ما بتتغيّر — القيمة تُقفل وقت كل عملية على حدة.</li>
             </ul>
           </div>
@@ -157,19 +157,19 @@ export default function TiersPageClient() {
   );
 }
 
-const rateLabel = { fontSize: "0.65rem", color: "#9A9A9A", marginBottom: 3, textAlign: "center" };
+const rateLabel = { fontSize: "0.65rem", color: "#93A0B8", marginBottom: 3, textAlign: "center" };
 const rateValue = { fontSize: "1rem", fontWeight: 800, fontFamily: monoStack, textAlign: "center" };
 function rateBox(color) {
   return {
     flex: 1,
     background: `${color}0d`,
     border: `1px solid ${color}33`,
-    borderRadius: 10,
+    borderRadius: 3,
     padding: "0.6rem 0.4rem",
   };
 }
 
 const s = {
-  page: { direction: "rtl", color: "#EAECEF", padding: "2rem 1.5rem 4rem", maxWidth: 1150, margin: "0 auto" },
-  backLink: { display: "inline-block", color: "#6E7177", fontSize: "0.82rem", textDecoration: "none", marginBottom: "1.2rem" },
+  page: { direction: "rtl", color: "#EDF1F8", padding: "2rem 1.5rem 4rem", maxWidth: 1150, margin: "0 auto" },
+  backLink: { display: "inline-block", color: "#5D6880", fontSize: "0.82rem", textDecoration: "none", marginBottom: "1.2rem" },
 };

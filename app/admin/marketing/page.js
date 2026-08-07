@@ -97,7 +97,7 @@ export default function AdminMarketingPage() {
       </form>
 
       {loading ? (
-        <p style={{ color: "#666" }}>جاري التحميل...</p>
+        <p style={{ color: "#5D6880" }}>جاري التحميل...</p>
       ) : (
         <div style={s.grid}>
           {assets.map((a) => (
@@ -108,7 +108,7 @@ export default function AdminMarketingPage() {
               <button onClick={() => handleDelete(a.id)} style={s.deleteBtn}>حذف</button>
             </div>
           ))}
-          {assets.length === 0 && <p style={{ color: "#555" }}>ما في ملفات لسا.</p>}
+          {assets.length === 0 && <p style={{ color: "#3E4761" }}>ما في ملفات لسا.</p>}
         </div>
       )}
     </div>
@@ -116,17 +116,17 @@ export default function AdminMarketingPage() {
 }
 
 const s = {
-  page: { minHeight: "100vh", background: "#0B0E11", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EAECEF", padding: "2.5rem 1.5rem", maxWidth: 1000, margin: "0 auto" },
+  page: { minHeight: "100vh", background: "#080B14", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#EDF1F8", padding: "2.5rem 1.5rem", maxWidth: 1000, margin: "0 auto" },
   title: { fontSize: "1.6rem", fontWeight: 800, marginBottom: 6, color: gold },
-  sub: { color: "#8a8378", fontSize: "0.88rem", marginBottom: "1.8rem", lineHeight: 1.7 },
-  error: { background: "#2a0d0d", border: "1px solid #F6465D44", color: "#F6465D", padding: "0.7rem 1rem", borderRadius: 8, marginBottom: "1rem", fontSize: "0.85rem" },
-  form: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.7rem", background: "#0d0d0d", border: "1px solid #2B2F36", borderRadius: 12, padding: "1.2rem", marginBottom: "2rem" },
-  input: { background: "#080808", border: "1px solid #2B2F36", color: "#EAECEF", padding: "0.7rem 0.9rem", borderRadius: 6, fontSize: "0.85rem" },
-  btn: { background: gold, color: "#080600", border: "none", padding: "0.7rem 1.2rem", borderRadius: 6, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", gridColumn: "1 / -1" },
+  sub: { color: "#5D6880", fontSize: "0.88rem", marginBottom: "1.8rem", lineHeight: 1.7 },
+  error: { background: "#111726", border: "1px solid #E8495F44", color: "#E8495F", padding: "0.7rem 1rem", borderRadius: 3, marginBottom: "1rem", fontSize: "0.85rem" },
+  form: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.7rem", background: "#080B14", border: "1px solid #1E2941", borderRadius: 0, padding: "1.2rem", marginBottom: "2rem" },
+  input: { background: "#080B14", border: "1px solid #1E2941", color: "#EDF1F8", padding: "0.7rem 0.9rem", borderRadius: 3, fontSize: "0.85rem" },
+  btn: { background: gold, color: "#0C1220", border: "none", padding: "0.7rem 1.2rem", borderRadius: 3, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", gridColumn: "1 / -1" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1rem" },
-  card: { background: "#0d0d0d", border: "1px solid #2B2F36", borderRadius: 10, padding: "1.1rem" },
+  card: { background: "#080B14", border: "1px solid #1E2941", borderRadius: 3, padding: "1.1rem" },
   cardTitle: { fontWeight: 700, fontSize: "0.9rem", marginBottom: 4 },
-  cardType: { color: "#6E7177", fontSize: "0.75rem", marginBottom: 10 },
+  cardType: { color: "#5D6880", fontSize: "0.75rem", marginBottom: 10 },
   link: { color: gold, fontSize: "0.8rem", textDecoration: "none", display: "block", marginBottom: 10 },
-  deleteBtn: { background: "transparent", border: "1px solid #F6465D55", color: "#F6465D", padding: "0.4rem 0.8rem", borderRadius: 6, fontSize: "0.75rem", cursor: "pointer" },
+  deleteBtn: { background: "transparent", border: "1px solid #E8495F55", color: "#E8495F", padding: "0.4rem 0.8rem", borderRadius: 3, fontSize: "0.75rem", cursor: "pointer" },
 };

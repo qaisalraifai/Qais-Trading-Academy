@@ -91,7 +91,7 @@ export async function POST() {
 
   await createNotification(admin, userId, {
     type: "wheel_spin",
-    title: "🎡 نتيجة لفة العجلة",
+    title: "نتيجة لفة العجلة",
     message: `مبروك! ربحت: ${prize.label}`,
     link: "/affiliate",
   });

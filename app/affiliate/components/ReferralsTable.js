@@ -63,7 +63,7 @@ export default function ReferralsTable({ referrals = [] }) {
       <div style={card} className="qta-animate-in">
         <p style={sectionEyebrow}>شبكتك المباشرة</p>
         <h2 style={sectionTitle}>الإحالات ({referrals.length})</h2>
-        <p style={{ color: "#9A9A9A", fontSize: "0.82rem", marginBottom: "1.2rem" }}>كل شخص انضم عن طريق رابطك مباشرة.</p>
+        <p style={{ color: "#93A0B8", fontSize: "0.82rem", marginBottom: "1.2rem" }}>كل شخص انضم عن طريق رابطك مباشرة.</p>
 
         {referrals.length === 0 ? (
           <EmptyState icon="👥" title="ما في إحالات لسا" desc="شارك رابطك من قسم «رابط الإحالة» فوق وابدأ اجمع إحالاتك." />
@@ -78,16 +78,16 @@ export default function ReferralsTable({ referrals = [] }) {
                   flex: "1 1 200px",
                   background: "rgba(255,255,255,0.03)",
                   border: `1px solid ${BORDER}`,
-                  color: "#EAECEF",
+                  color: "#EDF1F8",
                   padding: "0.6rem 1rem",
-                  borderRadius: 8,
+                  borderRadius: 3,
                   fontSize: "0.82rem",
                 }}
               />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}`, color: "#EAECEF", padding: "0.6rem 1rem", borderRadius: 8, fontSize: "0.82rem" }}
+                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}`, color: "#EDF1F8", padding: "0.6rem 1rem", borderRadius: 3, fontSize: "0.82rem" }}
               >
                 <option value="all">كل الحالات ({referrals.length})</option>
                 {Object.entries(statusCounts).map(([k, count]) => (
@@ -99,7 +99,7 @@ export default function ReferralsTable({ referrals = [] }) {
               <select
                 value={sortKey}
                 onChange={(e) => setSortKey(e.target.value)}
-                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}`, color: "#EAECEF", padding: "0.6rem 1rem", borderRadius: 8, fontSize: "0.82rem" }}
+                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}`, color: "#EDF1F8", padding: "0.6rem 1rem", borderRadius: 3, fontSize: "0.82rem" }}
               >
                 {SORT_OPTIONS.map((o) => (
                   <option key={o.key} value={o.key}>
@@ -117,7 +117,7 @@ export default function ReferralsTable({ referrals = [] }) {
                   <thead>
                     <tr>
                       {["اسم المستخدم", "تاريخ التسجيل", "حالة الاشتراك", "قيمة آخر دفعة", "تاريخ آخر دفعة", "قيمة العمولة", "حالة العمولة", "آخر نشاط"].map((h) => (
-                        <th key={h} style={{ textAlign: "right", color: "#6E7177", fontSize: "0.72rem", padding: "0.6rem", borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap" }}>
+                        <th key={h} style={{ textAlign: "right", color: "#5D6880", fontSize: "0.72rem", padding: "0.6rem", borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap" }}>
                           {h}
                         </th>
                       ))}
@@ -134,17 +134,17 @@ export default function ReferralsTable({ referrals = [] }) {
                           <td style={tdStyle}>
                             <span style={{ ...pill, color: sub.color, borderColor: sub.color + "55" }}>{sub.label}</span>
                           </td>
-                          <td style={{ ...tdStyle, fontFamily: monoStack, color: "#B8B0A0" }}>
+                          <td style={{ ...tdStyle, fontFamily: monoStack, color: "#93A0B8" }}>
                             {r.lastPaymentAmount != null ? `$${fmt(r.lastPaymentAmount)}` : "—"}
                           </td>
-                          <td style={{ ...tdStyle, color: "#9A9A9A", fontSize: "0.75rem" }}>
+                          <td style={{ ...tdStyle, color: "#93A0B8", fontSize: "0.75rem" }}>
                             {r.lastPaymentDate ? fmtDate(r.lastPaymentDate) : "—"}
                           </td>
                           <td style={{ ...tdStyle, fontFamily: monoStack, color: GOLD }}>${fmt(r.commissionAmount)}</td>
                           <td style={tdStyle}>
                             <span style={{ ...pill, color: comm.color, borderColor: comm.color + "55" }}>{comm.label}</span>
                           </td>
-                          <td style={{ ...tdStyle, color: "#9A9A9A", fontSize: "0.75rem" }}>{timeAgo(r.lastActivity)}</td>
+                          <td style={{ ...tdStyle, color: "#93A0B8", fontSize: "0.75rem" }}>{timeAgo(r.lastActivity)}</td>
                         </tr>
                       );
                     })}
@@ -159,5 +159,5 @@ export default function ReferralsTable({ referrals = [] }) {
   );
 }
 
-const tdStyle = { padding: "0.7rem 0.6rem", fontSize: "0.82rem", color: "#C8C0B0", borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap" };
+const tdStyle = { padding: "0.7rem 0.6rem", fontSize: "0.82rem", color: "#93A0B8", borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap" };
 const pill = { display: "inline-block", border: "1px solid", borderRadius: 999, padding: "0.2rem 0.7rem", fontSize: "0.7rem", fontWeight: 600 };

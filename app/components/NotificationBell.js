@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { playBeep } from "@/lib/beep";
 
-const GOLD = "#E8B86D";
+const GOLD = "#C9A860";
 
 function timeAgo(dateStr) {
   const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
@@ -76,9 +76,7 @@ export default function NotificationBell({ soundEnabled = true }) {
 
   return (
     <div ref={rootRef} style={{ position: "relative", display: "inline-block" }}>
-      <button onClick={toggleOpen} style={s.bellBtn} aria-label="الإشعارات">
-        🔔
-        {unreadCount > 0 && <span style={s.badge}>{unreadCount > 9 ? "9+" : unreadCount}</span>}
+      <button onClick={toggleOpen} style={s.bellBtn} aria-label="الإشعارات">{unreadCount > 0 && <span style={s.badge}>{unreadCount > 9 ? "9+" : unreadCount}</span>}
       </button>
 
       {open && (
@@ -101,14 +99,14 @@ export default function NotificationBell({ soundEnabled = true }) {
 }
 
 const s = {
-  bellBtn: { position: "relative", background: "transparent", border: "1px solid #2B2F36", borderRadius: 8, width: 40, height: 40, fontSize: "1.1rem", cursor: "pointer", color: "#EAECEF" },
-  badge: { position: "absolute", top: -4, left: -4, background: "#E5484D", color: "#fff", fontSize: "0.65rem", fontWeight: 700, borderRadius: 9, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" },
-  dropdown: { position: "absolute", top: "48px", left: 0, width: 320, maxWidth: "90vw", background: "#0D0E10", border: "1px solid #2B2F36", borderRadius: 12, boxShadow: "0 12px 30px rgba(0,0,0,0.5)", zIndex: 50, overflow: "hidden" },
-  dropdownHeader: { padding: "0.8rem 1rem", fontSize: "0.85rem", fontWeight: 700, color: GOLD, borderBottom: "1px solid #2B2F36" },
+  bellBtn: { position: "relative", background: "transparent", border: "1px solid #1E2941", borderRadius: 3, width: 40, height: 40, fontSize: "1.1rem", cursor: "pointer", color: "#EDF1F8" },
+  badge: { position: "absolute", top: -4, left: -4, background: "#E8495F", color: "#fff", fontSize: "0.65rem", fontWeight: 700, borderRadius: 3, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" },
+  dropdown: { position: "absolute", top: "48px", left: 0, width: 320, maxWidth: "90vw", background: "#0C1220", border: "1px solid #1E2941", borderRadius: 0, boxShadow: "0 12px 30px rgba(0,0,0,0.5)", zIndex: 50, overflow: "hidden" },
+  dropdownHeader: { padding: "0.8rem 1rem", fontSize: "0.85rem", fontWeight: 700, color: GOLD, borderBottom: "1px solid #1E2941" },
   list: { maxHeight: 360, overflowY: "auto" },
-  empty: { padding: "1.2rem", color: "#555", fontSize: "0.8rem", textAlign: "center" },
-  item: { padding: "0.8rem 1rem", borderBottom: "1px solid #0D0E10" },
-  itemTitle: { fontSize: "0.83rem", color: "#EAECEF", fontWeight: 600, marginBottom: 2 },
-  itemMsg: { fontSize: "0.78rem", color: "#9a9488", lineHeight: 1.5, marginBottom: 4 },
-  itemTime: { fontSize: "0.68rem", color: "#555" },
+  empty: { padding: "1.2rem", color: "#3E4761", fontSize: "0.8rem", textAlign: "center" },
+  item: { padding: "0.8rem 1rem", borderBottom: "1px solid #0C1220" },
+  itemTitle: { fontSize: "0.83rem", color: "#EDF1F8", fontWeight: 600, marginBottom: 2 },
+  itemMsg: { fontSize: "0.78rem", color: "#93A0B8", lineHeight: 1.5, marginBottom: 4 },
+  itemTime: { fontSize: "0.68rem", color: "#3E4761" },
 };

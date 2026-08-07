@@ -108,7 +108,7 @@ export default function PaymentPage() {
             {loadingProviders ? (
               <p style={styles.note}>...جاري تحميل وسائل الدفع</p>
             ) : providers.length === 0 ? (
-              <p style={styles.configError}>⚠️ ما في وسائل دفع مفعّلة حالياً — تواصل مع الدعم.</p>
+              <p style={styles.configError}>ما في وسائل دفع مفعّلة حالياً — تواصل مع الدعم.</p>
             ) : (
               providers.map((p) => (
                 <button key={p.code} style={styles.providerBtn} onClick={() => handlePayment(p.code)} disabled={loading}>
@@ -124,8 +124,7 @@ export default function PaymentPage() {
         )}
 
         {configError && (
-          <p style={styles.configError}>
-            ⚠️ إعدادات الدفع ناقصة: {configError} راجع متغيرات البيئة (Environment Variables) بإعدادات النشر.
+          <p style={styles.configError}>إعدادات الدفع ناقصة: {configError} راجع متغيرات البيئة (Environment Variables) بإعدادات النشر.
           </p>
         )}
 
@@ -141,14 +140,14 @@ export default function PaymentPage() {
         )}
 
         <p style={styles.note}>
-          بعد $300 رسوم التسجيل، بينسحب تلقائياً <strong style={{ color: "#E8B86D" }}>$100 كل شهر</strong> (بالبطاقة) أو بيتوجب عليك التجديد يدوياً كل شهر (بالكريبتو) لحد ما تلغي الاشتراك.
+          بعد $300 رسوم التسجيل، بينسحب تلقائياً <strong style={{ color: "#C9A860" }}>$100 كل شهر</strong> (بالبطاقة) أو بيتوجب عليك التجديد يدوياً كل شهر (بالكريبتو) لحد ما تلغي الاشتراك.
         </p>
         <p style={styles.taxNote}>
           الأسعار المعروضة قابلة لتطبيق ضرائب حسب موقعك — بيتم احتسابها وعرضها بوضوح قبل إتمام الدفع.
         </p>
       </div>
 
-      <p style={styles.footer}>🔒 جميع المدفوعات مؤمنة · يمكنك الإلغاء بأي وقت</p>
+      <p style={styles.footer}>جميع المدفوعات مؤمنة · يمكنك الإلغاء بأي وقت</p>
 
       <Link href="/admin" style={styles.adminLink}>⚙</Link>
     </div>
@@ -161,12 +160,12 @@ function providerIcon(type) {
   return "💰";
 }
 
-const gold = "#E8B86D";
+const gold = "#C9A860";
 
 const styles = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#0D0E10",
+    backgroundColor: "#0C1220",
     color: "#fff",
     direction: "rtl",
     fontFamily: "'Georgia', serif",
@@ -177,14 +176,14 @@ const styles = {
   },
   header: { textAlign: "center", marginBottom: "3rem" },
   logoText: { fontSize: "3rem", fontWeight: "bold", color: gold, letterSpacing: "8px", textShadow: `0 0 30px ${gold}44` },
-  logoSub: { color: "#888", letterSpacing: "4px", fontSize: "0.75rem", marginTop: "-0.5rem", marginBottom: "1.5rem" },
+  logoSub: { color: "#5D6880", letterSpacing: "4px", fontSize: "0.75rem", marginTop: "-0.5rem", marginBottom: "1.5rem" },
   divider: { width: "80px", height: "2px", backgroundColor: gold, margin: "0 auto 1.5rem" },
   title: { fontSize: "2rem", fontWeight: "bold", marginBottom: "0.5rem" },
-  subtitle: { color: "#666", fontSize: "1rem" },
+  subtitle: { color: "#5D6880", fontSize: "1rem" },
   card: {
-    backgroundColor: "#0f0f0f",
+    backgroundColor: "#080B14",
     border: `1px solid ${gold}`,
-    borderRadius: "4px",
+    borderRadius: "3px",
     padding: "3rem",
     width: "100%",
     maxWidth: "420px",
@@ -198,8 +197,8 @@ const styles = {
   cardTitle: { fontSize: "1.4rem", fontWeight: "bold", textAlign: "center", color: "#fff" },
   priceBox: {
     textAlign: "center",
-    borderTop: "1px solid #2B2F36",
-    borderBottom: "1px solid #2B2F36",
+    borderTop: "1px solid #1E2941",
+    borderBottom: "1px solid #1E2941",
     padding: "1.5rem 0",
     width: "100%",
     display: "flex",
@@ -209,15 +208,15 @@ const styles = {
   },
   currency: { color: gold, fontSize: "1.5rem" },
   amount: { color: gold, fontSize: "4rem", fontWeight: "bold", lineHeight: 1 },
-  period: { color: "#555", fontSize: "0.85rem" },
+  period: { color: "#3E4761", fontSize: "0.85rem" },
   features: { listStyle: "none", padding: 0, width: "100%", display: "flex", flexDirection: "column", gap: "0.75rem" },
-  feature: { color: "#888", fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "0.5rem" },
+  feature: { color: "#5D6880", fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "0.5rem" },
   check: { color: gold, fontSize: "0.6rem" },
   providerList: { width: "100%", display: "flex", flexDirection: "column", gap: "0.75rem" },
   providerBtn: {
     width: "100%",
     padding: "0.9rem 1rem",
-    borderRadius: "6px",
+    borderRadius: "3px",
     border: `1px solid ${gold}55`,
     backgroundColor: "transparent",
     color: "#fff",
@@ -228,20 +227,20 @@ const styles = {
     fontFamily: "inherit",
   },
   providerBtnMain: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  providerBtnDesc: { color: "#777", fontSize: "0.75rem", fontWeight: "normal", marginTop: "0.3rem" },
+  providerBtnDesc: { color: "#5D6880", fontSize: "0.75rem", fontWeight: "normal", marginTop: "0.3rem" },
   checkoutContainer: {
     width: "100%",
     minHeight: "450px",
   },
-  note: { color: "#555", fontSize: "0.8rem", textAlign: "center", lineHeight: 1.6 },
-  configError: { color: "#E5484D", fontSize: "0.78rem", textAlign: "center", lineHeight: 1.7, background: "#E5484D14", border: "1px solid #E5484D44", borderRadius: 6, padding: "0.75rem 1rem" },
-  taxNote: { color: "#26282C", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5, marginTop: "-0.75rem" },
-  footer: { color: "#333", fontSize: "0.8rem", marginTop: "1.5rem" },
+  note: { color: "#3E4761", fontSize: "0.8rem", textAlign: "center", lineHeight: 1.6 },
+  configError: { color: "#E8495F", fontSize: "0.78rem", textAlign: "center", lineHeight: 1.7, background: "#E8495F14", border: "1px solid #E8495F44", borderRadius: 3, padding: "0.75rem 1rem" },
+  taxNote: { color: "#26314A", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5, marginTop: "-0.75rem" },
+  footer: { color: "#26314A", fontSize: "0.8rem", marginTop: "1.5rem" },
   adminLink: {
     position: "fixed",
     bottom: "1rem",
     left: "1rem",
-    color: "#2B2F36",
+    color: "#1E2941",
     fontSize: "1rem",
     textDecoration: "none",
     opacity: 0.3,

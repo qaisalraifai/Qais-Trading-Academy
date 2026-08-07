@@ -1,5 +1,18 @@
 import { cn } from "@/lib/cn";
 
+/* ============================================================================
+   ProgressBar — شريط تقدّم خطّي، حواف قائمة.
+   ============================================================================ */
+
+const HEIGHTS = { sm: "h-0.5", md: "h-1", lg: "h-1.5" };
+
+const TONES = {
+  ice: "bg-ice-200",
+  value: "bg-au-200",
+  profit: "bg-profit",
+  steel: "bg-steel-300",
+};
+
 export default function ProgressBar({
   value = 0,
   max = 100,
@@ -8,38 +21,116 @@ export default function ProgressBar({
   showLabel = false,
   label,
   size = "md",
+  tone = "ice",
 }) {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
-
-  const heights = {
-    sm: "h-1",
-    md: "h-1.5",
-    lg: "h-2",
-  };
 
   return (
     <div className={cn("w-full", className)}>
       {(showLabel || label) && (
-        <div className="mb-1.5 flex items-center justify-between text-xs">
-          {label && <span className="text-text-muted">{label}</span>}
-          {showLabel && <span className="font-mono font-medium text-gold-200">{Math.round(pct)}%</span>}
+        <div className="mb-1.5 flex items-baseline justify-between gap-2">
+          {label && <span className="text-caption text-text-muted">{label}</span>}
+          {showLabel && (
+            <span
+              dir="ltr"
+              className="font-num text-caption font-medium tabular-nums text-text-secondary"
+              style={{ unicodeBidi: "isolate" }}
+            >
+              {Math.round(pct)}%
+            </span>
+          )}
         </div>
       )}
       <div
-        className={cn("w-full overflow-hidden rounded-full bg-surface-2", heights[size])}
+        className={cn("w-full overflow-hidden bg-module-2", HEIGHTS[size])}
         role="progressbar"
-        aria-valuenow={value}
+        aria-valuenow={Math.round(pct)}
         aria-valuemin={0}
-        aria-valuemax={max}
+        aria-valuemax={100}
+        aria-label={typeof label === "string" ? label : undefined}
       >
         <div
           className={cn(
-            "h-full rounded-full bg-gradient-to-l from-gold-400 to-gold-200 transition-all duration-500 ease-premium",
+            "h-full transition-[width] duration-slow ease-orbit",
+            TONES[tone] || TONES.ice,
             barClassName
           )}
           style={{ width: `${pct}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   OrbitRing — تقدّم دائري. الهندسة المدارية للنظام.
+   بتبلّش من الأعلى وبتلف مع عقارب الساعة بالحالتين (التقدّم مش اتجاه قراءة).
+   --------------------------------------------------------------------------- */
+const RING_TONES = {
+  ice: "#5FA8E8",
+  value: "#C9A860",
+  profit: "#1FBF87",
+  steel: "#A8B8D8",
+  loss: "#E8495F",
+};
+
+export function OrbitRing({
+  value = 0,
+  max = 100,
+  size = 34,
+  stroke = 2.5,
+  tone = "ice",
+  showValue = false,
+  className,
+  label,
+}) {
+  const pct = Math.min(100, Math.max(0, (value / max) * 100));
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c * (1 - pct / 100);
+
+  return (
+    <div
+      className={cn("relative inline-grid shrink-0 place-items-center", className)}
+      style={{ width: size, height: size }}
+      role="progressbar"
+      aria-valuenow={Math.round(pct)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={label}
+    >
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="#26314A"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={RING_TONES[tone] || RING_TONES.ice}
+          strokeWidth={stroke}
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          style={{ transition: "stroke-dashoffset 380ms cubic-bezier(0.16,1,0.3,1)" }}
+        />
+      </svg>
+      {showValue && (
+        <span
+          dir="ltr"
+          className="absolute font-num font-semibold tabular-nums text-text-primary"
+          style={{ fontSize: size * 0.28, unicodeBidi: "isolate" }}
+        >
+          {Math.round(pct)}
+        </span>
+      )}
     </div>
   );
 }

@@ -6,14 +6,14 @@ import { createClient } from "@/lib/supabase-client";
 import PageShell from "@/app/components/layout/PageShell";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#E8B86D";
-const BG = "#0B0E11";
-const BORDER = "#2B2F36";
+const GOLD = "#C9A860";
+const BG = "#080B14";
+const BORDER = "#1E2941";
 
 function Node({ node, onFocus, t }) {
   if (!node) {
     return (
-      <div style={{ padding: "0.6rem 0.9rem", borderRadius: 10, border: "1px dashed #2A2E39", color: "#444", fontSize: "0.75rem", textAlign: "center", minWidth: 100 }}>
+      <div style={{ padding: "0.6rem 0.9rem", borderRadius: 3, border: "1px dashed #26314A", color: "#3E4761", fontSize: "0.75rem", textAlign: "center", minWidth: 100 }}>
         {t("mlm.emptyNode")}
       </div>
     );
@@ -23,10 +23,10 @@ function Node({ node, onFocus, t }) {
       onClick={() => onFocus(node.id)}
       style={{
         padding: "0.6rem 0.9rem",
-        borderRadius: 10,
-        border: `1px solid ${node.isActiveMember ? GOLD + "77" : "#2A2E39"}`,
-        background: "#0D0E10",
-        color: "#EAECEF",
+        borderRadius: 3,
+        border: `1px solid ${node.isActiveMember ? GOLD + "77" : "#26314A"}`,
+        background: "#0C1220",
+        color: "#EDF1F8",
         cursor: "pointer",
         textAlign: "center",
         minWidth: 100,
@@ -34,7 +34,7 @@ function Node({ node, onFocus, t }) {
       }}
     >
       <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>{node.username}</div>
-      <div style={{ fontSize: "0.65rem", color: node.isActiveMember ? "#3DBB6E" : "#888", marginTop: 2 }}>
+      <div style={{ fontSize: "0.65rem", color: node.isActiveMember ? "#1FBF87" : "#5D6880", marginTop: 2 }}>
         {node.rankName || "—"}
       </div>
     </button>
@@ -49,9 +49,9 @@ function TreeLevel({ node, onFocus, maxDepth, depth = 0, t }) {
       <Node node={node} onFocus={onFocus} t={t} />
       {hasChildren && depth < maxDepth - 1 && (
         <>
-          <div style={{ width: 1, height: 20, background: "#2A2E39" }} />
+          <div style={{ width: 1, height: 20, background: "#26314A" }} />
           <div style={{ display: "flex", gap: "2.5rem", position: "relative" }}>
-            <div style={{ position: "absolute", top: -20, left: "25%", right: "25%", height: 1, background: "#2A2E39" }} />
+            <div style={{ position: "absolute", top: -20, left: "25%", right: "25%", height: 1, background: "#26314A" }} />
             <TreeLevel node={node.left} onFocus={onFocus} maxDepth={maxDepth} depth={depth + 1} t={t} />
             <TreeLevel node={node.right} onFocus={onFocus} maxDepth={maxDepth} depth={depth + 1} t={t} />
           </div>
@@ -115,7 +115,7 @@ function MlmTreeInner() {
 
   return (
     <PageShell {...shellProfile}>
-    <div style={{ background: BG, color: "#EAECEF", minHeight: "100vh", padding: "2.5rem 3rem", direction: dir, fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ background: BG, color: "#EDF1F8", minHeight: "100vh", padding: "2.5rem 3rem", direction: dir, fontFamily: "'Inter', sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <div style={{ color: GOLD, fontSize: "0.75rem", letterSpacing: 2, marginBottom: 4 }}>QAIS TRADING ACADEMY</div>
@@ -123,7 +123,7 @@ function MlmTreeInner() {
         </div>
         <div style={{ display: "flex", gap: "0.6rem" }}>
           {parentId && (
-            <button onClick={() => focusNode(parentId)} style={{ background: "transparent", border: `1px solid ${BORDER}`, color: "#aaa", borderRadius: 8, padding: "0.5rem 1rem", cursor: "pointer" }}>
+            <button onClick={() => focusNode(parentId)} style={{ background: "transparent", border: `1px solid ${BORDER}`, color: "#aaa", borderRadius: 3, padding: "0.5rem 1rem", cursor: "pointer" }}>
               {t("mlm.backUp")}
             </button>
           )}
@@ -132,9 +132,9 @@ function MlmTreeInner() {
       </div>
 
       {loading ? (
-        <div style={{ color: "#888" }}>{t("mlm.loading")}</div>
+        <div style={{ color: "#5D6880" }}>{t("mlm.loading")}</div>
       ) : error ? (
-        <div style={{ color: "#E5484D" }}>{error}</div>
+        <div style={{ color: "#E8495F" }}>{error}</div>
       ) : (
         <div style={{ overflowX: "auto", paddingBottom: "2rem" }}>
           <div style={{ display: "flex", justifyContent: "center", minWidth: 600 }}>
@@ -143,7 +143,7 @@ function MlmTreeInner() {
         </div>
       )}
 
-      <div style={{ marginTop: "1rem", fontSize: "0.75rem", color: "#666", textAlign: "center" }}>
+      <div style={{ marginTop: "1rem", fontSize: "0.75rem", color: "#5D6880", textAlign: "center" }}>
         {t("mlm.clickToExplore")}
       </div>
     </div>
@@ -153,7 +153,7 @@ function MlmTreeInner() {
 
 export default function MlmTreePage() {
   return (
-    <Suspense fallback={<div style={{ background: BG, color: "#888", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>...</div>}>
+    <Suspense fallback={<div style={{ background: BG, color: "#5D6880", minHeight: "100vh", padding: "3rem", direction: "rtl" }}>...</div>}>
       <MlmTreeInner />
     </Suspense>
   );

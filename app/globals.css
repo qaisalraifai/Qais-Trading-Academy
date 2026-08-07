@@ -2,150 +2,525 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   ORBIT — الطبقة الأساسية
+   ============================================================================ */
+
 @layer base {
   :root {
-    --gold-50: #fdfaf0;
-    --gold-100: #f7eab8;
-    --gold-200: #f2d57e;
-    --gold-300: #d4af37;
-    --gold-400: #c9a227;
-    --gold-500: #9c7a22;
-    --gold-600: #7a5f14;
+    /* ---------- الأرضية والأسطح ---------- */
+    --space-0: #060911;
+    --space-1: #080b14;
+    --space-2: #0c1220;
 
-    --ink: #0b0e11;
-    --surface-0: #0b0e11;
-    --surface-1: #181a20;
-    --surface-2: #22252b;
-    --surface-3: #2b2f36;
+    --module-1: #111726;
+    --module-2: #182033;
+    --module-3: #1e2941;
 
-    --line: #2a2e39;
+    /* ---------- الحواف ---------- */
+    --edge: #26314a;
+    --edge-soft: #1b2438;
+    --edge-lit: #3e5478;
+    --edge-bright: #55719e;
 
-    --text-primary: #eaecef;
-    --text-secondary: #9a9a9a;
-    --text-muted: #6e7177;
+    /* ---------- المعدن / التفاعل / القيمة ---------- */
+    --steel-100: #d6deee;
+    --steel-200: #a8b8d8;
+    --steel-300: #7d8dae;
 
-    --profit: #02c076;
-    --loss: #f6465d;
-    --warning: #f59e0b;
-    --info: #4fa8e0;
+    --ice-100: #a8cff5;
+    --ice-200: #5fa8e8;
+    --ice-300: #3c7fc0;
+    --ice-400: #24507d;
+    --ice-500: #152e48;
 
-    --glass-bg: rgba(255, 255, 255, 0.04);
-    --glass-border: rgba(42, 46, 57, 0.9);
-    --glass-blur: 14px;
+    --au-100: #e4cd95;
+    --au-200: #c9a860;
+    --au-300: #9c7f42;
+    --au-400: #5e4c27;
 
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 20px;
+    /* ---------- النص ---------- */
+    --text-primary: #edf1f8;
+    --text-secondary: #93a0b8;
+    --text-muted: #5d6880;
+    --text-faint: #3e4761;
 
-    --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.5);
-    --shadow-glow: 0 0 30px rgba(212, 175, 55, 0.35);
-    --transition-premium: 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    /* ---------- دلالي ---------- */
+    --profit: #1fbf87;
+    --loss: #e8495f;
+    --warning: #e0a44a;
+    --info: #5fa8e8;
+
+    /* ---------- هندسة ---------- */
+    --chamfer: 20px;
+    --chamfer-sm: 12px;
+    --chamfer-lg: 28px;
+
+    /* ---------- حركة ---------- */
+    --ease-orbit: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+    --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+    --dur-fast: 140ms;
+    --dur-base: 220ms;
+    --dur-slow: 380ms;
+
+    /* اتجاه الحركة — بينقلب مع اللغة عشان الانزلاقات تجي من الجهة الصح */
+    --orb-dir: 1;
+
+    /* الخط العربي أعلى بارتفاع س-حرف، فالإنجليزي بياخد تكبير بسيط */
+    --font-scale: 1;
+
+    /* ---------- aliases انتقالية ---------- */
+    --ink: var(--space-1);
+    --surface-0: var(--space-1);
+    --surface-1: var(--module-1);
+    --surface-2: var(--module-2);
+    --surface-3: var(--module-3);
+    --line: var(--edge);
+    --gold-100: var(--au-100);
+    --gold-200: #d8bc7c;
+    --gold-300: var(--au-200);
+    --gold-400: var(--au-200);
+    --gold-500: var(--au-300);
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+    --radius-xl: 8px;
+    --transition-premium: var(--dur-base) var(--ease-orbit);
+  }
+
+  html[dir="ltr"] {
+    --orb-dir: -1;
+    --font-scale: 1.04;
   }
 
   html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-size: calc(100% * var(--font-scale));
   }
 
-  /* i18n: font-sans بكل مكان بالتطبيق بيقرأ var(--font-arabic) — هون منعيد
-     تعريفها لتصير var(--font-en) وقت الإنجليزية، فما في داعي لمس أي كلاس
-     Tailwind موجود بأي صفحة. */
-  html.lang-en {
-    --font-arabic: var(--font-en);
-  }
-
+  /* الحقل العميق — تدرّج جوّي + طبقة نجوم خافتة جداً.
+     ثابتة بالخلفية عشان تعطي إحساس عمق وقت السكرول. */
   body {
-    @apply bg-ink text-text-primary font-sans;
+    @apply bg-space-1 font-sans text-text-primary;
     background-image:
-      radial-gradient(ellipse at top, #1a1608 0%, var(--surface-0) 60%),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+      radial-gradient(115% 70% at 78% -8%, rgba(30, 47, 84, 0.55) 0%, transparent 58%),
+      radial-gradient(90% 60% at 8% 4%, rgba(20, 32, 60, 0.4) 0%, transparent 55%),
+      radial-gradient(1px 1px at 12% 18%, rgba(196, 216, 238, 0.5), transparent),
+      radial-gradient(1px 1px at 34% 62%, rgba(196, 216, 238, 0.32), transparent),
+      radial-gradient(1.4px 1.4px at 58% 24%, rgba(196, 216, 238, 0.42), transparent),
+      radial-gradient(1px 1px at 76% 71%, rgba(196, 216, 238, 0.28), transparent),
+      radial-gradient(1px 1px at 89% 36%, rgba(196, 216, 238, 0.36), transparent),
+      radial-gradient(1px 1px at 22% 84%, rgba(196, 216, 238, 0.24), transparent),
+      radial-gradient(1.2px 1.2px at 66% 92%, rgba(196, 216, 238, 0.3), transparent);
     background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+
+  /* الأرقام دايماً جدولية عشان الأعمدة تتحاذى */
+  :is(td, th, .stat-value, .table-num, [data-num]) {
+    font-variant-numeric: tabular-nums;
   }
 
   *:focus-visible {
-    @apply outline-none ring-2 ring-gold-400/50 ring-offset-2 ring-offset-ink;
+    outline: none;
+    box-shadow:
+      0 0 0 1px var(--ice-400),
+      0 0 0 3px rgba(95, 168, 232, 0.22);
+    border-radius: 3px;
+  }
+
+  /* الحركات المستخدمة مباشرة بالـCSS — معرّفة هون عشان تنطبع دايماً،
+     مش بس لما تنستدعى عبر utility من Tailwind. */
+  @keyframes orbSpin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes orbRiseIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes orbSweep {
+    from {
+      transform: translateX(calc(-100% * var(--orb-dir, 1)));
+    }
+    to {
+      transform: translateX(calc(100% * var(--orb-dir, 1)));
+    }
   }
 
   ::selection {
-    @apply bg-gold-400/30 text-text-primary;
+    background: rgba(95, 168, 232, 0.28);
+    color: var(--text-primary);
   }
 
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
-
   ::-webkit-scrollbar-track {
     background: transparent;
   }
-
   ::-webkit-scrollbar-thumb {
-    @apply bg-gold-400/20 rounded-full;
+    background: var(--edge);
+    border-radius: 0;
   }
-
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gold-400/35;
+    background: var(--edge-lit);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--edge) transparent;
   }
 }
 
+/* ============================================================================
+   المكوّنات
+   ============================================================================ */
+
 @layer components {
-  .glass-card {
-    @apply rounded-lg border border-gold-400/15 bg-gradient-to-br from-white/[0.04] to-white/[0.01] shadow-card backdrop-blur-glass;
+  /* ------------------------------------------------------------------
+     الوحدة (Module) — البطاقة. الزاوية المشطوفة بالركن الأمامي هي البصمة.
+     البناء طبقتين: الخارجية = الحافة (1px)، الداخلية = السطح.
+     لأن clip-path بياكل الحدود، هاي الطريقة الوحيدة نحصل على حافة نظيفة.
+     ------------------------------------------------------------------ */
+  .mod {
+    --ch: var(--chamfer);
+    position: relative;
+    padding: 1px;
+    background: var(--edge);
+    clip-path: polygon(0 0, calc(100% - var(--ch)) 0, 100% var(--ch), 100% 100%, 0 100%);
+    transition:
+      background var(--dur-base) var(--ease-orbit),
+      transform var(--dur-base) var(--ease-orbit);
   }
 
-  .gold-gradient-text {
-    @apply bg-gradient-to-l from-gold-200 to-gold-400 bg-clip-text text-transparent;
+  .mod > .mod-in {
+    position: relative;
+    height: 100%;
+    background: var(--module-1);
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--ch) + 1.5px) 0,
+      100% calc(var(--ch) - 1.5px),
+      100% 100%,
+      0 100%
+    );
   }
 
-  .gold-gradient-bg {
-    @apply bg-gradient-to-bl from-gold-200 to-gold-500;
+  /* بالإنجليزي الركن الأمامي بيصير عاليسار */
+  [dir="ltr"] .mod {
+    clip-path: polygon(var(--ch) 0, 100% 0, 100% 100%, 0 100%, 0 var(--ch));
+  }
+  [dir="ltr"] .mod > .mod-in {
+    clip-path: polygon(
+      calc(var(--ch) - 1.5px) 0,
+      100% 0,
+      100% 100%,
+      0 100%,
+      0 calc(var(--ch) - 1.5px)
+    );
   }
 
+  /* المستوى الأول — حافة معدنية ملتقطة للضوء. للوحدات البطل فقط. */
+  .mod-lit {
+    background: linear-gradient(200deg, var(--edge-lit) 0%, var(--edge) 45%);
+  }
+  .mod-lit > .mod-in {
+    background:
+      linear-gradient(200deg, rgba(255, 255, 255, 0.045) 0%, transparent 42%),
+      var(--module-1);
+  }
+  [dir="ltr"] .mod-lit {
+    background: linear-gradient(160deg, var(--edge-lit) 0%, var(--edge) 45%);
+  }
+  [dir="ltr"] .mod-lit > .mod-in {
+    background:
+      linear-gradient(160deg, rgba(255, 255, 255, 0.045) 0%, transparent 42%),
+      var(--module-1);
+  }
+
+  /* حافة ذهبية — للحظات القيمة فقط (الاشتراك، الإنجاز، ترقية الرتبة).
+     ما تستخدمها كديكور، وإلا بيرجع الذهبي يفقد معناه. */
+  .mod-au {
+    background: linear-gradient(200deg, var(--au-300) 0%, var(--edge) 48%);
+  }
+  .mod-au > .mod-in {
+    background:
+      linear-gradient(200deg, rgba(201, 168, 96, 0.09) 0%, transparent 45%),
+      var(--module-1);
+  }
+  [dir="ltr"] .mod-au {
+    background: linear-gradient(160deg, var(--au-300) 0%, var(--edge) 48%);
+  }
+  [dir="ltr"] .mod-au > .mod-in {
+    background:
+      linear-gradient(160deg, rgba(201, 168, 96, 0.09) 0%, transparent 45%),
+      var(--module-1);
+  }
+
+  /* المستوى الثاني — إطار عادي بلا شطف. للوحدات الثانوية. */
+  .mod-flat {
+    @apply border border-edge bg-module-1;
+  }
+
+  /* المستوى الثالث — بلا إطار إطلاقاً. صفوف مفصولة بخط شعري. */
+  .mod-bare {
+    @apply bg-transparent;
+  }
+
+  .mod-hover {
+    cursor: pointer;
+  }
+  .mod-hover:hover {
+    background: linear-gradient(200deg, var(--edge-bright) 0%, var(--edge-lit) 55%);
+    transform: translateY(-2px);
+  }
+  [dir="ltr"] .mod-hover:hover {
+    background: linear-gradient(160deg, var(--edge-bright) 0%, var(--edge-lit) 55%);
+  }
+
+  /* أحجام الشطف */
+  .mod-ch-sm {
+    --ch: var(--chamfer-sm);
+  }
+  .mod-ch-lg {
+    --ch: var(--chamfer-lg);
+  }
+
+  /* ------------------------------------------------------------------
+     رأس الوحدة — تسمية + حلقة مدارية + قراءة على الطرف المقابل
+     ------------------------------------------------------------------ */
+  .mod-head {
+    @apply flex items-center justify-between gap-3 px-4 pt-3.5;
+  }
+
+  .mod-title {
+    @apply flex items-center gap-2 text-label font-medium uppercase text-text-secondary;
+  }
+
+  .mod-meta {
+    @apply font-mono text-micro text-text-muted;
+  }
+
+  .mod-body {
+    @apply px-4 pb-4 pt-3;
+  }
+
+  /* الحلقة المدارية — دائرة مفرّغة بمركز ذهبي. بتدور مرة وحدة بالهوفر. */
+  .orbit-ring {
+    @apply relative inline-block h-2.5 w-2.5 shrink-0 rounded-full border;
+    border-color: var(--steel-200);
+  }
+  .orbit-ring::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border-radius: 999px;
+    background: var(--au-200);
+  }
+  .group:hover .orbit-ring,
+  .mod-hover:hover .orbit-ring {
+    animation: orbSpin 600ms var(--ease-orbit);
+  }
+
+  /* ------------------------------------------------------------------
+     التنقّل
+     ------------------------------------------------------------------ */
   .nav-item {
-    @apply flex items-center gap-2.5 rounded-md px-3.5 py-2.5 text-sm transition-all duration-300 ease-premium;
+    @apply relative flex items-center gap-2.5 px-3 py-2.5 text-sm;
+    transition:
+      color var(--dur-base) var(--ease-orbit),
+      background var(--dur-base) var(--ease-orbit);
   }
 
   .nav-item-active {
-    @apply border border-gold-400/35 bg-gradient-to-l from-gold-400/15 to-gold-500/5 font-bold text-gold-200;
+    @apply font-semibold text-text-primary;
+    background: linear-gradient(to var(--nav-fade, left), rgba(95, 168, 232, 0.14), transparent 78%);
+    border-inline-start: 2px solid var(--ice-200);
   }
 
   .nav-item-inactive {
-    @apply border border-transparent font-normal text-text-muted hover:border-gold-400/10 hover:bg-white/[0.02] hover:text-text-secondary;
+    @apply font-normal text-text-muted;
+    border-inline-start: 2px solid transparent;
+  }
+  .nav-item-inactive:hover {
+    @apply text-text-secondary;
+    background: rgba(255, 255, 255, 0.025);
   }
 
+  [dir="ltr"] .nav-item-active {
+    --nav-fade: right;
+  }
+
+  /* ------------------------------------------------------------------
+     مساعدات
+     ------------------------------------------------------------------ */
   .page-container {
-    @apply flex-1 overflow-y-auto p-4 md:p-6 lg:p-8;
+    @apply flex-1 overflow-y-auto p-4 md:p-6;
   }
 
-  .stat-value {
-    @apply font-mono text-2xl font-bold tracking-tight md:text-3xl;
-  }
-
+  /* تسمية صغيرة متباعدة — الوحدة الأساسية للعناوين الثانوية */
   .eyebrow {
-    @apply font-mono text-[0.7rem] font-medium uppercase tracking-[0.15em] text-gold-400;
+    @apply font-sans text-micro font-medium uppercase text-text-muted;
   }
 
-  .icon-interactive {
-    @apply transition-transform duration-300 ease-premium;
-  }
-
-  .icon-interactive:hover {
-    transform: scale(1.12);
+  /* رقم بطل */
+  .stat-value {
+    @apply font-num text-3xl font-semibold;
+    font-variant-numeric: tabular-nums;
   }
 
   .table-num {
     @apply font-num tabular-nums;
   }
+
+  /* شرطة القياس — بترمز لحالة العنصر */
+  .tick {
+    @apply inline-block h-2.5 w-0.5 shrink-0;
+    background: var(--edge-lit);
+  }
+  .tick-au {
+    background: var(--au-200);
+  }
+  .tick-ice {
+    background: var(--ice-200);
+  }
+  .tick-profit {
+    background: var(--profit);
+  }
+  .tick-loss {
+    background: var(--loss);
+  }
+
+  /* الزجاج — للأشرطة العلوية والطبقات العائمة */
+  .glass {
+    background: rgba(17, 23, 38, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* alias انتقالي — الصفحات القديمة لسا بتستخدمه */
+  .glass-card {
+    @apply border border-edge bg-module-1 shadow-module;
+  }
+
+  .gold-gradient-text {
+    color: var(--au-200);
+  }
+
+  .gold-gradient-bg {
+    background: linear-gradient(200deg, var(--au-100), var(--au-300));
+  }
 }
+
+/* ============================================================================
+   الأدوات
+   ============================================================================ */
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
 
+  /* الأرقام والرموز اللاتينية جوّا نص عربي — بتضل LTR ومعزولة */
+  .ltr-num {
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* تدرّج بيبلّش من الحافة الأمامية وبيخفت باتجاه القراءة.
+     Tailwind ما عنده اتجاه تدرّج منطقي، فهاي بتسدّ الفجوة. */
+  .fade-from-start {
+    background: linear-gradient(
+      to var(--fade-dir, left),
+      rgba(95, 168, 232, 0.14),
+      transparent 78%
+    );
+  }
+  [dir="ltr"] .fade-from-start {
+    --fade-dir: right;
+  }
+
+  .fade-from-start-au {
+    background: linear-gradient(
+      to var(--fade-dir, left),
+      rgba(201, 168, 96, 0.12),
+      transparent 78%
+    );
+  }
+  [dir="ltr"] .fade-from-start-au {
+    --fade-dir: right;
+  }
+
+  /* الشطف كأداة مستقلة (لعناصر مش وحدات — أزرار كبيرة، صور، إلخ) */
+  .chamfer {
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--chamfer)) 0,
+      100% var(--chamfer),
+      100% 100%,
+      0 100%
+    );
+  }
+  [dir="ltr"] .chamfer {
+    clip-path: polygon(
+      var(--chamfer) 0,
+      100% 0,
+      100% 100%,
+      0 100%,
+      0 var(--chamfer)
+    );
+  }
+
   .animate-in {
-    animation: fadeIn 0.3s ease-out forwards;
+    animation: orbRiseIn 320ms var(--ease-orbit) forwards;
+  }
+
+  /* تدرّج الظهور — للقوائم والشبكات */
+  .stagger > * {
+    opacity: 0;
+    animation: orbRiseIn 320ms var(--ease-orbit) forwards;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(n + 7) { animation-delay: 240ms; }
+}
+
+/* ============================================================================
+   احترام تفضيل تقليل الحركة
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .stagger > * {
+    opacity: 1;
   }
 }

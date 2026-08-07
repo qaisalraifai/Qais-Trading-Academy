@@ -46,7 +46,7 @@ export default function BatchSelectClient({ course, batches }) {
     <div
       style={{
         minHeight: "100vh",
-        background: "radial-gradient(ellipse at top, #1A1408 0%, #0D0E10 60%)",
+        background: "radial-gradient(ellipse at top, #101828 0%, #0C1220 60%)",
         color: "#fff",
         fontFamily: "'Segoe UI', sans-serif",
         direction: "rtl",
@@ -58,13 +58,13 @@ export default function BatchSelectClient({ course, batches }) {
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.75rem" }}>
           <div style={{ fontSize: 36 }}>{course.icon}</div>
           <div>
-            <p style={{ color: "#E8B86D", fontSize: 11, letterSpacing: 2, margin: 0 }}>QAIS TRADING ACADEMY</p>
+            <p style={{ color: "#C9A860", fontSize: 11, letterSpacing: 2, margin: 0 }}>QAIS TRADING ACADEMY</p>
             <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800 }}>{course.title}</h1>
           </div>
         </div>
 
         <h2 style={{ fontSize: 17, fontWeight: 700, margin: "1.5rem 0 0.4rem" }}>اختاري دفعتك</h2>
-        <p style={{ color: "#888", fontSize: 13.5, marginBottom: "1.75rem", lineHeight: 1.7 }}>
+        <p style={{ color: "#5D6880", fontSize: 13.5, marginBottom: "1.75rem", lineHeight: 1.7 }}>
           هاي أول مرة تفتحي فيها هاي الدورة. اختاري الدفعة المناسبة إلك من القائمة تحت — بعد ما
           تأكدي، رح تنضمي إلها بشكل دائم وما رح تشوفي هاي الشاشة مرة ثانية لنفس الدورة. لو حبيتي
           تغيّري دفعتك بعدين، تواصلي مع الإدارة.
@@ -73,11 +73,11 @@ export default function BatchSelectClient({ course, batches }) {
         {allFull && (
           <div
             style={{
-              background: "#2a1a1a",
-              border: "1px solid #E5484D44",
-              borderRadius: 12,
+              background: "#182033",
+              border: "1px solid #E8495F44",
+              borderRadius: 0,
               padding: "1rem 1.25rem",
-              color: "#ef9a9a",
+              color: "#E8495F",
               fontSize: 13.5,
               marginBottom: "1.5rem",
             }}
@@ -100,9 +100,9 @@ export default function BatchSelectClient({ course, batches }) {
                 onClick={() => setSelectedId(batch.id)}
                 style={{
                   textAlign: "right",
-                  background: isSelected ? "linear-gradient(145deg, #1e1a08, #0D0E10)" : "linear-gradient(145deg, #111108, #0D0E10)",
-                  border: isSelected ? "1.5px solid #E8B86D" : "1px solid #E8B86D22",
-                  borderRadius: 14,
+                  background: isSelected ? "#111726" : "#111726",
+                  border: isSelected ? "1.5px solid #C9A860" : "1px solid #26314A",
+                  borderRadius: 0,
                   padding: "1.1rem 1.25rem",
                   cursor: disabled ? "not-allowed" : "pointer",
                   opacity: disabled ? 0.45 : 1,
@@ -118,14 +118,14 @@ export default function BatchSelectClient({ course, batches }) {
                   <div style={{ fontWeight: 700, fontSize: 15, color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                     {batch.name}
                     {disabled && (
-                      <span style={{ fontSize: 11, color: "#E5484D", background: "#2a1a1a", padding: "0.15rem 0.5rem", borderRadius: 4 }}>
+                      <span style={{ fontSize: 11, color: "#E8495F", background: "#182033", padding: "0.15rem 0.5rem", borderRadius: 3 }}>
                         مكتملة
                       </span>
                     )}
                   </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.9rem", marginTop: 6, fontSize: 12.5, color: "#888" }}>
-                    <span>📅 تبدأ: {formatDate(batch.start_date)}</span>
-                    {batch.end_date && <span>🏁 تنتهي: {formatDate(batch.end_date)}</span>}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.9rem", marginTop: 6, fontSize: 12.5, color: "#5D6880" }}>
+                    <span>تبدأ: {formatDate(batch.start_date)}</span>
+                    {batch.end_date && <span>تنتهي: {formatDate(batch.end_date)}</span>}
                     <span>
                       🪑{" "}
                       {batch.seats_total != null ? `${batch.seats_remaining} مقعد متبقي من ${batch.seats_total}` : "مقاعد غير محدودة"}
@@ -138,7 +138,7 @@ export default function BatchSelectClient({ course, batches }) {
                     width: 22,
                     height: 22,
                     borderRadius: "50%",
-                    border: isSelected ? "6px solid #E8B86D" : "2px solid #444",
+                    border: isSelected ? "6px solid #C9A860" : "2px solid #3E4761",
                     flexShrink: 0,
                     background: "transparent",
                   }}
@@ -148,17 +148,17 @@ export default function BatchSelectClient({ course, batches }) {
           })}
         </div>
 
-        {error && <p style={{ color: "#E5484D", fontSize: 13.5, marginBottom: "1rem" }}>{error}</p>}
+        {error && <p style={{ color: "#E8495F", fontSize: 13.5, marginBottom: "1rem" }}>{error}</p>}
 
         <button
           onClick={handleConfirm}
           disabled={!selectedId || saving}
           style={{
             width: "100%",
-            background: !selectedId || saving ? "#3a3220" : "linear-gradient(135deg, #E8B86D, #D4A05A)",
-            color: !selectedId || saving ? "#888" : "#000",
+            background: !selectedId || saving ? "#182033" : "linear-gradient(135deg, #C9A860, #9C7F42)",
+            color: !selectedId || saving ? "#5D6880" : "#000",
             border: "none",
-            borderRadius: 12,
+            borderRadius: 0,
             padding: "0.9rem",
             fontSize: 14.5,
             fontWeight: 800,

@@ -3,29 +3,28 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsLeft, ChevronsRight, Home, Menu } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Home, LogOut, Menu } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Avatar, IconButton } from "@/app/components/ui";
 import { createClient } from "@/lib/supabase-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { NAV_ITEMS, HOME_NAV, LOGOUT_ITEM } from "./navigation";
+import NavRail, { isPathActive } from "./NavRail";
 import MobileNav from "./MobileNav";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 /* ============================================================================
-   WorkspaceShell — الغلاف الخفيف لكل "Workspace" مستقلة (كل أداة ماعدا
-   /dashboard نفسها). بدل الـ Sidebar الكبيرة الثابتة، هون بس:
-     - Top Bar رفيع واحترافي (رجوع للداشبورد + اسم الأداة الحالية + البروفايل)
-     - Rail جانبي مصغّر (أيقونات فقط) قابل للتوسيع/الطي بالنقر
-   الهدف: الأداة نفسها تاخد كامل عرض وارتفاع الشاشة، وتحس إنها برنامج مستقل
-   (زي TradingView / Bloomberg Terminal) مش قسم داخل داشبورد.
+   WorkspaceShell — غلاف كل أداة مستقلة (كل صفحة ماعدا /dashboard).
+   شريط علوي رفيع + رِيل مداري قابل للتوسيع. الأداة بتاخد كل المساحة المتبقية.
    ============================================================================ */
 
-function isPathActive(pathname, href) {
-  if (!pathname || !href) return false;
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-export default function WorkspaceShell({ username, initials, isAdmin = false, daysLeft = null, children }) {
+export default function WorkspaceShell({
+  username,
+  initials,
+  isAdmin = false,
+  daysLeft = null,
+  children,
+}) {
   const pathname = usePathname();
   const { t, dir } = useLocale();
   const [collapsed, setCollapsed] = useState(true);
@@ -34,7 +33,12 @@ export default function WorkspaceShell({ username, initials, isAdmin = false, da
   const visibleNavItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
   const activeItem = visibleNavItems.find((item) => isPathActive(pathname, item.href));
   const title = activeItem ? t(activeItem.labelKey) : "Workspace";
-  const LogoutIcon = LOGOUT_ITEM.icon;
+
+  /* السهم لازم يأشّر على الجهة يلي رح تتحرّك عليها القائمة فعلياً — وهاي
+     بتنقلب مع اتجاه اللغة. كانت مثبّتة على ChevronsLeft فبتأشّر بالعكس
+     بالنسخة الإنجليزية. */
+  const isRtl = dir === "rtl";
+  const Chevron = collapsed === isRtl ? ChevronsLeft : ChevronsRight;
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -43,97 +47,73 @@ export default function WorkspaceShell({ username, initials, isAdmin = false, da
   };
 
   return (
-    <div className="flex h-screen flex-col bg-surface-0" dir={dir}>
-      {/* Top Bar رفيع */}
-      <header className="flex h-[52px] shrink-0 items-center justify-between gap-3 border-b border-gold-400/10 bg-gradient-to-b from-surface-3/95 to-surface-0/95 px-3 shadow-header backdrop-blur-glass">
+    <div className="flex h-screen flex-col bg-space-1" dir={dir}>
+      <header className="glass flex h-header shrink-0 items-center justify-between gap-3 border-b border-edge px-3">
         <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
+          <IconButton
+            icon={Menu}
+            label={t("header.openMenu")}
             onClick={() => setMobileNavOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 ease-premium hover:border-gold-400/40 hover:text-gold-200 lg:hidden"
-            aria-label={t("header.openMenu")}
-          >
-            <Menu className="h-4 w-4" />
-          </button>
+            size="sm"
+            className="lg:hidden"
+          />
 
-          <Link
-            href={HOME_NAV.href}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gold-400/15 bg-surface-1 text-gold-200 transition-all duration-300 ease-premium hover:scale-105 hover:border-gold-400/40"
-            aria-label={t(HOME_NAV.labelKey)}
-            title={t(HOME_NAV.labelKey)}
-          >
-            <Home className="h-4 w-4" />
+          <Link href={HOME_NAV.href} aria-label={t(HOME_NAV.labelKey)} title={t(HOME_NAV.labelKey)}>
+            <IconButton icon={Home} label={t(HOME_NAV.labelKey)} size="sm" />
           </Link>
 
-          <button
-            type="button"
+          <IconButton
+            icon={Chevron}
+            label={collapsed ? t("header.expandMenu") : t("header.collapseMenu")}
             onClick={() => setCollapsed((c) => !c)}
-            className="hidden h-8 w-8 items-center justify-center rounded-md border border-gold-400/15 bg-surface-1 text-text-muted transition-all duration-300 ease-premium hover:border-gold-400/40 hover:text-gold-200 lg:flex"
-            aria-label={collapsed ? t("header.expandMenu") : t("header.collapseMenu")}
-            title={collapsed ? t("header.expandMenu") : t("header.collapseMenu")}
-          >
-            {collapsed ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
-          </button>
+            size="sm"
+            className="hidden lg:inline-grid"
+          />
 
-          <span className="mx-1 h-4 w-px shrink-0 bg-gold-400/15" />
-          <span className="truncate text-sm font-bold text-text-primary">{title}</span>
+          <span className="mx-1 h-3.5 w-px shrink-0 bg-edge" aria-hidden />
+
+          <div className="min-w-0">
+            <p className="text-[9px] uppercase leading-tight tracking-[0.16em] text-text-muted">
+              Workspace
+            </p>
+            <h1 className="truncate text-caption font-semibold leading-tight text-text-primary">
+              {title}
+            </h1>
+          </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2.5">
+        <div className="flex shrink-0 items-center gap-2">
           <LanguageSwitcher />
-          <span className="hidden max-w-[8rem] truncate text-xs font-bold text-text-secondary sm:block">{username}</span>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-gold-400/40 bg-surface-1 text-xs font-bold text-gold-200">
-            {initials}
-          </div>
+          <span className="hidden max-w-[8rem] truncate text-caption text-text-secondary sm:block">
+            {username}
+          </span>
+          <Avatar initials={initials} size="sm" alt={username} />
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        {/* Rail جانبي مصغّر — أيقونات فقط، يتوسع بالنقر */}
-        <aside
-          className={cn(
-            "hidden shrink-0 flex-col overflow-y-auto border-l border-gold-400/10 bg-surface-1/60 py-3 transition-all duration-300 ease-premium lg:flex",
-            collapsed ? "w-14 items-center px-1.5" : "w-52 items-stretch px-2"
-          )}
-        >
-          <nav className="flex flex-1 flex-col gap-1">
-            {visibleNavItems.map((item) => {
-              const Icon = item.icon;
-              const active = isPathActive(pathname, item.href);
-              const label = t(item.labelKey);
-              return (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  title={label}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-md p-2.5 text-text-muted transition-all duration-300 ease-premium hover:bg-white/5 hover:text-gold-200",
-                    active && "border border-gold-400/30 bg-gold-400/10 font-bold text-gold-200",
-                    collapsed && "justify-center"
-                  )}
-                >
-                  <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
-                  {!collapsed && <span className="truncate text-xs">{label}</span>}
-                </Link>
-              );
-            })}
-          </nav>
+        <NavRail
+          items={visibleNavItems}
+          pathname={pathname}
+          collapsed={collapsed}
+          t={t}
+          className="hidden lg:flex"
+          footer={
+            <button
+              type="button"
+              onClick={handleLogout}
+              title={t(LOGOUT_ITEM.labelKey)}
+              className={cn(
+                "flex w-full items-center gap-2.5 py-2.5 text-caption text-text-muted transition-colors duration-base ease-orbit hover:text-loss",
+                collapsed ? "justify-center px-0" : "px-2.5"
+              )}
+            >
+              <LogOut className="h-[18px] w-[18px] shrink-0" aria-hidden />
+              {!collapsed && <span className="truncate">{t(LOGOUT_ITEM.labelKey)}</span>}
+            </button>
+          }
+        />
 
-          <button
-            type="button"
-            onClick={handleLogout}
-            title={t(LOGOUT_ITEM.labelKey)}
-            className={cn(
-              "mt-2 flex items-center gap-2.5 rounded-md p-2.5 text-text-muted transition-all duration-300 ease-premium hover:text-loss",
-              collapsed && "justify-center"
-            )}
-          >
-            <LogoutIcon className="h-[18px] w-[18px] shrink-0" aria-hidden />
-            {!collapsed && <span className="truncate text-xs">{t(LOGOUT_ITEM.labelKey)}</span>}
-          </button>
-        </aside>
-
-        {/* الأداة نفسها — كامل العرض والارتفاع المتبقي، بدون أي حشوة Dashboard */}
         <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
       </div>
 

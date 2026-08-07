@@ -11,17 +11,17 @@ import {
   computeTradeInsights,
 } from "@/lib/trader-dna";
 
-const GOLD = "#E8B86D";
-const GOLD_LIGHT = "#F0C588";
-const GOLD_DARK = "#D4A05A";
-const GREEN = "#3DBB6E";
-const RED = "#E5484D";
-const BLUE = "#3D8BFD";
+const GOLD = "#C9A860";
+const GOLD_LIGHT = "#E4CD95";
+const GOLD_DARK = "#9C7F42";
+const GREEN = "#1FBF87";
+const RED = "#E8495F";
+const BLUE = "#5FA8E8";
 
 const cardStyle = {
-  background: "linear-gradient(145deg, #141517, #0D0E10)",
-  border: `1px solid ${GOLD}26`,
-  borderRadius: 18,
+  background: "#111726",
+  border: `1px solid #26314A`,
+  borderRadius: 0,
   boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
 };
 
@@ -52,7 +52,7 @@ function ScoreRing({ label, value, color }) {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
       <div style={{ position: "relative", width: size, height: size }}>
         <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-          <circle cx={size / 2} cy={size / 2} r={r} stroke="#2b2e35" strokeWidth={stroke} fill="none" />
+          <circle cx={size / 2} cy={size / 2} r={r} stroke="#182033" strokeWidth={stroke} fill="none" />
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -81,7 +81,7 @@ function ScoreRing({ label, value, color }) {
           {value}%
         </div>
       </div>
-      <span style={{ fontSize: 12.5, color: "#9a9a9a", fontWeight: 700 }}>{label}</span>
+      <span style={{ fontSize: 12.5, color: "#93A0B8", fontWeight: 700 }}>{label}</span>
     </div>
   );
 }
@@ -111,19 +111,19 @@ function StatBlock({ icon, label, value, sub }) {
   return (
     <div
       style={{
-        background: "#141517",
-        border: `1px solid ${GOLD}1f`,
-        borderRadius: 14,
+        background: "#111726",
+        border: `1px solid #26314A`,
+        borderRadius: 0,
         padding: "1rem 1.1rem",
         flex: "1 1 160px",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#9a9a9a", fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#93A0B8", fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
         <span>{icon}</span>
         <span>{label}</span>
       </div>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11.5, color: "#666", marginTop: 2 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11.5, color: "#5D6880", marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }
@@ -149,11 +149,11 @@ function QuizFlow({ onFinish, onCancel }) {
   return (
     <SectionCard title={t("traderDna.quizTitle")} icon="🧬">
       <div style={{ marginBottom: "1.2rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#9a9a9a", marginBottom: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#93A0B8", marginBottom: 6 }}>
           <span>{t("traderDna.questionOf", { current: step + 1, total: DNA_QUESTIONS.length })}</span>
           <span>{progress}%</span>
         </div>
-        <div style={{ height: 6, borderRadius: 6, background: "#2b2e35", overflow: "hidden" }}>
+        <div style={{ height: 6, borderRadius: 3, background: "#182033", overflow: "hidden" }}>
           <div
             style={{
               height: "100%",
@@ -177,10 +177,10 @@ function QuizFlow({ onFinish, onCancel }) {
               style={{
                 textAlign: "right",
                 padding: "0.85rem 1rem",
-                borderRadius: 12,
+                borderRadius: 0,
                 border: `1px solid ${selected ? GOLD : GOLD + "26"}`,
-                background: selected ? `${GOLD}1f` : "#141517",
-                color: "#e5e5e5",
+                background: selected ? `#26314A` : "#111726",
+                color: "#EDF1F8",
                 fontSize: 14,
                 cursor: "pointer",
                 transition: "all 0.15s ease",
@@ -197,9 +197,9 @@ function QuizFlow({ onFinish, onCancel }) {
           onClick={() => (step === 0 ? onCancel() : setStep((s) => s - 1))}
           style={{
             background: "none",
-            border: `1px solid #444`,
-            color: "#9a9a9a",
-            borderRadius: 10,
+            border: `1px solid #3E4761`,
+            color: "#93A0B8",
+            borderRadius: 3,
             padding: "0.55rem 1.1rem",
             fontSize: 13,
             cursor: "pointer",
@@ -222,7 +222,7 @@ function DnaCard({ profile, insights, onRetake }) {
         ...cardStyle,
         padding: "1.6rem 1.8rem",
         marginBottom: "1.2rem",
-        border: `1px solid ${GOLD}55`,
+        border: `1px solid #3E5478`,
         position: "relative",
         overflow: "hidden",
       }}
@@ -235,7 +235,7 @@ function DnaCard({ profile, insights, onRetake }) {
           width: 200,
           height: 200,
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${GOLD}22, transparent 70%)`,
+          background: `radial-gradient(circle, #26314A, transparent 70%)`,
         }}
       />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.2rem", position: "relative" }}>
@@ -243,7 +243,7 @@ function DnaCard({ profile, insights, onRetake }) {
           <span style={{ fontSize: 26 }}>🧬</span>
           <div>
             <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>Trader DNA</div>
-            <div style={{ fontSize: 12.5, color: "#9a9a9a" }}>
+            <div style={{ fontSize: 12.5, color: "#93A0B8" }}>
               {typeInfo.icon} {typeInfo.label}
             </div>
           </div>
@@ -252,9 +252,9 @@ function DnaCard({ profile, insights, onRetake }) {
           onClick={onRetake}
           style={{
             background: "none",
-            border: `1px solid ${GOLD}55`,
+            border: `1px solid #3E5478`,
             color: GOLD,
-            borderRadius: 10,
+            borderRadius: 3,
             padding: "0.5rem 1rem",
             fontSize: 12.5,
             fontWeight: 700,
@@ -265,7 +265,7 @@ function DnaCard({ profile, insights, onRetake }) {
         </button>
       </div>
 
-      <p style={{ fontSize: 13, color: "#9a9a9a", lineHeight: 1.7, marginBottom: "1.3rem" }}>{typeInfo.desc}</p>
+      <p style={{ fontSize: 13, color: "#93A0B8", lineHeight: 1.7, marginBottom: "1.3rem" }}>{typeInfo.desc}</p>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: "1.6rem", marginBottom: "1.4rem" }}>
         <ScoreRing label={t("traderDna.scorePsychology")} value={profile.psychology_score} color={GOLD} />
@@ -370,7 +370,7 @@ export default function TraderDnaView({ userId: userIdProp }) {
   }, [profile?.answers]);
 
   if (loading) {
-    return <div style={{ color: "#666", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>{t("traderDna.analyzing")}</div>;
+    return <div style={{ color: "#5D6880", fontSize: 14, padding: "3rem 0", textAlign: "center" }}>{t("traderDna.analyzing")}</div>;
   }
 
   if (showQuiz || !profile) {
@@ -381,7 +381,7 @@ export default function TraderDnaView({ userId: userIdProp }) {
             <div style={{ color: RED, fontSize: 13, marginBottom: "0.8rem" }}>{error}</div>
           )}
           <QuizFlow onFinish={handleFinishQuiz} onCancel={() => setShowQuiz(false)} />
-          {saving && <div style={{ color: "#9a9a9a", fontSize: 13, marginTop: 8 }}>{t("traderDna.savingResult")}</div>}
+          {saving && <div style={{ color: "#93A0B8", fontSize: 13, marginTop: 8 }}>{t("traderDna.savingResult")}</div>}
         </>
       );
     }
@@ -389,16 +389,16 @@ export default function TraderDnaView({ userId: userIdProp }) {
       <div style={{ ...cardStyle, padding: "3rem 2rem", textAlign: "center" }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🧬</div>
         <h3 style={{ fontSize: 19, fontWeight: 800, color: "#fff", marginBottom: 8 }}>{t("traderDna.introTitle")}</h3>
-        <p style={{ fontSize: 13.5, color: "#9a9a9a", maxWidth: 460, margin: "0 auto 1.6rem", lineHeight: 1.8 }}>
+        <p style={{ fontSize: 13.5, color: "#93A0B8", maxWidth: 460, margin: "0 auto 1.6rem", lineHeight: 1.8 }}>
           {t("traderDna.introDesc", { count: DNA_QUESTIONS.length })}
         </p>
         <button
           onClick={() => setShowQuiz(true)}
           style={{
             background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD_DARK})`,
-            color: "#111",
+            color: "#111726",
             border: "none",
-            borderRadius: 12,
+            borderRadius: 0,
             padding: "0.85rem 2rem",
             fontSize: 14.5,
             fontWeight: 800,
@@ -420,29 +420,29 @@ export default function TraderDnaView({ userId: userIdProp }) {
           {profile.strengths?.length ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {profile.strengths.map((s, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13.5, color: "#d5d5d5" }}>
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13.5, color: "#EDF1F8" }}>
                   <span style={{ color: GREEN }}>✓</span>
                   <span>{s}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ color: "#666", fontSize: 13 }}>{t("traderDna.strengthsEmpty")}</div>
+            <div style={{ color: "#5D6880", fontSize: 13 }}>{t("traderDna.strengthsEmpty")}</div>
           )}
         </SectionCard>
 
-        <SectionCard title={t("traderDna.weaknessesTitle")} icon="⚠️">
+        <SectionCard title={t("traderDna.weaknessesTitle")} icon="️">
           {profile.weaknesses?.length ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {profile.weaknesses.map((w, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13.5, color: "#d5d5d5" }}>
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13.5, color: "#EDF1F8" }}>
                   <span style={{ color: RED }}>✕</span>
                   <span>{w}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ color: "#666", fontSize: 13 }}>{t("traderDna.weaknessesEmpty")}</div>
+            <div style={{ color: "#5D6880", fontSize: 13 }}>{t("traderDna.weaknessesEmpty")}</div>
           )}
         </SectionCard>
       </div>
@@ -458,10 +458,10 @@ export default function TraderDnaView({ userId: userIdProp }) {
                   gap: 10,
                   alignItems: "flex-start",
                   fontSize: 13.5,
-                  color: "#d5d5d5",
-                  background: "#141517",
-                  border: `1px solid ${GOLD}1f`,
-                  borderRadius: 10,
+                  color: "#EDF1F8",
+                  background: "#111726",
+                  border: `1px solid #26314A`,
+                  borderRadius: 3,
                   padding: "0.75rem 0.9rem",
                 }}
               >
@@ -494,15 +494,15 @@ export default function TraderDnaView({ userId: userIdProp }) {
             )}
           </div>
         ) : (
-          <div style={{ color: "#9a9a9a", fontSize: 13.5, lineHeight: 1.8 }}>
+          <div style={{ color: "#93A0B8", fontSize: 13.5, lineHeight: 1.8 }}>
             {t("traderDna.notEnoughDataBefore")}{" "}
             <b style={{ color: GOLD }}>"{t("traderDna.tradesTabName")}"</b> {t("traderDna.notEnoughDataAfter")}
             <div style={{ marginTop: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#666", marginBottom: 4 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#5D6880", marginBottom: 4 }}>
                 <span>{t("traderDna.dnaMaturityLabel")}</span>
                 <span>{insights?.dnaMaturity ?? 0}%</span>
               </div>
-              <div style={{ height: 6, borderRadius: 6, background: "#2b2e35", overflow: "hidden" }}>
+              <div style={{ height: 6, borderRadius: 3, background: "#182033", overflow: "hidden" }}>
                 <div
                   style={{
                     height: "100%",

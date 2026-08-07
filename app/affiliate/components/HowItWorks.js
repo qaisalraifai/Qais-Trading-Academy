@@ -45,7 +45,7 @@ export default function HowItWorks({ settings }) {
       <div style={{ ...card }} className="qta-animate-in">
         <p style={sectionEyebrow}>خطوة بخطوة</p>
         <h2 style={sectionTitle}>كيف يعمل برنامج العمولة؟</h2>
-        <p style={{ color: "#9A9A9A", fontSize: "0.82rem", marginBottom: "1.3rem" }}>
+        <p style={{ color: "#93A0B8", fontSize: "0.82rem", marginBottom: "1.3rem" }}>
           افهم البرنامج كامل بأقل من دقيقة 👇
         </p>
 
@@ -57,7 +57,7 @@ export default function HowItWorks({ settings }) {
                 position: "relative",
                 background: "rgba(255,255,255,0.02)",
                 border: `1px solid ${BORDER}`,
-                borderRadius: 14,
+                borderRadius: 0,
                 padding: "1.1rem 1rem 1rem",
               }}
             >
@@ -68,7 +68,7 @@ export default function HowItWorks({ settings }) {
                     height: 26,
                     borderRadius: "50%",
                     background: "rgba(212,175,55,0.1)",
-                    border: `1px solid ${GOLD}55`,
+                    border: `1px solid #3E5478`,
                     color: GOLD,
                     fontSize: "0.7rem",
                     fontWeight: 800,
@@ -82,8 +82,8 @@ export default function HowItWorks({ settings }) {
                 </span>
                 <span style={{ fontSize: "1.15rem" }}>{st.icon}</span>
               </div>
-              <p style={{ fontWeight: 700, fontSize: "0.86rem", color: "#EAECEF", marginBottom: 5 }}>{st.title}</p>
-              <p style={{ color: "#9A9A9A", fontSize: "0.76rem", lineHeight: 1.7 }}>{st.desc}</p>
+              <p style={{ fontWeight: 700, fontSize: "0.86rem", color: "#EDF1F8", marginBottom: 5 }}>{st.title}</p>
+              <p style={{ color: "#93A0B8", fontSize: "0.76rem", lineHeight: 1.7 }}>{st.desc}</p>
             </div>
           ))}
         </div>

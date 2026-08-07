@@ -7,9 +7,9 @@ import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
 import WatchlistPanel from "./WatchlistPanel";
 
-const GOLD = "#E8B86D";
-const GOLD_LIGHT = "#F0C588";
-const GREEN = "#3DBB6E";
+const GOLD = "#C9A860";
+const GOLD_LIGHT = "#E4CD95";
+const GREEN = "#1FBF87";
 
 /* بحث ثنائي (binary search) O(log n) لإيجاد index شمعة بوقت مطابق تماماً
    (الشموع مرتبة زمنياً دايماً). بنستخدمها بدل list.findIndex(x => x.time
@@ -29,7 +29,7 @@ function findCandleIndexByTime(candles, time) {
   }
   return -1;
 }
-const RED = "#E5484D";
+const RED = "#E8495F";
 /* ===== أدوات الرسم يلي فعلياً بينفع ينضافلها نص/كابشن (خط واحد فوق منتصف
    الأدوات الخطية، أو نص متعدد الأسطر جوا صندوق محيط للأشكال يلي إلها مساحة) -
    بالظبط متل "Add text" بتريدنغ فيو على أي أداة رسم/توضيح تقريباً.
@@ -392,15 +392,19 @@ function timeToDrawingLogicalForCandles(time, candles, stepSecondsOverride) {
 // (فيها مثلاً priceLineVisible: true من قبل) يرجع ياخذ القيم الافتراضية
 // الجديدة تلقائياً بدل ما يضل عالقيم القديمة المخزّنة عنده لحد ما يضغط
 // "الافتراضي" يدوياً. هاي أضمن طريقة لأي تغيير مستقبلي بالقيم الافتراضية.
-const CHART_SETTINGS_KEY = "qta_chart_settings_v3";
+/* v4 = بالِت ORBIT. رفعنا رقم النسخة عشان الثيم الجديد يطبّق فعلياً بدل ما
+   تغلبه الإعدادات المحفوظة بالمتصفح من النسخة القديمة. */
+const CHART_SETTINGS_KEY = "qta_chart_settings_v4";
 const DEFAULT_CHART_SETTINGS = {
-  bg: "#0D0E10",
+  bg: "#0C1220",
   up: GREEN,
   down: RED,
   gridVisible: true,
-  gridColor: GOLD,
-  crosshairColor: "#758696",
-  textColor: "#d1d4dc",
+  /* الشبكة فولاذية باردة، مش ذهبية — الذهبي محصور بالقيمة المالية.
+     بتنرسم بشفافية 5%، فلازم لون الأساس يكون فاتح لحتى تبيّن أصلاً. */
+  gridColor: "#7D8DAE",
+  crosshairColor: "#7D8DAE",
+  textColor: "#93A0B8",
   watermarkText: "",
   scaleMarginTop: 8,
   scaleMarginBottom: 8,
@@ -881,9 +885,9 @@ function defaultStyleFor(type) {
     case "extendedline":
       return { color: GOLD_LIGHT, width: 1.5, extend: "both" };
     case "infoline":
-      return { color: "#3D8BFD", width: 1.5, extend: "none" };
+      return { color: "#5FA8E8", width: 1.5, extend: "none" };
     case "angle":
-      return { color: "#e0a63c", width: 1.5 };
+      return { color: "#E0A44A", width: 1.5 };
     case "crossline":
       return { color: GOLD_LIGHT, width: 1, dash: "dashed" };
     case "parallelchannel":
@@ -900,11 +904,11 @@ function defaultStyleFor(type) {
     case "arrow":
       return { color: GOLD_LIGHT, width: 2 };
     case "wave":
-      return { color: "#EAECEF", width: 1.5 };
+      return { color: "#EDF1F8", width: 1.5 };
     case "rectangle":
       return {
-        color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.15, midline: false, midlineColor: "#3DBB6E", midlineDash: true,
-        textColor: "#e5e5e5", textSize: 13, textBold: false, textItalic: false, textHAlign: "center", textVAlign: "middle",
+        color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.15, midline: false, midlineColor: "#1FBF87", midlineDash: true,
+        textColor: "#EDF1F8", textSize: 13, textBold: false, textItalic: false, textHAlign: "center", textVAlign: "middle",
       };
     case "circle":
       return { color: GOLD_LIGHT, width: 1.5, fill: true, fillColor: GOLD, fillAlpha: 0.18 };
@@ -912,16 +916,16 @@ function defaultStyleFor(type) {
       return {
         color: GOLD_LIGHT, extend: "none",
         levels: [
-          { value: 0, color: "#787b86", enabled: true },
+          { value: 0, color: "#5D6880", enabled: true },
           { value: 0.236, color: "#f23645", enabled: true },
           { value: 0.382, color: "#ff9800", enabled: true },
-          { value: 0.5, color: "#3DBB6E", enabled: true },
-          { value: 0.618, color: "#00bcd4", enabled: true },
-          { value: 0.786, color: "#2196f3", enabled: true },
-          { value: 1, color: "#787b86", enabled: true },
+          { value: 0.5, color: "#1FBF87", enabled: true },
+          { value: 0.618, color: "#5FA8E8", enabled: true },
+          { value: 0.786, color: "#5FA8E8", enabled: true },
+          { value: 1, color: "#5D6880", enabled: true },
           { value: 1.272, color: "#9c27b0", enabled: false },
           { value: 1.414, color: "#9c27b0", enabled: false },
-          { value: 1.618, color: "#e91e63", enabled: false },
+          { value: 1.618, color: "#E8495F", enabled: false },
           { value: 2, color: "#795548", enabled: false },
           { value: 2.618, color: "#607d8b", enabled: false },
         ],
@@ -930,16 +934,16 @@ function defaultStyleFor(type) {
       return {
         color: GOLD_LIGHT, width: 1.3, extend: "right",
         levels: [
-          { value: 0, color: "#787b86", enabled: true },
+          { value: 0, color: "#5D6880", enabled: true },
           { value: 0.236, color: "#f23645", enabled: false },
           { value: 0.382, color: "#ff9800", enabled: true },
-          { value: 0.5, color: "#3DBB6E", enabled: true },
-          { value: 0.618, color: "#00bcd4", enabled: true },
-          { value: 0.786, color: "#2196f3", enabled: false },
-          { value: 1, color: "#787b86", enabled: true },
+          { value: 0.5, color: "#1FBF87", enabled: true },
+          { value: 0.618, color: "#5FA8E8", enabled: true },
+          { value: 0.786, color: "#5FA8E8", enabled: false },
+          { value: 1, color: "#5D6880", enabled: true },
           { value: 1.272, color: "#9c27b0", enabled: true },
           { value: 1.414, color: "#9c27b0", enabled: false },
-          { value: 1.618, color: "#e91e63", enabled: true },
+          { value: 1.618, color: "#E8495F", enabled: true },
           { value: 2, color: "#795548", enabled: false },
           { value: 2.618, color: "#607d8b", enabled: false },
           { value: 3.618, color: "#607d8b", enabled: false },
@@ -950,25 +954,25 @@ function defaultStyleFor(type) {
       return {
         color: GOLD_LIGHT, width: 1.3,
         levels: [
-          { value: 0, color: "#787b86", enabled: true },
+          { value: 0, color: "#5D6880", enabled: true },
           { value: 0.236, color: "#f23645", enabled: true },
           { value: 0.382, color: "#ff9800", enabled: true },
-          { value: 0.5, color: "#3DBB6E", enabled: true },
-          { value: 0.618, color: "#00bcd4", enabled: true },
-          { value: 0.786, color: "#2196f3", enabled: true },
-          { value: 1, color: "#787b86", enabled: true },
+          { value: 0.5, color: "#1FBF87", enabled: true },
+          { value: 0.618, color: "#5FA8E8", enabled: true },
+          { value: 0.786, color: "#5FA8E8", enabled: true },
+          { value: 1, color: "#5D6880", enabled: true },
         ],
       };
     case "fibtimezone":
-      return { color: "#3D8BFD", width: 1, dash: "dashed" };
+      return { color: "#5FA8E8", width: 1, dash: "dashed" };
     case "gannfan":
-      return { color: "#e0a63c", width: 1.2 };
+      return { color: "#E0A44A", width: 1.2 };
     case "pitchfork":
-      return { color: "#3D8BFD", width: 1.5 };
+      return { color: "#5FA8E8", width: 1.5 };
     case "pricerange":
-      return { color: "#3D8BFD", width: 1.5, fill: true, fillColor: "#3D8BFD", fillAlpha: 0.2 };
+      return { color: "#5FA8E8", width: 1.5, fill: true, fillColor: "#5FA8E8", fillAlpha: 0.2 };
     case "daterange":
-      return { color: "#3D8BFD", width: 1.5, fill: true, fillColor: "#3D8BFD", fillAlpha: 0.2 };
+      return { color: "#5FA8E8", width: 1.5, fill: true, fillColor: "#5FA8E8", fillAlpha: 0.2 };
     case "position_long":
     case "position_short":
       return { targetColor: GREEN, stopColor: RED, alpha: 0.3 };
@@ -1006,7 +1010,7 @@ function drawShapeText(ctx, text, x, y, w, h, style = {}) {
   const italic = style.textItalic ? "italic" : "normal";
   ctx.save();
   ctx.font = `${italic} ${weight} ${size}px sans-serif`;
-  ctx.fillStyle = style.textColor || "#e5e5e5";
+  ctx.fillStyle = style.textColor || "#EDF1F8";
   const hAlign = style.textHAlign || "center";
   const vAlign = style.textVAlign || "middle";
   const pad = 6;
@@ -1506,7 +1510,7 @@ export default function ReplayClient({ userId }) {
   useEffect(() => {
     if (!chartRef.current || !seriesRef.current) return;
     chartRef.current.applyOptions({
-      layout: { background: { color: chartSettings.bg }, textColor: chartSettings.textColor || "#d1d4dc" },
+      layout: { background: { color: chartSettings.bg }, textColor: chartSettings.textColor || "#93A0B8" },
       grid: {
         vertLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
         horzLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
@@ -1540,7 +1544,7 @@ export default function ReplayClient({ userId }) {
     });
     if (compareChartRef.current) {
       compareChartRef.current.applyOptions({
-        layout: { background: { color: chartSettings.bg }, textColor: chartSettings.textColor || "#d1d4dc" },
+        layout: { background: { color: chartSettings.bg }, textColor: chartSettings.textColor || "#93A0B8" },
         grid: {
           vertLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
           horzLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
@@ -1928,7 +1932,7 @@ export default function ReplayClient({ userId }) {
             if (ctx.roundRect) ctx.roundRect(gx - 4, gripY - 14, 8, 28, 4);
             else ctx.rect(gx - 4, gripY - 14, 8, 28);
             ctx.fill();
-            ctx.strokeStyle = "#0f1117";
+            ctx.strokeStyle = "#0C1220";
             ctx.lineWidth = 1;
             ctx.stroke();
           });
@@ -2003,7 +2007,7 @@ export default function ReplayClient({ userId }) {
         let toIdx = firstIndexAtOrAfter(vc, applied.toTime);
         if (toIdx === -1) toIdx = vc.length - 1;
         if (fromIdx !== -1) {
-          paintRegion(fromIdx, toIdx, { dim: false, fill: false, color: "#5b8dee", lineWidth: 1, dash: [3, 5] });
+          paintRegion(fromIdx, toIdx, { dim: false, fill: false, color: "#5FA8E8", lineWidth: 1, dash: [3, 5] });
         }
       }
     }
@@ -2083,7 +2087,7 @@ export default function ReplayClient({ userId }) {
         setLineStyle({ ...style, dash: style.dash || "dashed" });
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
         ctx.setLineDash([]);
-        const roleLabel = d.tradeRole === "tp" ? "🎯 هدف (TP): " : d.tradeRole === "sl" ? "⛔ إيقاف (SL): " : d.tradeRole === "entry" ? "▶ دخول: " : "";
+        const roleLabel = d.tradeRole === "tp" ? "هدف (TP): " : d.tradeRole === "sl" ? "إيقاف (SL): " : d.tradeRole === "entry" ? "▶ دخول: " : "";
         /* السعر بيظهر بصندوق واضح ملاصق لمحور السعر يمين الشارت (مش على
            الحافة الشمال يلي بتضيع لما تكبري/تزحفي بالشارت) */
         ctx.font = "bold 11px sans-serif";
@@ -2093,7 +2097,7 @@ export default function ReplayClient({ userId }) {
         const boxX = Math.max(4, w - boxW - 6);
         ctx.fillStyle = style.color || GOLD_LIGHT;
         ctx.fillRect(boxX, y - 10, boxW, 20);
-        ctx.fillStyle = "#0D0E10";
+        ctx.fillStyle = "#0C1220";
         ctx.fillText(label, boxX + 6, y + 4);
 
       } else if (d.type === "hray") {
@@ -2250,13 +2254,13 @@ export default function ReplayClient({ userId }) {
         if (style.midline) {
           const midY = y + rh / 2;
           const midPrice = (d.p1.price + d.p2.price) / 2;
-          ctx.strokeStyle = style.midlineColor || "#3DBB6E";
+          ctx.strokeStyle = style.midlineColor || "#1FBF87";
           ctx.lineWidth = 1.3;
           ctx.setLineDash(style.midlineDash === false ? [] : [4, 3]);
           ctx.beginPath(); ctx.moveTo(x, midY); ctx.lineTo(x + rw, midY); ctx.stroke();
           ctx.setLineDash([]);
           ctx.font = "11px sans-serif";
-          ctx.fillStyle = style.midlineColor || "#3DBB6E";
+          ctx.fillStyle = style.midlineColor || "#1FBF87";
           ctx.fillText(`50% - ${midPrice.toFixed(2)}`, x + rw + 4, midY - 3);
         }
         if (d.text) drawShapeText(ctx, d.text, x, y, rw, rh, style);
@@ -2322,11 +2326,11 @@ export default function ReplayClient({ userId }) {
           if (xy3.x == null) continue;
           const diff = p2.price - p1.price; // مقدار حركة الموجة الأساسية A→B
           const fallbackLevels = [
-            { value: 0, color: "#787b86", enabled: true }, { value: 0.236, color: "#f23645", enabled: true },
-            { value: 0.382, color: "#ff9800", enabled: true }, { value: 0.5, color: "#3DBB6E", enabled: true },
-            { value: 0.618, color: "#00bcd4", enabled: true }, { value: 0.786, color: "#2196f3", enabled: true },
-            { value: 1, color: "#787b86", enabled: true }, { value: 1.272, color: "#9c27b0", enabled: true },
-            { value: 1.618, color: "#e91e63", enabled: true },
+            { value: 0, color: "#5D6880", enabled: true }, { value: 0.236, color: "#f23645", enabled: true },
+            { value: 0.382, color: "#ff9800", enabled: true }, { value: 0.5, color: "#1FBF87", enabled: true },
+            { value: 0.618, color: "#5FA8E8", enabled: true }, { value: 0.786, color: "#5FA8E8", enabled: true },
+            { value: 1, color: "#5D6880", enabled: true }, { value: 1.272, color: "#9c27b0", enabled: true },
+            { value: 1.618, color: "#E8495F", enabled: true },
           ];
           const levels = (style.levels && style.levels.length ? style.levels : fallbackLevels).filter((l) => l.enabled !== false);
           const extendRight = (style.extend || "right") !== "none";
@@ -2490,7 +2494,7 @@ export default function ReplayClient({ userId }) {
         const pct = (priceDiff / d.p1.price) * 100;
         const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
         const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
-        const col = style.color || "#3D8BFD";
+        const col = style.color || "#5FA8E8";
         if (style.fill !== false) { ctx.fillStyle = hexToRgba(style.fillColor || col, style.fillAlpha ?? 0.2); ctx.fillRect(x, y, rw, rh); }
         ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, rw, rh);
         ctx.fillStyle = col; ctx.font = "12px sans-serif";
@@ -2506,7 +2510,7 @@ export default function ReplayClient({ userId }) {
         const hrs = totalH % 24;
         const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
         const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
-        const col = style.color || "#3D8BFD";
+        const col = style.color || "#5FA8E8";
         if (style.fill !== false) { ctx.fillStyle = hexToRgba(style.fillColor || col, style.fillAlpha ?? 0.2); ctx.fillRect(x, y, rw, rh); }
         ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, rw, rh);
         ctx.fillStyle = col; ctx.font = "12px sans-serif";
@@ -2529,12 +2533,12 @@ export default function ReplayClient({ userId }) {
         ctx.fillRect(x0, Math.min(targetY, entryY), x1 - x0, Math.abs(entryY - targetY));
         ctx.fillStyle = hexToRgba(style.stopColor || RED, alpha);
         ctx.fillRect(x0, Math.min(entryY, stopY), x1 - x0, Math.abs(stopY - entryY));
-        ctx.strokeStyle = "#ccc"; ctx.lineWidth = 1;
+        ctx.strokeStyle = "#93A0B8"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x0, entryY); ctx.lineTo(x1, entryY); ctx.stroke();
         const rewardPct = (((targetPrice - entryPrice) / entryPrice) * 100);
         const riskPct = (((stopPrice - entryPrice) / entryPrice) * 100);
         ctx.font = "11px sans-serif";
-        ctx.fillStyle = "#ccc";
+        ctx.fillStyle = "#93A0B8";
         ctx.fillText(`الدخول: ${entryPrice.toFixed(2)}`, x0 + 4, entryY - 4);
         ctx.fillStyle = GREEN;
         ctx.fillText(`الهدف: ${targetPrice.toFixed(2)} (${rewardPct >= 0 ? "+" : ""}${rewardPct.toFixed(2)}%)`, x0 + 4, Math.min(targetY, entryY) - 4);
@@ -2616,10 +2620,10 @@ export default function ReplayClient({ userId }) {
         } else {
           ctx.arc(xy.x, xy.y, 5, 0, Math.PI * 2);
         }
-        ctx.fillStyle = "#131722";
+        ctx.fillStyle = "#0C1220";
         ctx.fill();
         ctx.lineWidth = 1.6;
-        ctx.strokeStyle = "#2962FF";
+        ctx.strokeStyle = "#5FA8E8";
         ctx.stroke();
       }
     }
@@ -3588,7 +3592,7 @@ export default function ReplayClient({ userId }) {
       isLive: mode === "live",
       // لازم نبعت priceSource/sourceSymbol هون بالظبط متل ما بتعمل أداة الباك تيست،
       // وإلا صفقات "مباشر" المفتوحة من الاستعراض التاريخي بتضل بدون مصدر سعر،
-      // فبتظهر دايماً "⚠️ خطأ" بعمود السعر الحالي بالباك تيست ومتابعتها الحية
+      // فبتظهر دايماً "خطأ" بعمود السعر الحالي بالباك تيست ومتابعتها الحية
       // بتفشل فوراً بدون أي طلب شبكة (أصل غير مدعوم للمتابعة الحية).
       priceSource: mode === "live" ? "yahoo" : null,
       sourceSymbol: mode === "live" ? info?.yahoo || null : null,
@@ -3607,7 +3611,7 @@ export default function ReplayClient({ userId }) {
     });
     setOpenPositionsList([...openPositionsRef.current]);
     setPendingTrade(null);
-    setTradeToast(`✅ اتسجلت صفقة ${pt.direction === "buy" ? "شراء" : "بيع"} — بتلاقيها بالباك تيست ولوحة التحكم`);
+    setTradeToast(`اتسجلت صفقة ${pt.direction === "buy" ? "شراء" : "بيع"} — بتلاقيها بالباك تيست ولوحة التحكم`);
   }
 
   /* ===== حفظ سيناريو تمرين + مفتاح الإجابة (وضع الأدمن فقط) ===== */
@@ -3684,7 +3688,7 @@ export default function ReplayClient({ userId }) {
       const { error: keysError } = await supabase.from("practice_answer_keys").insert(rows);
       if (keysError) throw keysError;
 
-      setScenarioSaveToast(`✅ اتحفظ السيناريو "${scenarioForm.title}" مع ${rows.length} عنصر بمفتاح الإجابة (غير منشور لسا)`);
+      setScenarioSaveToast(`اتحفظ السيناريو "${scenarioForm.title}" مع ${rows.length} عنصر بمفتاح الإجابة (غير منشور لسا)`);
       setScenarioForm({ title: "", description: "", difficulty: "medium" });
       setDrawingRoles({});
     } catch (err) {
@@ -3701,8 +3705,8 @@ export default function ReplayClient({ userId }) {
     scheduleDraw();
     setTradeToast(
       result === "win"
-        ? `🎯 توصلت للهدف — الصفقة اتقفلت ربح`
-        : `⛔ توصلت للإيقاف — الصفقة اتقفلت خسارة`
+        ? `توصلت للهدف — الصفقة اتقفلت ربح`
+        : `توصلت للإيقاف — الصفقة اتقفلت خسارة`
     );
     if (!supabase || !userId) return;
     await supabase
@@ -3812,7 +3816,7 @@ export default function ReplayClient({ userId }) {
       const chart = createChart(chartContainerRef.current, {
         layout: {
           background: { color: savedSettings.bg },
-          textColor: savedSettings.textColor || "#d1d4dc",
+          textColor: savedSettings.textColor || "#93A0B8",
           // نفس عائلة الخطوط اللي تريدنغ فيو بتستخدمها بمحاور السعر/الوقت، عشان يصير
           // شكل الأرقام والتسميات أقرب لشكلها هناك
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif",
@@ -3827,7 +3831,7 @@ export default function ReplayClient({ userId }) {
           ? { visible: true, text: savedSettings.watermarkText, color: "rgba(201,162,75,0.12)", fontSize: 48, horzAlign: "center", vertAlign: "center" }
           : { visible: false },
         timeScale: {
-          borderColor: "#26282C",
+          borderColor: "#26314A",
           timeVisible: true,
           secondsVisible: false,
           rightOffset: 6,
@@ -3842,7 +3846,7 @@ export default function ReplayClient({ userId }) {
           timeFormatter: formatCrosshairTime,
         },
         rightPriceScale: {
-          borderColor: "#26282C",
+          borderColor: "#26314A",
           scaleMargins: { top: (savedSettings.scaleMarginTop ?? 8) / 100, bottom: (savedSettings.scaleMarginBottom ?? 8) / 100 },
           // نفس ملاحظة أعلى: عرض ثابت مطابق تماماً لعرض عمود الأسعار بشارت المقارنة
           minimumWidth: PRICE_SCALE_WIDTH,
@@ -3855,8 +3859,8 @@ export default function ReplayClient({ userId }) {
            بس بيقوّي التصاقه لما يكون قريب فعلاً من سعر شمعة، من غير ما يختفي أبداً. */
         crosshair: {
           mode: CrosshairMode.Normal,
-          vertLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#4c525e" },
-          horzLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#4c525e" },
+          vertLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#3E5478" },
+          horzLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#3E5478" },
         },
       });
 
@@ -4617,14 +4621,14 @@ export default function ReplayClient({ userId }) {
       const chart = createChart(compareContainerRef.current, {
         layout: {
           background: { color: savedSettings.bg },
-          textColor: savedSettings.textColor || "#d1d4dc",
+          textColor: savedSettings.textColor || "#93A0B8",
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif",
         },
         grid: {
           vertLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
           horzLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
         },
-        timeScale: { borderColor: "#26282C", timeVisible: true, secondsVisible: false },
+        timeScale: { borderColor: "#26314A", timeVisible: true, secondsVisible: false },
         // عرض ثابت مطابق تماماً لعرض عمود الأسعار بالشارت الرئيسي (PRICE_SCALE_WIDTH)،
         // هاد هو الحل الفعلي لمشكلة "آخر شمعة فوق ما بتطابق آخر شمعة تحت بالضبط":
         // كل شارت (رئيسي/مقارنة) هو نسخة lightweight-charts منفصلة، وبدون تثبيت
@@ -4632,14 +4636,14 @@ export default function ReplayClient({ userId }) {
         // السعر تبعها (مثلاً XAUUSD أربع خانات مقابل NAS100 خمس خانات) - فمنطقة
         // رسم الشموع الفعلية ما بتضل بنفس المحاذاة بالبكسل بين اللوحتين حتى لو
         // كانت الفترة الزمنية المعروضة متطابقة 100%.
-        rightPriceScale: { borderColor: "#26282C", minimumWidth: PRICE_SCALE_WIDTH },
+        rightPriceScale: { borderColor: "#26314A", minimumWidth: PRICE_SCALE_WIDTH },
         // نفس إعدادات مؤشر التقاطع بالضبط زي الشارت الرئيسي (اللون + الوضع Normal)
         // - قبل هيك ما كان في أي إعداد هون، فكان بياخد لون/سلوك افتراضي من
         // المكتبة يختلف عن الشارت الرئيسي (هاد سبب اختلاف لون المؤشر).
         crosshair: {
           mode: CrosshairMode.Normal,
-          vertLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#4c525e" },
-          horzLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#4c525e" },
+          vertLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#3E5478" },
+          horzLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#3E5478" },
         },
         width: compareContainerRef.current.clientWidth,
         height: 160,
@@ -4983,7 +4987,7 @@ export default function ReplayClient({ userId }) {
           // المتاحة بهاد الفريم فعلاً ما بيوصل لتاريخ نقطة القص (قيد عمق
           // حقيقي بالمصدر، شوفي rangeDays بـ lib/yahoo-candles.js) - مو
           // "بيانات غير متاحة نهائياً". منبلّغ ومنرجع لسياق طبيعي بدل ما نتيه.
-          setTradeToast("⚠️ بيانات هاد الفريم ما بتوصل لتاريخ نقطة القص، تم البدء من أقرب نقطة متاحة");
+          setTradeToast("بيانات هاد الفريم ما بتوصل لتاريخ نقطة القص، تم البدء من أقرب نقطة متاحة");
           suppressAnchorSyncOnceRef.current = true;
           return Math.min(CONTEXT_BARS, candles.length);
         }
@@ -5894,17 +5898,17 @@ export default function ReplayClient({ userId }) {
     // المحقون فوق بجذر الكومبوننت) على أي زر مو مفعّل أو معطّل حالياً.
     const iconBtn = (active, disabled) => ({
       width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
-      borderRadius: 4, cursor: disabled ? "not-allowed" : "pointer", border: "1px solid transparent",
+      borderRadius: 3, cursor: disabled ? "not-allowed" : "pointer", border: "1px solid transparent",
       background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-      color: active ? "#1A1408" : disabled ? "#4a4e58" : "#b2b5be",
+      color: active ? "#101828" : disabled ? "#3E5478" : "#93A0B8",
       opacity: disabled ? 0.5 : 1, flexShrink: 0,
     });
     const iconBtnClass = (active, disabled) => `tv-btn${active ? " tv-btn-active" : ""}${disabled ? " tv-btn-disabled" : ""}`;
     return (
       <div style={{
         display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center",
-        marginBottom: "0.6rem", background: "#131722",
-        border: "1px solid #2a2e39", borderRadius: 6, padding: "0.3rem 0.4rem",
+        marginBottom: "0.6rem", background: "#0C1220",
+        border: "1px solid #26314A", borderRadius: 3, padding: "0.3rem 0.4rem",
         // مهم: الصفحة كلها dir="rtl"، وبدون تثبيت الاتجاه هون كان "row" الافتراضي
         // بينقلب تلقائياً (أول عنصر بالـDOM بيطلع أقصى اليمين مش الشمال)، فكانت
         // كل أزرار الأدوات تطلع بعكس المكان المطلوب (يمين بدل شمال) وصندوق
@@ -5921,7 +5925,7 @@ export default function ReplayClient({ userId }) {
         ) : (
           <button onClick={() => loadData()} className={iconBtnClass(false)} style={iconBtn(false)} title="تحديث"><ToolIcon id="refresh" /></button>
         )}
-        <div style={{ width: 1, height: 22, background: "#242832" }} />
+        <div style={{ width: 1, height: 22, background: "#182033" }} />
         <button onClick={toggleCompare} className={iconBtnClass(compareOpen)} style={iconBtn(compareOpen)} title="اعرضي رمز ثاني بلوحة منفصلة أسفل الشارت للمقارنة"><ToolIcon id="compare2" /></button>
         <button
           onClick={() => setIndicatorPanelOpen((v) => !v)}
@@ -5931,8 +5935,8 @@ export default function ReplayClient({ userId }) {
           <ToolIcon id="indicators2" />
           {activeIndicators.length > 0 && (
             <span style={{
-              position: "absolute", top: 1, right: 1, minWidth: 13, height: 13, borderRadius: 7,
-              background: GOLD, color: "#1A1408", fontSize: 9, fontWeight: 800,
+              position: "absolute", top: 1, right: 1, minWidth: 13, height: 13, borderRadius: 3,
+              background: GOLD, color: "#101828", fontSize: 9, fontWeight: 800,
               display: "flex", alignItems: "center", justifyContent: "center", padding: "0 2px",
             }}>{activeIndicators.length}</span>
           )}
@@ -5942,7 +5946,7 @@ export default function ReplayClient({ userId }) {
         <button onClick={handleExportImage} className={iconBtnClass(false)} style={iconBtn(false)} title="تصدير كصورة"><ToolIcon id="camera" /></button>
         <button onClick={handleResetView} className={iconBtnClass(false)} style={iconBtn(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي"><ToolIcon id="resetzoom" /></button>
         <button onClick={toggleFullscreen} className={iconBtnClass(isFullscreen)} style={iconBtn(isFullscreen)} title="شاشة كاملة"><ToolIcon id={isFullscreen ? "fullscreenExit" : "fullscreen"} /></button>
-        <div style={{ width: 1, height: 22, background: "#242832" }} />
+        <div style={{ width: 1, height: 22, background: "#182033" }} />
         <button onClick={() => setRandomChart((r) => !r)} className={iconBtnClass(randomChart)} style={iconBtn(randomChart)} title="حركة سعر مولّدة عشوائياً بدل السوق الحقيقي"><ToolIcon id="dice2" /></button>
         <button
           onClick={toggleCutMode}
@@ -5977,7 +5981,7 @@ export default function ReplayClient({ userId }) {
                   onClick={(e) => e.stopPropagation()}
                   style={{
                     position: "absolute", top: 38, insetInlineStart: 0, zIndex: 30,
-                    background: "#131722", border: "1px solid #242832", borderRadius: 10,
+                    background: "#0C1220", border: "1px solid #182033", borderRadius: 3,
                     padding: "0.6rem 0.75rem", minWidth: 210, boxShadow: "0 10px 28px rgba(0,0,0,0.5)",
                     display: "flex", flexDirection: "column", gap: 8, direction: "rtl", cursor: "default",
                   }}
@@ -5987,28 +5991,28 @@ export default function ReplayClient({ userId }) {
                     ["تعتيم خارج المنطقة", cutDimOutside, setCutDimOutside],
                     ["حفظ القص تلقائياً", cutAutoSave, setCutAutoSave],
                   ].map(([label, val, setter]) => (
-                    <label key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12, color: "#c7cad1", cursor: "pointer" }}>
+                    <label key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12, color: "#93A0B8", cursor: "pointer" }}>
                       <span>{label}</span>
                       <span
                         onClick={() => setter((v) => !v)}
                         style={{
-                          width: 32, height: 18, borderRadius: 9, position: "relative", flexShrink: 0,
-                          background: val ? GOLD : "#2a2e38", transition: "background 0.15s",
+                          width: 32, height: 18, borderRadius: 3, position: "relative", flexShrink: 0,
+                          background: val ? GOLD : "#182033", transition: "background 0.15s",
                         }}
                       >
                         <span style={{
                           position: "absolute", top: 2, insetInlineStart: val ? 16 : 2, width: 14, height: 14,
-                          borderRadius: 7, background: val ? "#1A1408" : "#8b8f99", transition: "inset-inline-start 0.15s",
+                          borderRadius: 3, background: val ? "#101828" : "#5D6880", transition: "inset-inline-start 0.15s",
                         }} />
                       </span>
                     </label>
                   ))}
-                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12, color: "#c7cad1" }}>
+                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12, color: "#93A0B8" }}>
                     <span>دقة القص</span>
                     <select
                       value={cutPrecision}
                       onChange={(e) => setCutPrecision(e.target.value)}
-                      style={{ background: "#1a1e28", color: "#EAECEF", border: "1px solid #2a2e38", borderRadius: 6, fontSize: 11, padding: "2px 6px" }}
+                      style={{ background: "#111726", color: "#EDF1F8", border: "1px solid #182033", borderRadius: 3, fontSize: 11, padding: "2px 6px" }}
                     >
                       <option value="pixel">Pixel Perfect</option>
                       <option value="free">حرة (Free)</option>
@@ -6027,7 +6031,7 @@ export default function ReplayClient({ userId }) {
         )}
         {mode === "training" && (
           <>
-            <div style={{ width: 1, height: 22, background: "#242832" }} />
+            <div style={{ width: 1, height: 22, background: "#182033" }} />
             <button onClick={handleRandomStart} className={iconBtnClass(false)} style={iconBtn(false)} title="بداية عشوائية جديدة">🎲</button>
             <button onClick={togglePlay} disabled={finished || loading} className={iconBtnClass(isPlaying)} style={iconBtn(isPlaying)} title={isPlaying ? "إيقاف" : "تشغيل تلقائي"}>
               {isPlaying ? "⏸" : "▶"}
@@ -6044,8 +6048,7 @@ export default function ReplayClient({ userId }) {
             onClick={() => { setDrawingsListTick((t) => t + 1); setPracticePanelOpen(true); }}
             className={iconBtnClass(false)} style={{ ...iconBtn(false), width: "auto", padding: "0 10px", fontSize: 12, fontWeight: 700 }}
             title="تسجيل تمرين تفاعلي جديد (SMC + ICT)"
-          >
-            🎯 تسجيل تمرين
+          >تسجيل تمرين
           </button>
         )}
 
@@ -6101,13 +6104,13 @@ export default function ReplayClient({ userId }) {
           style={{ ...selectStyle, minWidth: 130, padding: "0.35rem 0.5rem", fontSize: 12.5 }}
         >
           {ASSETS.map((g) => (
-            <optgroup key={g.group} label={g.group} style={{ background: "#0D0E10", color: GOLD_LIGHT }}>
+            <optgroup key={g.group} label={g.group} style={{ background: "#0C1220", color: GOLD_LIGHT }}>
               {g.items.map((it) => (
                 <option
                   key={it.v}
                   value={it.v}
                   disabled={!it.yahoo}
-                  style={{ background: "#0D0E10", color: it.yahoo ? "#f0f0f0" : "#777" }}
+                  style={{ background: "#0C1220", color: it.yahoo ? "#EDF1F8" : "#5D6880" }}
                 >
                   {it.label}{!it.yahoo ? " (غير مدعوم بعد)" : ""}
                 </option>
@@ -6133,7 +6136,7 @@ export default function ReplayClient({ userId }) {
       <div style={{
         position: "absolute", top: 8, left: "50%", transform: "translateX(-50%)", zIndex: 9,
         display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", maxWidth: "80%",
-        background: "#131722ee", border: "1px solid #242832", borderRadius: 10,
+        background: "#0C1220ee", border: "1px solid #182033", borderRadius: 3,
         padding: 4, boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
       }}>
         {favoriteTools.map((id) => (
@@ -6144,9 +6147,9 @@ export default function ReplayClient({ userId }) {
             onClick={(e) => { e.stopPropagation(); setActiveTool((cur) => (cur === id ? "cursor" : id)); }}
             style={{
               width: 34, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
-              borderRadius: 7, border: "1px solid transparent", cursor: "pointer",
+              borderRadius: 3, border: "1px solid transparent", cursor: "pointer",
               background: activeTool === id ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-              color: activeTool === id ? "#1A1408" : "#c9ccd3",
+              color: activeTool === id ? "#101828" : "#93A0B8",
             }}
           >
             <ToolIcon id={id} />
@@ -6174,10 +6177,10 @@ export default function ReplayClient({ userId }) {
     function sidebarBtnStyle(active) {
       return {
         width: 40, height: 40, display: "flex", alignItems: "center",
-        justifyContent: "center", borderRadius: 4, cursor: "pointer",
+        justifyContent: "center", borderRadius: 3, cursor: "pointer",
         border: "1px solid transparent",
         background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-        color: active ? "#1A1408" : "#b2b5be",
+        color: active ? "#101828" : "#93A0B8",
         flexShrink: 0,
       };
     }
@@ -6186,7 +6189,7 @@ export default function ReplayClient({ userId }) {
       <div style={{
         flex: "0 0 auto", alignSelf: "stretch", position: "relative", zIndex: 10,
         display: "flex", flexDirection: "column", gap: 2,
-        background: "#131722", border: "1px solid #2a2e39", borderRadius: 6, padding: 6,
+        background: "#0C1220", border: "1px solid #26314A", borderRadius: 3, padding: 6,
         boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
         height: "100%", overflowY: "auto", overflowX: "visible", width: 52,
       }}>
@@ -6196,7 +6199,7 @@ export default function ReplayClient({ userId }) {
           const isActive = group.includes(activeTool);
           return (
             <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {gi > 0 && <div style={{ height: 1, background: "#2a2e39", margin: "4px 6px" }} />}
+              {gi > 0 && <div style={{ height: 1, background: "#26314A", margin: "4px 6px" }} />}
               <button
                 type="button"
                 title={TOOL_TITLES[currentId]}
@@ -6220,7 +6223,7 @@ export default function ReplayClient({ userId }) {
                   >
                     <span style={{
                       width: 0, height: 0,
-                      borderLeft: "4px solid transparent", borderBottom: "4px solid #8a8a8a",
+                      borderLeft: "4px solid transparent", borderBottom: "4px solid #5D6880",
                     }} />
                   </span>
                 )}
@@ -6235,7 +6238,7 @@ export default function ReplayClient({ userId }) {
                     position: "fixed", zIndex: 25,
                     top: btnRect ? btnRect.top : 0,
                     left: btnRect ? btnRect.right + 8 : 0,
-                    background: "#171b26", border: "1px solid #2a2e39", borderRadius: 6,
+                    background: "#111726", border: "1px solid #26314A", borderRadius: 3,
                     boxShadow: "0 8px 28px rgba(0,0,0,0.55)", minWidth: 230,
                     maxHeight: 420, overflowY: "auto", padding: "6px 0",
                   }}
@@ -6245,7 +6248,7 @@ export default function ReplayClient({ userId }) {
                       {section.title && (
                         <div style={{
                           padding: "6px 14px 4px", fontSize: 10.5, fontWeight: 700,
-                          color: "#777", letterSpacing: 0.5,
+                          color: "#5D6880", letterSpacing: 0.5,
                         }}>
                           {section.title}
                         </div>
@@ -6259,10 +6262,10 @@ export default function ReplayClient({ userId }) {
                             style={{
                               display: "flex", alignItems: "center", justifyContent: "space-between",
                               gap: 10, padding: "9px 14px", cursor: "pointer", fontSize: 13,
-                              color: activeTool === id ? GOLD_LIGHT : "#d1d4dc",
-                              background: activeTool === id ? "#20242f" : "transparent",
+                              color: activeTool === id ? GOLD_LIGHT : "#93A0B8",
+                              background: activeTool === id ? "#182033" : "transparent",
                             }}
-                            onMouseEnter={(e) => { if (activeTool !== id) e.currentTarget.style.background = "#2a2e39"; }}
+                            onMouseEnter={(e) => { if (activeTool !== id) e.currentTarget.style.background = "#26314A"; }}
                             onMouseLeave={(e) => { if (activeTool !== id) e.currentTarget.style.background = "transparent"; }}
                           >
                             <span style={{ flex: 1 }}>{TOOL_TITLES[id]}</span>
@@ -6272,7 +6275,7 @@ export default function ReplayClient({ userId }) {
                               style={{
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 width: 20, height: 20, flexShrink: 0, cursor: "pointer", fontSize: 14,
-                                color: isFav ? GOLD_LIGHT : "#4a4e58",
+                                color: isFav ? GOLD_LIGHT : "#3E5478",
                               }}
                             >
                               {isFav ? "★" : "☆"}
@@ -6289,7 +6292,7 @@ export default function ReplayClient({ userId }) {
             </div>
           );
         })}
-        <div style={{ height: 1, background: "#2a2e39", margin: "4px 6px" }} />
+        <div style={{ height: 1, background: "#26314A", margin: "4px 6px" }} />
         <button
           type="button"
           title={`مغناطيس: ${magnetOn ? "مفعّل" : "معطّل"} — يشتغل فقط أثناء استخدام أداة رسم، ويلتصق بأقرب سعر لما تقربي منه فعلاً`}
@@ -6300,7 +6303,7 @@ export default function ReplayClient({ userId }) {
           <ToolIcon id="magnet" />
           <span style={{
             position: "absolute", top: 5, right: 8, width: 6, height: 6, borderRadius: "50%",
-            background: magnetOn ? GREEN : "#555", border: "1px solid #131722",
+            background: magnetOn ? GREEN : "#3E4761", border: "1px solid #0C1220",
           }} />
         </button>
         <button type="button" title={drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات"} onClick={(e) => { e.stopPropagation(); toggleDrawingsVisible(); }} className={sidebarBtnClass(!drawingsVisible)} style={sidebarBtnStyle(!drawingsVisible)}>
@@ -6342,14 +6345,14 @@ export default function ReplayClient({ userId }) {
       text: "نص",
     };
     const row = (label, control) => (
-      <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #262626" }}>
-        <span style={{ fontSize: 13, color: "#ccc" }}>{label}</span>
+      <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #182033" }}>
+        <span style={{ fontSize: 13, color: "#93A0B8" }}>{label}</span>
         {control}
       </div>
     );
     const colorInput = (val, onChange) => (
       <input type="color" value={val || GOLD_LIGHT} onChange={(e) => onChange(e.target.value)}
-        style={{ width: 34, height: 26, border: "1px solid #333", borderRadius: 6, background: "none", cursor: "pointer", padding: 0 }} />
+        style={{ width: 34, height: 26, border: "1px solid #26314A", borderRadius: 3, background: "none", cursor: "pointer", padding: 0 }} />
     );
     const widthSelect = (val, onChange) => (
       <select value={val || 1.5} onChange={(e) => onChange(Number(e.target.value))} style={selectStyle}>
@@ -6390,7 +6393,7 @@ export default function ReplayClient({ userId }) {
       };
       return (
         <div style={{ marginTop: 4 }}>
-          <div style={{ fontSize: 12, color: "#999", padding: "6px 0 4px" }}>المستويات (فعّلي/عطّلي، غيّري القيمة واللون لكل واحد)</div>
+          <div style={{ fontSize: 12, color: "#93A0B8", padding: "6px 0 4px" }}>المستويات (فعّلي/عطّلي، غيّري القيمة واللون لكل واحد)</div>
           {levels.map((lvl, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0" }}>
               {checkbox(lvl.enabled, (v) => updateLevel(i, { enabled: v }))}
@@ -6402,7 +6405,7 @@ export default function ReplayClient({ userId }) {
               />
               <button
                 onClick={() => updateStyle({ levels: levels.filter((_, j) => j !== i) })}
-                style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 13 }}
+                style={{ background: "none", border: "none", color: "#5D6880", cursor: "pointer", fontSize: 13 }}
                 title="حذف هذا المستوى"
               >✕</button>
             </div>
@@ -6418,12 +6421,12 @@ export default function ReplayClient({ userId }) {
     return (
       <div style={{
         position: "absolute", top: 10, left: 68, zIndex: 20, width: 300,
-        background: "#2B2F36", border: "1px solid #333", borderRadius: 12,
-        boxShadow: "0 10px 30px rgba(0,0,0,0.5)", padding: 14, color: "#eee",
+        background: "#1E2941", border: "1px solid #26314A", borderRadius: 0,
+        boxShadow: "0 10px 30px rgba(0,0,0,0.5)", padding: 14, color: "#EDF1F8",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <button onClick={() => { setEditingId(null); setEditDraft(null); }} style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: 16 }}>✕</button>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>✏️ {titleMap[type] || type}</div>
+          <button onClick={() => { setEditingId(null); setEditDraft(null); }} style={{ background: "none", border: "none", color: "#93A0B8", cursor: "pointer", fontSize: 16 }}>✕</button>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>{titleMap[type] || type}</div>
         </div>
         <div style={{ maxHeight: 420, overflowY: "auto" }}>
           {(type === "trendline" || type === "ray") && (
@@ -6461,15 +6464,15 @@ export default function ReplayClient({ userId }) {
           {(type === "trendline" || type === "ray" || type === "extendedline" || type === "arrow"
             || type === "hline" || type === "hray" || type === "vline" || type === "crossline") && (
             <>
-              <div style={{ fontSize: 12, color: "#999", padding: "10px 0 4px" }}>نص (كابشن) على الأداة</div>
+              <div style={{ fontSize: 12, color: "#93A0B8", padding: "10px 0 4px" }}>نص (كابشن) على الأداة</div>
               <textarea
                 value={editDraft.text || ""}
                 onChange={(e) => setEditDraft((d) => ({ ...d, text: e.target.value }))}
                 placeholder="إضافة نص..."
                 rows={2}
                 style={{
-                  width: "100%", background: "#1c1f27", border: "1px solid #333", borderRadius: 8,
-                  color: "#eee", padding: 8, fontSize: 13, resize: "vertical", boxSizing: "border-box",
+                  width: "100%", background: "#111726", border: "1px solid #26314A", borderRadius: 3,
+                  color: "#EDF1F8", padding: 8, fontSize: 13, resize: "vertical", boxSizing: "border-box",
                 }}
               />
               {row("حجم الخط", (
@@ -6488,15 +6491,15 @@ export default function ReplayClient({ userId }) {
               {row("السماكة", widthSelect(style.width, (v) => updateStyle({ width: v })))}
               {row("تعبئة الخلفية", checkbox(style.fill, (v) => updateStyle({ fill: v })))}
               {style.fill && row("لون الخلفية", colorInput(style.fillColor, (v) => updateStyle({ fillColor: v })))}
-              <div style={{ fontSize: 12, color: "#999", padding: "10px 0 4px" }}>النص داخل القناة</div>
+              <div style={{ fontSize: 12, color: "#93A0B8", padding: "10px 0 4px" }}>النص داخل القناة</div>
               <textarea
                 value={editDraft.text || ""}
                 onChange={(e) => setEditDraft((d) => ({ ...d, text: e.target.value }))}
                 placeholder="إضافة نص..."
                 rows={2}
                 style={{
-                  width: "100%", background: "#1c1f27", border: "1px solid #333", borderRadius: 8,
-                  color: "#eee", padding: 8, fontSize: 13, resize: "vertical", boxSizing: "border-box",
+                  width: "100%", background: "#111726", border: "1px solid #26314A", borderRadius: 3,
+                  color: "#EDF1F8", padding: 8, fontSize: 13, resize: "vertical", boxSizing: "border-box",
                 }}
               />
               {row("حجم الخط", (
@@ -6528,15 +6531,15 @@ export default function ReplayClient({ userId }) {
               {type === "rectangle" && style.midline && row("خط متقطع", checkbox(style.midlineDash !== false, (v) => updateStyle({ midlineDash: v })))}
               {(
                 <>
-                  <div style={{ fontSize: 12, color: "#999", padding: "10px 0 4px" }}>النص داخل الشكل</div>
+                  <div style={{ fontSize: 12, color: "#93A0B8", padding: "10px 0 4px" }}>النص داخل الشكل</div>
                   <textarea
                     value={editDraft.text || ""}
                     onChange={(e) => setEditDraft((d) => ({ ...d, text: e.target.value }))}
                     placeholder="إضافة نص..."
                     rows={3}
                     style={{
-                      width: "100%", background: "#1c1f27", border: "1px solid #333", borderRadius: 8,
-                      color: "#eee", padding: 8, fontSize: 13, resize: "vertical", boxSizing: "border-box",
+                      width: "100%", background: "#111726", border: "1px solid #26314A", borderRadius: 3,
+                      color: "#EDF1F8", padding: 8, fontSize: 13, resize: "vertical", boxSizing: "border-box",
                     }}
                   />
                   {row("حجم الخط", (
@@ -6623,8 +6626,7 @@ export default function ReplayClient({ userId }) {
           <button onClick={saveProperties} style={{ ...btnStyle("primary"), flex: 1, padding: "0.5rem" }}>موافق</button>
           <button onClick={() => { setEditingId(null); setEditDraft(null); }} style={{ ...btnStyle("secondary"), flex: 1, padding: "0.5rem" }}>إلغاء</button>
         </div>
-        <button onClick={deleteEditingDrawing} style={{ marginTop: 8, width: "100%", background: "none", border: "1px solid #7a2b2b", color: RED, borderRadius: 8, padding: "0.4rem", cursor: "pointer", fontSize: 12.5 }}>
-          🗑 حذف هذه الرسمة
+        <button onClick={deleteEditingDrawing} style={{ marginTop: 8, width: "100%", background: "none", border: "1px solid #1E2941", color: RED, borderRadius: 3, padding: "0.4rem", cursor: "pointer", fontSize: 12.5 }}>حذف هذه الرسمة
         </button>
       </div>
     );
@@ -6649,17 +6651,17 @@ export default function ReplayClient({ userId }) {
         style={{
           position: "absolute", zIndex: 21, transform: "translateX(-50%)",
           display: "flex", alignItems: "center", gap: 1,
-          background: "#2B2F36", border: "1px solid #333", borderRadius: 10,
+          background: "#1E2941", border: "1px solid #26314A", borderRadius: 3,
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)", padding: "4px 5px",
         }}
       >
         <button type="button" onClick={() => openProperties(d)} title="كل الإعدادات" style={selToolBtnStyle}><ToolIcon id="kebab" /></button>
         <button type="button" onClick={deleteSelectedDrawing} title="حذف" style={{ ...selToolBtnStyle, color: RED }}><ToolIcon id="trash" /></button>
-        <button type="button" onClick={toggleSelectedLock} title={locked ? "فك القفل" : "قفل (منع التحريك)"} style={{ ...selToolBtnStyle, color: locked ? GOLD_LIGHT : "#ccc" }}>
+        <button type="button" onClick={toggleSelectedLock} title={locked ? "فك القفل" : "قفل (منع التحريك)"} style={{ ...selToolBtnStyle, color: locked ? GOLD_LIGHT : "#93A0B8" }}>
           <ToolIcon id={locked ? "lock" : "unlock"} />
         </button>
         <button type="button" onClick={duplicateSelectedDrawing} title="نسخ" style={selToolBtnStyle}><ToolIcon id="copy2" /></button>
-        <button type="button" onClick={toggleSelectedHidden} title={hidden ? "إظهار هاي الرسمة" : "إخفاء هاي الرسمة"} style={{ ...selToolBtnStyle, color: hidden ? GOLD_LIGHT : "#ccc" }}><ToolIcon id="hexagonEye" /></button>
+        <button type="button" onClick={toggleSelectedHidden} title={hidden ? "إظهار هاي الرسمة" : "إخفاء هاي الرسمة"} style={{ ...selToolBtnStyle, color: hidden ? GOLD_LIGHT : "#93A0B8" }}><ToolIcon id="hexagonEye" /></button>
         <span style={selToolDivider} />
         {hasColor && (
           <label title="لون الخط/الإطار" style={{ ...selToolBtnStyle, position: "relative" }}>
@@ -6698,7 +6700,7 @@ export default function ReplayClient({ userId }) {
             type="button"
             onClick={(e) => { e.stopPropagation(); openQuickTextPopover(); }}
             title="إضافة/تعديل نص على الرسمة مباشرة"
-            style={{ ...selToolBtnStyle, color: textPopoverOpen ? GOLD_LIGHT : "#ccc", fontWeight: 800, fontFamily: "serif" }}
+            style={{ ...selToolBtnStyle, color: textPopoverOpen ? GOLD_LIGHT : "#93A0B8", fontWeight: 800, fontFamily: "serif" }}
           >
             T
           </button>
@@ -6709,14 +6711,14 @@ export default function ReplayClient({ userId }) {
           type="button"
           onClick={(e) => { e.stopPropagation(); setTextPopoverOpen(false); setDrawingTemplatesMenuOpen((v) => !v); }}
           title="قوالب: احفظي أو طبّقي شكل الرسمة"
-          style={{ ...selToolBtnStyle, color: drawingTemplatesMenuOpen ? GOLD_LIGHT : "#ccc" }}
+          style={{ ...selToolBtnStyle, color: drawingTemplatesMenuOpen ? GOLD_LIGHT : "#93A0B8" }}
         >
           <ToolIcon id="templatePlus" />
         </button>
         {drawingTemplatesMenuOpen && renderDrawingTemplatesMenu(d)}
         <span
           onMouseDown={onToolbarDragStart}
-          style={{ ...selToolBtnStyle, cursor: "grab", color: "#555" }}
+          style={{ ...selToolBtnStyle, cursor: "grab", color: "#3E4761" }}
           title="اسحبي لتحريك الشريط"
         >
           <ToolIcon id="dragDots" />
@@ -6735,7 +6737,7 @@ export default function ReplayClient({ userId }) {
         style={{
           position: "absolute", top: "calc(100% + 6px)", right: 0,
           zIndex: 26, minWidth: 220,
-          background: "#171b26", border: "1px solid #242832", borderRadius: 10,
+          background: "#111726", border: "1px solid #182033", borderRadius: 3,
           boxShadow: "0 8px 28px rgba(0,0,0,0.55)", padding: 10,
         }}
       >
@@ -6814,30 +6816,30 @@ export default function ReplayClient({ userId }) {
         style={{
           position: "absolute", top: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
           zIndex: 25, minWidth: 250, maxHeight: 340, overflowY: "auto",
-          background: "#171b26", border: "1px solid #242832", borderRadius: 10,
+          background: "#111726", border: "1px solid #182033", borderRadius: 3,
           boxShadow: "0 8px 28px rgba(0,0,0,0.55)", padding: "6px 0",
         }}
       >
         <div onClick={saveAsTemplate} style={templateMenuItemStyle}>حفظ نموذج الرسم بإسم...</div>
         <div onClick={applyDefaultTemplate} style={templateMenuItemStyle}>تطبيق نموذج القالب الافتراضي للرسوم</div>
-        {templates.length > 0 && <div style={{ height: 1, background: "#242832", margin: "4px 0" }} />}
+        {templates.length > 0 && <div style={{ height: 1, background: "#182033", margin: "4px 0" }} />}
         {templates.map((t) => (
           <div key={t.name} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px" }}>
-            <div onClick={() => applyTemplate(t)} style={{ flex: 1, cursor: "pointer", fontSize: 13, color: "#e5e5e5", padding: "5px 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div onClick={() => applyTemplate(t)} style={{ flex: 1, cursor: "pointer", fontSize: 13, color: "#EDF1F8", padding: "5px 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {t.name}
             </div>
             <span
               onClick={() => setAsDefault(t)}
               title={defaultName === t.name ? "القالب الافتراضي الحالي" : "تعيين كافتراضي"}
-              style={{ cursor: "pointer", fontSize: 14, color: defaultName === t.name ? GOLD_LIGHT : "#4a4e58" }}
+              style={{ cursor: "pointer", fontSize: 14, color: defaultName === t.name ? GOLD_LIGHT : "#3E5478" }}
             >
               {defaultName === t.name ? "★" : "☆"}
             </span>
-            <span onClick={() => removeTemplate(t)} title="حذف القالب" style={{ cursor: "pointer", color: "#888", fontSize: 12 }}>✕</span>
+            <span onClick={() => removeTemplate(t)} title="حذف القالب" style={{ cursor: "pointer", color: "#5D6880", fontSize: 12 }}>✕</span>
           </div>
         ))}
         {templates.length === 0 && (
-          <div style={{ padding: "8px 14px", fontSize: 12, color: "#777" }}>ما في قوالب محفوظة لهاد النوع لسا</div>
+          <div style={{ padding: "8px 14px", fontSize: 12, color: "#5D6880" }}>ما في قوالب محفوظة لهاد النوع لسا</div>
         )}
       </div>
     );
@@ -6906,7 +6908,7 @@ export default function ReplayClient({ userId }) {
         position: "absolute",
         ...(tradePanelPos ? { left: tradePanelPos.x, top: tradePanelPos.y } : { top: 10, right: 10 }),
         zIndex: 12, width: 260,
-        background: "#161616", border: `1px solid ${isBuy ? GREEN : RED}66`, borderRadius: 12,
+        background: "#111726", border: `1px solid ${isBuy ? GREEN : RED}66`, borderRadius: 0,
         padding: 14, boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
       }}>
         {/* Header قابل للسحب - نفس سطر العنوان، مع مقبض واضح وcursor يتغيّر أثناء السحب */}
@@ -6920,7 +6922,7 @@ export default function ReplayClient({ userId }) {
           }}
         >
           <span style={{ opacity: 0.5, fontSize: 12, letterSpacing: 1 }}>⠿</span>
-          {isBuy ? "🟢 صفقة شراء" : "🔴 صفقة بيع"} — {pendingTrade.asset}
+          {isBuy ? "صفقة شراء" : "صفقة بيع"} — {pendingTrade.asset}
         </div>
 
         {/* أسعار الدخول/الهدف/الإيقاف قابلة للتعديل كتابياً هون مباشرة، وبتتزامن
@@ -6936,8 +6938,7 @@ export default function ReplayClient({ userId }) {
               style={{ ...selectStyle, minWidth: 0, width: "100%", color: GOLD_LIGHT, fontWeight: 700 }}
             />
           </label>
-          <label style={numFieldLabelStyle}>
-            🎯 الهدف (TP)
+          <label style={numFieldLabelStyle}>الهدف (TP)
             <input
               type="number" step="any" value={tpText}
               onFocus={() => { tpFocusedRef.current = true; }}
@@ -6946,8 +6947,7 @@ export default function ReplayClient({ userId }) {
               style={{ ...selectStyle, minWidth: 0, width: "100%", color: GREEN, fontWeight: 700 }}
             />
           </label>
-          <label style={numFieldLabelStyle}>
-            ⛔ الإيقاف (SL)
+          <label style={numFieldLabelStyle}>الإيقاف (SL)
             <input
               type="number" step="any" value={slText}
               onFocus={() => { slFocusedRef.current = true; }}
@@ -6960,12 +6960,12 @@ export default function ReplayClient({ userId }) {
 
         {/* شريط بصري لنسبة المخاطرة/العائد - بيبيّن مباشرة نسبة R:R بشكل رسمة، مش بس رقم */}
         <div style={{ margin: "10px 0 2px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: "#999", marginBottom: 3 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: "#93A0B8", marginBottom: 3 }}>
             <span style={{ color: RED }}>مخاطرة ${riskAmount.toFixed(2)}</span>
             <span style={{ color: GOLD_LIGHT, fontWeight: 700 }}>R:R — 1:{rr}</span>
             <span style={{ color: GREEN }}>عائد ${rewardAmount.toFixed(2)}</span>
           </div>
-          <div style={{ display: "flex", height: 10, borderRadius: 6, overflow: "hidden", border: "1px solid #333", background: "#0e0e0e" }}>
+          <div style={{ display: "flex", height: 10, borderRadius: 3, overflow: "hidden", border: "1px solid #26314A", background: "#080B14" }}>
             {(() => {
               const safeRr = isNaN(rrNum) || rrNum <= 0 ? 0 : Math.min(rrNum, 6);
               const total = 1 + safeRr;
@@ -6981,10 +6981,10 @@ export default function ReplayClient({ userId }) {
           </div>
         </div>
 
-        <div style={{ fontSize: 11, color: "#888", margin: "6px 0 4px" }}>
+        <div style={{ fontSize: 11, color: "#5D6880", margin: "6px 0 4px" }}>
           فيكي تكتبي الأرقام هون مباشرة أو تسحبي خط الهدف الأخضر/خط الإيقاف الأحمر عالشارت
         </div>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#999", marginTop: 6 }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#93A0B8", marginTop: 6 }}>
           اللوت
           <input
             type="number" step="0.01" min="0.01" value={tradeLot}
@@ -6992,7 +6992,7 @@ export default function ReplayClient({ userId }) {
             style={{ ...selectStyle, minWidth: 0, width: "100%" }}
           />
         </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#999", marginTop: 8 }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#93A0B8", marginTop: 8 }}>
           سبب الدخول
           <textarea
             value={tradeReason}
@@ -7031,18 +7031,17 @@ export default function ReplayClient({ userId }) {
           const edits = openPosEdits[pos.dbId] || { tp: pos.tp.toFixed(2), sl: pos.sl.toFixed(2) };
           return (
             <div key={pos.dbId} style={{
-              background: "#161616", border: `1px solid ${isBuy ? GREEN : RED}55`, borderRadius: 10,
+              background: "#111726", border: `1px solid ${isBuy ? GREEN : RED}55`, borderRadius: 3,
               padding: 10, boxShadow: "0 6px 16px rgba(0,0,0,0.35)",
             }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: isBuy ? GREEN : RED, marginBottom: 6 }}>
-                {isBuy ? "🟢 صفقة مفتوحة" : "🔴 صفقة مفتوحة"} — {pos.asset}
+                {isBuy ? "صفقة مفتوحة" : "صفقة مفتوحة"} — {pos.asset}
               </div>
-              <div style={{ fontSize: 11, color: "#999", marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: "#93A0B8", marginBottom: 6 }}>
                 الدخول: <b style={{ color: GOLD_LIGHT }}>{pos.entry.toFixed(2)}</b>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                <label style={{ ...numFieldLabelStyle, flex: 1 }}>
-                  🎯 TP
+                <label style={{ ...numFieldLabelStyle, flex: 1 }}>TP
                   <input
                     type="number" step="any" value={edits.tp}
                     onFocus={() => { openPosFocusRef.current[pos.dbId + "_tp"] = true; }}
@@ -7051,8 +7050,7 @@ export default function ReplayClient({ userId }) {
                     style={{ ...selectStyle, minWidth: 0, width: "100%", color: GREEN, fontSize: 12, padding: "4px 6px" }}
                   />
                 </label>
-                <label style={{ ...numFieldLabelStyle, flex: 1 }}>
-                  ⛔ SL
+                <label style={{ ...numFieldLabelStyle, flex: 1 }}>SL
                   <input
                     type="number" step="any" value={edits.sl}
                     onFocus={() => { openPosFocusRef.current[pos.dbId + "_sl"] = true; }}
@@ -7075,8 +7073,8 @@ export default function ReplayClient({ userId }) {
     return (
       <div style={{
         position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", zIndex: 15,
-        background: "#161616", border: `1px solid ${GOLD}55`, borderRadius: 10,
-        padding: "0.55rem 1rem", fontSize: 12.5, color: "#eee", boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+        background: "#111726", border: `1px solid #3E5478`, borderRadius: 3,
+        padding: "0.55rem 1rem", fontSize: 12.5, color: "#EDF1F8", boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
         maxWidth: "90%", textAlign: "center",
       }}>
         {tradeToast}
@@ -7107,16 +7105,16 @@ export default function ReplayClient({ userId }) {
           position: "absolute", left: lineTextHint.x, top: lineTextHint.y,
           transform: "translate(-50%, -50%)", zIndex: 24, pointerEvents: "none",
           display: "flex", alignItems: "center", gap: 5,
-          background: "#131722ee", border: "1px solid #363a45", borderRadius: 6,
+          background: "#0C1220ee", border: "1px solid #1E2941", borderRadius: 3,
           padding: "3px 8px 3px 5px", boxShadow: "0 2px 10px rgba(0,0,0,0.4)",
         }}
       >
         <span style={{
-          width: 16, height: 16, borderRadius: 4, background: "#2962FF",
+          width: 16, height: 16, borderRadius: 3, background: "#5FA8E8",
           color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 12, fontWeight: 700, lineHeight: 1,
         }}>{hasText ? "✎" : "+"}</span>
-        <span style={{ color: "#d1d4dc", fontSize: 12 }}>{hasText ? "تعديل النص" : "إضافة نص"}</span>
+        <span style={{ color: "#93A0B8", fontSize: 12 }}>{hasText ? "تعديل النص" : "إضافة نص"}</span>
       </div>
     );
   }
@@ -7159,8 +7157,8 @@ export default function ReplayClient({ userId }) {
           textAlign: "center",
           background: "transparent",
           border: "none",
-          borderRadius: 4,
-          color: targetDrawing?.style?.textColor || "#eee",
+          borderRadius: 3,
+          color: targetDrawing?.style?.textColor || "#EDF1F8",
           fontSize: size,
           fontFamily: "sans-serif",
           fontWeight: targetDrawing?.style?.textBold ? 700 : 400,
@@ -7173,9 +7171,9 @@ export default function ReplayClient({ userId }) {
           top: textEditor.y - 5 - size - 6,
           zIndex: 25,
           minWidth: 90,
-          background: "#161616ee",
+          background: "#111726ee",
           border: `1.5px solid ${GOLD_LIGHT}`,
-          borderRadius: 4,
+          borderRadius: 3,
           color: (textEditor.editingId != null
             ? drawingsRef.current.find((d) => d.id === textEditor.editingId)?.style?.color
             : styleForNewDrawing("text").color) || GOLD_LIGHT,
@@ -7196,38 +7194,38 @@ export default function ReplayClient({ userId }) {
       <div
         onClick={() => { onClick(); setContextMenu(null); }}
         style={{
-          padding: "9px 14px", fontSize: 13, color: "#e5e5e5", cursor: "pointer",
+          padding: "9px 14px", fontSize: 13, color: "#EDF1F8", cursor: "pointer",
           display: "flex", justifyContent: "space-between", gap: 10, whiteSpace: "nowrap",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "#262626")}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "#182033")}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
         <span>{label}</span>
-        {extra && <span style={{ color: "#888" }}>{extra}</span>}
+        {extra && <span style={{ color: "#5D6880" }}>{extra}</span>}
       </div>
     );
-    const sep = <div style={{ height: 1, background: "#2A2E39", margin: "5px 0" }} />;
+    const sep = <div style={{ height: 1, background: "#26314A", margin: "5px 0" }} />;
     return (
       <div
         style={{
           position: "absolute", top: contextMenu.y, left: contextMenu.x, zIndex: 20,
-          background: "#2B2F36", border: "1px solid #333", borderRadius: 10, padding: "6px 0",
+          background: "#1E2941", border: "1px solid #26314A", borderRadius: 3, padding: "6px 0",
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)", minWidth: 220,
         }}
       >
         {price != null && (
           <>
-            {item("🟢 شراء فوري هون", () => openQuickTrade("buy", price, clickedLogical), price.toFixed(2))}
-            {item("🔴 بيع فوري هون", () => openQuickTrade("sell", price, clickedLogical), price.toFixed(2))}
+            {item("شراء فوري هون", () => openQuickTrade("buy", price, clickedLogical), price.toFixed(2))}
+            {item("بيع فوري هون", () => openQuickTrade("sell", price, clickedLogical), price.toFixed(2))}
             {item("نسخ السعر", () => navigator.clipboard?.writeText(price.toFixed(2)))}
             {sep}
           </>
         )}
         {item("⟲ إعادة تعيين الشارت", handleResetView)}
         {item(drawingsVisible ? "إخفاء الرسومات" : "إظهار الرسومات", toggleDrawingsVisible)}
-        {item("🗑 حذف كل الرسومات", handleClearDrawings)}
+        {item("حذف كل الرسومات", handleClearDrawings)}
         {sep}
-        {item("⚙️ إعدادات الألوان", () => setSettingsOpen(true))}
+        {item("إعدادات الألوان", () => setSettingsOpen(true))}
       </div>
     );
   }
@@ -7261,8 +7259,8 @@ export default function ReplayClient({ userId }) {
                 style={{
                   display: "flex", alignItems: "center", gap: 5, cursor: "pointer",
                   background: menuOpen ? "rgba(30,28,18,0.9)" : "rgba(13,13,10,0.72)", backdropFilter: "blur(2px)",
-                  border: `1px solid ${menuOpen ? GOLD + "88" : GOLD + "22"}`, borderRadius: 6,
-                  padding: "2px 4px 2px 6px", fontSize: 11, color: hidden ? "#777" : "#ddd",
+                  border: `1px solid ${menuOpen ? GOLD + "88" : GOLD + "22"}`, borderRadius: 3,
+                  padding: "2px 4px 2px 6px", fontSize: 11, color: hidden ? "#5D6880" : "#ddd",
                   opacity: hidden ? 0.6 : 1,
                 }}
               >
@@ -7275,8 +7273,8 @@ export default function ReplayClient({ userId }) {
                   <div
                     style={{
                       position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 10,
-                      display: "flex", alignItems: "center", gap: 2, background: "#2B2F36",
-                      border: `1px solid ${GOLD}33`, borderRadius: 8, padding: 3,
+                      display: "flex", alignItems: "center", gap: 2, background: "#1E2941",
+                      border: `1px solid #26314A`, borderRadius: 3, padding: 3,
                       boxShadow: "0 4px 14px rgba(0,0,0,0.4)",
                     }}
                   >
@@ -7290,7 +7288,7 @@ export default function ReplayClient({ userId }) {
                     >
                       <ToolIcon id="gear" />
                     </button>
-                    <div style={{ width: 1, height: 18, background: "#333" }} />
+                    <div style={{ width: 1, height: 18, background: "#26314A" }} />
                     <button type="button" title="حذف المؤشر" onClick={(e) => { e.stopPropagation(); removeIndicator(it.instanceId); }} style={{ ...quickMenuBtnStyle, color: RED }}>
                       <ToolIcon id="trash" />
                     </button>
@@ -7315,12 +7313,12 @@ export default function ReplayClient({ userId }) {
         key={def.id}
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "8px 6px", borderBottom: "1px solid #232323", gap: 8,
+          padding: "8px 6px", borderBottom: "1px solid #182033", gap: 8,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: def.lines[0]?.color || GOLD, flexShrink: 0 }} />
-          <span style={{ fontSize: 13, color: "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{def.name}</span>
+          <span style={{ fontSize: 13, color: "#EDF1F8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{def.name}</span>
         </div>
         <button type="button" onClick={() => addIndicator(def.id)} style={{ ...btnStyle("secondary"), padding: "0.3rem 0.7rem", fontSize: 12, flexShrink: 0 }}>
           + إضافة
@@ -7329,18 +7327,18 @@ export default function ReplayClient({ userId }) {
     );
     return (
       <div
-        style={{ position: "absolute", inset: 0, zIndex: 30, background: "#0B0E11aa", display: "flex", alignItems: "center", justifyContent: "center" }}
+        style={{ position: "absolute", inset: 0, zIndex: 30, background: "#080B14aa", display: "flex", alignItems: "center", justifyContent: "center" }}
         onClick={() => setIndicatorPanelOpen(false)}
       >
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            width: 480, maxWidth: "92%", maxHeight: "82%", background: "#161616",
-            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem",
+            width: 480, maxWidth: "92%", maxHeight: "82%", background: "#111726",
+            border: `1px solid #3E5478`, borderRadius: 0, padding: "1.1rem 1.3rem",
             display: "flex", flexDirection: "column", minHeight: 0,
           }}
         >
-          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10, fontSize: 15, flexShrink: 0 }}>📈 المؤشرات الفنية</div>
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10, fontSize: 15, flexShrink: 0 }}>المؤشرات الفنية</div>
 
           <input
             type="text"
@@ -7348,21 +7346,21 @@ export default function ReplayClient({ userId }) {
             onChange={(e) => setIndicatorSearch(e.target.value)}
             placeholder="ابحثي عن أي مؤشر (بالعربي أو الانجليزي)... مثال: RSI, ماكد, بولينجر"
             style={{
-              background: "#0D0E10", border: "1px solid #333", borderRadius: 8, color: "#eee",
+              background: "#0C1220", border: "1px solid #26314A", borderRadius: 3, color: "#EDF1F8",
               padding: "0.55rem 0.7rem", fontSize: 13, marginBottom: 10, flexShrink: 0,
             }}
           />
 
           {activeIndicators.length > 0 && (
-            <div style={{ flexShrink: 0, marginBottom: 10, maxHeight: "34%", overflowY: "auto", border: `1px solid ${GOLD}22`, borderRadius: 8, padding: "0.4rem 0.6rem" }}>
-              <div style={{ fontSize: 11.5, color: "#777", fontWeight: 700, marginBottom: 4 }}>مضافة حالياً ({activeIndicators.length})</div>
+            <div style={{ flexShrink: 0, marginBottom: 10, maxHeight: "34%", overflowY: "auto", border: `1px solid #26314A`, borderRadius: 3, padding: "0.4rem 0.6rem" }}>
+              <div style={{ fontSize: 11.5, color: "#5D6880", fontWeight: 700, marginBottom: 4 }}>مضافة حالياً ({activeIndicators.length})</div>
               {activeIndicators.map((it) => {
                 const def = getIndicatorDef(it.id);
                 if (!def) return null;
                 return (
-                  <div key={it.instanceId} style={{ padding: "6px 0", borderBottom: "1px solid #232323" }}>
+                  <div key={it.instanceId} style={{ padding: "6px 0", borderBottom: "1px solid #182033" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <span style={{ fontSize: 12.5, color: "#e5e5e5" }}>{def.name}</span>
+                      <span style={{ fontSize: 12.5, color: "#EDF1F8" }}>{def.name}</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <button
                           type="button"
@@ -7376,14 +7374,14 @@ export default function ReplayClient({ userId }) {
                     {(def.params || []).length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
                         {def.params.map((f) => (
-                          <label key={f.key} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#999" }}>
+                          <label key={f.key} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#93A0B8" }}>
                             {f.label}
                             <input
                               type="number"
                               value={it.params[f.key]}
                               min={f.min} max={f.max} step={f.step || 1}
                               onChange={(e) => updateIndicatorParam(it.instanceId, f.key, Number(e.target.value))}
-                              style={{ width: 56, background: "#0D0E10", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "3px 5px", fontSize: 11.5, textAlign: "center" }}
+                              style={{ width: 56, background: "#0C1220", color: "#EDF1F8", border: "1px solid #26314A", borderRadius: 3, padding: "3px 5px", fontSize: 11.5, textAlign: "center" }}
                             />
                           </label>
                         ))}
@@ -7398,18 +7396,18 @@ export default function ReplayClient({ userId }) {
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             {overlays.length > 0 && (
               <>
-                <div style={{ fontSize: 11.5, color: "#777", fontWeight: 700, margin: "6px 0 2px" }}>مؤشرات فوق السعر</div>
+                <div style={{ fontSize: 11.5, color: "#5D6880", fontWeight: 700, margin: "6px 0 2px" }}>مؤشرات فوق السعر</div>
                 {overlays.map(indicatorRow)}
               </>
             )}
             {oscillators.length > 0 && (
               <>
-                <div style={{ fontSize: 11.5, color: "#777", fontWeight: 700, margin: "12px 0 2px" }}>مؤشرات بلوحة مستقلة (زخم/تذبذب)</div>
+                <div style={{ fontSize: 11.5, color: "#5D6880", fontWeight: 700, margin: "12px 0 2px" }}>مؤشرات بلوحة مستقلة (زخم/تذبذب)</div>
                 {oscillators.map(indicatorRow)}
               </>
             )}
             {results.length === 0 && (
-              <div style={{ fontSize: 12.5, color: "#777", padding: "1rem 0", textAlign: "center" }}>ما لقينا أي مؤشر بهالاسم</div>
+              <div style={{ fontSize: 12.5, color: "#5D6880", padding: "1rem 0", textAlign: "center" }}>ما لقينا أي مؤشر بهالاسم</div>
             )}
           </div>
 
@@ -7437,21 +7435,21 @@ export default function ReplayClient({ userId }) {
     ];
     const close = () => setIndicatorSettingsFor(null);
     return (
-      <div style={{ position: "absolute", inset: 0, zIndex: 32, background: "#0B0E11aa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
+      <div style={{ position: "absolute", inset: 0, zIndex: 32, background: "#080B14aa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            width: 420, maxWidth: "92%", maxHeight: "82%", background: "#161616",
-            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1rem 1.2rem",
+            width: 420, maxWidth: "92%", maxHeight: "82%", background: "#111726",
+            border: `1px solid #3E5478`, borderRadius: 0, padding: "1rem 1.2rem",
             display: "flex", flexDirection: "column", minHeight: 0,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexShrink: 0 }}>
             <div style={{ fontWeight: 700, color: GOLD_LIGHT, fontSize: 15 }}>{def.name}</div>
-            <button onClick={close} style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: 16 }}>✕</button>
+            <button onClick={close} style={{ background: "none", border: "none", color: "#93A0B8", cursor: "pointer", fontSize: 16 }}>✕</button>
           </div>
 
-          <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #262626", marginBottom: 12, flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #182033", marginBottom: 12, flexShrink: 0 }}>
             {SETTINGS_TABS.map((t) => (
               <button
                 key={t.key}
@@ -7460,7 +7458,7 @@ export default function ReplayClient({ userId }) {
                 style={{
                   padding: "7px 14px", border: "none", background: "none", cursor: "pointer",
                   fontSize: 13, fontWeight: indicatorSettingsTab === t.key ? 700 : 500,
-                  color: indicatorSettingsTab === t.key ? GOLD_LIGHT : "#999",
+                  color: indicatorSettingsTab === t.key ? GOLD_LIGHT : "#93A0B8",
                   borderBottom: `2px solid ${indicatorSettingsTab === t.key ? GOLD : "transparent"}`,
                   marginBottom: -1,
                 }}
@@ -7473,7 +7471,7 @@ export default function ReplayClient({ userId }) {
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             {indicatorSettingsTab === "visibility" && (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0" }}>
-                <span style={{ fontSize: 13, color: "#ccc" }}>إظهار المؤشر على الشارت</span>
+                <span style={{ fontSize: 13, color: "#93A0B8" }}>إظهار المؤشر على الشارت</span>
                 <input
                   type="checkbox" checked={!hidden}
                   onChange={() => toggleIndicatorVisible(it.instanceId)}
@@ -7485,14 +7483,14 @@ export default function ReplayClient({ userId }) {
             {indicatorSettingsTab === "style" && (
               <div>
                 {def.lines.map((line) => (
-                  <div key={line.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #232323", gap: 10 }}>
-                    <span style={{ fontSize: 12.5, color: "#e5e5e5" }}>{line.label}</span>
+                  <div key={line.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #182033", gap: 10 }}>
+                    <span style={{ fontSize: 12.5, color: "#EDF1F8" }}>{line.label}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <input
                         type="color"
                         value={effectiveLineColor(it, line)}
                         onChange={(e) => updateIndicatorLineColor(it.instanceId, line.key, e.target.value)}
-                        style={{ width: 34, height: 26, border: "1px solid #333", borderRadius: 6, background: "none", cursor: "pointer", padding: 0 }}
+                        style={{ width: 34, height: 26, border: "1px solid #26314A", borderRadius: 3, background: "none", cursor: "pointer", padding: 0 }}
                       />
                       {!line.isHistogram && (
                         <select
@@ -7513,20 +7511,20 @@ export default function ReplayClient({ userId }) {
               (def.params || []).length > 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {def.params.map((f) => (
-                    <div key={f.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #232323" }}>
-                      <span style={{ fontSize: 12.5, color: "#ccc" }}>{f.label}</span>
+                    <div key={f.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #182033" }}>
+                      <span style={{ fontSize: 12.5, color: "#93A0B8" }}>{f.label}</span>
                       <input
                         type="number"
                         value={it.params[f.key]}
                         min={f.min} max={f.max} step={f.step || 1}
                         onChange={(e) => updateIndicatorParam(it.instanceId, f.key, Number(e.target.value))}
-                        style={{ width: 70, background: "#0D0E10", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "5px 7px", fontSize: 12.5, textAlign: "center" }}
+                        style={{ width: 70, background: "#0C1220", color: "#EDF1F8", border: "1px solid #26314A", borderRadius: 3, padding: "5px 7px", fontSize: 12.5, textAlign: "center" }}
                       />
                     </div>
                   ))}
                 </div>
               ) : (
-                <div style={{ fontSize: 12.5, color: "#777", padding: "1rem 0", textAlign: "center" }}>هاد المؤشر ما إله مدخلات قابلة للتعديل</div>
+                <div style={{ fontSize: 12.5, color: "#5D6880", padding: "1rem 0", textAlign: "center" }}>هاد المؤشر ما إله مدخلات قابلة للتعديل</div>
               )
             )}
           </div>
@@ -7535,7 +7533,7 @@ export default function ReplayClient({ userId }) {
             <button
               onClick={() => { removeIndicator(it.instanceId); }}
               style={{ ...btnStyle("secondary"), color: RED, flex: 1 }}
-            >🗑 حذف المؤشر</button>
+            >حذف المؤشر</button>
             <button onClick={close} style={{ ...btnStyle("primary"), flex: 1 }}>تم</button>
           </div>
         </div>
@@ -7569,28 +7567,28 @@ export default function ReplayClient({ userId }) {
       setTemplatesPanelOpen(true);
     }
     return (
-      <div style={{ position: "absolute", inset: 0, zIndex: 31, background: "#0B0E11aa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
+      <div style={{ position: "absolute", inset: 0, zIndex: 31, background: "#080B14aa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            width: 360, maxWidth: "92%", maxHeight: "78%", background: "#161616",
-            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem",
+            width: 360, maxWidth: "92%", maxHeight: "78%", background: "#111726",
+            border: `1px solid #3E5478`, borderRadius: 0, padding: "1.1rem 1.3rem",
             display: "flex", flexDirection: "column", minHeight: 0,
           }}
         >
-          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10, fontSize: 15, flexShrink: 0 }}>🗂 قوالب المؤشرات</div>
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10, fontSize: 15, flexShrink: 0 }}>قوالب المؤشرات</div>
           <button onClick={saveCurrentAsTemplate} style={{ ...btnStyle("secondary"), marginBottom: 10, flexShrink: 0 }}>
             + احفظي المجموعة الحالية كقالب ({activeIndicators.length})
           </button>
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             {templates.length === 0 && (
-              <div style={{ fontSize: 12.5, color: "#777", padding: "1rem 0", textAlign: "center" }}>ما في قوالب محفوظة لسا</div>
+              <div style={{ fontSize: 12.5, color: "#5D6880", padding: "1rem 0", textAlign: "center" }}>ما في قوالب محفوظة لسا</div>
             )}
             {templates.map((t) => (
-              <div key={t.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 4px", borderBottom: "1px solid #232323", gap: 8 }}>
+              <div key={t.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 4px", borderBottom: "1px solid #182033", gap: 8 }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
-                  <div style={{ fontSize: 11, color: "#777" }}>{t.indicators.length} مؤشر</div>
+                  <div style={{ fontSize: 13, color: "#EDF1F8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
+                  <div style={{ fontSize: 11, color: "#5D6880" }}>{t.indicators.length} مؤشر</div>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                   <button type="button" onClick={() => applyTemplate(t)} style={{ ...btnStyle("primary"), padding: "0.3rem 0.7rem", fontSize: 12 }}>تحميل</button>
@@ -7620,39 +7618,38 @@ export default function ReplayClient({ userId }) {
     }
 
     return (
-      <div style={{ position: "absolute", inset: 0, zIndex: 31, background: "#0B0E11aa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
+      <div style={{ position: "absolute", inset: 0, zIndex: 31, background: "#080B14aa", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={close}>
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            width: 460, maxWidth: "94%", maxHeight: "86%", background: "#161616",
-            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem",
+            width: 460, maxWidth: "94%", maxHeight: "86%", background: "#111726",
+            border: `1px solid #3E5478`, borderRadius: 0, padding: "1.1rem 1.3rem",
             display: "flex", flexDirection: "column", minHeight: 0,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexShrink: 0 }}>
-            <div style={{ fontWeight: 700, color: GOLD_LIGHT, fontSize: 15 }}>🎯 تسجيل تمرين تفاعلي (SMC + ICT)</div>
+            <div style={{ fontWeight: 700, color: GOLD_LIGHT, fontSize: 15 }}>تسجيل تمرين تفاعلي (SMC + ICT)</div>
             <button
               onClick={() => setDrawingsListTick((t) => t + 1)}
               style={{ ...paneCornerBtnStyle, fontSize: 11 }}
               title="حدّث القائمة (بعد ما ترسم رسمة جديدة)"
-            >
-              🔄 تحديث
+            >تحديث
             </button>
           </div>
-          <div style={{ fontSize: 11.5, color: "#999", marginBottom: 10, flexShrink: 0 }}>
+          <div style={{ fontSize: 11.5, color: "#93A0B8", marginBottom: 10, flexShrink: 0 }}>
             ارسم عادي بأدوات الرسم (مستطيل للـ POI، خط/نقطة للـ SMT والـ CISD...)، وبعدين حدد لكل رسمة شو بتمثل من القائمة تحت. الرسومات بدون دور ما بتنحفظ بمفتاح الإجابة.
           </div>
 
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto", marginBottom: 10 }}>
             {drawings.length === 0 && (
-              <div style={{ fontSize: 12.5, color: "#777", padding: "1rem 0", textAlign: "center" }}>ما في رسومات بالشارت لسا — ابدأ ارسم</div>
+              <div style={{ fontSize: 12.5, color: "#5D6880", padding: "1rem 0", textAlign: "center" }}>ما في رسومات بالشارت لسا — ابدأ ارسم</div>
             )}
             {drawings.map((d) => {
               const meta = drawingRoles[d.id] || {};
               return (
-                <div key={d.id} style={{ padding: "8px 4px", borderBottom: "1px solid #232323" }}>
+                <div key={d.id} style={{ padding: "8px 4px", borderBottom: "1px solid #182033" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-                    <div style={{ fontSize: 12.5, color: "#e5e5e5" }}>{d.type} <span style={{ color: "#666" }}>#{String(d.id).slice(-4)}</span></div>
+                    <div style={{ fontSize: 12.5, color: "#EDF1F8" }}>{d.type} <span style={{ color: "#5D6880" }}>#{String(d.id).slice(-4)}</span></div>
                     <select
                       value={meta.role || ""}
                       onChange={(e) => setRoleMeta(d.id, { role: e.target.value })}
@@ -7700,7 +7697,7 @@ export default function ReplayClient({ userId }) {
             })}
           </div>
 
-          <div style={{ borderTop: "1px solid #232323", paddingTop: 10, flexShrink: 0 }}>
+          <div style={{ borderTop: "1px solid #182033", paddingTop: 10, flexShrink: 0 }}>
             <input
               type="text" placeholder="عنوان السيناريو (مثال: XAUUSD - انعكاس هيكلي 15د)"
               value={scenarioForm.title}
@@ -7715,7 +7712,7 @@ export default function ReplayClient({ userId }) {
               style={{ ...selectStyle, width: "100%", marginBottom: 8, padding: "0.4rem 0.6rem", fontSize: 12.5, resize: "vertical" }}
             />
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
-              <span style={{ fontSize: 12, color: "#999" }}>الصعوبة:</span>
+              <span style={{ fontSize: 12, color: "#93A0B8" }}>الصعوبة:</span>
               <select
                 value={scenarioForm.difficulty}
                 onChange={(e) => setScenarioForm((f) => ({ ...f, difficulty: e.target.value }))}
@@ -7725,7 +7722,7 @@ export default function ReplayClient({ userId }) {
                 <option value="medium">متوسط</option>
                 <option value="hard">صعب</option>
               </select>
-              <span style={{ fontSize: 11.5, color: "#666", marginRight: "auto" }}>{taggedDrawings().length} عنصر محدد له دور</span>
+              <span style={{ fontSize: 11.5, color: "#5D6880", marginRight: "auto" }}>{taggedDrawings().length} عنصر محدد له دور</span>
             </div>
             {scenarioSaveToast && (
               <div style={{ fontSize: 12, color: GOLD_LIGHT, marginBottom: 8 }}>{scenarioSaveToast}</div>
@@ -7733,7 +7730,7 @@ export default function ReplayClient({ userId }) {
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={close} style={{ ...btnStyle("secondary"), flex: 1 }}>إغلاق</button>
               <button onClick={saveScenarioAndAnswerKey} disabled={savingScenario} style={{ ...btnStyle("primary"), flex: 2 }}>
-                {savingScenario ? "جاري الحفظ..." : "💾 حفظ كسيناريو + مفتاح إجابة"}
+                {savingScenario ? "جاري الحفظ..." : "حفظ كسيناريو + مفتاح إجابة"}
               </button>
             </div>
           </div>
@@ -7749,7 +7746,7 @@ export default function ReplayClient({ userId }) {
     return (
       <div
         style={{
-          position: "absolute", inset: 0, zIndex: 31, background: "#0B0E11aa",
+          position: "absolute", inset: 0, zIndex: 31, background: "#080B14aa",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
         onClick={() => setCutChoiceOpen(false)}
@@ -7757,12 +7754,12 @@ export default function ReplayClient({ userId }) {
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            width: 380, maxWidth: "90%", background: "#161616",
-            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.2rem 1.3rem",
+            width: 380, maxWidth: "90%", background: "#111726",
+            border: `1px solid #3E5478`, borderRadius: 0, padding: "1.2rem 1.3rem",
             display: "flex", flexDirection: "column", gap: 12,
           }}
         >
-          <div style={{ fontWeight: 700, color: GOLD_LIGHT, fontSize: 15 }}>✂️ عندك تمرين متوقف</div>
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, fontSize: 15 }}>عندك تمرين متوقف</div>
           <div style={{ fontSize: 12.5, color: "#aaa", lineHeight: 1.7 }}>
             رجعتِ للمباشر من تمرين قص لسا شغال{pausedAt ? ` (متوقف عند ${pausedAt})` : ""}، ورسوماتك عليه محفوظة.
             بدك تكملي منه، أو تبلّشي قص جديد؟
@@ -7770,7 +7767,7 @@ export default function ReplayClient({ userId }) {
           <button
             onClick={resumeSavedSession}
             style={{
-              background: GOLD, color: "#1A1408", border: "none", borderRadius: 8,
+              background: GOLD, color: "#101828", border: "none", borderRadius: 3,
               padding: "10px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer",
             }}
           >
@@ -7779,15 +7776,14 @@ export default function ReplayClient({ userId }) {
           <button
             onClick={startFreshCut}
             style={{
-              background: "transparent", color: "#ccc", border: "1px solid #333", borderRadius: 8,
+              background: "transparent", color: "#93A0B8", border: "1px solid #26314A", borderRadius: 3,
               padding: "10px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer",
             }}
-          >
-            ✂️ قص جديد
+          >قص جديد
           </button>
           <button
             onClick={() => setCutChoiceOpen(false)}
-            style={{ background: "transparent", color: "#777", border: "none", fontSize: 12, cursor: "pointer" }}
+            style={{ background: "transparent", color: "#5D6880", border: "none", fontSize: 12, cursor: "pointer" }}
           >
             إلغاء
           </button>
@@ -7800,17 +7796,17 @@ export default function ReplayClient({ userId }) {
     if (!settingsOpen) return null;
     const set = (patch) => setChartSettings((s) => ({ ...s, ...(typeof patch === "function" ? patch(s) : patch) }));
     const row = (label, control) => (
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #262626", gap: 12 }}>
-        <span style={{ fontSize: 13, color: "#ccc" }}>{label}</span>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #182033", gap: 12 }}>
+        <span style={{ fontSize: 13, color: "#93A0B8" }}>{label}</span>
         {control}
       </div>
     );
     const sectionTitle = (label) => (
-      <div style={{ fontSize: 11.5, color: "#777", margin: "16px 0 2px", fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: 11.5, color: "#5D6880", margin: "16px 0 2px", fontWeight: 700 }}>{label}</div>
     );
     const colorInput = (val, onChange) => (
       <input type="color" value={val} onChange={(e) => onChange(e.target.value)}
-        style={{ width: 40, height: 28, border: "1px solid #333", borderRadius: 6, background: "none", cursor: "pointer", padding: 0 }} />
+        style={{ width: 40, height: 28, border: "1px solid #26314A", borderRadius: 3, background: "none", cursor: "pointer", padding: 0 }} />
     );
     const toggleInput = (val, onChange) => (
       <input type="checkbox" checked={val !== false} onChange={(e) => onChange(e.target.checked)}
@@ -7819,16 +7815,16 @@ export default function ReplayClient({ userId }) {
     const numberInput = (val, onChange, min = 0, max = 40) => (
       <input type="number" min={min} max={max} value={val}
         onChange={(e) => onChange(Math.max(min, Math.min(max, Number(e.target.value) || 0)))}
-        style={{ width: 60, background: "#0D0E10", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "4px 6px", fontSize: 12.5, textAlign: "center" }} />
+        style={{ width: 60, background: "#0C1220", color: "#EDF1F8", border: "1px solid #26314A", borderRadius: 3, padding: "4px 6px", fontSize: 12.5, textAlign: "center" }} />
     );
     const textInput = (val, onChange, placeholder, width = 150) => (
       <input
         type="text" value={val} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        style={{ width, background: "#0D0E10", color: "#eee", border: "1px solid #333", borderRadius: 6, padding: "4px 6px", fontSize: 12.5 }}
+        style={{ width, background: "#0C1220", color: "#EDF1F8", border: "1px solid #26314A", borderRadius: 3, padding: "4px 6px", fontSize: 12.5 }}
       />
     );
     const disabledNote = (label) => (
-      <div style={{ fontSize: 11.5, color: "#555", padding: "10px 0", borderBottom: "1px solid #262626", fontStyle: "italic" }}>
+      <div style={{ fontSize: 11.5, color: "#3E4761", padding: "10px 0", borderBottom: "1px solid #182033", fontStyle: "italic" }}>
         {label}
       </div>
     );
@@ -7870,7 +7866,7 @@ export default function ReplayClient({ userId }) {
           return (
             <>
               {sectionTitle("النص")}
-              {row("لون نص المحاور (الأسعار والوقت)", colorInput(chartSettings.textColor || "#d1d4dc", (v) => set({ textColor: v })))}
+              {row("لون نص المحاور (الأسعار والوقت)", colorInput(chartSettings.textColor || "#93A0B8", (v) => set({ textColor: v })))}
               {sectionTitle("مقياس الأسعار")}
               {row("تحجيم تلقائي (Auto Scale)", toggleInput(chartSettings.autoScale, (v) => set({ autoScale: v })))}
               {sectionTitle("هوامش محور السعر (%)")}
@@ -7933,18 +7929,18 @@ export default function ReplayClient({ userId }) {
 
     return (
       <div style={{
-        position: "absolute", inset: 0, zIndex: 30, background: "#0B0E11aa",
+        position: "absolute", inset: 0, zIndex: 30, background: "#080B14aa",
         display: "flex", alignItems: "center", justifyContent: "center",
       }} onClick={() => setSettingsOpen(false)}>
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            width: 620, maxWidth: "92%", maxHeight: "82%", background: "#161616",
-            border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem",
+            width: 620, maxWidth: "92%", maxHeight: "82%", background: "#111726",
+            border: `1px solid #3E5478`, borderRadius: 0, padding: "1.1rem 1.3rem",
             display: "flex", flexDirection: "column",
           }}
         >
-          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10, fontSize: 15, flexShrink: 0 }}>⚙️ إعدادات</div>
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 10, fontSize: 15, flexShrink: 0 }}>إعدادات</div>
           <div style={{ display: "flex", flexDirection: "row", gap: 16, flex: 1, minHeight: 0 }}>
             <div style={{ flex: 1, minWidth: 0, overflowY: "auto", paddingLeft: 4 }}>
               {tabContent()}
@@ -7957,9 +7953,9 @@ export default function ReplayClient({ userId }) {
                   onClick={() => setSettingsTab(t.key)}
                   style={{
                     display: "flex", alignItems: "center", gap: 10, textAlign: "right",
-                    padding: "8px 10px", borderRadius: 8, border: "none", cursor: "pointer",
-                    background: settingsTab === t.key ? "#262626" : "transparent",
-                    color: settingsTab === t.key ? GOLD_LIGHT : "#ccc",
+                    padding: "8px 10px", borderRadius: 3, border: "none", cursor: "pointer",
+                    background: settingsTab === t.key ? "#182033" : "transparent",
+                    color: settingsTab === t.key ? GOLD_LIGHT : "#93A0B8",
                     fontSize: 13, fontWeight: settingsTab === t.key ? 700 : 500,
                   }}
                 >
@@ -7986,14 +7982,14 @@ export default function ReplayClient({ userId }) {
   function renderCompareSettingsDialog() {
     if (!compareSettingsOpen) return null;
     const row = (label, control) => (
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #262626" }}>
-        <span style={{ fontSize: 13, color: "#ccc" }}>{label}</span>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #182033" }}>
+        <span style={{ fontSize: 13, color: "#93A0B8" }}>{label}</span>
         {control}
       </div>
     );
     const colorInput = (val, onChange) => (
       <input type="color" value={val} onChange={(e) => onChange(e.target.value)}
-        style={{ width: 40, height: 28, border: "1px solid #333", borderRadius: 6, background: "none", cursor: "pointer", padding: 0 }} />
+        style={{ width: 40, height: 28, border: "1px solid #26314A", borderRadius: 3, background: "none", cursor: "pointer", padding: 0 }} />
     );
     const typeOptions = [
       { value: "area", label: "منطقة (Area)" },
@@ -8002,14 +7998,14 @@ export default function ReplayClient({ userId }) {
     ];
     return (
       <div style={{
-        position: "absolute", inset: 0, zIndex: 30, background: "#0B0E11aa",
+        position: "absolute", inset: 0, zIndex: 30, background: "#080B14aa",
         display: "flex", alignItems: "center", justifyContent: "center",
       }} onClick={() => setCompareSettingsOpen(false)}>
         <div
           onClick={(e) => e.stopPropagation()}
-          style={{ width: 300, background: "#161616", border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "1.1rem 1.3rem" }}
+          style={{ width: 300, background: "#111726", border: `1px solid #3E5478`, borderRadius: 0, padding: "1.1rem 1.3rem" }}
         >
-          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 6, fontSize: 15 }}>⚙️ إعدادات لوحة المقارنة</div>
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 6, fontSize: 15 }}>إعدادات لوحة المقارنة</div>
           {row("نوع الشارت", (
             <select
               value={compareSettings.type}
@@ -8057,22 +8053,22 @@ export default function ReplayClient({ userId }) {
     return (
       <div style={{
         display: "flex", alignItems: "center", gap: "1.5rem", marginBottom: "0.8rem",
-        background: "#0f1f17", border: `1px solid ${GREEN}44`, borderRadius: 12, padding: "0.7rem 1.2rem",
+        background: "#111726", border: `1px solid ${GREEN}44`, borderRadius: 0, padding: "0.7rem 1.2rem",
         flexWrap: "wrap",
       }}>
         <span style={{ color: GREEN, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: GREEN, display: "inline-block", animation: "qtaPulse 1.4s infinite" }} />
           مباشر
         </span>
-        <span style={{ color: "#ccc", fontSize: 13 }}>
+        <span style={{ color: "#93A0B8", fontSize: 13 }}>
           آخر سعر: <b style={{ color: priceColor, transition: "color .3s" }}>{liveLastPrice ? liveLastPrice.toFixed(4) : "..."}</b>
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: "#ccc", fontSize: 13 }}>إغلاق الشمعة خلال:</span>
+          <span style={{ color: "#93A0B8", fontSize: 13 }}>إغلاق الشمعة خلال:</span>
           <b style={{ color: "#fff", fontVariantNumeric: "tabular-nums", fontSize: 14, minWidth: 58, display: "inline-block" }}>
             {countdown || "--:--"}
           </b>
-          <div style={{ width: 90, height: 5, borderRadius: 3, background: "#1f2f27", overflow: "hidden" }}>
+          <div style={{ width: 90, height: 5, borderRadius: 3, background: "#182033", overflow: "hidden" }}>
             <div style={{
               width: `${Math.min(100, Math.max(0, countdownProgress * 100))}%`,
               height: "100%", background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`,
@@ -8096,7 +8092,7 @@ export default function ReplayClient({ userId }) {
     const info = getAssetByValue(assetValue);
     const intervalLabel = INTERVALS.find((i) => i.value === interval)?.label || interval;
     const fmt = (v) => (v != null ? v.toFixed(v < 10 ? 4 : 2) : "-");
-    const bgStyle = chartSettings.statusShowBg !== false ? "#0B0E1166" : "transparent";
+    const bgStyle = chartSettings.statusShowBg !== false ? "#080B1466" : "transparent";
     return (
       <div style={{
         position: "absolute", top: 10, left: 10, zIndex: 8, pointerEvents: "none",
@@ -8104,14 +8100,14 @@ export default function ReplayClient({ userId }) {
         fontSize: 12.5, fontFamily: "monospace, sans-serif", direction: "ltr",
       }}>
         {(chartSettings.statusShowSymbol !== false || chartSettings.statusShowInterval !== false) && (
-          <span style={{ color: "#eee", fontWeight: 700, background: bgStyle, padding: "2px 8px", borderRadius: 6 }}>
+          <span style={{ color: "#EDF1F8", fontWeight: 700, background: bgStyle, padding: "2px 8px", borderRadius: 3 }}>
             {chartSettings.statusShowSymbol !== false && (info?.label || assetValue)}
             {chartSettings.statusShowSymbol !== false && chartSettings.statusShowInterval !== false && " · "}
             {chartSettings.statusShowInterval !== false && intervalLabel}
           </span>
         )}
         {chartSettings.statusShowValues !== false && (
-          <span ref={ohlcLineRef} style={{ color: col, background: bgStyle, padding: "2px 8px", borderRadius: 6, direction: "ltr" }}>
+          <span ref={ohlcLineRef} style={{ color: col, background: bgStyle, padding: "2px 8px", borderRadius: 3, direction: "ltr" }}>
             O <b ref={ohlcORef}>{fmt(last.open)}</b>&nbsp;&nbsp;H <b ref={ohlcHRef}>{fmt(last.high)}</b>&nbsp;&nbsp;L <b ref={ohlcLRef}>{fmt(last.low)}</b>&nbsp;&nbsp;C <b ref={ohlcCRef}>{fmt(last.close)}</b>
           </span>
         )}
@@ -8132,7 +8128,7 @@ export default function ReplayClient({ userId }) {
           position: "absolute", bottom: 8, left: 10, zIndex: 8,
           display: "flex", alignItems: "center", gap: 6,
           background: "rgba(13,13,10,0.72)", backdropFilter: "blur(2px)",
-          border: `1px solid ${GOLD}22`, borderRadius: 8,
+          border: `1px solid #26314A`, borderRadius: 3,
           padding: "0.3rem 0.5rem",
         }}
         title="مستوى الزوم"
@@ -8187,8 +8183,8 @@ export default function ReplayClient({ userId }) {
         disabled={disabled}
         style={{
           display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
-          minWidth: 78, padding: "0.3rem 0.55rem", borderRadius: 6, cursor: disabled ? "default" : "pointer",
-          background: "#0D0E10cc", border: `1.5px solid ${color}`, color,
+          minWidth: 78, padding: "0.3rem 0.55rem", borderRadius: 3, cursor: disabled ? "default" : "pointer",
+          background: "#0C1220cc", border: `1.5px solid ${color}`, color,
           fontFamily: "monospace, sans-serif", opacity: disabled ? 0.5 : 1,
         }}
       >
@@ -8202,8 +8198,8 @@ export default function ReplayClient({ userId }) {
         display: "flex", alignItems: "center", gap: 4,
       }}>
         {box("بيع", bid, RED, () => openQuickTrade("sell"))}
-        <span style={{ fontSize: 11, color: "#888", padding: "0 2px" }}>{(ask - bid).toFixed(digits)}</span>
-        {box("شراء", ask, "#3D8BFD", () => openQuickTrade("buy"))}
+        <span style={{ fontSize: 11, color: "#5D6880", padding: "0 2px" }}>{(ask - bid).toFixed(digits)}</span>
+        {box("شراء", ask, "#5FA8E8", () => openQuickTrade("buy"))}
       </div>
     );
   }
@@ -8267,9 +8263,9 @@ export default function ReplayClient({ userId }) {
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         gap: 12, flexWrap: "wrap", marginTop: "0.5rem",
-        padding: "0.35rem 0.7rem", background: "#131722",
-        border: "1px solid #2a2e39", borderRadius: 6,
-        fontSize: 11.5, color: "#787b86", direction: "ltr",
+        padding: "0.35rem 0.7rem", background: "#0C1220",
+        border: "1px solid #26314A", borderRadius: 3,
+        fontSize: 11.5, color: "#5D6880", direction: "ltr",
       }}>
         <span style={{ fontVariantNumeric: "tabular-nums" }}>{footerClockLabel}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
@@ -8279,8 +8275,8 @@ export default function ReplayClient({ userId }) {
               type="button"
               onClick={() => applyRangeShortcut(r.days)}
               style={{
-                padding: "3px 8px", borderRadius: 4, border: "1px solid transparent",
-                background: "transparent", color: "#b2b5be", cursor: "pointer",
+                padding: "3px 8px", borderRadius: 3, border: "1px solid transparent",
+                background: "transparent", color: "#93A0B8", cursor: "pointer",
                 fontSize: 11.5, fontWeight: 600,
               }}
               className="tv-btn"
@@ -8303,19 +8299,18 @@ export default function ReplayClient({ userId }) {
       <style>{`
         .tv-btn { transition: background 0.1s ease, color 0.1s ease; }
         .tv-btn:hover:not(.tv-btn-active):not(.tv-btn-disabled) {
-          background: #2a2e39 !important;
-          color: #d1d4dc !important;
+          background: #26314A !important;
+          color: #93A0B8 !important;
         }
-        .tv-flyout-scroll { scrollbar-width: thin; scrollbar-color: #363a45 transparent; }
+        .tv-flyout-scroll { scrollbar-width: thin; scrollbar-color: #1E2941 transparent; }
         .tv-flyout-scroll::-webkit-scrollbar { width: 8px; }
-        .tv-flyout-scroll::-webkit-scrollbar-thumb { background: #363a45; border-radius: 4px; }
+        .tv-flyout-scroll::-webkit-scrollbar-thumb { background: #1E2941; border-radius: 3px; }
         .tv-flyout-scroll::-webkit-scrollbar-track { background: transparent; }
       `}</style>
       {!isFullscreen && renderTopBar()}
 
       {!supported && !error && (
-        <div style={{ color: "#F5A623", fontSize: 13, marginBottom: "1rem" }}>
-          ⚠️ هذا الأصل غير مدعوم حالياً بعرض الشموع، اختاري أصل آخر من القائمة.
+        <div style={{ color: "#E0A44A", fontSize: 13, marginBottom: "1rem" }}>هذا الأصل غير مدعوم حالياً بعرض الشموع، اختاري أصل آخر من القائمة.
         </div>
       )}
       {error && <div style={{ color: RED, fontSize: 13, marginBottom: "1rem" }}>{error}</div>}
@@ -8325,8 +8320,8 @@ export default function ReplayClient({ userId }) {
       <div
         ref={chartWrapperRef}
         style={{
-          background: isFullscreen ? "#0a0a08" : "linear-gradient(145deg, #141517, #0D0E10)",
-          border: `1px solid ${GOLD}26`,
+          background: isFullscreen ? "#080B14" : "#111726",
+          border: `1px solid #26314A`,
           borderRadius: isFullscreen ? 0 : 14,
           padding: isFullscreen ? "0.6rem" : "1rem",
           position: "relative",
@@ -8344,7 +8339,7 @@ export default function ReplayClient({ userId }) {
         {loading && allCandles.length === 0 && (
           <div style={{
             position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#777", fontSize: 14, zIndex: 2, background: "#0D0E10cc", borderRadius: 14,
+            color: "#5D6880", fontSize: 14, zIndex: 2, background: "#0C1220cc", borderRadius: 0,
           }}>
             ...جاري تحميل البيانات
           </div>
@@ -8416,9 +8411,9 @@ export default function ReplayClient({ userId }) {
                     pointerEvents: "none", minWidth: 70, fontFamily: "monospace, sans-serif",
                   }}
                 >
-                  <span data-role="symbol" style={{ fontSize: 10, fontWeight: 700, color: "#0D0E10" }} />
-                  <span data-role="price" style={{ fontSize: 13, fontWeight: 800, color: "#0D0E10", lineHeight: 1.2 }} />
-                  <span data-role="countdown" style={{ fontSize: 10, color: "#0D0E10aa", display: "none" }} />
+                  <span data-role="symbol" style={{ fontSize: 10, fontWeight: 700, color: "#0C1220" }} />
+                  <span data-role="price" style={{ fontSize: 13, fontWeight: 800, color: "#0C1220", lineHeight: 1.2 }} />
+                  <span data-role="countdown" style={{ fontSize: 10, color: "#0C1220aa", display: "none" }} />
                 </div>
               </div>
             </div>
@@ -8458,7 +8453,7 @@ export default function ReplayClient({ userId }) {
                       </optgroup>
                     ))}
                   </select>
-                  {compareLoading && <span style={{ fontSize: 11, color: "#888" }}>...جاري التحميل</span>}
+                  {compareLoading && <span style={{ fontSize: 11, color: "#5D6880" }}>...جاري التحميل</span>}
                   {compareError && <span style={{ fontSize: 11, color: RED }}>{compareError}</span>}
                   <button onClick={() => setCompareSettingsOpen(true)} style={paneCornerBtnStyle} title="إعدادات لوحة المقارنة (نوع الشارت والألوان)">⚙️</button>
                   <button onClick={() => toggleMaximizePane("compare")} style={paneCornerBtnStyle} title={maximizedPane === "compare" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة (أو دبل-كليك على القاسم)"}>
@@ -8504,7 +8499,7 @@ export default function ReplayClient({ userId }) {
       )}
 
       {mode === "training" && !isFullscreen && (
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.75rem", fontSize: 12.5, color: "#777" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.75rem", fontSize: 12.5, color: "#5D6880" }}>
           <span>الشموع الظاهرة: {revealCount} / {allCandles.length}</span>
           {finished && <span style={{ color: GOLD_LIGHT }}>خلصت الشموع — دوسي "بداية عشوائية جديدة" لجولة تانية 🎯</span>}
         </div>
@@ -8515,7 +8510,7 @@ export default function ReplayClient({ userId }) {
 
 function Select({ label, value, onChange, options }) {
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#999" }}>
+    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#93A0B8" }}>
       {label}
       <select value={value} onChange={(e) => onChange(e.target.value)} style={selectStyle}>
         {options.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
@@ -8525,30 +8520,30 @@ function Select({ label, value, onChange, options }) {
 }
 
 const selectStyle = {
-  background: "#0D0E10", border: "1px solid #2A2E39", color: "#eee",
-  borderRadius: 8, padding: "0.45rem 0.6rem", fontSize: 13, minWidth: 110,
+  background: "#0C1220", border: "1px solid #26314A", color: "#EDF1F8",
+  borderRadius: 3, padding: "0.45rem 0.6rem", fontSize: 13, minWidth: 110,
 };
 
 const numFieldLabelStyle = {
-  display: "flex", flexDirection: "column", gap: 3, fontSize: 11.5, color: "#999",
+  display: "flex", flexDirection: "column", gap: 3, fontSize: 11.5, color: "#93A0B8",
 };
 
 function tabStyle(active) {
   return {
-    padding: "0.5rem 1rem", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer",
-    border: `1px solid ${GOLD}44`,
+    padding: "0.5rem 1rem", borderRadius: 3, fontSize: 13, fontWeight: 700, cursor: "pointer",
+    border: `1px solid #3E5478`,
     background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-    color: active ? "#1A1408" : GOLD,
+    color: active ? "#101828" : GOLD,
   };
 }
 
 function toolBtnStyle(active) {
   return {
     width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
-    borderRadius: 8, cursor: "pointer",
+    borderRadius: 3, cursor: "pointer",
     border: "1px solid transparent",
     background: active ? `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` : "transparent",
-    color: active ? "#1A1408" : "#c8c8c8",
+    color: active ? "#101828" : "#EDF1F8",
     transition: "background .12s, color .12s",
     flexShrink: 0,
   };
@@ -8556,11 +8551,11 @@ function toolBtnStyle(active) {
 
 const selToolBtnStyle = {
   width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
-  background: "none", border: "none", borderRadius: 6, color: "#ccc", cursor: "pointer", fontSize: 14,
+  background: "none", border: "none", borderRadius: 3, color: "#93A0B8", cursor: "pointer", fontSize: 14,
 };
-const selToolDivider = { width: 1, height: 18, background: "#333", margin: "0 2px", flexShrink: 0 };
+const selToolDivider = { width: 1, height: 18, background: "#26314A", margin: "0 2px", flexShrink: 0 };
 const templateMenuItemStyle = {
-  padding: "9px 14px", cursor: "pointer", fontSize: 13, color: "#e5e5e5",
+  padding: "9px 14px", cursor: "pointer", fontSize: 13, color: "#EDF1F8",
 };
 
 function paneCornerBadgeStyle(side) {
@@ -8568,7 +8563,7 @@ function paneCornerBadgeStyle(side) {
     position: "absolute", top: 8, [side === "right" ? "right" : "left"]: 8, zIndex: 6,
     display: "flex", alignItems: "center", gap: 6,
     background: "rgba(13,13,10,0.72)", backdropFilter: "blur(2px)",
-    border: `1px solid ${GOLD}22`, borderRadius: 6,
+    border: `1px solid #26314A`, borderRadius: 3,
     padding: "0.2rem 0.45rem", fontSize: 12, fontWeight: 700, color: "#ddd",
     pointerEvents: "auto",
   };
@@ -8580,7 +8575,7 @@ const paneCornerBtnStyle = {
 /* أزرار القائمة السريعة (عين/إعدادات/حذف) يلي بتنفتح تحت شريحة المؤشر */
 const quickMenuBtnStyle = {
   width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
-  background: "none", border: "none", borderRadius: 5, color: "#ccc", cursor: "pointer",
+  background: "none", border: "none", borderRadius: 3, color: "#93A0B8", cursor: "pointer",
 };
 /* القاسم القابل للسحب بين الشارت الرئيسي ولوحة المقارنة - سطح واحد متصل بدون فراغ، زي تريدنغ فيو بالظبط */
 const dividerStyle = {
@@ -8589,11 +8584,11 @@ const dividerStyle = {
   background: "transparent",
 };
 const dividerGripStyle = {
-  width: 40, height: 3, borderRadius: 3, background: `${GOLD}55`,
+  width: 40, height: 3, borderRadius: 3, background: `#3E5478`,
 };
 
 function btnStyle(kind) {
-  const base = { padding: "0.55rem 1rem", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" };
-  if (kind === "primary") return { ...base, background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, color: "#1A1408" };
-  return { ...base, background: "transparent", border: `1px solid ${GOLD}44`, color: GOLD };
+  const base = { padding: "0.55rem 1rem", borderRadius: 3, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" };
+  if (kind === "primary") return { ...base, background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, color: "#101828" };
+  return { ...base, background: "transparent", border: `1px solid #3E5478`, color: GOLD };
 }

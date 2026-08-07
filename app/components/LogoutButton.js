@@ -22,10 +22,10 @@ export default function LogoutButton() {
 const styles = {
   button: {
     padding: "0.5rem 1rem",
-    borderRadius: "8px",
-    border: "1px solid #333",
+    borderRadius: "3px",
+    border: "1px solid #26314A",
     backgroundColor: "transparent",
-    color: "#ccc",
+    color: "#93A0B8",
     cursor: "pointer",
   },
 };

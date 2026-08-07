@@ -28,17 +28,17 @@ export default function LectureCompleteButton({ lectureId, initialCompleted = fa
       style={{
         marginTop: "1rem",
         alignSelf: "flex-start",
-        background: completed ? "linear-gradient(135deg, #E8B86D, #D4A05A)" : "transparent",
-        border: `1px solid ${completed ? "#E8B86D" : "#E8B86D55"}`,
-        color: completed ? "#16130a" : "#E8B86D",
+        background: completed ? "linear-gradient(135deg, #C9A860, #9C7F42)" : "transparent",
+        border: `1px solid ${completed ? "#C9A860" : "#3E5478"}`,
+        color: completed ? "#111726" : "#C9A860",
         padding: "0.65rem 1.2rem",
-        borderRadius: 10,
+        borderRadius: 3,
         fontSize: "0.85rem",
         fontWeight: 700,
         cursor: "pointer",
       }}
     >
-      {saving ? "جاري الحفظ..." : completed ? "✅ تمت مشاهدة الدرس" : "وسمها كمكتملة"}
+      {saving ? "جاري الحفظ..." : completed ? "تمت مشاهدة الدرس" : "وسمها كمكتملة"}
     </button>
   );
 }

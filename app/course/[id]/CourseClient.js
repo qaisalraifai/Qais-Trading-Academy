@@ -4,9 +4,9 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 
 const DIFFICULTY_LABELS = {
-  beginner: { label: "مبتدئ", color: "#3DBB6E" },
-  intermediate: { label: "متوسط", color: "#F5A623" },
-  advanced: { label: "متقدم", color: "#E5484D" },
+  beginner: { label: "مبتدئ", color: "#1FBF87" },
+  intermediate: { label: "متوسط", color: "#E0A44A" },
+  advanced: { label: "متقدم", color: "#E8495F" },
 };
 
 function formatDuration(seconds) {
@@ -66,7 +66,7 @@ export default function CourseClient({ course, chapters }) {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #1A1408 0%, #0D0E10 60%)",
+      background: "radial-gradient(ellipse at top, #101828 0%, #0C1220 60%)",
       color: "#fff",
       fontFamily: "'Segoe UI', sans-serif",
       direction: "rtl",
@@ -79,15 +79,15 @@ export default function CourseClient({ course, chapters }) {
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <div style={{ fontSize: 36 }}>{course.icon}</div>
             <div>
-              <p style={{ color: "#E8B86D", fontSize: 11, letterSpacing: 2, margin: 0 }}>QAIS TRADING ACADEMY</p>
+              <p style={{ color: "#C9A860", fontSize: 11, letterSpacing: 2, margin: 0 }}>QAIS TRADING ACADEMY</p>
               <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800 }}>{course.title}</h1>
             </div>
           </div>
-          <Link href="/lecture" style={{ color: "#555", fontSize: 13, textDecoration: "none" }}>← البرامج التعليمية</Link>
+          <Link href="/lecture" style={{ color: "#3E4761", fontSize: 13, textDecoration: "none" }}>← البرامج التعليمية</Link>
         </div>
 
         {course.description && (
-          <p style={{ color: "#666", fontSize: 14, marginBottom: "1.5rem" }}>{course.description}</p>
+          <p style={{ color: "#5D6880", fontSize: 14, marginBottom: "1.5rem" }}>{course.description}</p>
         )}
 
         {/* Search + Filters */}
@@ -95,14 +95,14 @@ export default function CourseClient({ course, chapters }) {
           <div style={{ position: "relative", flex: "1 1 220px" }}>
             <input
               type="text"
-              placeholder="🔍 البحث عن محاضرة..."
+              placeholder="البحث عن محاضرة..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
                 width: "100%",
-                background: "#111108",
-                border: "1px solid #E8B86D33",
-                borderRadius: 10,
+                background: "#111726",
+                border: "1px solid #26314A",
+                borderRadius: 3,
                 padding: "0.65rem 1rem",
                 color: "#fff",
                 fontSize: 13,
@@ -117,10 +117,10 @@ export default function CourseClient({ course, chapters }) {
                 key={f.key}
                 onClick={() => setFilter(f.key)}
                 style={{
-                  background: filter === f.key ? "linear-gradient(135deg, #E8B86D, #D4A05A)" : "#111108",
-                  color: filter === f.key ? "#000" : "#999",
-                  border: filter === f.key ? "none" : "1px solid #E8B86D22",
-                  borderRadius: 8,
+                  background: filter === f.key ? "linear-gradient(135deg, #C9A860, #9C7F42)" : "#111726",
+                  color: filter === f.key ? "#000" : "#93A0B8",
+                  border: filter === f.key ? "none" : "1px solid #26314A",
+                  borderRadius: 3,
                   padding: "0.6rem 1rem",
                   fontSize: 12,
                   fontWeight: 700,
@@ -147,16 +147,16 @@ export default function CourseClient({ course, chapters }) {
                 <div style={{ marginBottom: "1rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
                     <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#fff" }}>{chapter.name}</h2>
-                    <span style={{ fontSize: 12, color: "#E8B86D", fontWeight: 700 }}>
+                    <span style={{ fontSize: 12, color: "#C9A860", fontWeight: 700 }}>
                       {pct}% &nbsp;·&nbsp; {completed} / {total} درس
                     </span>
                   </div>
-                  <div style={{ width: "100%", height: 6, background: "#1a1a0a", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{ width: "100%", height: 6, background: "#1B2438", borderRadius: 3, overflow: "hidden" }}>
                     <div style={{
                       width: `${pct}%`,
                       height: "100%",
-                      background: "linear-gradient(90deg, #E8B86D, #e6c674)",
-                      borderRadius: 4,
+                      background: "linear-gradient(90deg, #C9A860, #E4CD95)",
+                      borderRadius: 3,
                     }} />
                   </div>
                 </div>
@@ -173,9 +173,9 @@ export default function CourseClient({ course, chapters }) {
                     return (
                       <Link key={lecture.id} href={`/lecture/${lecture.id}`} style={{ textDecoration: "none" }}>
                         <div style={{
-                          background: "linear-gradient(145deg, #111108, #0D0E10)",
-                          border: isCompleted ? "1px solid #3DBB6E44" : "1px solid #E8B86D22",
-                          borderRadius: 14,
+                          background: "#111726",
+                          border: isCompleted ? "1px solid #1FBF8744" : "1px solid #26314A",
+                          borderRadius: 0,
                           padding: "1rem 1.25rem",
                           display: "flex",
                           alignItems: "center",
@@ -186,7 +186,7 @@ export default function CourseClient({ course, chapters }) {
                           {/* Status icon */}
                           <div style={{
                             width: 40, height: 40, borderRadius: "50%",
-                            background: isCompleted ? "#3DBB6E22" : "#E8B86D22",
+                            background: isCompleted ? "#1FBF8722" : "#26314A",
                             display: "flex", alignItems: "center", justifyContent: "center",
                             fontSize: 16, flexShrink: 0,
                           }}>
@@ -196,20 +196,20 @@ export default function CourseClient({ course, chapters }) {
                           {/* Info */}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 700, fontSize: 15, color: "#fff" }}>{lecture.title}</div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", marginTop: 5, fontSize: 12, color: "#777" }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", marginTop: 5, fontSize: 12, color: "#5D6880" }}>
                               {duration && <span>⏱ {duration}</span>}
                               {diff && (
-                                <span style={{ color: diff.color }}>🟢 {diff.label}</span>
+                                <span style={{ color: diff.color }}>{diff.label}</span>
                               )}
-                              {lecture.practice_type && <span>🧪 تمرين تطبيقي</span>}
-                              {lastWatched && <span>📅 آخر مشاهدة: {lastWatched}</span>}
+                              {lecture.practice_type && <span>تمرين تطبيقي</span>}
+                              {lastWatched && <span>آخر مشاهدة: {lastWatched}</span>}
                             </div>
                             {!isCompleted && watchedPct > 0 && (
-                              <div style={{ width: "100%", height: 4, background: "#1a1a0a", borderRadius: 3, overflow: "hidden", marginTop: 8 }}>
+                              <div style={{ width: "100%", height: 4, background: "#1B2438", borderRadius: 3, overflow: "hidden", marginTop: 8 }}>
                                 <div style={{
                                   width: `${watchedPct}%`,
                                   height: "100%",
-                                  background: "#E8B86D88",
+                                  background: "#3E5478",
                                   borderRadius: 3,
                                 }} />
                               </div>
@@ -221,9 +221,9 @@ export default function CourseClient({ course, chapters }) {
                             {lecture.progress?.favorite && <span style={{ fontSize: 14 }}>⭐</span>}
                             <div style={{
                               width: 32, height: 32, borderRadius: "50%",
-                              background: "#E8B86D22",
+                              background: "#26314A",
                               display: "flex", alignItems: "center", justifyContent: "center",
-                              color: "#E8B86D", fontSize: 14,
+                              color: "#C9A860", fontSize: 14,
                             }}>←</div>
                           </div>
                         </div>
@@ -236,7 +236,7 @@ export default function CourseClient({ course, chapters }) {
           })}
 
           {filteredChapters.length === 0 && (
-            <div style={{ color: "#555", textAlign: "center", padding: "3rem 0" }}>
+            <div style={{ color: "#3E4761", textAlign: "center", padding: "3rem 0" }}>
               لا توجد نتائج مطابقة.
             </div>
           )}

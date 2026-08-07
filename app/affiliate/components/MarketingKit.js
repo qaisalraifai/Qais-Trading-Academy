@@ -2,9 +2,9 @@
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-const GOLD = "#D4AF37";
-const CARD = "#0d0d0d";
-const BORDER = "#2B2F36";
+const GOLD = "#C9A860";
+const CARD = "#080B14";
+const BORDER = "#1E2941";
 
 const TYPE_KEYS = { logo: "affiliate.typeLogo", banner: "affiliate.typeBanner", video: "affiliate.typeVideo", copy: "affiliate.typeCopy" };
 
@@ -47,13 +47,13 @@ export default function MarketingKit() {
 }
 
 const s = {
-  card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "1.6rem", marginBottom: "1.2rem" },
+  card: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 0, padding: "1.6rem", marginBottom: "1.2rem" },
   sectionTitle: { fontSize: "1rem", fontWeight: 700, color: GOLD, marginBottom: "1rem" },
-  empty: { color: "#555", fontSize: "0.85rem" },
+  empty: { color: "#3E4761", fontSize: "0.85rem" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "0.9rem" },
-  item: { display: "block", background: "#080808", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "0.8rem", textDecoration: "none", textAlign: "center" },
-  thumb: { width: "100%", height: 80, objectFit: "cover", borderRadius: 6, marginBottom: 8, background: "#111" },
-  iconBox: { width: "100%", height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", background: "#111", borderRadius: 6, marginBottom: 8 },
-  itemTitle: { fontSize: "0.78rem", color: "#EAECEF", fontWeight: 600, marginBottom: 2 },
-  itemType: { fontSize: "0.68rem", color: "#6E7177" },
+  item: { display: "block", background: "#080B14", border: `1px solid ${BORDER}`, borderRadius: 3, padding: "0.8rem", textDecoration: "none", textAlign: "center" },
+  thumb: { width: "100%", height: 80, objectFit: "cover", borderRadius: 3, marginBottom: 8, background: "#111726" },
+  iconBox: { width: "100%", height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", background: "#111726", borderRadius: 3, marginBottom: 8 },
+  itemTitle: { fontSize: "0.78rem", color: "#EDF1F8", fontWeight: 600, marginBottom: 2 },
+  itemType: { fontSize: "0.68rem", color: "#5D6880" },
 };

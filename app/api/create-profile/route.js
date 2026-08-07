@@ -145,7 +145,7 @@ export async function POST(request) {
   if (referredBy) {
     await createNotification(supabase, referredBy, {
       type: "referral_joined",
-      title: "👋 عضو جديد بشبكتك",
+      title: "عضو جديد بشبكتك",
       message: `${username.trim()} سجّل حساب عن طريق رابطك — العمولة بتتسجل تلقائياً أول ما يدفع اشتراكه`,
       link: "/affiliate",
     });

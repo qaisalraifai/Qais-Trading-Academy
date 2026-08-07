@@ -51,14 +51,14 @@ function buildFaq(settings, tier) {
 function FaqItem({ q, a }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ border: `1px solid ${BORDER}`, borderRadius: 12, overflow: "hidden", marginBottom: "0.6rem" }}>
+    <div style={{ border: `1px solid ${BORDER}`, borderRadius: 0, overflow: "hidden", marginBottom: "0.6rem" }}>
       <button
         onClick={() => setOpen((v) => !v)}
         style={{
           width: "100%",
           background: "rgba(255,255,255,0.02)",
           border: "none",
-          color: "#EAECEF",
+          color: "#EDF1F8",
           padding: "0.9rem 1.1rem",
           textAlign: "right",
           fontSize: "0.86rem",
@@ -74,7 +74,7 @@ function FaqItem({ q, a }) {
         <span style={{ color: GOLD, transform: open ? "rotate(180deg)" : "none", transition }}>⌄</span>
       </button>
       {open && (
-        <div style={{ padding: "0 1.1rem 1rem", color: "#9A9A9A", fontSize: "0.8rem", lineHeight: 1.8 }} className="qta-animate-in">
+        <div style={{ padding: "0 1.1rem 1rem", color: "#93A0B8", fontSize: "0.8rem", lineHeight: 1.8 }} className="qta-animate-in">
           {a}
         </div>
       )}
@@ -89,7 +89,7 @@ export function FaqSection({ settings, tier }) {
       <div style={card} className="qta-animate-in">
         <p style={sectionEyebrow}>مساعدة سريعة</p>
         <h2 style={sectionTitle}>الأسئلة الشائعة</h2>
-        <p style={{ color: "#9A9A9A", fontSize: "0.82rem", marginBottom: "1.2rem" }}>أهم الأسئلة يلي بتخطر ببالك.</p>
+        <p style={{ color: "#93A0B8", fontSize: "0.82rem", marginBottom: "1.2rem" }}>أهم الأسئلة يلي بتخطر ببالك.</p>
         <div>
           {items.map((it) => (
             <FaqItem key={it.q} {...it} />
@@ -135,7 +135,7 @@ export function TermsSection({ settings, tier }) {
           </div>
         </button>
         {open && (
-          <ul style={{ marginTop: "1rem", paddingRight: "1.1rem", color: "#9A9A9A", fontSize: "0.8rem", lineHeight: 2 }} className="qta-animate-in">
+          <ul style={{ marginTop: "1rem", paddingRight: "1.1rem", color: "#93A0B8", fontSize: "0.8rem", lineHeight: 2 }} className="qta-animate-in">
             {terms.map((t, i) => (
               <li key={i}>{t}</li>
             ))}

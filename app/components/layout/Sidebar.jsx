@@ -4,25 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Settings } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { Button, ProgressBar } from "@/app/components/ui";
+import { Button, Module, OrbitRing } from "@/app/components/ui";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import {
-  NAV_ITEMS,
-  FOOTER_LINKS,
-  HOME_NAV,
-  VIP_CARD,
-  LOGOUT_ITEM,
-} from "./navigation";
+import { NAV_ITEMS, FOOTER_LINKS, HOME_NAV, VIP_CARD, LOGOUT_ITEM } from "./navigation";
+import { isPathActive } from "./NavRail";
 
-// عنصر نشط = المسار الحالي يبدأ بنفس href العنصر (يغطي الصفحات الفرعية
-// زي /mlm/tree). صفحة /mlm صارت مدمجة داخل /affiliate، فمنعتبر أي مسار
-// يبدأ بـ /mlm فعّال لعنصر "العمولة والشبكة" (href: /affiliate) كمان.
-function isPathActive(pathname, href) {
-  if (!pathname || !href) return false;
-  if (pathname === href || pathname.startsWith(`${href}/`)) return true;
-  if (href === "/affiliate" && (pathname === "/mlm" || pathname.startsWith("/mlm/"))) return true;
-  return false;
-}
+/* ============================================================================
+   Sidebar — القائمة الكاملة (تُستخدم بالداشبورد وبقائمة الموبايل).
+   ----------------------------------------------------------------------------
+   كل الاتجاهات منطقية: border-e، ps/pe، text-start. ما في text-right ثابت ولا
+   border-l فيزيائي — النسخة الإنجليزية بتنقلب صح لحالها.
+   ============================================================================ */
 
 function NavButton({ item, isActive, onNavigate, t }) {
   const Icon = item.icon;
@@ -31,19 +23,19 @@ function NavButton({ item, isActive, onNavigate, t }) {
     <Link
       href={item.href}
       onClick={onNavigate}
-      className={cn("nav-item group w-full text-right", isActive ? "nav-item-active" : "nav-item-inactive")}
       aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "nav-item group w-full text-start",
+        isActive ? "nav-item-active" : "nav-item-inactive"
+      )}
     >
       <Icon
-        className={cn(
-          "h-5 w-5 shrink-0 transition-all duration-300 ease-premium group-hover:scale-110",
-          isActive && "drop-shadow-[0_0_6px_rgba(212,175,55,0.6)]"
-        )}
+        className={cn("h-[18px] w-[18px] shrink-0", isActive ? "text-ice-100" : "text-current")}
         aria-hidden
       />
       <span className="flex-1 truncate">{t(item.labelKey)}</span>
       {item.comingSoon && (
-        <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-text-muted">
+        <span className="shrink-0 rounded-sm border border-edge px-1 py-px text-[9px] text-text-faint">
           {t("common.comingSoon")}
         </span>
       )}
@@ -53,23 +45,19 @@ function NavButton({ item, isActive, onNavigate, t }) {
 
 function FooterLink({ item, t }) {
   const Icon = item.icon;
-  const colorClass =
+  const tone =
     item.color === "discord"
       ? "text-discord hover:text-discord/80"
-      : item.color === "gold"
-        ? "text-gold-200 hover:text-gold-100"
-        : "text-text-muted hover:text-text-secondary";
+      : "text-text-muted hover:text-text-secondary";
 
   const content = (
-    <div className={cn("nav-item group nav-item-inactive", colorClass)}>
-      <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
-      <span>{t(item.labelKey)}</span>
+    <div className={cn("nav-item nav-item-inactive w-full text-start", tone)}>
+      <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
+      <span className="truncate">{t(item.labelKey)}</span>
     </div>
   );
 
-  if (!item.href) {
-    return <div className="cursor-pointer">{content}</div>;
-  }
+  if (!item.href) return <div className="cursor-pointer">{content}</div>;
 
   return (
     <Link href={item.href} className="block no-underline">
@@ -78,102 +66,115 @@ function FooterLink({ item, t }) {
   );
 }
 
-export default function Sidebar({
-  isAdmin,
-  daysLeft,
-  onNavigate,
-  onLogout,
-  className,
-}) {
+export default function Sidebar({ isAdmin, daysLeft, onNavigate, onLogout, className }) {
   const pathname = usePathname();
   const { t } = useLocale();
-  const VipIcon = VIP_CARD.icon;
   const HomeIcon = HOME_NAV.icon;
   const LogoutIcon = LOGOUT_ITEM.icon;
 
   const visibleNavItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
-  const isHomeActive = isPathActive(pathname, HOME_NAV.href) && !visibleNavItems.some((item) => isPathActive(pathname, item.href));
+  const isHomeActive =
+    isPathActive(pathname, HOME_NAV.href) &&
+    !visibleNavItems.some((item) => isPathActive(pathname, item.href));
+
+  const daysPct = daysLeft !== null ? Math.min(100, Math.max(4, (daysLeft / 30) * 100)) : null;
 
   return (
     <aside
       className={cn(
-        "flex h-full w-sidebar shrink-0 flex-col",
-        "border-l border-gold-400/10 bg-gradient-to-b from-surface-3/80 to-surface-0/90",
-        "px-3 py-5 backdrop-blur-glass",
+        "flex h-full w-sidebar shrink-0 flex-col border-e border-edge bg-module-1/60 px-3 py-4",
         className
       )}
     >
-      <div className="mb-5 rounded-lg border border-gold-400/20 bg-gradient-to-bl from-gold-400/10 to-surface-1 p-4">
-        <div className="mb-1 flex items-center gap-2 text-xs font-bold text-gold-200">
-          <VipIcon className="h-[1.1rem] w-[1.1rem] animate-pulse-soft text-gold-300" aria-hidden />
-          <span>{t(VIP_CARD.titleKey)}</span>
-        </div>
-        <p className="text-sm font-extrabold text-text-primary">{t(VIP_CARD.subtitleKey)}</p>
-        <p className="mb-3 mt-0.5 text-[11px] text-text-muted">{t(VIP_CARD.descriptionKey)}</p>
-
-        {daysLeft !== null && (
-          <>
-            <ProgressBar
-              value={Math.min(100, Math.max(4, (daysLeft / 30) * 100))}
-              size="sm"
-              className="mb-2"
-            />
-            <p className="mb-3 text-[11px] text-text-muted">
-              {t("subscription.expiresIn", { days: daysLeft })}
-            </p>
-          </>
-        )}
-
-        <Link href="/settings" onClick={onNavigate}>
-          <Button variant="secondary" size="sm" className="w-full" icon={Settings}>
-            {t("nav.subscription")}
-          </Button>
-        </Link>
-      </div>
-
+      {/* الهوية */}
       <div className="mb-4 flex items-center gap-2.5 px-1">
         <img
           src="/logo.jpg"
           alt="QTA"
-          className="h-10 w-10 shrink-0 rounded-full border-2 border-gold-400/60 object-cover"
+          className="h-9 w-9 shrink-0 rounded-sm border border-edge-lit object-cover"
         />
-        <div>
-          <p className="eyebrow mb-0 text-[9px]">QAIS TRADING</p>
-          <p className="text-xs font-bold text-text-primary">ACADEMY</p>
+        <div className="min-w-0">
+          <p className="text-micro uppercase text-text-muted">Qais Trading</p>
+          <p className="font-num text-caption font-semibold tracking-wide text-text-primary">
+            ACADEMY
+          </p>
         </div>
       </div>
 
+      {/* مركز القيادة — الوجهة الأساسية */}
       <Link
         href={HOME_NAV.href}
         onClick={onNavigate}
+        aria-current={isHomeActive ? "page" : undefined}
         className={cn(
-          "group mb-4 flex w-full items-center justify-center gap-2 rounded-md px-3.5 py-3",
-          "gold-gradient-bg text-sm font-extrabold text-ink shadow-glow-sm",
-          "transition-all duration-300 hover:shadow-glow hover:brightness-110 hover:-translate-y-0.5",
-          isHomeActive && "ring-2 ring-gold-200/30"
+          "mb-3 flex w-full items-center gap-2.5 border px-3 py-2.5 text-caption font-semibold transition-colors duration-base ease-orbit",
+          isHomeActive
+            ? "border-edge-lit bg-ice-200/10 text-ice-100"
+            : "border-edge bg-module-2 text-text-secondary hover:border-edge-lit hover:text-text-primary"
         )}
       >
-        <HomeIcon className="h-5 w-5 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
-        <span>{t(HOME_NAV.labelKey)}</span>
+        <HomeIcon className="h-[18px] w-[18px] shrink-0" aria-hidden />
+        <span className="flex-1 truncate text-start">{t(HOME_NAV.labelKey)}</span>
       </Link>
 
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto" aria-label={t(HOME_NAV.labelKey)}>
+      {/* التنقّل */}
+      <nav className="-mx-3 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3" aria-label={t(HOME_NAV.labelKey)}>
         {visibleNavItems.map((item) => (
-          <NavButton key={item.key} item={item} isActive={isPathActive(pathname, item.href)} onNavigate={onNavigate} t={t} />
+          <NavButton
+            key={item.key}
+            item={item}
+            isActive={isPathActive(pathname, item.href)}
+            onNavigate={onNavigate}
+            t={t}
+          />
         ))}
       </nav>
 
-      <div className="mt-4 flex flex-col gap-1 border-t border-gold-400/10 pt-4">
+      {/* بطاقة الاشتراك — حافة ذهبية لأنها لحظة قيمة مالية */}
+      <Module level="primary" chamfer="sm" className="mt-3 shrink-0" padding="none">
+        <div className="flex items-center gap-2.5 p-3">
+          {daysPct !== null ? (
+            <OrbitRing
+              value={daysPct}
+              tone="value"
+              size={34}
+              label={t("subscription.expiresIn", { days: daysLeft })}
+            />
+          ) : (
+            <span className="orbit-ring" aria-hidden />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-caption font-semibold text-au-100">
+              {t(VIP_CARD.subtitleKey)}
+            </p>
+            {daysLeft !== null && (
+              <p className="truncate text-micro text-text-muted">
+                {t("subscription.expiresIn", { days: daysLeft })}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="border-t border-edge p-2">
+          <Link href="/settings" onClick={onNavigate} className="block">
+            <Button variant="value" size="sm" className="w-full" icon={Settings}>
+              {t("nav.subscription")}
+            </Button>
+          </Link>
+        </div>
+      </Module>
+
+      {/* التذييل */}
+      <div className="-mx-3 mt-3 flex shrink-0 flex-col gap-0.5 border-t border-edge px-3 pt-3">
         {FOOTER_LINKS.map((item) => (
           <FooterLink key={item.key} item={item} t={t} />
         ))}
         <button
           type="button"
           onClick={onLogout}
-          className="nav-item group nav-item-inactive w-full text-right text-text-muted hover:text-loss"
+          className="nav-item nav-item-inactive w-full text-start hover:text-loss"
         >
-          <LogoutIcon className="h-5 w-5 shrink-0 transition-transform duration-300 ease-premium group-hover:scale-110" aria-hidden />
-          <span>{t(LOGOUT_ITEM.labelKey)}</span>
+          <LogoutIcon className="h-[18px] w-[18px] shrink-0" aria-hidden />
+          <span className="truncate">{t(LOGOUT_ITEM.labelKey)}</span>
         </button>
       </div>
     </aside>
