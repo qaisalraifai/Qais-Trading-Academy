@@ -787,25 +787,38 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     lines.push(
       marketStatus.biasLbl === "Neutral"
         ? t("radar.mixedMarket")
-        : `The market remains ${marketStatus.biasLbl.toLowerCase()} overall across watched assets.`
+        : t("radar.marketRemainsOverall", { bias: t(marketStatus.biasLbl === "Bullish" ? "radar.dBullish" : "radar.dBearish") })
     );
     if (leadAsset) {
       const zone = leadAsset.decision?.premiumDiscount;
-      const dirTxt = leadAsset.direction === "up" ? "building bullish momentum" : leadAsset.direction === "down" ? "under bearish pressure" : "in a ranging structure";
-      lines.push(`${leadAssetSymbol} is the strongest setup on the radar right now, ${dirTxt}${zone && zone !== "—" ? ` inside the ${zone.toLowerCase()}` : ""}.`);
+      const dirTxt =
+        leadAsset.direction === "up"
+          ? t("radar.dirTxtBullish")
+          : leadAsset.direction === "down"
+          ? t("radar.dirTxtBearish")
+          : t("radar.dirTxtRanging");
+      const zoneNote =
+        zone && zone !== "—"
+          ? t("radar.leadSetupZoneNote", { zone: (zone === "Premium Zone" ? t("radar.dPremiumZone") : zone === "Discount Zone" ? t("radar.dDiscountZone") : zone).toLowerCase() })
+          : "";
+      lines.push(t("radar.leadSetupLine", { symbol: leadAssetSymbol, dirTxt, zoneNote }));
     }
     if (strongestCcy) {
-      lines.push(`${strongestCcy[0]} remains the strongest currency at the moment, which tends to weigh on pairs quoted against it.`);
+      lines.push(t("radar.strongestCurrencyLine", { currency: strongestCcy[0] }));
     }
     lines.push(
       qualitySetups > 0
-        ? `${qualitySetups} high-quality setup${qualitySetups === 1 ? "" : "s"} ${qualitySetups === 1 ? "is" : "are"} currently forming above 80% confidence.`
-        : "No high-quality setups (80%+ confidence) are currently forming — the engine is still scanning."
+        ? t("radar.qualitySetupsSome", {
+            count: qualitySetups,
+            plural: qualitySetups === 1 ? "" : "s",
+            verb: t(qualitySetups === 1 ? "radar.qualitySetupsSomeVerbSingle" : "radar.qualitySetupsSomeVerbPlural"),
+          })
+        : t("radar.qualitySetupsNone")
     );
     // فلتر الأخبار (الفصل ٩) — تحذير واضح لو أقوى فرصة حالياً محجوبة بسبب خبر مهم قريب
     const leadNewsBlock = leadAsset?.decision?.newsBlock;
     if (leadNewsBlock) {
-      lines.push(`${leadAssetSymbol} entries are on hold — a high-impact ${leadNewsBlock.currency} event ("${leadNewsBlock.title}") is within the news-safety window.`);
+      lines.push(t("radar.newsHoldLine", { symbol: leadAssetSymbol, currency: leadNewsBlock.currency, title: leadNewsBlock.title }));
     }
 
     return { lines, confidence: marketStatus.avgConfidence, biasLbl: marketStatus.biasLbl };
@@ -1073,7 +1086,7 @@ function AiSummaryCard({ summary }) {
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flex: "1 1 320px", minWidth: 260 }}>
           <span style={{ fontSize: 22, lineHeight: 1 }}><Brain size={14} aria-hidden /></span>
           <div>
-            <div style={{ fontSize: 14.5, fontWeight: 900, color: "#F5F3FF", letterSpacing: 0.2 }}>Today&apos;s AI Summary</div>
+            <div style={{ fontSize: 14.5, fontWeight: 900, color: "#F5F3FF", letterSpacing: 0.2 }}>{t("radar.todaysAiSummary")}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
               {lines.map((l, i) => (
                 <div key={i} style={{ fontSize: 12.5, color: "#F5F3FF", lineHeight: 1.75 }}>
@@ -1087,7 +1100,9 @@ function AiSummaryCard({ summary }) {
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           <div style={{ background: "#141024", border: `1px solid ${biasColor}40`, borderRadius: 0, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
             <div style={{ fontSize: 9, color: "#6E6690", letterSpacing: 0.4, textTransform: "uppercase" }}>{t("radar.marketBias")}</div>
-            <div style={{ fontSize: 14, fontWeight: 900, color: biasColor, marginTop: 3 }}>{biasLbl}</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: biasColor, marginTop: 3 }}>
+              {t(biasLbl === "Bullish" ? "radar.dBullish" : biasLbl === "Bearish" ? "radar.dBearish" : "radar.dNeutral")}
+            </div>
           </div>
           <div style={{ background: "#141024", border: `1px solid ${confColor}40`, borderRadius: 0, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
             <div style={{ fontSize: 9, color: "#6E6690", letterSpacing: 0.4, textTransform: "uppercase" }}>{t("radar.overallConfidence")}</div>
@@ -1124,7 +1139,12 @@ function LiveMarketStatusBar({ status }) {
       icon: <TrendingDown size={13} color={RED} />,
       color: RED,
     },
-    { label: t("radar.marketBias"), value: biasLbl, icon: <Target size={13} color={biasColor} />, color: biasColor },
+    {
+      label: t("radar.marketBias"),
+      value: t(biasLbl === "Bullish" ? "radar.dBullish" : biasLbl === "Bearish" ? "radar.dBearish" : "radar.dNeutral"),
+      icon: <Target size={13} color={biasColor} />,
+      color: biasColor,
+    },
     {
       label: t("radar.marketConfidence"),
       value: avgConfidence != null ? `${avgConfidence}%` : "—",
