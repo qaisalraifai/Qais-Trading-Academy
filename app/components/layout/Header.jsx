@@ -17,6 +17,11 @@ export default function Header({
   initials,
   onMenuToggle,
   showMenuButton = false,
+  focus = false,
+  onToggleFocus,
+  focusLabel,
+  FocusIcon,
+  sectionLabel,
   className,
 }) {
   const [searchValue, setSearchValue] = useState("");
@@ -40,6 +45,17 @@ export default function Header({
           />
         )}
 
+        {/* وضع التركيز — بيطوي السايدبار لأيقونات عشان الأدوات تاخد كل العرض */}
+        {onToggleFocus && FocusIcon && (
+          <IconButton
+            icon={FocusIcon}
+            label={focusLabel}
+            onClick={onToggleFocus}
+            aria-pressed={focus}
+            className="hidden lg:inline-grid"
+          />
+        )}
+
         <div className="flex items-center gap-2.5">
           <Logo size={26} />
           <div className="hidden min-w-0 sm:block">
@@ -51,6 +67,16 @@ export default function Header({
             </p>
           </div>
         </div>
+
+        {/* اسم القسم الحالي — بيبيّن وين إنت لما السايدبار تكون مطوية */}
+        {sectionLabel && (
+          <>
+            <span className="mx-1 hidden h-3.5 w-px shrink-0 bg-edge lg:block" aria-hidden />
+            <p className="hidden truncate text-caption font-semibold text-text-secondary lg:block">
+              {sectionLabel}
+            </p>
+          </>
+        )}
       </div>
 
       <div className="mx-2 hidden max-w-md flex-1 md:block lg:max-w-lg">

@@ -254,6 +254,7 @@ export default function DashboardClient({
       daysLeft={daysLeft}
       balance={balance}
       showProfileHeader={false}
+      padded
     >
       {/* ---------- ترويسة ---------- */}
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4 border-b border-edge pb-4">

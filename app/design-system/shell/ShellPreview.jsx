@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { WorkspaceShell } from "@/app/components/layout";
+import { AppShell } from "@/app/components/layout";
 import {
   Callout,
   Module,
@@ -13,15 +13,15 @@ import {
   StatGrid,
 } from "@/app/components/ui";
 
-/* معاينة WorkspaceShell ببيانات وهمية — الرِيل المداري والشريط العلوي.
+/* معاينة AppShell الموحّد ببيانات وهمية — الهيدر والسايدبار ووضع التركيز.
    بدّل اللغة من الشريط العلوي عشان تتأكد إن التنقّل بينعكس صح. */
 export default function ShellPreview() {
   return (
-    <WorkspaceShell username="قيس الرفاعي" initials="ق" isAdmin daysLeft={18}>
+    <AppShell username="قيس الرفاعي" initials="ق" isAdmin daysLeft={18}>
       <div className="p-4 md:p-6">
         <Callout tone="info" title="معاينة الغلاف" className="mb-5">
-          هاي صفحة معاينة ببيانات وهمية. جرّب زرّ الطيّ بالشريط العلوي وبدّل اللغة —
-          الرِيل ونقاط المدار وأسهم الطيّ كلها بتنعكس مع اتجاه اللغة.{" "}
+          هاي صفحة معاينة ببيانات وهمية. جرّب زرّ وضع التركيز بالهيدر وبدّل اللغة —
+          السايدبار ونقاط المدار كلها بتنعكس مع اتجاه اللغة.{" "}
           <Link href="/design-system" className="text-ice-200 underline underline-offset-2">
             رجوع لمعرض المكوّنات
           </Link>
@@ -54,6 +54,6 @@ export default function ShellPreview() {
           </ModuleBody>
         </Module>
       </div>
-    </WorkspaceShell>
+    </AppShell>
   );
 }

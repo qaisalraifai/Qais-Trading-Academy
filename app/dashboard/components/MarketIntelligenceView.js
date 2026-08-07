@@ -228,6 +228,83 @@ function countdownLabel(hoursFraction) {
 }
 
 /* ألوان/تسميات نظام radar_status v2 — نفس القيم يلي بيرجعها المحرك (lib/qais/decision.js) بدون أي تغيير */
+/* ============================================================================
+   تبويبات لوح البيانات — الكوكبيت (تولبار + شارت + AI panel) بيضل ثابت فوق،
+   وهاي التبويبات بتقسّم الأقسام التسعة يلي كانت كلها فوق بعض.
+   ============================================================================ */
+const DATA_TAB_KEY = "qta_radar_tab";
+
+const DATA_TABS = [
+  { key: "overview", labelKey: "radar.tabOverview", icon: Sparkles },
+  { key: "liquidity", labelKey: "radar.tabLiquidity", icon: Droplets },
+  { key: "market", labelKey: "radar.tabMarket", icon: LayoutGrid },
+  { key: "opportunities", labelKey: "radar.tabOpportunities", icon: Zap },
+];
+
+function DataTabBar({ active, onSelect, counts }) {
+  const { t } = useLocale();
+  return (
+    <div
+      className="qmi-anim qmi-tabbar"
+      style={{
+        display: "flex",
+        gap: 4,
+        borderBottom: `1px solid #2A2145`,
+        overflowX: "auto",
+        paddingBottom: 0,
+      }}
+      role="tablist"
+    >
+      {DATA_TABS.map((tb) => {
+        const on = active === tb.key;
+        const Icon = tb.icon;
+        const badge = counts?.[tb.key];
+        return (
+          <button
+            key={tb.key}
+            role="tab"
+            aria-selected={on}
+            onClick={() => onSelect(tb.key)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              whiteSpace: "nowrap",
+              background: on ? "#1C1630" : "transparent",
+              border: "none",
+              borderBottom: `2px solid ${on ? GOLD : "transparent"}`,
+              color: on ? GOLD_LIGHT : "#6E6690",
+              fontSize: 12.5,
+              fontWeight: on ? 800 : 600,
+              padding: "10px 16px",
+              cursor: "pointer",
+              transition: "color 150ms ease, background 150ms ease",
+            }}
+          >
+            <Icon size={14} strokeWidth={1.75} aria-hidden />
+            {t(tb.labelKey)}
+            {badge != null && badge > 0 && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  color: on ? "#141024" : "#A79FC4",
+                  background: on ? GOLD_LIGHT : "#241C3E",
+                  borderRadius: 20,
+                  padding: "1px 7px",
+                  lineHeight: 1.6,
+                }}
+              >
+                {badge}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function radarStatusMeta(it) {
   const MAP = {
     green: { color: GREEN, label: it?.radar_signal_label || _t("radar.strongBuy") },
@@ -260,6 +337,28 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   const [lastUpdateAt, setLastUpdateAt] = useState(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [currencyTrend, setCurrencyTrend] = useState({});
+  /* تبويب لوح البيانات تحت الكوكبيت. الصفحة كانت ٩ أقسام فوق بعض بسكرول
+     طويل — هلأ الشارت والتحليل ثابتين فوق، والباقي بتبويبات. الاختيار
+     بينحفظ محلياً حتى ما يرجع للأول كل مرة تفتح الصفحة. */
+  const [dataTab, setDataTab] = useState(DATA_TABS[0].key);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(DATA_TAB_KEY);
+      if (saved && DATA_TABS.some((tb) => tb.key === saved)) setDataTab(saved);
+    } catch {
+      /* التخزين معطّل — بنكمل بالتبويب الافتراضي */
+    }
+  }, []);
+
+  const selectDataTab = useCallback((key) => {
+    setDataTab(key);
+    try {
+      window.localStorage.setItem(DATA_TAB_KEY, key);
+    } catch {
+      /* التخزين معطّل — بنكمل بدون حفظ التفضيل */
+    }
+  }, []);
   const prevCurrenciesRef = useRef(null);
 
   const wrapRef = useRef(null);
@@ -846,6 +945,16 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         .qmi-wstat { transition: transform .18s ease, background .18s ease, box-shadow .18s ease; border: 1px solid transparent; }
         .qmi-wstat:hover { transform: translateY(-2px); background: #141024; border-color: #2A2145; box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
 
+        /* شريط التبويبات — بيلزق فوق وقت السكرول حتى تقدر تبدّل بأي لحظة */
+        .qmi-tabbar {
+          position: sticky;
+          top: 0;
+          z-index: 5;
+          background: #0E0A1A;
+        }
+        .qmi-tabbar::-webkit-scrollbar { height: 0; }
+        .qmi-tabpanel { animation: qmiFadeIn 0.28s ease both; }
+
         .qmi-liq-row {
           display: grid;
           grid-template-columns: 1.1fr 0.8fr 0.7fr 1.3fr 1.2fr 1.1fr 1fr 0.8fr 1.2fr;
@@ -886,11 +995,21 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
             letter-spacing: 0.3px;
           }
         }
+
+        /* الكوكبيت: شارت + لوحة الذكاء الاصطناعي جنب بعض، وبينزلوا فوق بعض
+           على الشاشات الضيّقة بدل ما ينضغط الشارت لعرض غير مقروء. */
+        @media (max-width: 1100px) {
+          .qmi-cockpit { grid-template-columns: minmax(0, 1fr) !important; }
+          .qmi-two-col { grid-template-columns: minmax(0, 1fr) !important; }
+        }
+        @media (max-width: 640px) {
+          .qmi-tabbar button { padding: 9px 11px !important; font-size: 11.5px !important; }
+        }
       `}</style>
 
       {/* ================= HEADER ================= */}
       <div className="qmi-anim" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 20 }}><Crown size={14} aria-hidden /></span>
+        <Crown size={19} strokeWidth={1.75} color={GOLD} aria-hidden />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 19, fontWeight: 800, color: "#F5F3FF" }}>Qais Market Intelligence — Full Analysis</div>
           <div style={{ fontSize: 11.5, color: "#6E6690" }}>{t("radar.poweredBy")}</div>
@@ -916,10 +1035,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         )}
       </div>
 
-      {/* ================= AI SUMMARY (TOP OF PAGE) ================= */}
-      <AiSummaryCard summary={aiSummary} />
-
-      {/* ================= LIVE MARKET STATUS ================= */}
+      {/* ================= LIVE MARKET STATUS (شريط رفيع — بيضل بالكوكبيت) ================= */}
       <LiveMarketStatusBar status={marketStatus} />
 
       {/* ================= TOP TOOLBAR ================= */}
@@ -1006,7 +1122,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       )}
 
       {/* ================= MAIN: CHART (≈70%) + AI PANEL (≈30%) ================= */}
-      <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 360px", gap: "1rem", alignItems: "start" }}>
+      <div className="qmi-anim qmi-cockpit" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 360px", gap: "1rem", alignItems: "start" }}>
         <div ref={chartCardRef} style={{ ...glass, padding: "0.6rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.3rem 0.5rem 0.6rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1041,20 +1157,34 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         <AIPanel result={result} signal={signal} tab={tab} setTab={setTab} primarySession={primarySession} />
       </div>
 
-      {/* ================= THREE PREMIUM CARDS ================= */}
-      <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(240px, 1fr))", gap: "1rem" }}>
-        <CurrencyHeatMapCard snapshot={snapshot} trend={currencyTrend} />
-        <SessionMapCard sessions={sessions} nowTick={nowTick} />
-        <LiveOpportunitiesCard items={radarItems} openTradeSymbols={openTradeSymbols} onOpen={openOpportunity} nowTick={nowTick} />
-      </div>
+      {/* ================= لوح البيانات — تبويبات بدل تسعة أقسام فوق بعض ================= */}
+      <DataTabBar active={dataTab} onSelect={selectDataTab} counts={{ opportunities: marketStatus.activeCount }} />
 
-      {/* ================= LIQUIDITY MAP + PERMANENT ANALYSIS WORKSPACE ================= */}
-      <LiquidityMapSection items={radarItems} selectedSymbol={selectedLiqSymbol} onSelect={setSelectedLiqSymbol} />
+      <div className="qmi-tabpanel" role="tabpanel" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {dataTab === "overview" && (
+          <>
+            <AiSummaryCard summary={aiSummary} />
+            <MarketSummaryCard snapshot={snapshot} radarItems={radarItems} newsToday={newsToday} />
+          </>
+        )}
 
-      {/* ================= MARKET SUMMARY + NOTIFICATIONS ================= */}
-      <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: "1rem", alignItems: "start" }}>
-        <MarketSummaryCard snapshot={snapshot} radarItems={radarItems} newsToday={newsToday} />
-        <LiveNotificationsCard items={radarItems} onOpen={openOpportunity} />
+        {dataTab === "liquidity" && (
+          <LiquidityMapSection items={radarItems} selectedSymbol={selectedLiqSymbol} onSelect={setSelectedLiqSymbol} />
+        )}
+
+        {dataTab === "market" && (
+          <div className="qmi-anim qmi-two-col" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(240px, 1fr))", gap: "1rem", alignItems: "start" }}>
+            <CurrencyHeatMapCard snapshot={snapshot} trend={currencyTrend} />
+            <SessionMapCard sessions={sessions} nowTick={nowTick} />
+          </div>
+        )}
+
+        {dataTab === "opportunities" && (
+          <div className="qmi-anim qmi-two-col" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "1rem", alignItems: "start" }}>
+            <LiveOpportunitiesCard items={radarItems} openTradeSymbols={openTradeSymbols} onOpen={openOpportunity} nowTick={nowTick} />
+            <LiveNotificationsCard items={radarItems} onOpen={openOpportunity} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1956,9 +2086,11 @@ function PriorityStat({ label, value, color, size = "md" }) {
         background: "#141024",
         borderRadius: 3,
         padding: sizing.pad,
-        borderInlineStart: `${sizing.borderW}px solid ${c}`,
+        /* الاختصار border لازم ييجي أول، وبعده الحواف المفردة — عكسها بيخلي
+           React يحذّر من تضارب shorthand مع non-shorthand ويسبّب رفّة بالتنسيق */
         border: "1px solid #141024",
         borderInlineStartWidth: sizing.borderW,
+        borderInlineStartStyle: "solid",
         borderInlineStartColor: c,
       }}
     >
