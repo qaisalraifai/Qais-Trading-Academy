@@ -1510,68 +1510,58 @@ function sequencePointsInData(seq, timeSet) {
 function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, ease, lastPrice, timeSet) {
   if (!Array.isArray(list) || !list.length) return;
 
-  /* كتلة الأوامر = **مجموعة مستويات**، مش صندوق مصمت.
-     كل مستوى (MT / Open / Close / FVG / Outer Wick) بينرسم كخط أفقي مستقل
-     بيبلّش من شمعة الكتلة وبيمتد لليمين — نفس أسلوب الشارت اليدوي.
-     MT أقوى مستوى (حسب strengthOrder بالمحرّك) فبينرسم أوضح من الباقي. */
+  /* كتلة الأوامر = مستويات أفقية تبلّش من شمعتها وتمتد لليمين، والتسمية
+     **بآخر الخط على اليمين** — مش على بدايته (كانت بتتكدّس وتتزاحم هناك).
+
+     التسمية حسب موقع المستوى من MT، نفس أسلوب الشارت اليدوي:
+       فوق MT  →  OB+     |     MT نفسه  →  MT     |     تحت MT  →  OB- */
   const drawable = list
-    .filter((o) => o.levels && o.high != null && o.low != null)
+    .filter((o) => o.levels?.mt != null)
     .map((o) => ({ ...o, x0: o.time != null && (!timeSet || timeSet.has(o.time)) ? timeToX(o.time) : null }))
     .filter((o) => o.x0 != null);
 
-  /* أقرب ٥ كتل للسعر. الأقرب بتطلع بكل مستوياتها، والباقي بـMT وبس —
-     هيك بتشوف كل الكتل المكتشفة بدون ما يصير عجقة من ٥×٥ خط. */
   const near = drawable
-    .sort((a, b) => Math.abs((a.mt ?? a.high) - lastPrice) - Math.abs((b.mt ?? b.high) - lastPrice))
-    .slice(0, 5)
-    .map((o, i) => ({ ...o, detailed: i < 2 }));
+    .sort((a, b) => Math.abs(a.levels.mt - lastPrice) - Math.abs(b.levels.mt - lastPrice))
+    .slice(0, 3);
 
   ctx.save();
   ctx.globalAlpha = ease;
-  const rightEdge = plotW - 46;
+
+  const labelX = plotW - 42;
 
   for (const o of near) {
-    const up = o.direction === "up";
-    const tone = up ? GREEN : RED;
-    const x0 = Math.max(0, o.x0);
+    const tone = o.direction === "up" ? GREEN : RED;
+    const mt = o.levels.mt;
 
-    const rows = (o.detailed
-      ? [
-          { key: "MT", price: o.levels.mt, strong: true },
-          { key: "Open", price: o.levels.open },
-          { key: "Close", price: o.levels.close },
-          { key: "FVG", price: o.levels.fvg },
-          { key: "Wick", price: o.levels.outerWick },
-        ]
-      : [{ key: "MT", price: o.levels.mt, strong: true }]
-    ).filter((r) => Number.isFinite(r.price));
+    const rows = [o.levels.fvg, o.levels.open, mt, o.levels.close, o.levels.outerWick]
+      .filter((p) => Number.isFinite(p))
+      .map((price) => ({
+        price,
+        isMt: price === mt,
+        /* آخر مستوى بالكتلة = حد الإبطال. أحمر دايماً حتى بالكتل الصاعدة،
+           لأن إغلاق أي شمعة خلفه بيلغي الكتلة كاملة. */
+        isInvalidation: o.levels.invalidation != null && price === o.levels.invalidation,
+        label: price === mt ? "MT" : price > mt ? "OB+" : "OB-",
+      }))
+      // لو مستويين بنفس السعر بالضبط، منرسم واحد بس
+      .filter((r, i, arr) => arr.findIndex((x) => x.price === r.price) === i);
 
     for (const r of rows) {
       const y = priceToY(r.price);
       if (y == null) continue;
-      ctx.strokeStyle = r.strong ? `${tone}aa` : `${tone}45`;
-      ctx.lineWidth = r.strong ? 1.4 : 1;
-      ctx.setLineDash(r.strong ? [] : [5, 4]);
+      const x0 = Math.max(0, o.x0);
+
+      ctx.strokeStyle = r.isInvalidation ? `${RED}cc` : r.isMt ? `${tone}aa` : `${tone}55`;
+      ctx.lineWidth = r.isInvalidation || r.isMt ? 1.4 : 1;
       ctx.beginPath();
       ctx.moveTo(x0, y);
-      ctx.lineTo(rightEdge, y);
+      ctx.lineTo(labelX - 4, y);
       ctx.stroke();
-      ctx.setLineDash([]);
 
-      ctx.font = r.strong ? "700 9px sans-serif" : "500 8.5px sans-serif";
-      ctx.fillStyle = r.strong ? tone : `${tone}99`;
+      ctx.font = r.isMt || r.isInvalidation ? "700 9.5px sans-serif" : "600 9px sans-serif";
+      ctx.fillStyle = r.isInvalidation ? RED : r.isMt ? tone : `${tone}bb`;
       ctx.textBaseline = "middle";
-      ctx.fillText(r.key, x0 + 4, y - 5);
-      ctx.textBaseline = "alphabetic";
-    }
-
-    // وسم الكتلة على اليمين، عند مستوى MT
-    const yMt = priceToY(o.levels.mt);
-    if (yMt != null) {
-      ctx.font = "700 10px sans-serif";
-      ctx.fillStyle = tone;
-      ctx.textBaseline = "middle";
-      ctx.fillText(up ? "+OB" : "-OB", rightEdge + 5, yMt);
+      ctx.fillText(r.label, labelX, y);
       ctx.textBaseline = "alphabetic";
     }
   }
