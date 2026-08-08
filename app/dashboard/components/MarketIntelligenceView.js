@@ -856,7 +856,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       }
     }
     /* كتلة الأوامر والـSMT — تحت كل شي (طبقة سياق) */
-    drawOrderBlocks(ctx, r.orderBlocks, timeToX, priceToY, plotW, ease, r.price, timeSet);
+    drawOrderBlocks(ctx, r.orderBlocks, timeToX, priceToY, plotW, h, ease, r.price, timeSet);
     drawSMT(ctx, r.smtSignal, priceToY, plotW, ease);
 
     drawProjection(ctx, r, priceToY, lastX, plotW, h, ease);
@@ -1507,7 +1507,7 @@ function sequencePointsInData(seq, timeSet) {
    الشارت عارض فريم أعلى (h4 مثلاً) — فأوقاتهم أصلاً مش موجودة بشموع العرض.
    المستوى السعري هو المعلومة المفيدة، والزمن ما بيضيف إشي هون.
    ============================================================================ */
-function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, ease, lastPrice, timeSet) {
+function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, chartH, ease, lastPrice, timeSet) {
   if (!Array.isArray(list) || !list.length) return;
 
   /* كتلة الأوامر = مستويات أفقية تبلّش من شمعتها وتمتد لليمين، والتسمية
@@ -1536,42 +1536,67 @@ function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, ease, lastPrice, t
 
   const labelX = plotW - 42;
 
+  /* منجمّع كل خطوط كل الكتل بمصفوفة وحدة، منرسم الخطوط بمواقعها الحقيقية،
+     وبعدين منباعد **التسميات** بس عن بعضها. بدون هيك، الكتلة الضيّقة
+     (فرقها عشرات النقاط) بتطلع تسمياتها فوق بعض وما بتنقرأ. */
+  const lines = [];
   for (const o of near) {
     const tone = o.direction === "up" ? GREEN : RED;
     const mt = o.levels.mt;
-
-    const rows = [o.levels.fvg, o.levels.open, mt, o.levels.close, o.levels.outerWick]
+    [o.levels.fvg, o.levels.open, mt, o.levels.close, o.levels.outerWick]
       .filter((p) => Number.isFinite(p))
-      .map((price) => ({
-        price,
-        isMt: price === mt,
-        /* آخر مستوى بالكتلة = حد الإبطال. أحمر دايماً حتى بالكتل الصاعدة،
-           لأن إغلاق أي شمعة خلفه بيلغي الكتلة كاملة. */
-        isInvalidation: o.levels.invalidation != null && price === o.levels.invalidation,
-        label: price === mt ? "MT" : price > mt ? "OB+" : "OB-",
-      }))
-      // لو مستويين بنفس السعر بالضبط، منرسم واحد بس
-      .filter((r, i, arr) => arr.findIndex((x) => x.price === r.price) === i);
-
-    for (const r of rows) {
-      const y = priceToY(r.price);
-      if (y == null) continue;
-      const x0 = Math.max(0, o.x0);
-
-      ctx.strokeStyle = r.isInvalidation ? `${RED}cc` : r.isMt ? `${tone}aa` : `${tone}55`;
-      ctx.lineWidth = r.isInvalidation || r.isMt ? 1.4 : 1;
-      ctx.beginPath();
-      ctx.moveTo(x0, y);
-      ctx.lineTo(labelX - 4, y);
-      ctx.stroke();
-
-      ctx.font = r.isMt || r.isInvalidation ? "700 9.5px sans-serif" : "600 9px sans-serif";
-      ctx.fillStyle = r.isInvalidation ? RED : r.isMt ? tone : `${tone}bb`;
-      ctx.textBaseline = "middle";
-      ctx.fillText(r.label, labelX, y);
-      ctx.textBaseline = "alphabetic";
-    }
+      .filter((p, i, arr) => arr.indexOf(p) === i)
+      .forEach((price) => {
+        const y = priceToY(price);
+        if (y == null) return;
+        lines.push({
+          y,
+          x0: Math.max(0, o.x0),
+          tone,
+          isMt: price === mt,
+          isInvalidation: o.levels.invalidation != null && price === o.levels.invalidation,
+          label: price === mt ? "MT" : price > mt ? "OB+" : "OB-",
+        });
+      });
   }
+
+  // الخطوط أولاً — بمواقعها السعرية الدقيقة
+  for (const l of lines) {
+    ctx.strokeStyle = l.isInvalidation ? `${RED}cc` : l.isMt ? `${l.tone}aa` : `${l.tone}55`;
+    ctx.lineWidth = l.isInvalidation || l.isMt ? 1.4 : 1;
+    ctx.beginPath();
+    ctx.moveTo(l.x0, l.y);
+    ctx.lineTo(labelX - 6, l.y);
+    ctx.stroke();
+  }
+
+  // التسميات — مباعدة عمودياً بحد أدنى ١١ بكسل
+  const sorted = [...lines].sort((a, b) => a.y - b.y);
+  const GAP = 11;
+  let prev = -Infinity;
+  sorted.forEach((l) => {
+    l.labelY = Math.max(l.y, prev + GAP);
+    prev = l.labelY;
+  });
+  const overflow = sorted.length ? sorted[sorted.length - 1].labelY - (chartH - 6) : 0;
+  if (overflow > 0) sorted.forEach((l) => (l.labelY -= overflow));
+
+  ctx.textBaseline = "middle";
+  for (const l of sorted) {
+    // خط وصل قصير لو التسمية انزاحت عن مستواها الحقيقي
+    if (Math.abs(l.labelY - l.y) > 1.5) {
+      ctx.strokeStyle = `${l.tone}40`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(labelX - 6, l.y);
+      ctx.lineTo(labelX - 2, l.labelY);
+      ctx.stroke();
+    }
+    ctx.font = l.isMt || l.isInvalidation ? "700 9.5px sans-serif" : "600 9px sans-serif";
+    ctx.fillStyle = l.isInvalidation ? RED : l.isMt ? l.tone : `${l.tone}bb`;
+    ctx.fillText(l.label, labelX, l.labelY);
+  }
+  ctx.textBaseline = "alphabetic";
 
   ctx.restore();
 }
