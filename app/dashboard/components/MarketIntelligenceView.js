@@ -818,13 +818,26 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
        كنا نمرّر عرض الحاوية كامل، فليبلات TP1..TP4 كانت ترتسم فوق أرقام
        المحور (4600 / 4800 / 5000...) وفوق تاغ السعر الحالي — وهاد سبب
        التراكب والفوضى على يمين الشارت. */
-    let priceAxisW = 0;
+    /* منجيب عرض منطقة الرسم **من المكتبة مباشرة** بدل ما نحسبه.
+       كنت بحسبه (عرض الحاوية − عرض المحور) وطلع 833 بينما آخر شمعة فعلياً
+       عند 914 — فكل التسميات والصناديق كانت ترتسم ٨٠ بكسل لجوّا، منفصلة عن
+       الحافة وعن الشموع. وهاي اللي بانت "طايرة بالهوا". */
+    let plotW = null;
     try {
-      priceAxisW = chart.priceScale("right").width() || 0;
+      plotW = ts.width();
     } catch {
-      /* نسخة قديمة من المكتبة ما بتدعم width() — منكمل بدون خصم */
+      /* نسخة مكتبة ما بتدعم width() على المقياس الزمني */
     }
-    const plotW = Math.max(120, w - priceAxisW);
+    if (!Number.isFinite(plotW) || plotW <= 0) {
+      let priceAxisW = 0;
+      try {
+        priceAxisW = chart.priceScale("right").width() || 0;
+      } catch {
+        /* ولا هون — منكمل بعرض الحاوية كامل */
+      }
+      plotW = w - priceAxisW;
+    }
+    plotW = Math.max(120, plotW);
 
     const elapsed = performance.now() - animStartRef.current;
     const progress = Math.max(0, Math.min(1, elapsed / ANIM_MS));
@@ -867,7 +880,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       const px = (p) => (p ? Math.round(timeToXSafe(p.time) ?? NaN) : null);
       const lastCandleX = Math.round(lastX);
       console.log(
-        `%c[QAIS إحداثيات] عرض الرسم ${Math.round(plotW)}px · آخر شمعة عند x=${lastCandleX}`,
+        `%c[QAIS إحداثيات] عرض الرسم ${Math.round(plotW)}px · الحاوية ${Math.round(w)}px · آخر شمعة x=${lastCandleX}`,
         "color:#4FA8E0;font-weight:bold"
       );
       if (seq?.points) {
