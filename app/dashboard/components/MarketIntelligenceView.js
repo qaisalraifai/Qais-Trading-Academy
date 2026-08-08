@@ -1477,10 +1477,12 @@ function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, ease, lastPrice, t
     .map((o) => ({ ...o, x0: o.time != null && (!timeSet || timeSet.has(o.time)) ? timeToX(o.time) : null }))
     .filter((o) => o.x0 != null);
 
-  /* أقرب كتلتين للسعر — كل وحدة بتعطي حتى ٥ خطوط، فأكتر من هيك بيصير ازدحام */
+  /* أقرب ٥ كتل للسعر. الأقرب بتطلع بكل مستوياتها، والباقي بـMT وبس —
+     هيك بتشوف كل الكتل المكتشفة بدون ما يصير عجقة من ٥×٥ خط. */
   const near = drawable
     .sort((a, b) => Math.abs((a.mt ?? a.high) - lastPrice) - Math.abs((b.mt ?? b.high) - lastPrice))
-    .slice(0, 2);
+    .slice(0, 5)
+    .map((o, i) => ({ ...o, detailed: i < 2 }));
 
   ctx.save();
   ctx.globalAlpha = ease;
@@ -1491,13 +1493,16 @@ function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, ease, lastPrice, t
     const tone = up ? GREEN : RED;
     const x0 = Math.max(0, o.x0);
 
-    const rows = [
-      { key: "MT", price: o.levels.mt, strong: true },
-      { key: "Open", price: o.levels.open },
-      { key: "Close", price: o.levels.close },
-      { key: "FVG", price: o.levels.fvg },
-      { key: "Wick", price: o.levels.outerWick },
-    ].filter((r) => Number.isFinite(r.price));
+    const rows = (o.detailed
+      ? [
+          { key: "MT", price: o.levels.mt, strong: true },
+          { key: "Open", price: o.levels.open },
+          { key: "Close", price: o.levels.close },
+          { key: "FVG", price: o.levels.fvg },
+          { key: "Wick", price: o.levels.outerWick },
+        ]
+      : [{ key: "MT", price: o.levels.mt, strong: true }]
+    ).filter((r) => Number.isFinite(r.price));
 
     for (const r of rows) {
       const y = priceToY(r.price);
@@ -1624,11 +1629,7 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
 
   /* ---- سبب الدخول ---- بدون هالكتلة الصفقة بتبيّن وكأنها انفتحت بلا مبرر.
      منعرض: من وين الدخول، هل الـSMT متحقق، وحدود الكتلة، ومستوى الإبطال. */
-  const reasonLines = [
-    `${_t("radar.entryReason")}: ${
-      trade.entrySource === "orderBlock" ? _t("radar.viaOrderBlock") : _t("radar.viaRetracement")
-    }`,
-  ];
+  const reasonLines = [`${_t("radar.entryReason")}: ${_t("radar.viaOrderBlock")}`];
   if (trade.obZone) {
     reasonLines.push(`${_t("radar.obRange")}: ${fmt(trade.obZone.bottom)} – ${fmt(trade.obZone.top)}`);
   }
