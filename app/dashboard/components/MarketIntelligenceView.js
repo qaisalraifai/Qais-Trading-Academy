@@ -880,7 +880,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       const px = (p) => (p ? Math.round(timeToXSafe(p.time) ?? NaN) : null);
       const lastCandleX = Math.round(lastX);
       console.log(
-        `%c[QAIS إحداثيات] عرض الرسم ${Math.round(plotW)}px · الحاوية ${Math.round(w)}px · آخر شمعة x=${lastCandleX}`,
+        `%c[QAIS إحداثيات] رسم ${Math.round(plotW)}px · حاوية ${Math.round(w)}px · شموع ${candles.length} · آخر شمعة x=${lastCandleX} · مدى مرئي ${JSON.stringify(ts.getVisibleLogicalRange())}`,
         "color:#4FA8E0;font-weight:bold"
       );
       if (seq?.points) {
@@ -934,6 +934,23 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     ctx.fillStyle = "#22D3EE";
     ctx.fillText(`plotW ${Math.round(plotW)}`, plotW - 58, 12);
     ctx.setLineDash([]);
+
+    /* علامات على شموع معروفة (0٪ ٢٥٪ ٥٠٪ ٧٥٪ ١٠٠٪) — لو ما وقعوا على
+       الشموع المقابلة، فالتحويل فهرس→إحداثي منحرف ومنشوف وين بيبلّش الانحراف. */
+    ctx.strokeStyle = "#B26FE0";
+    ctx.fillStyle = "#B26FE0";
+    ctx.font = "600 8px sans-serif";
+    [0, 0.25, 0.5, 0.75, 1].forEach((f) => {
+      const idx = Math.round((candles.length - 1) * f);
+      const mx = ts.logicalToCoordinate(idx);
+      if (mx == null) return;
+      ctx.beginPath();
+      ctx.moveTo(mx, h - 26);
+      ctx.lineTo(mx, h - 6);
+      ctx.stroke();
+      ctx.fillText(String(idx), mx + 2, h - 28);
+    });
+
     ctx.restore();
     /* ===== نهاية علامات التشخيص ===== */
 
