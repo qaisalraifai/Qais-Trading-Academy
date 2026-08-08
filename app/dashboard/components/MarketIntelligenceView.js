@@ -487,6 +487,13 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           rej.slice(0, 5).forEach((r) => L(`      ${iso(r.bosTime)}  ${r.dir}  →  ${r.reason}`));
         }
 
+        const sd = analysis.obScanDebug || {};
+        if (sd.legs) {
+          L(`  مسح الكتل: ${sd.candleCount} شمعة · ${sd.fvgCount} FVG · ${sd.legs.length} ساق`);
+          sd.legs.slice(-6).forEach((l) =>
+            L(`      ساق ${l.dir} [${l.from}→${l.to}]  سعر ${l.priceFrom?.toFixed(0)}→${l.priceTo?.toFixed(0)}  كتل: ${l.obs}`)
+          );
+        }
         const obs = analysis.orderBlocks || [];
         L(`  كتل الأوامر (${obs.length}) — أقرب ٨ للسعر ${analysis.price}:`);
         [...obs]
@@ -911,49 +918,6 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         drawSequenceProjection(ctx, seq, timeToXSafe, priceToY, plotW, h, ease);
       }
     }
-    /* ===== علامات تشخيص مؤقتة — لإظهار وين الكود بيعتقد إنه الحدود =====
-       أصفر = آخر شمعة (lastX) · سماوي = حافة منطقة الرسم (plotW)
-       لو الأصفر مش عند آخر شمعة فعلية → التحويل معطوب. */
-    ctx.save();
-    ctx.setLineDash([4, 4]);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "#F0A13C";
-    ctx.beginPath();
-    ctx.moveTo(lastX, 0);
-    ctx.lineTo(lastX, h);
-    ctx.stroke();
-    ctx.font = "700 9px sans-serif";
-    ctx.fillStyle = "#F0A13C";
-    ctx.fillText(`lastX ${Math.round(lastX)}`, lastX + 3, 12);
-
-    ctx.strokeStyle = "#22D3EE";
-    ctx.beginPath();
-    ctx.moveTo(plotW, 0);
-    ctx.lineTo(plotW, h);
-    ctx.stroke();
-    ctx.fillStyle = "#22D3EE";
-    ctx.fillText(`plotW ${Math.round(plotW)}`, plotW - 58, 12);
-    ctx.setLineDash([]);
-
-    /* علامات على شموع معروفة (0٪ ٢٥٪ ٥٠٪ ٧٥٪ ١٠٠٪) — لو ما وقعوا على
-       الشموع المقابلة، فالتحويل فهرس→إحداثي منحرف ومنشوف وين بيبلّش الانحراف. */
-    ctx.strokeStyle = "#B26FE0";
-    ctx.fillStyle = "#B26FE0";
-    ctx.font = "600 8px sans-serif";
-    [0, 0.25, 0.5, 0.75, 1].forEach((f) => {
-      const idx = Math.round((candles.length - 1) * f);
-      const mx = ts.logicalToCoordinate(idx);
-      if (mx == null) return;
-      ctx.beginPath();
-      ctx.moveTo(mx, h - 26);
-      ctx.lineTo(mx, h - 6);
-      ctx.stroke();
-      ctx.fillText(String(idx), mx + 2, h - 28);
-    });
-
-    ctx.restore();
-    /* ===== نهاية علامات التشخيص ===== */
-
     /* كتلة الأوامر والـSMT — تحت كل شي (طبقة سياق) */
     drawOrderBlocks(ctx, r.orderBlocks, timeToXSafe, priceToY, plotW, h, ease, r.price, timeSet);
     drawSMT(ctx, r.smtSignal, priceToY, plotW, ease);
