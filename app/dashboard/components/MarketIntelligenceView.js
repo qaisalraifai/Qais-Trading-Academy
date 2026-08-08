@@ -376,6 +376,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   const renderedTFRef = useRef(null);
   /* كاش لمجموعة أوقات الشموع المعروضة — مربوط بمرجع المصفوفة نفسها */
   const timeSetRef = useRef({ src: null, set: null });
+  const coordLogRef = useRef(false); // تشخيص مؤقت — يطبع مرة بعد كل تحليل
   const rafRef = useRef(null);
   const animStartRef = useRef(0);
   const chartCardRef = useRef(null);
@@ -504,6 +505,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       }
       /* ============ نهاية التشخيص المؤقت ============ */
 
+      coordLogRef.current = true; // خلّي أول رسمة تطبع الإحداثيات
       setAllCandles(candlesByTF);
       setResult(analysis);
       resultRef.current = analysis;
@@ -842,6 +844,31 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
     const seqRenderable =
       seq?.points && seq.displayTF === renderedTF && sequencePointsInData(seq, timeSet);
+
+    /* ===== تشخيص مؤقت: إحداثيات الرسم — مرة وحدة بعد كل تحليل ===== */
+    if (coordLogRef.current) {
+      coordLogRef.current = false;
+      const px = (p) => (p ? Math.round(timeToX(p.time) ?? NaN) : null);
+      const lastCandleX = Math.round(lastX);
+      console.log(
+        `%c[QAIS إحداثيات] عرض الرسم ${Math.round(plotW)}px · آخر شمعة عند x=${lastCandleX}`,
+        "color:#4FA8E0;font-weight:bold"
+      );
+      if (seq?.points) {
+        const p = seq.points;
+        console.log(
+          `   النقاط: 0=${px(p.origin)}  A=${px(p.A)}  B=${px(p.B)}  C=${px(p.C)}` +
+            `   ← كلهم لازم ≤ ${lastCandleX}`
+        );
+        console.log(`   السيكونز قابلة للرسم: ${seqRenderable ? "نعم" : "لا"}`);
+      }
+      const obs = (r.orderBlocks || []).filter((o) => o.time != null && timeSet.has(o.time));
+      console.log(`   كتل موقّتة على شموع العرض: ${obs.length} من ${(r.orderBlocks || []).length}`);
+      obs.slice(0, 4).forEach((o) =>
+        console.log(`      MT ${o.levels?.mt?.toFixed(1)}  تبلّش عند x=${Math.round(timeToX(o.time) ?? NaN)}`)
+      );
+    }
+    /* ===== نهاية تشخيص الإحداثيات ===== */
 
     if (seqRenderable) {
       drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t);
@@ -1540,27 +1567,44 @@ function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, chartH, ease, last
      وبعدين منباعد **التسميات** بس عن بعضها. بدون هيك، الكتلة الضيّقة
      (فرقها عشرات النقاط) بتطلع تسمياتها فوق بعض وما بتنقرأ. */
   const lines = [];
+  const groupLabels = [];
+
   for (const o of near) {
     const tone = o.direction === "up" ? GREEN : RED;
     const mt = o.levels.mt;
-    [o.levels.fvg, o.levels.open, mt, o.levels.close, o.levels.outerWick]
+    const prices = [o.levels.fvg, o.levels.open, mt, o.levels.close, o.levels.outerWick]
       .filter((p) => Number.isFinite(p))
-      .filter((p, i, arr) => arr.indexOf(p) === i)
-      .forEach((price) => {
-        const y = priceToY(price);
-        if (y == null) return;
-        lines.push({
-          y,
-          x0: Math.max(0, o.x0),
-          tone,
-          isMt: price === mt,
-          isInvalidation: o.levels.invalidation != null && price === o.levels.invalidation,
-          label: price === mt ? "MT" : price > mt ? "OB+" : "OB-",
-        });
+      .filter((p, i, arr) => arr.indexOf(p) === i);
+
+    const ys = prices.map((p) => priceToY(p)).filter((y) => y != null);
+    if (!ys.length) continue;
+    const spanPx = Math.max(...ys) - Math.min(...ys);
+    const x0 = Math.max(0, o.x0);
+
+    prices.forEach((price) => {
+      const y = priceToY(price);
+      if (y == null) return;
+      lines.push({
+        y,
+        x0,
+        tone,
+        isMt: price === mt,
+        isInvalidation: o.levels.invalidation != null && price === o.levels.invalidation,
+        /* الكتلة الضيّقة (كل مستوياتها ضمن ٢٢ بكسل) بتاخد تسمية وحدة عند MT
+           بدل خمس تسميات مكدّسة — التكديس كان بيوحي إنها مستويات متباعدة
+           مع إنها فعلياً ضمن عشرات النقاط. */
+        showLabel: spanPx >= 22,
+        label: price === mt ? "MT" : price > mt ? "OB+" : "OB-",
       });
+    });
+
+    if (spanPx < 22) {
+      const yMt = priceToY(mt);
+      if (yMt != null) groupLabels.push({ y: yMt, tone, text: o.direction === "up" ? "OB+" : "OB-" });
+    }
   }
 
-  // الخطوط أولاً — بمواقعها السعرية الدقيقة
+  // الخطوط بمواقعها السعرية الدقيقة
   for (const l of lines) {
     ctx.strokeStyle = l.isInvalidation ? `${RED}cc` : l.isMt ? `${l.tone}aa` : `${l.tone}55`;
     ctx.lineWidth = l.isInvalidation || l.isMt ? 1.4 : 1;
@@ -1570,20 +1614,19 @@ function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, chartH, ease, last
     ctx.stroke();
   }
 
-  // التسميات — مباعدة عمودياً بحد أدنى ١١ بكسل
-  const sorted = [...lines].sort((a, b) => a.y - b.y);
+  // التسميات — مباعدة عمودياً، وبس للمستويات يلي بتستاهل تسمية مستقلة
+  const labelled = [...lines.filter((l) => l.showLabel), ...groupLabels].sort((p, q) => p.y - q.y);
   const GAP = 11;
   let prev = -Infinity;
-  sorted.forEach((l) => {
+  labelled.forEach((l) => {
     l.labelY = Math.max(l.y, prev + GAP);
     prev = l.labelY;
   });
-  const overflow = sorted.length ? sorted[sorted.length - 1].labelY - (chartH - 6) : 0;
-  if (overflow > 0) sorted.forEach((l) => (l.labelY -= overflow));
+  const overflow = labelled.length ? labelled[labelled.length - 1].labelY - (chartH - 6) : 0;
+  if (overflow > 0) labelled.forEach((l) => (l.labelY -= overflow));
 
   ctx.textBaseline = "middle";
-  for (const l of sorted) {
-    // خط وصل قصير لو التسمية انزاحت عن مستواها الحقيقي
+  for (const l of labelled) {
     if (Math.abs(l.labelY - l.y) > 1.5) {
       ctx.strokeStyle = `${l.tone}40`;
       ctx.lineWidth = 1;
@@ -1592,9 +1635,9 @@ function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, chartH, ease, last
       ctx.lineTo(labelX - 2, l.labelY);
       ctx.stroke();
     }
-    ctx.font = l.isMt || l.isInvalidation ? "700 9.5px sans-serif" : "600 9px sans-serif";
-    ctx.fillStyle = l.isInvalidation ? RED : l.isMt ? l.tone : `${l.tone}bb`;
-    ctx.fillText(l.label, labelX, l.labelY);
+    ctx.font = l.isMt || l.isInvalidation ? "700 9.5px sans-serif" : "700 9px sans-serif";
+    ctx.fillStyle = l.isInvalidation ? RED : l.isMt ? l.tone : `${l.tone}cc`;
+    ctx.fillText(l.text || l.label, labelX, l.labelY);
   }
   ctx.textBaseline = "alphabetic";
 
