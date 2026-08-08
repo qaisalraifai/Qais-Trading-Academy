@@ -911,6 +911,32 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         drawSequenceProjection(ctx, seq, timeToXSafe, priceToY, plotW, h, ease);
       }
     }
+    /* ===== علامات تشخيص مؤقتة — لإظهار وين الكود بيعتقد إنه الحدود =====
+       أصفر = آخر شمعة (lastX) · سماوي = حافة منطقة الرسم (plotW)
+       لو الأصفر مش عند آخر شمعة فعلية → التحويل معطوب. */
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#F0A13C";
+    ctx.beginPath();
+    ctx.moveTo(lastX, 0);
+    ctx.lineTo(lastX, h);
+    ctx.stroke();
+    ctx.font = "700 9px sans-serif";
+    ctx.fillStyle = "#F0A13C";
+    ctx.fillText(`lastX ${Math.round(lastX)}`, lastX + 3, 12);
+
+    ctx.strokeStyle = "#22D3EE";
+    ctx.beginPath();
+    ctx.moveTo(plotW, 0);
+    ctx.lineTo(plotW, h);
+    ctx.stroke();
+    ctx.fillStyle = "#22D3EE";
+    ctx.fillText(`plotW ${Math.round(plotW)}`, plotW - 58, 12);
+    ctx.setLineDash([]);
+    ctx.restore();
+    /* ===== نهاية علامات التشخيص ===== */
+
     /* كتلة الأوامر والـSMT — تحت كل شي (طبقة سياق) */
     drawOrderBlocks(ctx, r.orderBlocks, timeToXSafe, priceToY, plotW, h, ease, r.price, timeSet);
     drawSMT(ctx, r.smtSignal, priceToY, plotW, ease);
