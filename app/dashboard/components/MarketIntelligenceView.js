@@ -805,6 +805,10 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         drawSequenceProjection(ctx, seq, timeToX, priceToY, plotW, h, ease);
       }
     }
+    /* كتلة الأوامر والـSMT — تحت كل شي (طبقة سياق) */
+    drawOrderBlock(ctx, r.orderBlock, priceToY, plotW, ease);
+    drawSMT(ctx, r.smtSignal, priceToY, plotW, ease);
+
     drawProjection(ctx, r, priceToY, lastX, plotW, h, ease);
 
     /* آخر صفقة كاملة تكوّنت تاريخياً — بتنرسم دايماً (حتى لو محققة) طالما
@@ -1433,6 +1437,87 @@ function sequencePointsInData(seq, timeSet) {
    بتتميّز بصرياً عن الإعداد الحيّ: خطوط أرفع وشفافية أعلى، ووسم واضح على
    نقطة الدخول ("محققة" لو وصلت هدف، "قيد التتبّع" لو لسا).
    ============================================================================ */
+
+/* ============================================================================
+   كتلة الأوامر (OB) والـ SMT — بينرسموا كنطاقات/مستويات سعرية أفقية تمتد
+   على كل عرض الشارت، تماماً زي OB+/OB- بتريدنغ فيو.
+   ----------------------------------------------------------------------------
+   ليش أفقية ومش مربوطة بشمعة؟ لأنهم محسوبين على فريم التنفيذ (m5/m15) بينما
+   الشارت عارض فريم أعلى (h4 مثلاً) — فأوقاتهم أصلاً مش موجودة بشموع العرض.
+   المستوى السعري هو المعلومة المفيدة، والزمن ما بيضيف إشي هون.
+   ============================================================================ */
+function drawOrderBlock(ctx, ob, priceToY, plotW, ease) {
+  if (!ob || ob.high == null || ob.low == null) return;
+  const yTop = priceToY(Math.max(ob.high, ob.low));
+  const yBot = priceToY(Math.min(ob.high, ob.low));
+  if (yTop == null || yBot == null) return;
+
+  const up = ob.direction === "up";
+  const tone = up ? GREEN : RED;
+  const h = Math.max(2, yBot - yTop);
+
+  ctx.save();
+  ctx.globalAlpha = ease;
+
+  // جسم الكتلة
+  ctx.fillStyle = `${tone}14`;
+  ctx.fillRect(0, yTop, plotW, h);
+  ctx.strokeStyle = `${tone}55`;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, yTop + 0.5, plotW - 1, h - 1);
+
+  // مستويات الكتلة الداخلية (MT / Open / Close) — ترتيب القوة تبع المحرّك
+  const lv = ob.levels || {};
+  const inner = [
+    ["MT", lv.mt],
+    ["Open", lv.open],
+    ["Close", lv.close],
+  ];
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1;
+  for (const [name, price] of inner) {
+    if (price == null) continue;
+    const y = priceToY(price);
+    if (y == null) continue;
+    ctx.strokeStyle = `${tone}40`;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(plotW, y);
+    ctx.stroke();
+    ctx.font = "600 9px sans-serif";
+    ctx.fillStyle = `${tone}cc`;
+    ctx.fillText(name, 6, y - 3);
+  }
+  ctx.setLineDash([]);
+
+  // وسم الكتلة
+  const label = `${up ? "OB+" : "OB-"}  ·  ${ob.status}`;
+  drawPill(ctx, plotW - 8, yTop + h / 2, label, tone, "700 10px sans-serif", "right");
+
+  ctx.restore();
+}
+
+function drawSMT(ctx, smt, priceToY, plotW, ease) {
+  if (!smt || smt.point == null) return;
+  const y = priceToY(smt.point);
+  if (y == null) return;
+
+  ctx.save();
+  ctx.globalAlpha = ease;
+  ctx.strokeStyle = `${BLUE}80`;
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([8, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, y);
+  ctx.lineTo(plotW, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const suffix = smt.correlatedWith ? `  ·  ${smt.correlatedWith}` : "";
+  drawPill(ctx, 8, y, `SMT${suffix}`, BLUE, "700 10px sans-serif", "left");
+  ctx.restore();
+}
+
 function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeSet) {
   if (!trade?.entry || !trade.targets?.length) return;
   // نفس حارس السيكونز: لازم وقت الدخول يكون من نفس الشموع المعروضة
@@ -1492,14 +1577,21 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
       ctx,
       rightEdge,
       t.labelY,
-      [`${t.key}${t.isRealLevel ? "  ·  قمة" : `  ·  ${t.ratio}`}`, fmt(t.price)],
+      [`${t.key}${t.isRealLevel ? `  ·  ${up ? _t("radar.realPeak") : _t("radar.realTrough")}` : `  ·  ${t.ratio}`}`, fmt(t.price)],
       c,
       false
     );
   });
 
-  // علامة الدخول
+  /* علامة الدخول — حلقة مزدوجة واضحة + سهم بيأشّر على اتجاه الصفقة، حتى
+     تبيّن فوراً وين كان الدخول بدل ما تضيع بين باقي الرسومات */
   ctx.globalAlpha = ease;
+  ctx.beginPath();
+  ctx.arc(ex, ey, 9, 0, Math.PI * 2);
+  ctx.strokeStyle = `${tone}45`;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
   ctx.beginPath();
   ctx.arc(ex, ey, 5, 0, Math.PI * 2);
   ctx.fillStyle = "#141024";
@@ -1508,8 +1600,25 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
   ctx.strokeStyle = tone;
   ctx.stroke();
 
+  // سهم صغير باتجاه الصفقة
+  const ay = up ? ey - 15 : ey + 15;
+  ctx.beginPath();
+  ctx.moveTo(ex, ay);
+  ctx.lineTo(ex - 4, ay + (up ? 6 : -6));
+  ctx.lineTo(ex + 4, ay + (up ? 6 : -6));
+  ctx.closePath();
+  ctx.fillStyle = tone;
+  ctx.fill();
+
   const label = trade.achieved ? _t("radar.tradeAchieved") : _t("radar.tradeTracking");
-  drawPill(ctx, ex, ey + (up ? 20 : -20), `${_t("radar.lastTrade")} · ${label}`, tone, "700 10px sans-serif");
+  drawPill(
+    ctx,
+    ex,
+    ey + (up ? 34 : -34),
+    `${_t("radar.entryPoint")} ${fmt(trade.entry.price)} · ${label}`,
+    tone,
+    "700 10px sans-serif"
+  );
 
   ctx.restore();
 }
@@ -1597,7 +1706,7 @@ function drawPill(ctx, x, y, text, color, font, align = "center") {
   const padX = 6;
   const boxW = tw + padX * 2;
   const boxH = 15;
-  const boxX = align === "left" ? x : x - boxW / 2;
+  const boxX = align === "left" ? x : align === "right" ? x - boxW : x - boxW / 2;
   const boxY = y - boxH / 2;
 
   ctx.fillStyle = "rgba(18,20,24,0.92)";
