@@ -845,6 +845,17 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     renderedTFRef.current = displayTF;
     displayTFRef.current = displayTF;
     candlesRef.current = allCandles;
+
+    /* إعادة تفعيل التحجيم التلقائي لمحور السعر عند أي تبديل رمز/فريم.
+       lightweight-charts بيطفي autoScale نهائياً أول ما المستخدم يسحب محور
+       السعر بإيده — فلو بدّلت من NAS100 (مدى ~30,000) لـUSDJPY (~157)
+       بيضل المحور عالق على المدى القديم والشموع بتنضغط برّا الشاشة
+       فيبيّن الشارت فاضي. */
+    try {
+      chartRef.current?.priceScale("right").applyOptions({ autoScale: true });
+    } catch {
+      /* نسخة مكتبة ما بتدعم الخيار — منكمل */
+    }
     chartRef.current?.timeScale().fitContent();
     applyContextPriceLines();
     draw(); // رسم متزامن فوري (قبل أي paint) — الحلقة الدائمة بترسم كل فريم بعدين
@@ -1457,50 +1468,65 @@ function sequencePointsInData(seq, timeSet) {
 function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, ease, lastPrice, timeSet) {
   if (!Array.isArray(list) || !list.length) return;
 
-  /* كل كتلة بتبلّش من شمعتها هي وبتمتد لليمين — مش خط ممدود على كل عرض
-     الشارت زي قبل (كان بيعمل عجقة وبيخفي إنه الكتلة تكوّنت وين بالضبط).
-     لو وقت الكتلة مش من شموع فريم العرض، ما منرسمها إطلاقاً بدل ما نرسمها
-     بمكان غلط. */
+  /* كتلة الأوامر = **مجموعة مستويات**، مش صندوق مصمت.
+     كل مستوى (MT / Open / Close / FVG / Outer Wick) بينرسم كخط أفقي مستقل
+     بيبلّش من شمعة الكتلة وبيمتد لليمين — نفس أسلوب الشارت اليدوي.
+     MT أقوى مستوى (حسب strengthOrder بالمحرّك) فبينرسم أوضح من الباقي. */
   const drawable = list
-    .filter((o) => o.mt != null && o.high != null && o.low != null)
+    .filter((o) => o.levels && o.high != null && o.low != null)
     .map((o) => ({ ...o, x0: o.time != null && (!timeSet || timeSet.has(o.time)) ? timeToX(o.time) : null }))
     .filter((o) => o.x0 != null);
 
-  /* أقرب ٤ كتل للسعر بس — الباقي بيعمل ازدحام بلا فائدة */
+  /* أقرب كتلتين للسعر — كل وحدة بتعطي حتى ٥ خطوط، فأكتر من هيك بيصير ازدحام */
   const near = drawable
-    .sort((a, b) => Math.abs(a.mt - lastPrice) - Math.abs(b.mt - lastPrice))
-    .slice(0, 4)
-    .sort((a, b) => b.mt - a.mt); // ترتيب من الأعلى للأدنى حتى التسميات تنقرأ مرتّبة
+    .sort((a, b) => Math.abs((a.mt ?? a.high) - lastPrice) - Math.abs((b.mt ?? b.high) - lastPrice))
+    .slice(0, 2);
 
   ctx.save();
   ctx.globalAlpha = ease;
-
-  const rightEdge = plotW - 44;
+  const rightEdge = plotW - 46;
 
   for (const o of near) {
     const up = o.direction === "up";
     const tone = up ? GREEN : RED;
-    const yHigh = priceToY(Math.max(o.high, o.low));
-    const yLow = priceToY(Math.min(o.high, o.low));
-    if (yHigh == null || yLow == null) continue;
-
     const x0 = Math.max(0, o.x0);
-    const w = Math.max(6, rightEdge - x0);
-    const h = Math.max(1.5, yLow - yHigh);
 
-    // جسم الكتلة — من شمعتها لليمين
-    ctx.fillStyle = `${tone}12`;
-    ctx.fillRect(x0, yHigh, w, h);
-    ctx.strokeStyle = `${tone}55`;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x0 + 0.5, yHigh + 0.5, w - 1, h - 1);
+    const rows = [
+      { key: "MT", price: o.levels.mt, strong: true },
+      { key: "Open", price: o.levels.open },
+      { key: "Close", price: o.levels.close },
+      { key: "FVG", price: o.levels.fvg },
+      { key: "Wick", price: o.levels.outerWick },
+    ].filter((r) => Number.isFinite(r.price));
 
-    // الوسم على اليمين، خارج الجسم
-    ctx.font = "700 9.5px sans-serif";
-    ctx.fillStyle = tone;
-    ctx.textBaseline = "middle";
-    ctx.fillText(up ? "OB+" : "OB-", rightEdge + 5, (yHigh + yLow) / 2);
-    ctx.textBaseline = "alphabetic";
+    for (const r of rows) {
+      const y = priceToY(r.price);
+      if (y == null) continue;
+      ctx.strokeStyle = r.strong ? `${tone}aa` : `${tone}45`;
+      ctx.lineWidth = r.strong ? 1.4 : 1;
+      ctx.setLineDash(r.strong ? [] : [5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(rightEdge, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.font = r.strong ? "700 9px sans-serif" : "500 8.5px sans-serif";
+      ctx.fillStyle = r.strong ? tone : `${tone}99`;
+      ctx.textBaseline = "middle";
+      ctx.fillText(r.key, x0 + 4, y - 5);
+      ctx.textBaseline = "alphabetic";
+    }
+
+    // وسم الكتلة على اليمين، عند مستوى MT
+    const yMt = priceToY(o.levels.mt);
+    if (yMt != null) {
+      ctx.font = "700 10px sans-serif";
+      ctx.fillStyle = tone;
+      ctx.textBaseline = "middle";
+      ctx.fillText(up ? "+OB" : "-OB", rightEdge + 5, yMt);
+      ctx.textBaseline = "alphabetic";
+    }
   }
 
   ctx.restore();
@@ -1594,6 +1620,41 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
     ctx.fillStyle = rr.color;
     ctx.fillText(rr.text, ex + boxW + 5, rr.y);
   }
+  ctx.textBaseline = "alphabetic";
+
+  /* ---- سبب الدخول ---- بدون هالكتلة الصفقة بتبيّن وكأنها انفتحت بلا مبرر.
+     منعرض: من وين الدخول، هل الـSMT متحقق، وحدود الكتلة، ومستوى الإبطال. */
+  const reasonLines = [
+    `${_t("radar.entryReason")}: ${
+      trade.entrySource === "orderBlock" ? _t("radar.viaOrderBlock") : _t("radar.viaRetracement")
+    }`,
+  ];
+  if (trade.obZone) {
+    reasonLines.push(`${_t("radar.obRange")}: ${fmt(trade.obZone.bottom)} – ${fmt(trade.obZone.top)}`);
+  }
+  reasonLines.push(
+    `SMT: ${trade.smtVerified ? _t("radar.smtVerified") : _t("radar.smtUnverified")}`
+  );
+  reasonLines.push(`${_t("radar.invalidationAt")}: ${fmt(stopPrice)}`);
+
+  const rlFont = "600 9px sans-serif";
+  ctx.font = rlFont;
+  const rlW = Math.max(...reasonLines.map((l) => ctx.measureText(l).width)) + 14;
+  const rlH = reasonLines.length * 12 + 8;
+  const rlX = Math.min(Math.max(4, ex - rlW / 2), plotW - rlW - 4);
+  const rlY = up ? Math.max(4, Math.min(ey, sy) - rlH - 26) : Math.min(chartH - rlH - 4, Math.max(ey, sy) + 26);
+
+  ctx.fillStyle = "rgba(18,20,24,0.94)";
+  ctx.strokeStyle = "#3D2F63";
+  ctx.lineWidth = 1;
+  roundRect(ctx, rlX, rlY, rlW, rlH, 5);
+  ctx.fill();
+  ctx.stroke();
+  ctx.textBaseline = "middle";
+  reasonLines.forEach((l, i) => {
+    ctx.fillStyle = i === 0 ? GOLD_LIGHT : "#A79FC4";
+    ctx.fillText(l, rlX + 7, rlY + 10 + i * 12);
+  });
   ctx.textBaseline = "alphabetic";
 
   // وسم الحالة فوق الصندوق
