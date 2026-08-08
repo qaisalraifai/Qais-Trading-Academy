@@ -798,11 +798,20 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       // أهداف السيكونز (TP1..TP4) — تترسم تلقائياً فور تأكيد C، بغض النظر عن
       // اكتمال شروط الصفقة الكاملة (Entry/SL) — هاي أهداف الـ QAIS SK Engine
       // الرسمية المسقطة من C مباشرة (تاسع عشر)
-      if (seq.stage === "confirmed" && seq.targets?.length) {
+      /* الأهداف بتنعرض بس لما تكون في **صفقة كاملة** (كل الشروط الإلزامية
+         تحققت) — مش لمجرد إنه C تأكدت. قبل هيك كان الشرط `stage === confirmed`،
+         فكانت تطلع أهداف لإعداد ناقص ما بينفع تدخل عليه. */
+      if (r.tradeValid && seq.targets?.length) {
         drawSequenceProjection(ctx, seq, timeToX, priceToY, plotW, h, ease);
       }
     }
     drawProjection(ctx, r, priceToY, lastX, plotW, h, ease);
+
+    /* آخر صفقة كاملة تكوّنت تاريخياً — بتنرسم دايماً (حتى لو محققة) طالما
+       هي على نفس فريم العرض. بتنرسم أخيراً حتى تقعد فوق باقي الطبقات. */
+    if (r.lastTrade && r.lastTrade.displayTF === renderedTF) {
+      drawLastTrade(ctx, r.lastTrade, timeToX, priceToY, plotW, h, ease, timeSet);
+    }
   }
 
   useLayoutEffect(() => {
@@ -1416,6 +1425,93 @@ function sequencePointsInData(seq, timeSet) {
   const pts = [seq.points.origin, seq.points.A, seq.points.B, seq.points.C].filter(Boolean);
   if (pts.length < 3) return false;
   return pts.every((p) => timeSet.has(p.time));
+}
+
+
+/* ============================================================================
+   آخر صفقة كاملة تكوّنت على الشارت — بتنرسم دايماً، حتى لو حققت أهدافها.
+   بتتميّز بصرياً عن الإعداد الحيّ: خطوط أرفع وشفافية أعلى، ووسم واضح على
+   نقطة الدخول ("محققة" لو وصلت هدف، "قيد التتبّع" لو لسا).
+   ============================================================================ */
+function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeSet) {
+  if (!trade?.entry || !trade.targets?.length) return;
+  // نفس حارس السيكونز: لازم وقت الدخول يكون من نفس الشموع المعروضة
+  if (timeSet && !timeSet.has(trade.entry.time)) return;
+
+  const ex = timeToX(trade.entry.time);
+  const ey = priceToY(trade.entry.price);
+  if (ex == null || ey == null) return;
+
+  const up = trade.direction === "up";
+  const tone = trade.achieved ? GREEN : GOLD_LIGHT;
+  const rightEdge = plotW - 6;
+
+  ctx.save();
+  ctx.globalAlpha = ease * 0.75; // أبهت من الإعداد الحيّ
+
+  // خط الدخول الأفقي
+  ctx.strokeStyle = `${tone}55`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath();
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(rightEdge, ey);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // أهداف الصفقة — المحقق منها بخط ممتلئ، وغير المحقق متقطّع
+  const sorted = [...trade.targets]
+    .map((t) => ({ ...t, y: priceToY(t.price) }))
+    .filter((t) => t.y != null)
+    .sort((a, b) => a.y - b.y);
+
+  const rowGap = 40;
+  const halfBox = 20;
+  let prev = -Infinity;
+  sorted.forEach((t) => {
+    t.labelY = Math.max(t.y, prev + rowGap);
+    prev = t.labelY;
+  });
+  const over = sorted.length ? sorted[sorted.length - 1].labelY - (chartH - halfBox) : 0;
+  if (over > 0) sorted.forEach((t) => (t.labelY -= over));
+  sorted.forEach((t) => {
+    t.labelY = Math.max(halfBox, Math.min(chartH - halfBox, t.labelY));
+  });
+
+  sorted.forEach((t) => {
+    const c = t.hit ? GREEN : "#6E6690";
+    ctx.strokeStyle = `${c}${t.hit ? "70" : "40"}`;
+    ctx.lineWidth = t.hit ? 1.2 : 1;
+    ctx.setLineDash(t.hit ? [] : [5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(ex, t.y);
+    ctx.lineTo(rightEdge - 96, t.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    drawEdgeBox(
+      ctx,
+      rightEdge,
+      t.labelY,
+      [`${t.key}${t.isRealLevel ? "  ·  قمة" : `  ·  ${t.ratio}`}`, fmt(t.price)],
+      c,
+      false
+    );
+  });
+
+  // علامة الدخول
+  ctx.globalAlpha = ease;
+  ctx.beginPath();
+  ctx.arc(ex, ey, 5, 0, Math.PI * 2);
+  ctx.fillStyle = "#141024";
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = tone;
+  ctx.stroke();
+
+  const label = trade.achieved ? _t("radar.tradeAchieved") : _t("radar.tradeTracking");
+  drawPill(ctx, ex, ey + (up ? 20 : -20), `${_t("radar.lastTrade")} · ${label}`, tone, "700 10px sans-serif");
+
+  ctx.restore();
 }
 
 function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t) {
