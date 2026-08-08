@@ -428,12 +428,20 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       if (corrSymbol) {
         const corrYahoo = getAssetByValue(corrSymbol)?.yahoo || YAHOO_OVERRIDE[corrSymbol];
         if (corrYahoo) {
-          const [corrH1, corrM15] = await Promise.all([
-            fetchCandles(corrYahoo, "1h", 300),
-            fetchCandles(corrYahoo, "15min", 300),
+          /* لازم نجيب نفس مجموعة الفريمات ونفس العمق يلي بيجيبهم الكرون
+             (getCandles بيرجّع كل الفريمات بـ 5000 شمعة). قبل هيك العميل كان
+             يجيب h1/m15 بـ300 شمعة بس — فنفس الرمز كان يعطي SMT مختلف
+             بالشارت الحي عن الكرون. وكمان التحقق التاريخي من الـSMT بدّه
+             فريمات الهيكلية (daily/h4) مش بس h1/m15. */
+          const [corrDaily, corrH4, corrH1, corrM15] = await Promise.all([
+            fetchCandles(corrYahoo, "1day", 5000),
+            fetchCandles(corrYahoo, "4h", 5000),
+            fetchCandles(corrYahoo, "1h", 5000),
+            fetchCandles(corrYahoo, "15min", 5000),
           ]);
-          if (corrH1?.length >= 30 || corrM15?.length >= 30) {
-            correlated = { symbol: corrSymbol, candlesByTF: { h1: corrH1 || [], m15: corrM15 || [] } };
+          const corrByTF = { daily: corrDaily || [], h4: corrH4 || [], h1: corrH1 || [], m15: corrM15 || [] };
+          if (Object.values(corrByTF).some((c) => c.length >= 30)) {
+            correlated = { symbol: corrSymbol, candlesByTF: corrByTF };
           }
         }
       }
@@ -806,7 +814,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       }
     }
     /* كتلة الأوامر والـSMT — تحت كل شي (طبقة سياق) */
-    drawOrderBlocks(ctx, r.orderBlocks, priceToY, plotW, ease, r.price);
+    drawOrderBlocks(ctx, r.orderBlocks, timeToX, priceToY, plotW, ease, r.price, timeSet);
     drawSMT(ctx, r.smtSignal, priceToY, plotW, ease);
 
     drawProjection(ctx, r, priceToY, lastX, plotW, h, ease);
@@ -1446,17 +1454,28 @@ function sequencePointsInData(seq, timeSet) {
    الشارت عارض فريم أعلى (h4 مثلاً) — فأوقاتهم أصلاً مش موجودة بشموع العرض.
    المستوى السعري هو المعلومة المفيدة، والزمن ما بيضيف إشي هون.
    ============================================================================ */
-function drawOrderBlocks(ctx, list, priceToY, plotW, ease, lastPrice) {
+function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, ease, lastPrice, timeSet) {
   if (!Array.isArray(list) || !list.length) return;
 
-  /* منعرض أقرب ٤ كتل للسعر بس — عرض الكل بيعمل عجقة تخفي الشارت نفسه */
-  const near = [...list]
-    .filter((o) => o.mt != null)
+  /* كل كتلة بتبلّش من شمعتها هي وبتمتد لليمين — مش خط ممدود على كل عرض
+     الشارت زي قبل (كان بيعمل عجقة وبيخفي إنه الكتلة تكوّنت وين بالضبط).
+     لو وقت الكتلة مش من شموع فريم العرض، ما منرسمها إطلاقاً بدل ما نرسمها
+     بمكان غلط. */
+  const drawable = list
+    .filter((o) => o.mt != null && o.high != null && o.low != null)
+    .map((o) => ({ ...o, x0: o.time != null && (!timeSet || timeSet.has(o.time)) ? timeToX(o.time) : null }))
+    .filter((o) => o.x0 != null);
+
+  /* أقرب ٤ كتل للسعر بس — الباقي بيعمل ازدحام بلا فائدة */
+  const near = drawable
     .sort((a, b) => Math.abs(a.mt - lastPrice) - Math.abs(b.mt - lastPrice))
-    .slice(0, 4);
+    .slice(0, 4)
+    .sort((a, b) => b.mt - a.mt); // ترتيب من الأعلى للأدنى حتى التسميات تنقرأ مرتّبة
 
   ctx.save();
   ctx.globalAlpha = ease;
+
+  const rightEdge = plotW - 44;
 
   for (const o of near) {
     const up = o.direction === "up";
@@ -1465,25 +1484,22 @@ function drawOrderBlocks(ctx, list, priceToY, plotW, ease, lastPrice) {
     const yLow = priceToY(Math.min(o.high, o.low));
     if (yHigh == null || yLow == null) continue;
 
-    // تظليل خفيف جداً للنطاق — بيوضّح الحدود بدون ما يغطي الشموع
-    ctx.fillStyle = `${tone}0d`;
-    ctx.fillRect(0, yHigh, plotW, Math.max(1, yLow - yHigh));
+    const x0 = Math.max(0, o.x0);
+    const w = Math.max(6, rightEdge - x0);
+    const h = Math.max(1.5, yLow - yHigh);
 
-    // حدّا النطاق كخطين رفيعين
-    ctx.strokeStyle = `${tone}66`;
+    // جسم الكتلة — من شمعتها لليمين
+    ctx.fillStyle = `${tone}12`;
+    ctx.fillRect(x0, yHigh, w, h);
+    ctx.strokeStyle = `${tone}55`;
     ctx.lineWidth = 1;
-    for (const y of [yHigh, yLow]) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(plotW - 52, y);
-      ctx.stroke();
-    }
+    ctx.strokeRect(x0 + 0.5, yHigh + 0.5, w - 1, h - 1);
 
-    // الوسم على اليمين — زي OB+/OB- بتريدنغ فيو
-    ctx.font = "700 10px sans-serif";
+    // الوسم على اليمين، خارج الجسم
+    ctx.font = "700 9.5px sans-serif";
     ctx.fillStyle = tone;
     ctx.textBaseline = "middle";
-    ctx.fillText(up ? "OB+" : "OB-", plotW - 46, (yHigh + yLow) / 2);
+    ctx.fillText(up ? "OB+" : "OB-", rightEdge + 5, (yHigh + yLow) / 2);
     ctx.textBaseline = "alphabetic";
   }
 
@@ -1581,13 +1597,20 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
   ctx.textBaseline = "alphabetic";
 
   // وسم الحالة فوق الصندوق
-  const label = trade.achieved ? _t("radar.tradeAchieved") : _t("radar.tradeTracking");
+  /* ثلاث حالات مش ثنتين: محققة / ضاربة وقف / قيد التتبّع.
+     كان أي صفقة مش محققة تطلع "قيد التتبّع" حتى لو كانت مضروبة وقف من زمان. */
+  const stopped = trade.invalidated && !trade.achieved;
+  const label = trade.achieved
+    ? _t("radar.tradeAchieved")
+    : stopped
+      ? _t("radar.tradeStopped")
+      : _t("radar.tradeTracking");
   drawPill(
     ctx,
     ex + boxW / 2,
     Math.min(ey, ty) - 10,
     `${_t("radar.lastTrade")} ${up ? "▲" : "▼"} · ${label}`,
-    trade.achieved ? GREEN : GOLD_LIGHT,
+    trade.achieved ? GREEN : stopped ? RED : GOLD_LIGHT,
     "700 10px sans-serif"
   );
 
