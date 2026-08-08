@@ -374,6 +374,8 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
      الرسم فوق الشارت — لأنه setData ممكن ما تنفّذ (شموع فاضية) فيبقى الشارت
      على فريم قديم بينما الحالة قالت غيره. */
   const renderedTFRef = useRef(null);
+  /* كاش لمجموعة أوقات الشموع المعروضة — مربوط بمرجع المصفوفة نفسها */
+  const timeSetRef = useRef({ src: null, set: null });
   const rafRef = useRef(null);
   const animStartRef = useRef(0);
   const chartCardRef = useRef(null);
@@ -781,7 +783,17 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     if (lastX == null) return;
 
     const seq = r.sequence;
-    if (seq?.points && seq.displayTF && seq.displayTF === renderedTF) {
+    /* مجموعة أوقات الشموع المعروضة — منبنيها مرة لكل مصفوفة شموع (مش كل فريم،
+       لأنه حلقة rAF بتنادي draw ٦٠ مرة بالثانية) */
+    if (timeSetRef.current.src !== candles) {
+      timeSetRef.current = { src: candles, set: new Set(candles.map((c) => c.time)) };
+    }
+    const timeSet = timeSetRef.current.set;
+
+    const seqRenderable =
+      seq?.points && seq.displayTF === renderedTF && sequencePointsInData(seq, timeSet);
+
+    if (seqRenderable) {
       drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t);
       // أهداف السيكونز (TP1..TP4) — تترسم تلقائياً فور تأكيد C، بغض النظر عن
       // اكتمال شروط الصفقة الكاملة (Entry/SL) — هاي أهداف الـ QAIS SK Engine
@@ -1390,6 +1402,22 @@ function ChartInfoBar({ price, dailyChange, atr, volume, lastUpdateAt, nowTick }
    خطوط فيبوناتشي تصحيحية (القرار اعتمد بالكامل على هيكلية السوق لا على نسب
    الارتداد التقليدية).
    ============================================================================ */
+/* ============================================================================
+   هل السيكونز قابلة للرسم على الشموع المعروضة حالياً؟
+   ----------------------------------------------------------------------------
+   نقاط 0/A/B/C هي سوينغات تاريخية — لازم تكون كل وحدة فيها موجودة فعلياً
+   بمصفوفة الشموع المعروضة. ما منعتمد على timeToCoordinate لحاله: لو الوقت
+   مش من نفس البيانات، المكتبة بترجّع إحداثي مشتق بدل null، فتطلع النقاط
+   طايرة يمين آخر شمعة — وهاد مستحيل منطقياً لنقطة من الماضي.
+   منتحقق من العضوية أولاً، وبعدين منتأكد إنه ولا نقطة وقعت يمين آخر شمعة.
+   ============================================================================ */
+function sequencePointsInData(seq, timeSet) {
+  if (!seq?.points || !timeSet) return false;
+  const pts = [seq.points.origin, seq.points.A, seq.points.B, seq.points.C].filter(Boolean);
+  if (pts.length < 3) return false;
+  return pts.every((p) => timeSet.has(p.time));
+}
+
 function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t) {
   const { points, stage } = seq;
   // لو انلغت السيكونز (نقطة B انكسرت)، ما لازم نوصل الخط لـC ولا نرسمها
@@ -1406,6 +1434,11 @@ function drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t) {
     .filter((p) => p && p.x != null && p.y != null);
 
   if (pts.length < 3) return;
+
+  /* حارس أخير: ولا نقطة هيكلية بتقدر تقع يمين آخر شمعة. لو صار هيك فمعناه
+     الإحداثي انشتق من بيانات مش تبع الشارت المعروض — منوقف الرسم كامل بدل
+     ما نعرض سيكونز طايرة بالفراغ. */
+  if (lastX != null && pts.some((p) => p.x > lastX + 2)) return;
 
   ctx.save();
   ctx.globalAlpha = ease;
