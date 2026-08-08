@@ -462,6 +462,42 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       const analysis = analyzeSymbol({ symbol, candlesByTF, correlated, newsBlocked });
       if (analysis.error) throw new Error(analysis.error);
 
+      /* ============ تشخيص مؤقت — احذف هالكتلة بعد ما نحل موضوع الـOB ============ */
+      try {
+        const d = analysis.lastTradeDebug || {};
+        const iso = (s) => (s ? new Date(s * 1000).toISOString().replace("T", " ").slice(0, 16) : "—");
+        console.log(
+          `%c[QAIS] ${symbol} · فريم الصفقة ${d.timeframe} · مترابط ${d.correlated || "—"}`,
+          "color:#D4AF37;font-weight:bold"
+        );
+        console.log(
+          `  مرشّحات BOS: ${d.bosCandidates ?? 0} · كتل مكتشفة: ${d.obZoneCount ?? 0} · سياق SMT: ${d.hasSmtCtx ? "موجود" : "مفقود"}`
+        );
+        if (analysis.lastTrade) {
+          console.log(`  ✅ صفقة: دخول ${analysis.lastTrade.entry.price} · ${iso(analysis.lastTrade.entry.time)}`);
+        } else {
+          console.log("  ❌ ما في صفقة — أسباب الرفض لكل BOS:");
+          console.table((d.rejections || []).map((r) => ({ وقت_BOS: iso(r.bosTime), الاتجاه: r.dir, السبب: r.reason })));
+        }
+        const obs = analysis.orderBlocks || [];
+        console.log(`  كتل الأوامر (${obs.length}):`);
+        console.table(
+          obs.map((o) => ({
+            الوقت: iso(o.time),
+            الاتجاه: o.direction,
+            الحالة: o.status,
+            MT: o.levels?.mt?.toFixed(2),
+            Open: o.levels?.open?.toFixed(2),
+            Close: o.levels?.close?.toFixed(2),
+            FVG: o.levels?.fvg?.toFixed(2),
+            Wick: o.levels?.outerWick?.toFixed(2),
+          }))
+        );
+      } catch (e) {
+        console.warn("[QAIS] فشل التشخيص:", e);
+      }
+      /* ============ نهاية التشخيص المؤقت ============ */
+
       setAllCandles(candlesByTF);
       setResult(analysis);
       resultRef.current = analysis;
