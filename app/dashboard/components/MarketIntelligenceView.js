@@ -831,16 +831,31 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     const ease = easeOutCubic(progress);
 
     const lastCandle = candles[candles.length - 1];
-    const lastX = timeToX(lastCandle.time);
+    const lastX = ts.logicalToCoordinate(candles.length - 1) ?? timeToX(lastCandle.time);
     if (lastX == null) return;
 
     const seq = r.sequence;
     /* مجموعة أوقات الشموع المعروضة — منبنيها مرة لكل مصفوفة شموع (مش كل فريم،
        لأنه حلقة rAF بتنادي draw ٦٠ مرة بالثانية) */
     if (timeSetRef.current.src !== candles) {
-      timeSetRef.current = { src: candles, set: new Set(candles.map((c) => c.time)) };
+      const map = new Map();
+      for (let i = 0; i < candles.length; i++) map.set(candles[i].time, i);
+      timeSetRef.current = { src: candles, set: new Set(map.keys()), map };
     }
     const timeSet = timeSetRef.current.set;
+    const timeIndex = timeSetRef.current.map;
+
+    /* تحويل الوقت→إحداثي عبر **فهرس الشمعة** مش عبر timeToCoordinate.
+       timeToCoordinate بتشتغل على مقياس زمني ممكن يمتد لبعد آخر شمعة
+       (rightOffset / فجوات عطل / أوقات مستقبلية)، فكانت ترجّع إحداثي يمين
+       آخر شمعة وتطلع الرسمات طايرة. logicalToCoordinate بتتعامل مع فهرس
+       الشمعة الفعلية، فما بتقدر تطلع برّا البيانات أبداً. */
+    const timeToXSafe = (tm) => {
+      const idx = timeIndex.get(tm);
+      if (idx == null) return null;
+      const x = ts.logicalToCoordinate(idx);
+      return x == null ? null : x;
+    };
 
     const seqRenderable =
       seq?.points && seq.displayTF === renderedTF && sequencePointsInData(seq, timeSet);
@@ -848,7 +863,8 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     /* ===== تشخيص مؤقت: إحداثيات الرسم — مرة وحدة بعد كل تحليل ===== */
     if (coordLogRef.current) {
       coordLogRef.current = false;
-      const px = (p) => (p ? Math.round(timeToX(p.time) ?? NaN) : null);
+      const pxOld = (p) => (p ? Math.round(timeToX(p.time) ?? NaN) : null);
+      const px = (p) => (p ? Math.round(timeToXSafe(p.time) ?? NaN) : null);
       const lastCandleX = Math.round(lastX);
       console.log(
         `%c[QAIS إحداثيات] عرض الرسم ${Math.round(plotW)}px · آخر شمعة عند x=${lastCandleX}`,
@@ -856,22 +872,22 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       );
       if (seq?.points) {
         const p = seq.points;
-        console.log(
-          `   النقاط: 0=${px(p.origin)}  A=${px(p.A)}  B=${px(p.B)}  C=${px(p.C)}` +
-            `   ← كلهم لازم ≤ ${lastCandleX}`
-        );
+        console.log(`   بالفهرس (الجديد): 0=${px(p.origin)}  A=${px(p.A)}  B=${px(p.B)}  C=${px(p.C)}   ← لازم ≤ ${lastCandleX}`);
+        console.log(`   بالوقت (القديم): 0=${pxOld(p.origin)}  A=${pxOld(p.A)}  B=${pxOld(p.B)}  C=${pxOld(p.C)}`);
         console.log(`   السيكونز قابلة للرسم: ${seqRenderable ? "نعم" : "لا"}`);
       }
       const obs = (r.orderBlocks || []).filter((o) => o.time != null && timeSet.has(o.time));
       console.log(`   كتل موقّتة على شموع العرض: ${obs.length} من ${(r.orderBlocks || []).length}`);
       obs.slice(0, 4).forEach((o) =>
-        console.log(`      MT ${o.levels?.mt?.toFixed(1)}  تبلّش عند x=${Math.round(timeToX(o.time) ?? NaN)}`)
+        console.log(
+          `      MT ${o.levels?.mt?.toFixed(1)}  فهرس x=${Math.round(timeToXSafe(o.time) ?? NaN)}  وقت x=${Math.round(timeToX(o.time) ?? NaN)}`
+        )
       );
     }
     /* ===== نهاية تشخيص الإحداثيات ===== */
 
     if (seqRenderable) {
-      drawSequenceHistory(ctx, seq, timeToX, priceToY, lastX, ease, t);
+      drawSequenceHistory(ctx, seq, timeToXSafe, priceToY, lastX, ease, t);
       // أهداف السيكونز (TP1..TP4) — تترسم تلقائياً فور تأكيد C، بغض النظر عن
       // اكتمال شروط الصفقة الكاملة (Entry/SL) — هاي أهداف الـ QAIS SK Engine
       // الرسمية المسقطة من C مباشرة (تاسع عشر)
@@ -879,11 +895,11 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
          تحققت) — مش لمجرد إنه C تأكدت. قبل هيك كان الشرط `stage === confirmed`،
          فكانت تطلع أهداف لإعداد ناقص ما بينفع تدخل عليه. */
       if (r.tradeValid && seq.targets?.length) {
-        drawSequenceProjection(ctx, seq, timeToX, priceToY, plotW, h, ease);
+        drawSequenceProjection(ctx, seq, timeToXSafe, priceToY, plotW, h, ease);
       }
     }
     /* كتلة الأوامر والـSMT — تحت كل شي (طبقة سياق) */
-    drawOrderBlocks(ctx, r.orderBlocks, timeToX, priceToY, plotW, h, ease, r.price, timeSet);
+    drawOrderBlocks(ctx, r.orderBlocks, timeToXSafe, priceToY, plotW, h, ease, r.price, timeSet);
     drawSMT(ctx, r.smtSignal, priceToY, plotW, ease);
 
     drawProjection(ctx, r, priceToY, lastX, plotW, h, ease);
@@ -891,7 +907,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     /* آخر صفقة كاملة تكوّنت تاريخياً — بتنرسم دايماً (حتى لو محققة) طالما
        هي على نفس فريم العرض. بتنرسم أخيراً حتى تقعد فوق باقي الطبقات. */
     if (r.lastTrade && r.lastTrade.displayTF === renderedTF) {
-      drawLastTrade(ctx, r.lastTrade, timeToX, priceToY, plotW, h, ease, timeSet);
+      drawLastTrade(ctx, r.lastTrade, timeToXSafe, priceToY, plotW, h, ease, timeSet);
     }
   }
 
