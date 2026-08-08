@@ -767,14 +767,26 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
       const handleResize = () => {
         if (!containerRef.current) return;
-        chart.applyOptions({ width: containerRef.current.clientWidth });
-        // الرسم التالي بحلقة الـ rAF (سطر واحد بعد) بيلتقط الحجم الجديد أوتوماتيكياً
+        const cw = containerRef.current.clientWidth;
+        if (cw > 0) chart.applyOptions({ width: cw });
         draw();
       };
+
+      /* مراقبة حجم الحاوية نفسها — مش حجم النافذة.
+         عرض الحاوية بيتغير بدون ما يتغير حجم النافذة: طي السايدبار، تبديل
+         التبويبات، أي تغيير تخطيط. وقتها الشارت بيضل محتفظ بعرضه القديم،
+         فمنطقة الرسم بتطلع أوسع من الحاوية (قستها: رسم 1014px والحاوية 889px)
+         وكل الإحداثيات بتنزاح — وهاد سبب الرسم الطاير. */
+      let ro = null;
+      if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+        ro = new ResizeObserver(() => handleResize());
+        ro.observe(containerRef.current);
+      }
       window.addEventListener("resize", handleResize);
       handleResize();
 
       return () => {
+        ro?.disconnect();
         window.removeEventListener("resize", handleResize);
         chart.timeScale().unsubscribeVisibleTimeRangeChange(requestDraw);
         chart.remove();
@@ -844,7 +856,9 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       }
       plotW = w - priceAxisW;
     }
-    plotW = Math.max(120, plotW);
+    /* حارس: منطقة الرسم ما بتقدر تكون أوسع من الكانفاس نفسه.
+       لو صار هيك فمعناه الشارت لسا ما انضبط حجمه — منحدّدها لحد ما يلحق. */
+    plotW = Math.max(120, Math.min(plotW, w));
 
     const elapsed = performance.now() - animStartRef.current;
     const progress = Math.max(0, Math.min(1, elapsed / ANIM_MS));
@@ -918,6 +932,33 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         drawSequenceProjection(ctx, seq, timeToXSafe, priceToY, plotW, h, ease);
       }
     }
+    /* ===== تشخيص مؤقت: علامة آخر شمعة + فحص إزاحة الكانفاس ===== */
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#F0A13C";
+    ctx.beginPath();
+    ctx.moveTo(lastX, 0);
+    ctx.lineTo(lastX, h);
+    ctx.stroke();
+    ctx.font = "700 9px sans-serif";
+    ctx.fillStyle = "#F0A13C";
+    ctx.fillText(`lastX ${Math.round(lastX)}`, lastX + 3, 12);
+    ctx.setLineDash([]);
+
+    /* إزاحة الكانفاس عن حاوية الشارت — لو مش صفر، كل الرسم مزاح */
+    try {
+      const cRect = canvas.getBoundingClientRect();
+      const kRect = container.getBoundingClientRect();
+      const dx = Math.round(kRect.left - cRect.left);
+      ctx.fillStyle = dx === 0 ? "#10E5A0" : "#FF453A";
+      ctx.fillText(`إزاحة الكانفاس dx=${dx}  ·  عرض الحاوية ${Math.round(kRect.width)}  ·  عرض الكانفاس ${Math.round(cRect.width)}`, 8, 26);
+    } catch {
+      /* ما بيوقف الرسم */
+    }
+    ctx.restore();
+    /* ===== نهاية التشخيص ===== */
+
     /* كتلة الأوامر والـSMT — تحت كل شي (طبقة سياق) */
     drawOrderBlocks(ctx, r.orderBlocks, timeToXSafe, priceToY, plotW, h, ease, r.price, timeSet);
     drawSMT(ctx, r.smtSignal, priceToY, plotW, ease);
