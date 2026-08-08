@@ -376,7 +376,6 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   const renderedTFRef = useRef(null);
   /* كاش لمجموعة أوقات الشموع المعروضة — مربوط بمرجع المصفوفة نفسها */
   const timeSetRef = useRef({ src: null, set: null });
-  const coordLogRef = useRef(false); // تشخيص مؤقت — يطبع مرة بعد كل تحليل
   const rafRef = useRef(null);
   const animStartRef = useRef(0);
   const chartCardRef = useRef(null);
@@ -512,7 +511,6 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       }
       /* ============ نهاية التشخيص المؤقت ============ */
 
-      coordLogRef.current = true; // خلّي أول رسمة تطبع الإحداثيات
       setAllCandles(candlesByTF);
       setResult(analysis);
       resultRef.current = analysis;
@@ -894,31 +892,6 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     const seqRenderable =
       seq?.points && seq.displayTF === renderedTF && sequencePointsInData(seq, timeSet);
 
-    /* ===== تشخيص مؤقت: إحداثيات الرسم — مرة وحدة بعد كل تحليل ===== */
-    if (coordLogRef.current) {
-      coordLogRef.current = false;
-      const pxOld = (p) => (p ? Math.round(timeToX(p.time) ?? NaN) : null);
-      const px = (p) => (p ? Math.round(timeToXSafe(p.time) ?? NaN) : null);
-      const lastCandleX = Math.round(lastX);
-      console.log(
-        `%c[QAIS إحداثيات] رسم ${Math.round(plotW)}px · حاوية ${Math.round(w)}px · شموع ${candles.length} · آخر شمعة x=${lastCandleX} · مدى مرئي ${JSON.stringify(ts.getVisibleLogicalRange())}`,
-        "color:#4FA8E0;font-weight:bold"
-      );
-      if (seq?.points) {
-        const p = seq.points;
-        console.log(`   بالفهرس (الجديد): 0=${px(p.origin)}  A=${px(p.A)}  B=${px(p.B)}  C=${px(p.C)}   ← لازم ≤ ${lastCandleX}`);
-        console.log(`   بالوقت (القديم): 0=${pxOld(p.origin)}  A=${pxOld(p.A)}  B=${pxOld(p.B)}  C=${pxOld(p.C)}`);
-        console.log(`   السيكونز قابلة للرسم: ${seqRenderable ? "نعم" : "لا"}`);
-      }
-      const obs = (r.orderBlocks || []).filter((o) => o.time != null && timeSet.has(o.time));
-      console.log(`   كتل موقّتة على شموع العرض: ${obs.length} من ${(r.orderBlocks || []).length}`);
-      obs.slice(0, 4).forEach((o) =>
-        console.log(
-          `      MT ${o.levels?.mt?.toFixed(1)}  فهرس x=${Math.round(timeToXSafe(o.time) ?? NaN)}  وقت x=${Math.round(timeToX(o.time) ?? NaN)}`
-        )
-      );
-    }
-    /* ===== نهاية تشخيص الإحداثيات ===== */
 
     if (seqRenderable) {
       drawSequenceHistory(ctx, seq, timeToXSafe, priceToY, lastX, ease, t);
@@ -932,33 +905,6 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         drawSequenceProjection(ctx, seq, timeToXSafe, priceToY, plotW, h, ease);
       }
     }
-    /* ===== تشخيص مؤقت: علامة آخر شمعة + فحص إزاحة الكانفاس ===== */
-    ctx.save();
-    ctx.setLineDash([4, 4]);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "#F0A13C";
-    ctx.beginPath();
-    ctx.moveTo(lastX, 0);
-    ctx.lineTo(lastX, h);
-    ctx.stroke();
-    ctx.font = "700 9px sans-serif";
-    ctx.fillStyle = "#F0A13C";
-    ctx.fillText(`lastX ${Math.round(lastX)}`, lastX + 3, 12);
-    ctx.setLineDash([]);
-
-    /* إزاحة الكانفاس عن حاوية الشارت — لو مش صفر، كل الرسم مزاح */
-    try {
-      const cRect = canvas.getBoundingClientRect();
-      const kRect = container.getBoundingClientRect();
-      const dx = Math.round(kRect.left - cRect.left);
-      ctx.fillStyle = dx === 0 ? "#10E5A0" : "#FF453A";
-      ctx.fillText(`إزاحة الكانفاس dx=${dx}  ·  عرض الحاوية ${Math.round(kRect.width)}  ·  عرض الكانفاس ${Math.round(cRect.width)}`, 8, 26);
-    } catch {
-      /* ما بيوقف الرسم */
-    }
-    ctx.restore();
-    /* ===== نهاية التشخيص ===== */
-
     /* كتلة الأوامر والـSMT — تحت كل شي (طبقة سياق) */
     drawOrderBlocks(ctx, r.orderBlocks, timeToXSafe, priceToY, plotW, h, ease, r.price, timeSet);
     drawSMT(ctx, r.smtSignal, priceToY, plotW, ease);
