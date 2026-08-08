@@ -465,34 +465,40 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       /* ============ تشخيص مؤقت — احذف هالكتلة بعد ما نحل موضوع الـOB ============ */
       try {
         const d = analysis.lastTradeDebug || {};
-        const iso = (s) => (s ? new Date(s * 1000).toISOString().replace("T", " ").slice(0, 16) : "—");
-        console.log(
-          `%c[QAIS] ${symbol} · فريم الصفقة ${d.timeframe} · مترابط ${d.correlated || "—"}`,
-          "color:#D4AF37;font-weight:bold"
-        );
-        console.log(
-          `  مرشّحات BOS: ${d.bosCandidates ?? 0} · كتل مكتشفة: ${d.obZoneCount ?? 0} · سياق SMT: ${d.hasSmtCtx ? "موجود" : "مفقود"}`
-        );
+        const iso = (x) => (x ? new Date(x * 1000).toISOString().replace("T", " ").slice(0, 16) : "—");
+        const L = (m) => console.log(m);
+
+        L(`%c[QAIS] ${symbol} · فريم ${d.timeframe} · مترابط ${d.correlated || "—"}`, "color:#D4AF37;font-weight:bold");
+        L(`  BOS: ${d.bosCandidates ?? 0} · كتل: ${d.obZoneCount ?? 0} · SMT: ${d.hasSmtCtx ? "موجود" : "مفقود"}`);
+
         if (analysis.lastTrade) {
-          console.log(`  ✅ صفقة: دخول ${analysis.lastTrade.entry.price} · ${iso(analysis.lastTrade.entry.time)}`);
+          const t = analysis.lastTrade;
+          L(`  ✅ صفقة: ${t.direction} · دخول ${t.entry.price} @ ${iso(t.entry.time)}`);
         } else {
-          console.log("  ❌ ما في صفقة — أسباب الرفض لكل BOS:");
-          console.table((d.rejections || []).map((r) => ({ وقت_BOS: iso(r.bosTime), الاتجاه: r.dir, السبب: r.reason })));
+          const rej = d.rejections || [];
+          const byReason = {};
+          for (const r of rej) byReason[r.reason] = (byReason[r.reason] || 0) + 1;
+          L("  ❌ ما في صفقة. توزيع أسباب الرفض:");
+          Object.entries(byReason)
+            .sort((x, y) => y[1] - x[1])
+            .forEach(([reason, n]) => L(`      ${String(n).padStart(3)} ×  ${reason}`));
+          L("  آخر ٥ مرشّحات:");
+          rej.slice(0, 5).forEach((r) => L(`      ${iso(r.bosTime)}  ${r.dir}  →  ${r.reason}`));
         }
+
         const obs = analysis.orderBlocks || [];
-        console.log(`  كتل الأوامر (${obs.length}):`);
-        console.table(
-          obs.map((o) => ({
-            الوقت: iso(o.time),
-            الاتجاه: o.direction,
-            الحالة: o.status,
-            MT: o.levels?.mt?.toFixed(2),
-            Open: o.levels?.open?.toFixed(2),
-            Close: o.levels?.close?.toFixed(2),
-            FVG: o.levels?.fvg?.toFixed(2),
-            Wick: o.levels?.outerWick?.toFixed(2),
-          }))
-        );
+        L(`  كتل الأوامر (${obs.length}) — أقرب ٨ للسعر ${analysis.price}:`);
+        [...obs]
+          .filter((o) => o.levels?.mt != null)
+          .sort((p, q) => Math.abs(p.levels.mt - analysis.price) - Math.abs(q.levels.mt - analysis.price))
+          .slice(0, 8)
+          .forEach((o) =>
+            L(
+              `      ${iso(o.time)}  ${o.direction === "up" ? "OB+" : "OB-"}  ${String(o.status).padEnd(7)}` +
+                ` MT ${o.levels.mt?.toFixed(1)}  Open ${o.levels.open?.toFixed(1)}  Close ${o.levels.close?.toFixed(1)}` +
+                `  FVG ${o.levels.fvg?.toFixed(1)}  Wick ${o.levels.outerWick?.toFixed(1)}`
+            )
+          );
       } catch (e) {
         console.warn("[QAIS] فشل التشخيص:", e);
       }
