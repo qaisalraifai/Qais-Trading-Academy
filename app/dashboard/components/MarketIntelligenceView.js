@@ -806,7 +806,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       }
     }
     /* كتلة الأوامر والـSMT — تحت كل شي (طبقة سياق) */
-    drawOrderBlock(ctx, r.orderBlock, priceToY, plotW, ease);
+    drawOrderBlocks(ctx, r.orderBlocks, priceToY, plotW, ease, r.price);
     drawSMT(ctx, r.smtSignal, priceToY, plotW, ease);
 
     drawProjection(ctx, r, priceToY, lastX, plotW, h, ease);
@@ -1446,53 +1446,46 @@ function sequencePointsInData(seq, timeSet) {
    الشارت عارض فريم أعلى (h4 مثلاً) — فأوقاتهم أصلاً مش موجودة بشموع العرض.
    المستوى السعري هو المعلومة المفيدة، والزمن ما بيضيف إشي هون.
    ============================================================================ */
-function drawOrderBlock(ctx, ob, priceToY, plotW, ease) {
-  if (!ob || ob.high == null || ob.low == null) return;
-  const yTop = priceToY(Math.max(ob.high, ob.low));
-  const yBot = priceToY(Math.min(ob.high, ob.low));
-  if (yTop == null || yBot == null) return;
+function drawOrderBlocks(ctx, list, priceToY, plotW, ease, lastPrice) {
+  if (!Array.isArray(list) || !list.length) return;
 
-  const up = ob.direction === "up";
-  const tone = up ? GREEN : RED;
-  const h = Math.max(2, yBot - yTop);
+  /* منعرض أقرب ٤ كتل للسعر بس — عرض الكل بيعمل عجقة تخفي الشارت نفسه */
+  const near = [...list]
+    .filter((o) => o.mt != null)
+    .sort((a, b) => Math.abs(a.mt - lastPrice) - Math.abs(b.mt - lastPrice))
+    .slice(0, 4);
 
   ctx.save();
   ctx.globalAlpha = ease;
 
-  // جسم الكتلة
-  ctx.fillStyle = `${tone}14`;
-  ctx.fillRect(0, yTop, plotW, h);
-  ctx.strokeStyle = `${tone}55`;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, yTop + 0.5, plotW - 1, h - 1);
+  for (const o of near) {
+    const up = o.direction === "up";
+    const tone = up ? GREEN : RED;
+    const yHigh = priceToY(Math.max(o.high, o.low));
+    const yLow = priceToY(Math.min(o.high, o.low));
+    if (yHigh == null || yLow == null) continue;
 
-  // مستويات الكتلة الداخلية (MT / Open / Close) — ترتيب القوة تبع المحرّك
-  const lv = ob.levels || {};
-  const inner = [
-    ["MT", lv.mt],
-    ["Open", lv.open],
-    ["Close", lv.close],
-  ];
-  ctx.setLineDash([4, 4]);
-  ctx.lineWidth = 1;
-  for (const [name, price] of inner) {
-    if (price == null) continue;
-    const y = priceToY(price);
-    if (y == null) continue;
-    ctx.strokeStyle = `${tone}40`;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(plotW, y);
-    ctx.stroke();
-    ctx.font = "600 9px sans-serif";
-    ctx.fillStyle = `${tone}cc`;
-    ctx.fillText(name, 6, y - 3);
+    // تظليل خفيف جداً للنطاق — بيوضّح الحدود بدون ما يغطي الشموع
+    ctx.fillStyle = `${tone}0d`;
+    ctx.fillRect(0, yHigh, plotW, Math.max(1, yLow - yHigh));
+
+    // حدّا النطاق كخطين رفيعين
+    ctx.strokeStyle = `${tone}66`;
+    ctx.lineWidth = 1;
+    for (const y of [yHigh, yLow]) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(plotW - 52, y);
+      ctx.stroke();
+    }
+
+    // الوسم على اليمين — زي OB+/OB- بتريدنغ فيو
+    ctx.font = "700 10px sans-serif";
+    ctx.fillStyle = tone;
+    ctx.textBaseline = "middle";
+    ctx.fillText(up ? "OB+" : "OB-", plotW - 46, (yHigh + yLow) / 2);
+    ctx.textBaseline = "alphabetic";
   }
-  ctx.setLineDash([]);
-
-  // وسم الكتلة
-  const label = `${up ? "OB+" : "OB-"}  ·  ${ob.status}`;
-  drawPill(ctx, plotW - 8, yTop + h / 2, label, tone, "700 10px sans-serif", "right");
 
   ctx.restore();
 }
@@ -1520,7 +1513,6 @@ function drawSMT(ctx, smt, priceToY, plotW, ease) {
 
 function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeSet) {
   if (!trade?.entry || !trade.targets?.length) return;
-  // نفس حارس السيكونز: لازم وقت الدخول يكون من نفس الشموع المعروضة
   if (timeSet && !timeSet.has(trade.entry.time)) return;
 
   const ex = timeToX(trade.entry.time);
@@ -1528,95 +1520,74 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
   if (ex == null || ey == null) return;
 
   const up = trade.direction === "up";
-  const tone = trade.achieved ? GREEN : GOLD_LIGHT;
-  const rightEdge = plotW - 6;
+  const stopPrice = trade.points?.B?.price;
+  const finalTarget = trade.targets[trade.targets.length - 1];
+  const sy = stopPrice != null ? priceToY(stopPrice) : null;
+  const ty = finalTarget ? priceToY(finalTarget.price) : null;
+  if (sy == null || ty == null) return;
+
+  /* صندوق الصفقة — مثبَّت من لحظة الدخول لقدّام، زي أداة Long/Short Position
+     بتريدنغ فيو: أخضر ناحية الهدف وأحمر ناحية الوقف. بيوضّح المخاطرة/العائد
+     بلمحة، وبيمنع "طوفان" خطوط الأهداف اللي كان بيعمل عجقة. */
+  const boxRight = plotW - 58;
+  const boxW = Math.max(24, boxRight - ex);
 
   ctx.save();
-  ctx.globalAlpha = ease * 0.75; // أبهت من الإعداد الحيّ
+  ctx.globalAlpha = ease * 0.9;
 
-  // خط الدخول الأفقي
-  ctx.strokeStyle = `${tone}55`;
+  // منطقة الربح
+  ctx.fillStyle = `${GREEN}1c`;
+  ctx.fillRect(ex, Math.min(ey, ty), boxW, Math.abs(ey - ty));
+  // منطقة المخاطرة
+  ctx.fillStyle = `${RED}1c`;
+  ctx.fillRect(ex, Math.min(ey, sy), boxW, Math.abs(ey - sy));
+
+  // حدود
+  ctx.strokeStyle = `${GREEN}55`;
   ctx.lineWidth = 1;
-  ctx.setLineDash([3, 4]);
+  ctx.strokeRect(ex + 0.5, Math.min(ey, ty) + 0.5, boxW - 1, Math.abs(ey - ty) - 1);
+  ctx.strokeStyle = `${RED}55`;
+  ctx.strokeRect(ex + 0.5, Math.min(ey, sy) + 0.5, boxW - 1, Math.abs(ey - sy) - 1);
+
+  // خط الدخول
+  ctx.strokeStyle = GOLD_LIGHT;
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.moveTo(ex, ey);
-  ctx.lineTo(rightEdge, ey);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // أهداف الصفقة — المحقق منها بخط ممتلئ، وغير المحقق متقطّع
-  const sorted = [...trade.targets]
-    .map((t) => ({ ...t, y: priceToY(t.price) }))
-    .filter((t) => t.y != null)
-    .sort((a, b) => a.y - b.y);
-
-  const rowGap = 40;
-  const halfBox = 20;
-  let prev = -Infinity;
-  sorted.forEach((t) => {
-    t.labelY = Math.max(t.y, prev + rowGap);
-    prev = t.labelY;
-  });
-  const over = sorted.length ? sorted[sorted.length - 1].labelY - (chartH - halfBox) : 0;
-  if (over > 0) sorted.forEach((t) => (t.labelY -= over));
-  sorted.forEach((t) => {
-    t.labelY = Math.max(halfBox, Math.min(chartH - halfBox, t.labelY));
-  });
-
-  sorted.forEach((t) => {
-    const c = t.hit ? GREEN : "#6E6690";
-    ctx.strokeStyle = `${c}${t.hit ? "70" : "40"}`;
-    ctx.lineWidth = t.hit ? 1.2 : 1;
-    ctx.setLineDash(t.hit ? [] : [5, 4]);
-    ctx.beginPath();
-    ctx.moveTo(ex, t.y);
-    ctx.lineTo(rightEdge - 96, t.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    drawEdgeBox(
-      ctx,
-      rightEdge,
-      t.labelY,
-      [`${t.key}${t.isRealLevel ? `  ·  ${up ? _t("radar.realPeak") : _t("radar.realTrough")}` : `  ·  ${t.ratio}`}`, fmt(t.price)],
-      c,
-      false
-    );
-  });
-
-  /* علامة الدخول — حلقة مزدوجة واضحة + سهم بيأشّر على اتجاه الصفقة، حتى
-     تبيّن فوراً وين كان الدخول بدل ما تضيع بين باقي الرسومات */
-  ctx.globalAlpha = ease;
-  ctx.beginPath();
-  ctx.arc(ex, ey, 9, 0, Math.PI * 2);
-  ctx.strokeStyle = `${tone}45`;
-  ctx.lineWidth = 2;
+  ctx.lineTo(ex + boxW, ey);
   ctx.stroke();
 
+  // علامة الدخول
   ctx.beginPath();
-  ctx.arc(ex, ey, 5, 0, Math.PI * 2);
+  ctx.arc(ex, ey, 4.5, 0, Math.PI * 2);
   ctx.fillStyle = "#141024";
   ctx.fill();
   ctx.lineWidth = 2;
-  ctx.strokeStyle = tone;
+  ctx.strokeStyle = GOLD_LIGHT;
   ctx.stroke();
 
-  // سهم صغير باتجاه الصفقة
-  const ay = up ? ey - 15 : ey + 15;
-  ctx.beginPath();
-  ctx.moveTo(ex, ay);
-  ctx.lineTo(ex - 4, ay + (up ? 6 : -6));
-  ctx.lineTo(ex + 4, ay + (up ? 6 : -6));
-  ctx.closePath();
-  ctx.fillStyle = tone;
-  ctx.fill();
+  /* تسميات مختصرة على حافة الصندوق — ثلاثة بس بدل خمس صناديق */
+  const rows = [
+    { y: ty, text: `${finalTarget.key}  ${fmt(finalTarget.price)}`, color: GREEN },
+    { y: ey, text: `${_t("radar.entryPoint")}  ${fmt(trade.entry.price)}`, color: GOLD_LIGHT },
+    { y: sy, text: `${_t("radar.stopLabel")}  ${fmt(stopPrice)}`, color: RED },
+  ];
+  ctx.font = "700 9.5px sans-serif";
+  ctx.textBaseline = "middle";
+  for (const rr of rows) {
+    ctx.fillStyle = rr.color;
+    ctx.fillText(rr.text, ex + boxW + 5, rr.y);
+  }
+  ctx.textBaseline = "alphabetic";
 
+  // وسم الحالة فوق الصندوق
   const label = trade.achieved ? _t("radar.tradeAchieved") : _t("radar.tradeTracking");
   drawPill(
     ctx,
-    ex,
-    ey + (up ? 34 : -34),
-    `${_t("radar.entryPoint")} ${fmt(trade.entry.price)} · ${label}`,
-    tone,
+    ex + boxW / 2,
+    Math.min(ey, ty) - 10,
+    `${_t("radar.lastTrade")} ${up ? "▲" : "▼"} · ${label}`,
+    trade.achieved ? GREEN : GOLD_LIGHT,
     "700 10px sans-serif"
   );
 
