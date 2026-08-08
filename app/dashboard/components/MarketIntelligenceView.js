@@ -1520,7 +1520,14 @@ function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, ease, lastPrice, t
     .map((o) => ({ ...o, x0: o.time != null && (!timeSet || timeSet.has(o.time)) ? timeToX(o.time) : null }))
     .filter((o) => o.x0 != null);
 
+  /* فلتر مسافة: الكتلة لازم تكون ضمن ٢٠٪ من السعر الحالي.
+     الكتلة الصاعدة القديمة بتضل "صالحة" حسب القاعدة (السعر ما أغلق تحتها
+     أبداً)، بس كتلة عند 2,000 والذهب على 4,340 ما إلها أي معنى عملي — كانت
+     تنرسم كخطوط طايرة بمنطقة ما فيها ولا شمعة معروضة.
+     ولو ما في ولا وحدة ضمن النطاق، ما منرسم إشي بدل ما نرسم البعيد. */
+  const maxDistance = Math.abs(lastPrice) * 0.2;
   const near = drawable
+    .filter((o) => Math.abs(o.levels.mt - lastPrice) <= maxDistance)
     .sort((a, b) => Math.abs(a.levels.mt - lastPrice) - Math.abs(b.levels.mt - lastPrice))
     .slice(0, 3);
 
