@@ -1,0 +1,771 @@
+<title>تسمية الهيكل — NAS100 H4</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --ground: #F5F7FA;
+    --surface: #FFFFFF;
+    --surface-2: #EDF1F6;
+    --line: #D3DBE4;
+    --line-soft: #E3E9F0;
+    --ink: #16202C;
+    --ink-2: #4A5A6E;
+    --muted: #7C8AA0;
+    --brass: #A67C15;
+    --brass-soft: #C9A22733;
+    --bull: #1E8F5E;
+    --bear: #C4453D;
+    --bos: #2F7DB8;
+    --choch: #A67C15;
+    --mss: #7A4FBF;
+    --swing: #5A6B80;
+    --grid: #E8EDF3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0E131A;
+      --surface: #151C26;
+      --surface-2: #1B2430;
+      --line: #2A3644;
+      --line-soft: #202A36;
+      --ink: #E2E9F1;
+      --ink-2: #A9B7C7;
+      --muted: #74839A;
+      --brass: #D9B04A;
+      --brass-soft: #D9B04A26;
+      --bull: #35B27B;
+      --bear: #DE5C53;
+      --bos: #58A6DD;
+      --choch: #D9B04A;
+      --mss: #A87FE0;
+      --swing: #8698AD;
+      --grid: #1C2531;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E131A; --surface: #151C26; --surface-2: #1B2430;
+    --line: #2A3644; --line-soft: #202A36; --ink: #E2E9F1; --ink-2: #A9B7C7;
+    --muted: #74839A; --brass: #D9B04A; --brass-soft: #D9B04A26;
+    --bull: #35B27B; --bear: #DE5C53; --bos: #58A6DD; --choch: #D9B04A;
+    --mss: #A87FE0; --swing: #8698AD; --grid: #1C2531;
+  }
+  :root[data-theme="light"] {
+    --ground: #F5F7FA; --surface: #FFFFFF; --surface-2: #EDF1F6;
+    --line: #D3DBE4; --line-soft: #E3E9F0; --ink: #16202C; --ink-2: #4A5A6E;
+    --muted: #7C8AA0; --brass: #A67C15; --brass-soft: #C9A22733;
+    --bull: #1E8F5E; --bear: #C4453D; --bos: #2F7DB8; --choch: #A67C15;
+    --mss: #7A4FBF; --swing: #5A6B80; --grid: #E8EDF3;
+  }
+
+  * { box-sizing: border-box; }
+  /* لازم !important: `.field { display:flex }` نمط مؤلف وبيغلب قاعدة
+     المتصفح `[hidden]{display:none}` — فبدونها الحقول المخفية بتضل ظاهرة */
+  [hidden] { display: none !important; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Tahoma, sans-serif;
+    font-size: 14px; line-height: 1.5;
+  }
+  .mono { font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+  .wrap { display: flex; flex-direction: column; min-height: 100vh; }
+
+  header {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px;
+    padding: 12px 18px; background: var(--surface); border-bottom: 1px solid var(--line);
+  }
+  header h1 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); }
+  .meta b { color: var(--ink-2); font-weight: 600; }
+
+  main { display: grid; grid-template-columns: 1fr 340px; gap: 0; flex: 1; min-height: 0; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+  .stage { display: flex; flex-direction: column; min-width: 0; border-inline-end: 1px solid var(--line); }
+  #chart { display: block; width: 100%; height: 62vh; min-height: 340px; cursor: crosshair; touch-action: none; }
+  @media (max-width: 900px) { #chart { height: 48vh; } }
+
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    padding: 10px 14px; background: var(--surface); border-block-start: 1px solid var(--line);
+  }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg button {
+    appearance: none; border: 0; background: transparent; color: var(--ink-2);
+    padding: 7px 13px; font: inherit; font-size: 13px; cursor: pointer;
+    border-inline-end: 1px solid var(--line);
+  }
+  .seg button:last-child { border-inline-end: 0; }
+  .seg button[aria-pressed="true"] { background: var(--brass-soft); color: var(--brass); font-weight: 650; }
+  .seg button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--brass); outline-offset: 1px;
+  }
+  .hint { font-size: 12px; color: var(--muted); margin-inline-start: auto; }
+
+  .btn {
+    appearance: none; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+    padding: 7px 13px; border-radius: 7px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--brass); }
+  .btn.primary { background: var(--brass); border-color: var(--brass); color: var(--surface); font-weight: 650; }
+
+  aside { display: flex; flex-direction: column; min-height: 0; background: var(--surface); }
+  .rail-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 12px 14px; border-bottom: 1px solid var(--line);
+  }
+  .rail-head h2 { margin: 0; font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .count { font-size: 12px; color: var(--ink-2); }
+
+  .list { overflow-y: auto; flex: 1; min-height: 120px; max-height: 44vh; }
+  .row {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: start;
+    padding: 9px 14px; border-bottom: 1px solid var(--line-soft); font-size: 13px;
+  }
+  .row:hover { background: var(--surface-2); }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+  .tag.BOS { background: color-mix(in srgb, var(--bos) 16%, transparent); color: var(--bos); }
+  .tag.CHOCH { background: color-mix(in srgb, var(--choch) 20%, transparent); color: var(--choch); }
+  .tag.MSS { background: color-mix(in srgb, var(--mss) 18%, transparent); color: var(--mss); }
+  .tag.swing { background: color-mix(in srgb, var(--swing) 18%, transparent); color: var(--swing); }
+  .row .when { color: var(--muted); font-size: 11.5px; }
+  .row .why { grid-column: 2 / 4; color: var(--ink-2); font-size: 12px; }
+  .row .why:empty::before { content: "بدون سبب"; color: var(--bear); }
+  .row.review { border-inline-start: 3px solid var(--bear); background: color-mix(in srgb, var(--bear) 7%, transparent); }
+  .del { appearance: none; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 2px 4px; }
+  .del:hover { color: var(--bear); }
+
+  .empty { padding: 22px 16px; color: var(--muted); font-size: 13px; }
+
+  .out { border-top: 1px solid var(--line); padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; }
+  textarea {
+    width: 100%; min-height: 90px; resize: vertical; background: var(--ground); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 7px; padding: 9px; font-size: 11.5px;
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  dialog {
+    border: 1px solid var(--line); border-radius: 11px; background: var(--surface); color: var(--ink);
+    padding: 0; width: min(400px, 92vw);
+  }
+  dialog::backdrop { background: rgba(6, 10, 16, 0.55); }
+  .dlg-head { padding: 13px 16px; border-bottom: 1px solid var(--line); font-weight: 650; font-size: 14px; }
+  .dlg-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 11px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12px; color: var(--muted); font-weight: 600; }
+  select, input[type="text"], input[type="number"] {
+    background: var(--ground); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px 9px; font: inherit; font-size: 13px; width: 100%;
+  }
+  .dlg-foot { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
+  .ctx { font-size: 12px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>تسمية الهيكل</h1>
+    <div class="meta mono" id="meta"></div>
+  </header>
+
+  <main>
+    <div class="stage">
+      <canvas id="chart"></canvas>
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="نوع التسمية">
+          <button type="button" data-mode="event" aria-pressed="true">حدث</button>
+          <button type="button" data-mode="swing" aria-pressed="false">سوينغ</button>
+        </div>
+        <button class="btn" type="button" id="fit">ملء الشاشة</button>
+        <span class="hint">اضغط على شمعة لتسميتها · عجلة الفأرة تكبير · سحب للتحريك</span>
+      </div>
+    </div>
+
+    <aside>
+      <div class="rail-head">
+        <h2>التسميات</h2>
+        <span class="count mono" id="count">0</span>
+      </div>
+      <div class="list" id="list"></div>
+      <div class="out">
+        <textarea id="json" class="mono" readonly aria-label="مخرج JSON"></textarea>
+        <div class="actions">
+          <button class="btn primary" type="button" id="copy">نسخ JSON</button>
+          <button class="btn" type="button" id="download">تنزيل</button>
+          <button class="btn" type="button" id="load">استيراد</button>
+          <button class="btn" type="button" id="clear">مسح الكل</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<dialog id="dlg">
+  <form method="dialog">
+    <div class="dlg-head" id="dlgTitle">تسمية</div>
+    <div class="dlg-body">
+      <div class="ctx mono" id="dlgCtx"></div>
+      <div class="field" id="fType">
+        <label for="iType">النوع</label>
+        <select id="iType"></select>
+      </div>
+      <div class="field" id="fDir">
+        <label for="iDir">الاتجاه</label>
+        <select id="iDir">
+          <option value="up">صاعد</option>
+          <option value="down">هابط</option>
+        </select>
+      </div>
+      <div class="field" id="fLabel" hidden>
+        <label for="iLabel">التسمية</label>
+        <select id="iLabel">
+          <option value="">— بدون —</option>
+          <option value="HH">HH</option>
+          <option value="HL">HL</option>
+          <option value="LH">LH</option>
+          <option value="LL">LL</option>
+        </select>
+      </div>
+      <div class="field" id="fBroken" hidden>
+        <label for="iBroken">السوينغ المكسور — مستوى الخط</label>
+        <select id="iBroken" class="mono"></select>
+        <button class="btn" type="button" id="pickBtn">التقاط من الشارت</button>
+        <p class="ctx" id="brokenNote"></p>
+      </div>
+      <div class="field" id="fPrice">
+        <label for="iPrice">السعر</label>
+        <input type="number" id="iPrice" step="0.001" class="mono" />
+      </div>
+      <div class="field">
+        <label for="iReason">السبب</label>
+        <input type="text" id="iReason" placeholder="مثلاً: إغلاق فوق قمة 2026-07-14" />
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn" type="submit" value="cancel">إلغاء</button>
+      <button class="btn primary" type="submit" value="save" id="save">حفظ</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* منطق التسمية محقون من lib/qais/structure/verify/label-schema.js —
+   مصدر واحد مع المُصحِّح، ومغطّى باختبارات node --test. */
+__SCHEMA__
+
+const FIXTURE = __FIXTURE__;
+const C = FIXTURE.candles;
+const PIVOTS = detectPivots(C, 2);
+
+const state = {
+  mode: "event",
+  start: Math.max(0, C.length - 120),
+  bars: 120,
+  events: [],
+  swings: [],
+  hover: -1,
+  pending: null,
+  picking: null, // {index, type, direction, reason} أثناء الالتقاط من الشارت
+};
+
+/* ---------- إطار الرسم ---------- */
+const cv = document.getElementById("chart");
+const ctx = cv.getContext("2d");
+const PAD = { t: 14, r: 74, b: 26, l: 10 };
+let W = 0, H = 0;
+
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmtT = (t) => new Date(t * 1000).toISOString().slice(0, 16).replace("T", " ");
+const fmtP = (p) => p.toFixed(1);
+
+function resize() {
+  const r = cv.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(r.width * dpr);
+  cv.height = Math.round(r.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  W = r.width; H = r.height;
+  draw();
+}
+
+function view() {
+  const s = Math.max(0, Math.min(state.start, C.length - 5));
+  const n = Math.max(10, Math.min(state.bars, C.length - s));
+  const slice = C.slice(s, s + n);
+  let lo = Infinity, hi = -Infinity;
+  for (const c of slice) { if (c.low < lo) lo = c.low; if (c.high > hi) hi = c.high; }
+  const pad = (hi - lo) * 0.08 || 1;
+  return { s, n, lo: lo - pad, hi: hi + pad, slice };
+}
+
+function xOf(i, v) { const w = (W - PAD.l - PAD.r) / v.n; return PAD.l + (i - v.s + 0.5) * w; }
+function yOf(p, v) { return PAD.t + (v.hi - p) / (v.hi - v.lo) * (H - PAD.t - PAD.b); }
+function idxAt(px, v) { const w = (W - PAD.l - PAD.r) / v.n; return v.s + Math.floor((px - PAD.l) / w); }
+
+function draw() {
+  if (!W) return;
+  const v = view();
+  ctx.clearRect(0, 0, W, H);
+
+  // شبكة + محور السعر
+  ctx.strokeStyle = css("--grid"); ctx.fillStyle = css("--muted");
+  ctx.lineWidth = 1; ctx.font = "11px ui-monospace, monospace"; ctx.textBaseline = "middle";
+  const steps = 6;
+  for (let i = 0; i <= steps; i++) {
+    const p = v.lo + (v.hi - v.lo) * (i / steps);
+    const y = Math.round(yOf(p, v)) + 0.5;
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
+    ctx.textAlign = "left";
+    ctx.fillText(fmtP(p), W - PAD.r + 7, y);
+  }
+
+  // الشموع
+  const bw = Math.max(1.2, (W - PAD.l - PAD.r) / v.n * 0.62);
+  for (let i = v.s; i < v.s + v.n; i++) {
+    const c = C[i], x = xOf(i, v), up = c.close >= c.open;
+    const col = up ? css("--bull") : css("--bear");
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(Math.round(x) + 0.5, yOf(c.high, v));
+    ctx.lineTo(Math.round(x) + 0.5, yOf(c.low, v));
+    ctx.stroke();
+    const yo = yOf(c.open, v), yc = yOf(c.close, v);
+    ctx.fillRect(x - bw / 2, Math.min(yo, yc), bw, Math.max(1, Math.abs(yc - yo)));
+  }
+
+  // محور الوقت
+  ctx.fillStyle = css("--muted"); ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const every = Math.max(1, Math.floor(v.n / 6));
+  for (let i = v.s; i < v.s + v.n; i += every) {
+    ctx.fillText(fmtT(C[i].time).slice(0, 10), xOf(i, v), H - PAD.b + 6);
+  }
+
+  // التسميات
+  for (const e of state.events) markEvent(e, v);
+  for (const s of state.swings) markSwing(s, v);
+
+  // تظليل الشمعة تحت المؤشر
+  if (state.hover >= v.s && state.hover < v.s + v.n) {
+    const x = xOf(state.hover, v);
+    ctx.strokeStyle = css("--brass"); ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, PAD.t); ctx.lineTo(Math.round(x) + 0.5, H - PAD.b); ctx.stroke();
+    ctx.setLineDash([]);
+    const c = C[state.hover];
+    const txt = fmtT(c.time) + "   O " + fmtP(c.open) + "  H " + fmtP(c.high) + "  L " + fmtP(c.low) + "  C " + fmtP(c.close);
+    ctx.fillStyle = css("--ink-2"); ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.font = "11px ui-monospace, monospace";
+    ctx.fillText(txt, PAD.l + 4, 3);
+  }
+}
+
+function idxOfTime(t) { return C.findIndex((c) => c.time === t); }
+
+function markEvent(e, v) {
+  const i = e.index != null ? e.index : idxOfTime(e.time);
+  if (i < 0) return;
+  const level = lineLevelOf(e);
+  const col = css("--" + e.type.toLowerCase());
+  const up = e.direction === "up";
+  const visible = i >= v.s && i < v.s + v.n;
+
+  /* بلا مستوى (needs-review): علامة على شمعة الحدث فقط، بدون خط —
+     ما منرسم مستوى ما حدّده المحلّل. */
+  if (level == null) {
+    if (!visible) return;
+    const x = xOf(i, v), c = C[i];
+    const y = yOf(up ? c.high : c.low, v);
+    ctx.strokeStyle = css("--bear"); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, up ? y - 10 : y + 10, 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = css("--bear"); ctx.font = "9px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("؟", x, up ? y - 10 : y + 10);
+    return;
+  }
+
+  /* الخط بيمتد من **شمعة السوينغ المكسور** لشمعة الكسر — هيك بيبان
+     أي مستوى انكسر ووين، بدل خط سابح بعرض الشارت. */
+  const bi = e.brokenSwingIndex != null ? e.brokenSwingIndex : idxOfTime(e.brokenSwingTime);
+  const y = yOf(level, v);
+  const from = bi >= 0 ? Math.max(PAD.l, xOf(bi, v)) : PAD.l;
+  const to = Math.min(W - PAD.r, xOf(i, v) + 10);
+  if (to < PAD.l || from > W - PAD.r) return;
+
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(from, Math.round(y) + 0.5); ctx.lineTo(to, Math.round(y) + 0.5); ctx.stroke();
+
+  // نقطة على السوينغ المكسور
+  if (bi >= v.s && bi < v.s + v.n) {
+    ctx.beginPath(); ctx.arc(xOf(bi, v), y, 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  if (!visible) return;
+  const x = xOf(i, v);
+  const ty = up ? y - 9 : y + 9;
+  ctx.beginPath();
+  ctx.moveTo(x, ty + (up ? -5 : 5)); ctx.lineTo(x - 5, ty); ctx.lineTo(x + 5, ty);
+  ctx.closePath(); ctx.fill();
+  ctx.font = "10px ui-sans-serif, system-ui, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = up ? "bottom" : "top";
+  ctx.fillText(e.type, x, up ? ty - 6 : ty + 6);
+}
+
+function markSwing(s, v) {
+  const i = idxOfTime(s.time);
+  if (i < v.s || i >= v.s + v.n) return;
+  const x = xOf(i, v), y = yOf(s.price, v);
+  ctx.fillStyle = css("--swing"); ctx.strokeStyle = css("--swing"); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+  if (s.label) {
+    ctx.font = "10px ui-monospace, monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = s.type === "high" ? "bottom" : "top";
+    ctx.fillText(s.label, x, s.type === "high" ? y - 6 : y + 6);
+  }
+}
+
+/* ---------- تفاعل ---------- */
+let drag = null;
+cv.addEventListener("pointerdown", (ev) => {
+  drag = { x: ev.clientX, start: state.start, moved: false };
+  cv.setPointerCapture(ev.pointerId);
+});
+cv.addEventListener("pointermove", (ev) => {
+  const r = cv.getBoundingClientRect();
+  const v = view();
+  if (drag) {
+    const dx = ev.clientX - drag.x;
+    if (Math.abs(dx) > 3) drag.moved = true;
+    const per = (W - PAD.l - PAD.r) / v.n;
+    state.start = Math.max(0, Math.min(C.length - 10, drag.start - Math.round(dx / per)));
+  }
+  const i = idxAt(ev.clientX - r.left, view());
+  state.hover = i >= 0 && i < C.length ? i : -1;
+  draw();
+});
+cv.addEventListener("pointerup", (ev) => {
+  const wasDrag = drag && drag.moved;
+  drag = null;
+  if (wasDrag) return;
+  const r = cv.getBoundingClientRect();
+  const i = idxAt(ev.clientX - r.left, view());
+  if (i < 0 || i >= C.length) return;
+
+  /* وضع الالتقاط: الضغطة بتختار **شمعة السوينغ المكسور**، وسعره بيتحدد
+     من قمة/قاع تلك الشمعة حسب اتجاه الحدث — مش من شمعة الكسر. */
+  if (state.picking) {
+    const p = state.picking;
+    if (i >= p.index) {
+      setPickBanner(false);
+      alert("السوينغ المكسور لازم يكون قبل شمعة الكسر.");
+      state.picking = null;
+      return;
+    }
+    const c = C[i];
+    state.events.push(
+      normalizeEvent(
+        {
+          time: C[p.index].time,
+          type: p.type,
+          direction: p.direction,
+          brokenSwingTime: c.time,
+          brokenSwingIndex: i,
+          brokenSwingPrice: p.direction === "up" ? c.high : c.low,
+          reason: p.reason,
+        },
+        C
+      )
+    );
+    state.events.sort((a, b) => a.time - b.time);
+    state.picking = null;
+    setPickBanner(false);
+    render();
+    return;
+  }
+
+  openDialog(i, ev.clientY - r.top);
+});
+cv.addEventListener("pointerleave", () => { state.hover = -1; draw(); });
+cv.addEventListener("wheel", (ev) => {
+  ev.preventDefault();
+  const v = view();
+  const r = cv.getBoundingClientRect();
+  const anchor = idxAt(ev.clientX - r.left, v);
+  const f = ev.deltaY > 0 ? 1.18 : 0.85;
+  const nb = Math.max(20, Math.min(C.length, Math.round(state.bars * f)));
+  const frac = (anchor - v.s) / v.n;
+  state.bars = nb;
+  state.start = Math.max(0, Math.min(C.length - 10, Math.round(anchor - frac * nb)));
+  draw();
+}, { passive: false });
+
+document.querySelectorAll(".seg button").forEach((b) => {
+  b.addEventListener("click", () => {
+    state.mode = b.dataset.mode;
+    document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  });
+});
+document.getElementById("fit").addEventListener("click", () => {
+  state.start = 0; state.bars = C.length; draw();
+});
+
+/* ---------- حوار التسمية ---------- */
+const dlg = document.getElementById("dlg");
+const iType = document.getElementById("iType");
+const iDir = document.getElementById("iDir");
+const iLabel = document.getElementById("iLabel");
+const iPrice = document.getElementById("iPrice");
+const iReason = document.getElementById("iReason");
+
+const iBroken = document.getElementById("iBroken");
+const fBroken = document.getElementById("fBroken");
+const fPrice = document.getElementById("fPrice");
+const brokenNote = document.getElementById("brokenNote");
+
+/** تعبئة مرشّحات السوينغ المكسور حسب الاتجاه الحالي. */
+function fillCandidates(preselectTime) {
+  const idx = state.pending.index;
+  const list = swingCandidates(C, PIVOTS, state.swings, idx, iDir.value, 14);
+  iBroken.innerHTML = "";
+
+  if (list.length === 0) {
+    iBroken.add(new Option("— ما في سوينغ سابق بهالاتجاه —", ""));
+    brokenNote.textContent = "بدون سوينغ مكسور بينحفظ الحدث كـneeds-review بدون مستوى.";
+    return;
+  }
+  iBroken.add(new Option("— اختر المستوى المكسور —", ""));
+  for (const s of list) {
+    const mark = s.plausible ? "✓" : "✗";
+    const src = s.source === "labeled" ? "مسمّى" : "مكتشف";
+    const lbl =
+      mark + " " + fmtP(s.price) + " · " + fmtT(s.time).slice(0, 10) +
+      " · قبل " + s.barsBack + " شمعة · " + src + (s.label ? " " + s.label : "");
+    const o = new Option(lbl, String(s.time));
+    o.dataset.price = String(s.price);
+    o.dataset.index = String(s.index);
+    iBroken.add(o);
+  }
+  if (preselectTime != null) iBroken.value = String(preselectTime);
+  brokenNote.textContent = "✓ = إغلاق شمعة الحدث فعلاً خلف المستوى.  ✗ = ما انكسر بالإغلاق.";
+}
+
+function openDialog(i, clickY, prefill) {
+  const c = C[i];
+  const v = view();
+  const nearHigh = clickY != null ? clickY < yOf((c.high + c.low) / 2, v) : true;
+  state.pending = { index: i };
+
+  document.getElementById("dlgTitle").textContent = state.mode === "event" ? "حدث هيكلي" : "سوينغ";
+  document.getElementById("dlgCtx").textContent =
+    "شمعة الكسر: " + fmtT(c.time) + "  ·  H " + fmtP(c.high) + "  L " + fmtP(c.low) + "  C " + fmtP(c.close);
+
+  iType.innerHTML = "";
+  if (state.mode === "event") {
+    for (const t of ["BOS", "CHOCH", "MSS"]) iType.add(new Option(t, t));
+    if (prefill?.type) iType.value = prefill.type;
+    document.getElementById("fDir").hidden = false;
+    document.getElementById("fLabel").hidden = true;
+    fBroken.hidden = false;
+    fPrice.hidden = true; // السعر مشتق من السوينغ المكسور، مش مُدخل
+    iDir.value = prefill?.direction ?? (c.close >= c.open ? "up" : "down");
+    fillCandidates(prefill?.brokenSwingTime);
+  } else {
+    iType.add(new Option("قمة", "high"));
+    iType.add(new Option("قاع", "low"));
+    iType.value = nearHigh ? "high" : "low";
+    document.getElementById("fDir").hidden = true;
+    document.getElementById("fLabel").hidden = false;
+    fBroken.hidden = true;
+    fPrice.hidden = false;
+    iPrice.value = (nearHigh ? c.high : c.low).toFixed(3);
+    iLabel.value = "";
+  }
+  iReason.value = prefill?.reason ?? "";
+  dlg.showModal();
+  iReason.focus();
+}
+
+iType.addEventListener("change", () => {
+  if (state.mode !== "swing" || !state.pending) return;
+  const c = C[state.pending.index];
+  iPrice.value = (iType.value === "high" ? c.high : c.low).toFixed(3);
+});
+iDir.addEventListener("change", () => {
+  if (state.mode === "event" && state.pending) fillCandidates();
+});
+
+/* التقاط السوينغ من الشارت: بنسكّر الحوار ونستنى ضغطة على شمعة. */
+document.getElementById("pickBtn").addEventListener("click", () => {
+  state.picking = {
+    index: state.pending.index,
+    type: iType.value,
+    direction: iDir.value,
+    reason: iReason.value.trim(),
+  };
+  dlg.close("pick");
+  setPickBanner(true);
+});
+
+function setPickBanner(on) {
+  document.querySelector(".hint").textContent = on
+    ? "اضغط على شمعة السوينغ المكسور (Esc للإلغاء)"
+    : "اضغط على شمعة لتسميتها · عجلة الفأرة تكبير · سحب للتحريك";
+}
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && state.picking) { state.picking = null; setPickBanner(false); }
+});
+
+dlg.addEventListener("close", () => {
+  if (dlg.returnValue !== "save" || !state.pending) { state.pending = null; return; }
+  const c = C[state.pending.index];
+
+  if (state.mode === "event") {
+    const opt = iBroken.selectedOptions[0];
+    const has = opt && opt.value;
+    state.events.push(
+      normalizeEvent(
+        {
+          time: c.time,
+          type: iType.value,
+          direction: iDir.value,
+          brokenSwingTime: has ? Number(opt.value) : null,
+          brokenSwingPrice: has ? Number(opt.dataset.price) : null,
+          brokenSwingIndex: has ? Number(opt.dataset.index) : null,
+          reason: iReason.value.trim(),
+        },
+        C
+      )
+    );
+    state.events.sort((a, b) => a.time - b.time);
+  } else {
+    state.swings.push({
+      time: c.time,
+      type: iType.value,
+      label: iLabel.value || null,
+      price: Number(iPrice.value),
+      reason: iReason.value.trim(),
+    });
+    state.swings.sort((a, b) => a.time - b.time);
+  }
+  state.pending = null;
+  render();
+});
+
+/* ---------- القائمة والمخرج ---------- */
+function render() {
+  const list = document.getElementById("list");
+  const all = [
+    ...state.events.map((e, i) => ({
+      kind: "event", i, t: e.time, tag: e.type,
+      sub: (e.direction === "up" ? "صاعد" : "هابط") +
+        (lineLevelOf(e) == null ? " · بلا مستوى" : " · كسر " + fmtP(e.brokenSwingPrice)),
+      price: lineLevelOf(e),
+      why: e.reason,
+      review: !!e.needsReview,
+    })),
+    ...state.swings.map((s, i) => ({ kind: "swing", i, t: s.time, tag: s.label || (s.type === "high" ? "قمة" : "قاع"), sub: s.type === "high" ? "قمة" : "قاع", price: s.price, why: s.reason, review: false })),
+  ].sort((a, b) => a.t - b.t);
+
+  const review = state.events.filter((e) => e.needsReview).length;
+  document.getElementById("count").textContent =
+    state.events.length + " حدث · " + state.swings.length + " سوينغ" +
+    (review ? " · " + review + " بحاجة مراجعة" : "");
+
+  if (all.length === 0) {
+    list.innerHTML = '<p class="empty">ما في تسميات بعد. اضغط على شمعة بالشارت لتبدأ.</p>';
+  } else {
+    list.innerHTML = "";
+    for (const r of all) {
+      const el = document.createElement("div");
+      el.className = "row";
+      const cls = r.kind === "event" ? r.tag : "swing";
+      if (r.review) el.classList.add("review");
+      el.innerHTML =
+        '<span class="tag ' + cls + '">' + r.tag + "</span>" +
+        '<span class="when mono">' + fmtT(r.t) + (r.price == null ? "" : " · " + fmtP(r.price)) + " · " + r.sub + "</span>" +
+        '<button class="del" type="button" aria-label="حذف">×</button>' +
+        '<span class="why"></span>';
+      el.querySelector(".why").textContent = r.why || "";
+      el.querySelector(".del").addEventListener("click", () => {
+        if (r.kind === "event") state.events.splice(r.i, 1);
+        else state.swings.splice(r.i, 1);
+        render();
+      });
+      /* حدث بلا مستوى: الضغط عليه بيفتح الحوار لتحديد السوينغ المكسور
+         بدل ما يضطر المحلّل يحذفه ويعيده. */
+      if (r.review) {
+        el.querySelector(".when").style.cursor = "pointer";
+        el.querySelector(".when").addEventListener("click", () => {
+          const e = state.events[r.i];
+          state.events.splice(r.i, 1);
+          state.mode = "event";
+          document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.mode === "event")));
+          openDialog(e.index != null ? e.index : idxOfTime(e.time), null, e);
+        });
+      }
+      list.appendChild(el);
+    }
+  }
+  document.getElementById("json").value = JSON.stringify(payload(), null, 1);
+  draw();
+}
+
+function payload() {
+  return {
+    fixtureId: FIXTURE.id,
+    sha256: FIXTURE.sha256,
+    symbol: FIXTURE.symbol,
+    timeframe: FIXTURE.timeframe,
+    labeledAt: new Date().toISOString(),
+    events: state.events,
+    swings: state.swings,
+  };
+}
+
+document.getElementById("copy").addEventListener("click", async (e) => {
+  const ta = document.getElementById("json");
+  try { await navigator.clipboard.writeText(ta.value); } catch { ta.select(); document.execCommand("copy"); }
+  e.target.textContent = "تم النسخ";
+  setTimeout(() => (e.target.textContent = "نسخ JSON"), 1400);
+});
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(payload(), null, 1)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = FIXTURE.id + "-reference.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById("load").addEventListener("click", () => {
+  const txt = prompt("الصق JSON مرجع سابق:");
+  if (!txt) return;
+  try {
+    const p = JSON.parse(txt);
+    if (p.sha256 && p.sha256 !== FIXTURE.sha256) {
+      alert("هاد المرجع مبني على عيّنة تانية — البصمة ما بتطابق.");
+      return;
+    }
+    /* الترقية بتحفظ كل حدث. اللي بلا سوينغ مكسور بينتوسم needsReview
+       وبيضل ظاهر — ولا تسمية بتنمسح ولا مستوى بينتخمّن. */
+    state.events = (Array.isArray(p.events) ? p.events : []).map((e) => normalizeEvent(e, C));
+    state.swings = Array.isArray(p.swings) ? p.swings : [];
+    const n = state.events.filter((e) => e.needsReview).length;
+    render();
+    if (n) alert(n + " حدث بلا سوينغ مكسور — انتوسموا needs-review. اضغط على أي واحد بالقائمة لتحديد مستواه.");
+  } catch { alert("JSON غير صالح"); }
+});
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("مسح كل التسميات؟")) return;
+  state.events = []; state.swings = []; render();
+});
+
+/* ---------- إقلاع ---------- */
+document.getElementById("meta").innerHTML =
+  "<span><b>" + FIXTURE.symbol + "</b> " + FIXTURE.timeframe.toUpperCase() + "</span>" +
+  "<span>" + FIXTURE.candleCount + " شمعة</span>" +
+  "<span>" + FIXTURE.from.slice(0, 10) + " → " + FIXTURE.to.slice(0, 10) + "</span>" +
+  "<span>" + FIXTURE.provider + "</span>" +
+  "<span>sha " + FIXTURE.sha256.slice(0, 10) + "</span>";
+
+new ResizeObserver(resize).observe(cv);
+window.addEventListener("resize", resize);
+resize();
+render();
+</script>
