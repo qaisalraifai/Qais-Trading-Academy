@@ -558,7 +558,7 @@ function openDialog(i, clickY, prefill) {
 
   iType.innerHTML = "";
   if (state.mode === "event") {
-    for (const t of ["BOS", "CHOCH", "MSS"]) iType.add(new Option(t, t));
+    for (const t of ["BOS", "MSS"]) iType.add(new Option(t, t));
     if (prefill?.type) iType.value = prefill.type;
     document.getElementById("fDir").hidden = false;
     document.getElementById("fLabel").hidden = true;
