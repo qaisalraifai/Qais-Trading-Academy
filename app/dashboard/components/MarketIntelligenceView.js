@@ -483,7 +483,26 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
             .sort((x, y) => y[1] - x[1])
             .forEach(([reason, n]) => L(`      ${String(n).padStart(3)} ×  ${reason}`));
           L("  آخر ٥ مرشّحات:");
-          rej.slice(0, 5).forEach((r) => L(`      ${iso(r.bosTime)}  ${r.dir}  →  ${r.reason}`));
+          const n1 = (v) => (Number.isFinite(v) ? v.toFixed(1) : "—");
+          rej.slice(0, 5).forEach((r) => {
+            L(`      ${iso(r.bosTime)}  ${r.dir}  →  ${r.reason}`);
+            if (Number.isFinite(r.origin)) {
+              L(`          نقاط: 0=${n1(r.origin)}  A=${n1(r.A)}  B=${n1(r.B)}  من ${iso(r.originTime)}`);
+            }
+            if (r.obSameDir != null) {
+              L(
+                `          كتل بنفس الاتجاه: ${r.obSameDir} · ضمن نطاق الساق [${n1(r.legLo)}–${n1(r.legHi)}]: ${r.obInLegRange}` +
+                  ` · بلا مطابقة وقت: ${r.obTimedOut}`
+              );
+            }
+            if (r.entryPrice != null) {
+              L(
+                `          لمسة عند ${n1(r.entryPrice)} @ ${iso(r.entryTime)} (كتلة ${n1(r.obBottom)}–${n1(r.obTop)})` +
+                  ` · أحداث بعدها: أصلنا ${r.evAafter} / المترابط ${r.evBafter}`
+              );
+            }
+            if (r.evA != null) L(`          أحداث هيكلية: أصلنا ${r.evA} / المترابط ${r.evB}`);
+          });
         }
 
         const sd = analysis.obScanDebug || {};
