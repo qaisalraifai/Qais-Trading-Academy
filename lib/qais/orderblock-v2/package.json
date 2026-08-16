@@ -1,0 +1,4 @@
+{
+  "//": "ESM صريح لهالمجلد حتى يقدر node --test يستورد الوحدات مباشرة بدون أداة بناء. نفس نمط structure/ و liquidity-v2/ و market-data/.",
+  "type": "module"
+}
