@@ -176,6 +176,7 @@
         </div>
         <button class="btn" type="button" id="fit">ملء الشاشة</button>
         <span class="hint">اضغط على شمعة لتسميتها · عجلة الفأرة تكبير · سحب للتحريك</span>
+        <span class="mono" id="viewState" style="font-size:11px;color:var(--muted);width:100%"></span>
       </div>
     </div>
 
@@ -287,11 +288,17 @@ function resize() {
 }
 
 function view() {
-  const s = Math.max(0, Math.min(state.start, C.length - 5));
-  const n = Math.max(10, Math.min(state.bars, C.length - s));
+  /* ⚠️ `n` ما بينفع يتجاوز الشموع المتوفرة فعلاً.
+     كان `Math.max(10, ...)` بيفرض ١٠ شموع حتى لما يكون الباقي أقل، وقص
+     `state.start` هون (C.length-5) بيخالف قص السحب والتكبير (C.length-10).
+     فبحالة start=295 الرسم بيطلب الفهرس ٣٠٤ من مصفوفة طولها ٣٠٠ →
+     `C[304].close` بترمي TypeError **وبتقتل draw() كلها** → لوحة فاضية. */
+  const s = Math.max(0, Math.min(state.start, Math.max(0, C.length - 1)));
+  const n = Math.max(1, Math.min(Math.max(10, state.bars), C.length - s));
   const slice = C.slice(s, s + n);
   let lo = Infinity, hi = -Infinity;
   for (const c of slice) { if (c.low < lo) lo = c.low; if (c.high > hi) hi = c.high; }
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) { lo = 0; hi = 1; }
   const pad = (hi - lo) * 0.08 || 1;
   return { s, n, lo: lo - pad, hi: hi + pad, slice };
 }
@@ -301,6 +308,38 @@ function yOf(p, v) { return PAD.t + (v.hi - p) / (v.hi - v.lo) * (H - PAD.t - PA
 function idxAt(px, v) { const w = (W - PAD.l - PAD.r) / v.n; return v.s + Math.floor((px - PAD.l) / w); }
 
 function draw() {
+  try {
+    drawInner();
+  } catch (err) {
+    /* ⚠️ أي خطأ برسمة وحدة كان بيقتل draw() كلها ويترك اللوحة فاضية بلا
+       أي إشارة — وهاد بالضبط اللي بان كـ«ما في شموع». هلأ الخطأ بينعرض. */
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "#DE5C53";
+    ctx.font = "12px ui-monospace, monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText("خطأ برسم الشارت: " + String(err && err.message), 12, 12);
+    if (typeof console !== "undefined") console.error(err);
+  }
+  updateViewState();
+}
+
+function updateViewState() {
+  const el = document.getElementById("viewState");
+  if (!el) return;
+  try {
+    const v = view();
+    const first = C[v.s], last = C[Math.min(v.s + v.n - 1, C.length - 1)];
+    el.textContent =
+      `عرض ${v.n} شمعة من ${v.s} لـ${v.s + v.n - 1} (المجموع ${C.length}) · ` +
+      `${fmtT(first.time).slice(0, 10)} → ${fmtT(last.time).slice(0, 10)} · ` +
+      `سعر ${v.lo.toFixed(0)}–${v.hi.toFixed(0)} · لوحة ${Math.round(W)}×${Math.round(H)}`;
+  } catch (e) {
+    el.textContent = "تعذّر حساب حالة العرض: " + String(e && e.message);
+  }
+}
+
+function drawInner() {
   if (!W) return;
   const v = view();
   ctx.clearRect(0, 0, W, H);
@@ -320,7 +359,9 @@ function draw() {
   // الشموع
   const bw = Math.max(1.2, (W - PAD.l - PAD.r) / v.n * 0.62);
   for (let i = v.s; i < v.s + v.n; i++) {
-    const c = C[i], x = xOf(i, v), up = c.close >= c.open;
+    const c = C[i];
+    if (!c) continue; // حارس: أي فهرس برّا المصفوفة ما بيقتل الرسم
+    const x = xOf(i, v), up = c.close >= c.open;
     const col = up ? css("--bull") : css("--bear");
     ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1;
     ctx.beginPath();
@@ -434,7 +475,7 @@ cv.addEventListener("pointermove", (ev) => {
     const dx = ev.clientX - drag.x;
     if (Math.abs(dx) > 3) drag.moved = true;
     const per = (W - PAD.l - PAD.r) / v.n;
-    state.start = Math.max(0, Math.min(C.length - 10, drag.start - Math.round(dx / per)));
+    state.start = Math.max(0, Math.min(Math.max(0, C.length - 10), drag.start - Math.round(dx / per)));
   }
   const i = idxAt(ev.clientX - r.left, view());
   state.hover = i >= 0 && i < C.length ? i : -1;
@@ -492,7 +533,7 @@ cv.addEventListener("wheel", (ev) => {
   const nb = Math.max(20, Math.min(C.length, Math.round(state.bars * f)));
   const frac = (anchor - v.s) / v.n;
   state.bars = nb;
-  state.start = Math.max(0, Math.min(C.length - 10, Math.round(anchor - frac * nb)));
+  state.start = Math.max(0, Math.min(Math.max(0, C.length - 10), Math.round(anchor - frac * nb)));
   draw();
 }, { passive: false });
 
