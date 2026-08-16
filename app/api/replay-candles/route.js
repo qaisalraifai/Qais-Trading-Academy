@@ -150,6 +150,7 @@ export async function GET(req) {
         sourceSymbol: dukSymbol,
         provider: "dukascopy",
         usedFallback: false,
+        providerErrors: null,
       });
     }
     dukError = dukResult.error || "استجابة فارغة من Dukascopy";
@@ -166,7 +167,11 @@ export async function GET(req) {
           candles: normalizeOhlc(tdResult.candles),
           sourceSymbol: tdSymbol,
           provider: "twelvedata",
-          usedFallback: false,
+          /* التراجع صار **معلَن**: قبل هيك كانت usedFallback:false بترجع
+             دايماً حتى لما يفشل مزوّد أعلى — فالتراجع لمصدر أضعف كان صامت
+             تماماً، وهاد بالضبط اللي خلّى تناقض شموع الذهب يمرق شهور. */
+          usedFallback: !!dukSymbol,
+          providerErrors: dukError ? { dukascopy: dukError } : null,
         });
       }
     } else {
@@ -182,7 +187,9 @@ export async function GET(req) {
       candles: normalizeOhlc(yahooResult.candles),
       sourceSymbol: symbol,
       provider: "yahoo",
-      usedFallback: false,
+      usedFallback: !!(dukSymbol || tdSymbol),
+      providerErrors:
+        dukError || tdError ? { ...(dukError ? { dukascopy: dukError } : {}), ...(tdError ? { twelvedata: tdError } : {}) } : null,
     });
   }
 

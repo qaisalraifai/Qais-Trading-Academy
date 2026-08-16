@@ -1226,6 +1226,9 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       {/* ================= LIVE MARKET STATUS (شريط رفيع — بيضل بالكوكبيت) ================= */}
       <LiveMarketStatusBar status={marketStatus} />
 
+      {/* تناقض بين الفريمات — لازم يبان قبل أي قراءة للتحليل */}
+      <DataQualityBanner quality={result?.dataQuality} />
+
       {/* ================= TOP TOOLBAR ================= */}
       <div className="qmi-anim" style={{ ...glass, padding: "0.75rem 1.1rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
         <select
@@ -1436,6 +1439,55 @@ function AiSummaryCard({ summary }) {
    Live Market Status Bar — شريط حالة السوق الحي أسفل العنوان مباشرة.
    كله مجمّع من radarItems (نفس /api/radar) — لا بيانات جديدة، فقط عرض مُجمّع.
    ============================================================================ */
+/* ============================================================================
+   تحذير جودة البيانات — بيظهر بس لما الفريمات تتناقض فعلياً.
+
+   سلسلة المزوّدين (Dukascopy → TwelveData → Yahoo) بتتراجع لمزوّد أضعف لما
+   يفشل الأساسي، وممكن تخلط سلسلتين من **عقود مختلفة**. قياس فعلي على
+   الذهب: ١.٦٪ بس من الشموع اليومية بتحتوي شموعها الأربع-ساعية.
+
+   كل التحليل متعدد الفريمات بيفترض إنه الفريمات بتوصف نفس السوق. لو مش
+   هيك، المستخدم لازم يشوفها **قبل** ما يقرا أي إشارة — مش بعد ما يتصرّف.
+   ============================================================================ */
+function DataQualityBanner({ quality }) {
+  if (!quality || quality.ok || !quality.warnings?.length) return null;
+  const critical = quality.severity === "critical";
+  const color = critical ? "#F87171" : "#FBBF24";
+
+  return (
+    <div
+      role="alert"
+      className="qmi-anim"
+      style={{
+        ...glass,
+        padding: "0.6rem 1rem",
+        borderColor: color,
+        borderInlineStartWidth: 3,
+        borderInlineStartStyle: "solid",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: "0.65rem",
+        flexWrap: "wrap",
+      }}
+    >
+      <AlertTriangle size={16} style={{ color, flexShrink: 0, marginTop: 2 }} aria-hidden />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color }}>
+          {critical ? "بيانات الفريمات متناقضة" : "تحفّظ على جودة البيانات"}
+        </div>
+        {quality.warnings.map((w, i) => (
+          <div key={i} style={{ fontSize: 12, color: "#C4B5FD", marginTop: 2 }}>
+            {w}
+          </div>
+        ))}
+        <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>
+          التحليل مبني على شموع ما بتوصف نفس السوق — اقرا الإشارة بحذر.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LiveMarketStatusBar({ status }) {
   const { t } = useLocale();
   const { lastScan, scanned, activeCount, strongest, weakest, biasLbl, avgConfidence } = status;
