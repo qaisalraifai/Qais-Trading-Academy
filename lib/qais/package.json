@@ -1,0 +1,4 @@
+{
+  "//": "ESM صريح — كل ملفات المجلد بتستعمل import/export. بدونه node بيعتمد على كشف الصيغة (Node ≥22.7) وبينهار على Node 20. نفس النمط المستعمل بـstructure/ وmarket-data/.",
+  "type": "module"
+}

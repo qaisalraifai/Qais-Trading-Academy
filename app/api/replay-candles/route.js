@@ -119,6 +119,31 @@ export async function GET(req) {
     return NextResponse.json({ error: "الرجاء تحديد symbol" }, { status: 400 });
   }
 
+  /* ============================================================================
+     فريم غير معروف = خطأ صريح، مش تراجع صامت.
+     ----------------------------------------------------------------------------
+     كان أي نص بينقبل. `interval=1d` (بدل `1day`) بيرفضه Dukascopy وTwelve
+     Data، فبينزل ليوهو اللي بيتجاهله ويرجّع فاصله الافتراضي — قياس فعلي
+     على ناسداك:
+
+         interval=1d    → yahoo      · الفاصل الفعلي **١٥ دقيقة**
+         interval=1day  → dukascopy  · الفاصل الفعلي يومي
+
+     يعني المستدعي بياخد شموع ربع ساعة وهو فاكرها يومية، بدون أي خطأ. أي
+     تحليل فوقها مبني على بيانات مختلفة كلياً عن اللي طلبها. الرفض الصريح
+     أرخص بكتير من نتيجة مقنعة وغلط.
+     ============================================================================ */
+  const SUPPORTED_INTERVALS = ["1min", "5min", "15min", "1h", "4h", "1day"];
+  if (!SUPPORTED_INTERVALS.includes(interval)) {
+    return NextResponse.json(
+      {
+        error: `فريم غير مدعوم: "${interval}". المتاح: ${SUPPORTED_INTERVALS.join(" · ")}`,
+        hint: interval === "1d" ? 'استخدم "1day" مش "1d"' : undefined,
+      },
+      { status: 400 }
+    );
+  }
+
   let dukError = null;
   let tdError = null;
 
