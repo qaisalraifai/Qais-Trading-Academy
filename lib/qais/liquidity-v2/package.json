@@ -1,0 +1,4 @@
+{
+  "//": "ESM صريح لهالمجلد حتى يقدر node --test يستورد الطبقة مباشرة بدون أداة بناء ولا أي تبعية اختبار. الجذر commonjs بينما ملفات lib ESM — نفس نمط lib/qais/structure و lib/market-data.",
+  "type": "module"
+}
