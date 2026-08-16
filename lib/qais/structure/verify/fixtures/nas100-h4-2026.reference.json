@@ -1,1 +1,137 @@
-{"fixtureId":"nas100-h4-2026","sha256":"ec0501d9d3a47adbfc92075b851075471874742071ef02c3201d4264e68b07fb","symbol":"NAS100","timeframe":"h4","labeledAt":"2026-08-15T22:05:43.052Z","events":[{"time":1782201600,"index":62,"type":"BOS","direction":"down","brokenSwingTime":1781712000,"brokenSwingIndex":40,"brokenSwingPrice":29600.443,"price":29600.443,"reason":"اغلاق اسفل 29600","needsReview":false},{"time":1784246400,"index":170,"type":"BOS","direction":"down","brokenSwingTime":1782432000,"brokenSwingIndex":78,"brokenSwingPrice":28865.171,"price":28865.171,"reason":"اغلاق اسفل 28865","needsReview":false},{"time":1784908800,"index":205,"type":"BOS","direction":"down","brokenSwingTime":1784289600,"brokenSwingIndex":173,"brokenSwingPrice":28231.789,"price":28231.789,"reason":"اغلاق اسفل 28231","needsReview":false},{"time":1785844800,"index":248,"type":"MSS","direction":"up","brokenSwingTime":1784649600,"brokenSwingIndex":187,"brokenSwingPrice":29187.831,"price":29187.831,"reason":"اغلاق فوق اخر قمة تسببت بكسر قاع","needsReview":false}],"swings":[{"time":1781596800,"type":"high","label":null,"price":30652.599,"reason":"القمة الاعلى"},{"time":1781712000,"type":"low","label":null,"price":29600.443,"reason":"القاع الادنى قبل التصحيح"},{"time":1782129600,"type":"high","label":"LH","price":30646.932,"reason":"قمة ادنى من قمة سابقة"},{"time":1782432000,"type":"low","label":"LH","price":28865.171,"reason":"قاع ادنى من السابق"},{"time":1782835200,"type":"high","label":"LH","price":30325.248,"reason":"قمة ادنى من السابقة"},{"time":1784289600,"type":"low","label":"LL","price":28231.789,"reason":"قاع ادنى من السابق"},{"time":1784649600,"type":"high","label":"LH","price":29187.831,"reason":"قمة ادنى من السابقة"},{"time":1785355200,"type":"low","label":"LL","price":27063.332,"reason":"قاع ادنى من السابق"},{"time":1785931200,"type":"high","label":"HH","price":29947.189,"reason":"قمة اعلى من سابقة"},{"time":1786017600,"type":"low","label":"HL","price":29119.086,"reason":"قاع اعلى من السابق"},{"time":1786708800,"type":"high","label":"HH","price":30183.943,"reason":"قمة اعلى من السابقة"}]}
+{
+ "fixtureId": "nas100-h4-2026",
+ "sha256": "ec0501d9d3a47adbfc92075b851075471874742071ef02c3201d4264e68b07fb",
+ "symbol": "NAS100",
+ "timeframe": "h4",
+ "labeledAt": "2026-08-15T22:05:43.052Z",
+ "events": [
+  {
+   "time": 1782201600,
+   "index": 62,
+   "type": "BOS",
+   "direction": "down",
+   "brokenSwingTime": 1781712000,
+   "brokenSwingIndex": 40,
+   "brokenSwingPrice": 29600.443,
+   "price": 29600.443,
+   "reason": "اغلاق اسفل 29600",
+   "needsReview": false
+  },
+  {
+   "time": 1784246400,
+   "index": 170,
+   "type": "BOS",
+   "direction": "down",
+   "brokenSwingTime": 1782432000,
+   "brokenSwingIndex": 78,
+   "brokenSwingPrice": 28865.171,
+   "price": 28865.171,
+   "reason": "اغلاق اسفل 28865",
+   "needsReview": false
+  },
+  {
+   "time": 1784908800,
+   "index": 205,
+   "type": "BOS",
+   "direction": "down",
+   "brokenSwingTime": 1784289600,
+   "brokenSwingIndex": 173,
+   "brokenSwingPrice": 28231.789,
+   "price": 28231.789,
+   "reason": "اغلاق اسفل 28231",
+   "needsReview": false
+  },
+  {
+   "time": 1785844800,
+   "index": 248,
+   "type": "MSS",
+   "direction": "up",
+   "brokenSwingTime": 1784649600,
+   "brokenSwingIndex": 187,
+   "brokenSwingPrice": 29187.831,
+   "price": 29187.831,
+   "reason": "اغلاق فوق اخر قمة تسببت بكسر قاع",
+   "needsReview": false
+  }
+ ],
+ "swings": [
+  {
+   "time": 1781596800,
+   "type": "high",
+   "label": null,
+   "price": 30652.599,
+   "reason": "القمة الاعلى"
+  },
+  {
+   "time": 1781712000,
+   "type": "low",
+   "label": null,
+   "price": 29600.443,
+   "reason": "القاع الادنى قبل التصحيح"
+  },
+  {
+   "time": 1782129600,
+   "type": "high",
+   "label": "LH",
+   "price": 30646.932,
+   "reason": "قمة ادنى من قمة سابقة"
+  },
+  {
+   "time": 1782432000,
+   "type": "low",
+   "label": "LL",
+   "price": 28865.171,
+   "reason": "قاع ادنى من السابق",
+   "correctionNote": "كانت LH على قاع — تناقض. صُحّحت لـLL بتأكيد المحلّل، ونص السبب أصلاً «قاع ادنى من السابق»."
+  },
+  {
+   "time": 1782835200,
+   "type": "high",
+   "label": "LH",
+   "price": 30325.248,
+   "reason": "قمة ادنى من السابقة"
+  },
+  {
+   "time": 1784289600,
+   "type": "low",
+   "label": "LL",
+   "price": 28231.789,
+   "reason": "قاع ادنى من السابق"
+  },
+  {
+   "time": 1784649600,
+   "type": "high",
+   "label": "LH",
+   "price": 29187.831,
+   "reason": "قمة ادنى من السابقة"
+  },
+  {
+   "time": 1785355200,
+   "type": "low",
+   "label": "LL",
+   "price": 27063.332,
+   "reason": "قاع ادنى من السابق"
+  },
+  {
+   "time": 1785931200,
+   "type": "high",
+   "label": "HH",
+   "price": 29947.189,
+   "reason": "قمة اعلى من سابقة"
+  },
+  {
+   "time": 1786017600,
+   "type": "low",
+   "label": "HL",
+   "price": 29119.086,
+   "reason": "قاع اعلى من السابق"
+  },
+  {
+   "time": 1786708800,
+   "type": "high",
+   "label": "HH",
+   "price": 30183.943,
+   "reason": "قمة اعلى من السابقة"
+  }
+ ]
+}
