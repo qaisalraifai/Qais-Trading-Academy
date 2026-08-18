@@ -85,7 +85,12 @@
     المثلثات المنقّطة = كنسات سيولة (أحمر لفوق · أخضر لتحت · باهت = ما انعكس).
     السؤال: <b>هل هاي الحركة زخم؟</b>
   </div>
+  <div class="row" id="rules" style="gap:6px"></div>
   <div class="note" id="liq"></div>
+  <div class="note">
+    القواعد المحسومة مفلترة سلفاً — السؤال الوحيد المتبقّي هو <b>الزخم</b>.
+    ولو ظهر ✗ فوق، هاي حالة ما لازم تكون هون: قللي.
+  </div>
 
   <div class="row">
     <button class="ok big" id="yes">زخم ✓</button>
@@ -341,6 +346,16 @@ function render() {
     ? `باقي ${pending.length} غير مسمّاة: ${pending.map((x) => x.id).join(" · ")}`
     : "خلصت الـ" + CASES.length + " كلها — افتح «الناتج» تحت وانسخه.";
   $("remain").style.color = pending.length ? "" : "#26a69a";
+
+  /* حالة القواعد المحسومة — بتتأكد بلحظتها من بيانات الحالة نفسها،
+     مش من ادعاء وقت التوليد. */
+  const sr = k.settledRules || {};
+  const allOk = sr.R3 && sr.R4 && sr.R5;
+  $("rules").innerHTML =
+    `<span class="tag ${allOk ? "ok" : "no"}">${allOk ? "مطابقة للقواعد المحسومة" : "⚠️ تخالف قاعدة"}</span> ` +
+    ["R3 اتجاه الشموع", "R4 جسم > ذيل", "R5 ما سكّرت خلفها"]
+      .map((t, i) => `<span class="tag ${[sr.R3, sr.R4, sr.R5][i] ? "ok" : "no"}">${t} ${[sr.R3, sr.R4, sr.R5][i] ? "✓" : "✗"}</span>`)
+      .join(" ");
 
   const lq = k.liquidity || {};
   $("liq").textContent =
