@@ -350,11 +350,11 @@ function render() {
   /* حالة القواعد المحسومة — بتتأكد بلحظتها من بيانات الحالة نفسها،
      مش من ادعاء وقت التوليد. */
   const sr = k.settledRules || {};
-  const allOk = sr.R3 && sr.R4 && sr.R5;
+  const allOk = sr.R3 && sr.R4 && sr.R5 && sr.R6;
   $("rules").innerHTML =
     `<span class="tag ${allOk ? "ok" : "no"}">${allOk ? "مطابقة للقواعد المحسومة" : "⚠️ تخالف قاعدة"}</span> ` +
-    ["R3 اتجاه الشموع", "R4 جسم > ذيل", "R5 ما سكّرت خلفها"]
-      .map((t, i) => `<span class="tag ${[sr.R3, sr.R4, sr.R5][i] ? "ok" : "no"}">${t} ${[sr.R3, sr.R4, sr.R5][i] ? "✓" : "✗"}</span>`)
+    ["R3 اتجاه الشموع", "R4 جسم > ذيل", "R5 ما سكّرت خلفها", "R6 اكتملت"]
+      .map((t, i) => `<span class="tag ${[sr.R3, sr.R4, sr.R5, sr.R6][i] ? "ok" : "no"}">${t} ${[sr.R3, sr.R4, sr.R5, sr.R6][i] ? "✓" : "✗"}</span>`)
       .join(" ");
 
   const lq = k.liquidity || {};

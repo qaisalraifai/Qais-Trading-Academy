@@ -1,177 +1,61 @@
 {
  "fixtureId": "nas100-h4-2026q1q2",
  "sha256": "df56472b351430b68ce4d9ac2d43712516114d5842347a10bf70c455aeec45c3",
- "generatedAt": "2026-08-18T18:25:51.710Z",
+ "generatedAt": "2026-08-18T22:22:46.374Z",
  "totalCases": 336,
  "sampleSize": 24,
- "samplingNote": "من الحالات المطابقة للقواعد المحسومة (R3·R4·R5) واللي صمدت ≥٥ شموع، بتوزيع متساوي التباعد على extLeg. R1 مستثنى عمداً — هو المجهول اللي التسميات بتحدده.",
- "eligibleCases": 120,
+ "samplingNote": "من الحالات المطابقة للقواعد المحسومة (R3·R4·R5) واللي صمدت ≥٥ شموع واكتملت (R6)، بتوزيع متساوي التباعد على extLeg. R1 مستثنى عمداً — هو المجهول اللي التسميات بتحدده.",
+ "eligibleCases": 98,
  "liquidityNote": "سياق السيولة معروض للتسمية مش كشرط — بيتحقق ١٠٠٪ فما بيميّز. التكرار (٢٥٪) انشال للعرض بس.",
  "cases": [
   {
-   "id": "C24",
-   "moveIndex": 66,
-   "moveTime": 1768564800,
-   "direction": "down",
-   "groupStartIndex": 63,
-   "groupEndIndex": 65,
-   "groupStartTime": 1768521600,
-   "groupEndTime": 1768550400,
-   "groupCandleCount": 3,
-   "levels": {
-    "open": 25587.81,
-    "mt": 25633.23,
-    "close": 25678.66,
-    "outerWick": 25718.15,
-    "fvg": 25577.52
-   },
-   "measurements": {
-    "atrAtGroup": 126.35,
-    "firstCandleRangeAtr": 2.363,
-    "firstCandleBodyPct": 0.507,
-    "blockBodyRatio": 0.646,
-    "blockBodySumRatio": 0.458,
-    "blockWeakestBodyPct": 0.128,
-    "ext1": 1.91,
-    "ext2": 1.91,
-    "ext3": 1.91,
-    "ext5": 3.728,
-    "ext8": 4.741,
-    "extLeg": 6.304,
-    "extLegBars": 20,
-    "survivedBars": 38,
-    "fvgAfterBars": 1,
-    "eventAfterBars": 5,
-    "eventType": "BOS",
-    "invalidationAfterBars": 39
-   },
-   "settledRules": {
-    "R3": true,
-    "R4": true,
-    "R5": true
-   },
-   "label": null,
-   "labelReason": null,
-   "liquidity": {
-    "sweepsNearBlock": [
-     {
-      "index": 55,
-      "side": "sell",
-      "price": 25310.33,
-      "outcome": "reversal"
-     },
-     {
-      "index": 60,
-      "side": "buy",
-      "price": 25762.28,
-      "outcome": "reversal"
-     },
-     {
-      "index": 65,
-      "side": "buy",
-      "price": 25683.1,
-      "outcome": "reversal"
-     },
-     {
-      "index": 66,
-      "side": "buy",
-      "price": 25718.15,
-      "outcome": "reversal"
-     },
-     {
-      "index": 66,
-      "side": "sell",
-      "price": 25511.46,
-      "outcome": "continuation"
-     },
-     {
-      "index": 66,
-      "side": "sell",
-      "price": 25516.74,
-      "outcome": "continuation"
-     }
-    ],
-    "sweepCount": 6,
-    "reversalCount": 4,
-    "note": null
-   }
-  },
-  {
-   "id": "C33",
-   "moveIndex": 79,
-   "moveTime": 1768910400,
+   "id": "C37",
+   "moveIndex": 85,
+   "moveTime": 1768996800,
    "direction": "up",
-   "groupStartIndex": 77,
-   "groupEndIndex": 78,
-   "groupStartTime": 1768881600,
-   "groupEndTime": 1768896000,
-   "groupCandleCount": 2,
+   "groupStartIndex": 84,
+   "groupEndIndex": 84,
+   "groupStartTime": 1768982400,
+   "groupEndTime": 1768982400,
+   "groupCandleCount": 1,
    "levels": {
-    "open": 25256.42,
-    "mt": 25155.23,
-    "close": 25054.04,
-    "outerWick": 24944.85,
-    "fvg": 25258.83
+    "open": 25068.24,
+    "mt": 24986.24,
+    "close": 24904.24,
+    "outerWick": 24897.12,
+    "fvg": 25090.47
    },
    "measurements": {
-    "atrAtGroup": 131.14,
-    "firstCandleRangeAtr": 1.846,
-    "firstCandleBodyPct": 0.686,
-    "blockBodyRatio": 0.645,
-    "blockBodySumRatio": 0.585,
-    "blockWeakestBodyPct": 0.404,
-    "ext1": 1.662,
-    "ext2": 1.751,
-    "ext3": 1.751,
-    "ext5": 1.751,
-    "ext8": 1.751,
-    "extLeg": 1.662,
-    "extLegBars": 1,
-    "survivedBars": 5,
-    "fvgAfterBars": 4,
-    "eventAfterBars": null,
-    "eventType": null,
-    "invalidationAfterBars": 6
+    "atrAtGroup": 141.26,
+    "firstCandleRangeAtr": 3.271,
+    "firstCandleBodyPct": 0.912,
+    "blockBodyRatio": 0.848,
+    "blockBodySumRatio": 0.848,
+    "blockWeakestBodyPct": 0.848,
+    "ext1": 3.114,
+    "ext2": 4.168,
+    "ext3": 4.236,
+    "ext5": 4.236,
+    "ext8": 4.908,
+    "extLeg": 9.307,
+    "extLegBars": 30,
+    "survivedBars": 65,
+    "completedAfterBars": 0,
+    "fvgAfterBars": 10,
+    "eventAfterBars": 23,
+    "eventType": "MSS",
+    "invalidationAfterBars": 66
    },
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
    "liquidity": {
     "sweepsNearBlock": [
-     {
-      "index": 65,
-      "side": "buy",
-      "price": 25683.1,
-      "outcome": "reversal"
-     },
-     {
-      "index": 66,
-      "side": "buy",
-      "price": 25718.15,
-      "outcome": "reversal"
-     },
-     {
-      "index": 66,
-      "side": "sell",
-      "price": 25511.46,
-      "outcome": "continuation"
-     },
-     {
-      "index": 66,
-      "side": "sell",
-      "price": 25516.74,
-      "outcome": "continuation"
-     },
-     {
-      "index": 69,
-      "side": "sell",
-      "price": 25262.25,
-      "outcome": "continuation"
-     },
      {
       "index": 73,
       "side": "sell",
@@ -201,174 +85,16 @@
       "side": "buy",
       "price": 25272.04,
       "outcome": "reversal"
-     }
-    ],
-    "sweepCount": 10,
-    "reversalCount": 6,
-    "note": null
-   }
-  },
-  {
-   "id": "C57",
-   "moveIndex": 123,
-   "moveTime": 1769702400,
-   "direction": "up",
-   "groupStartIndex": 121,
-   "groupEndIndex": 122,
-   "groupStartTime": 1769673600,
-   "groupEndTime": 1769688000,
-   "groupCandleCount": 2,
-   "levels": {
-    "open": 26127.45,
-    "mt": 25789.71,
-    "close": 25451.97,
-    "outerWick": 25410.79,
-    "fvg": 26152.42
-   },
-   "measurements": {
-    "atrAtGroup": 170.59,
-    "firstCandleRangeAtr": 2.124,
-    "firstCandleBodyPct": 0.759,
-    "blockBodyRatio": 0.911,
-    "blockBodySumRatio": 0.859,
-    "blockWeakestBodyPct": 0.529,
-    "ext1": 1.905,
-    "ext2": 2.628,
-    "ext3": 2.628,
-    "ext5": 2.628,
-    "ext8": 2.628,
-    "extLeg": 2.628,
-    "extLegBars": 2,
-    "survivedBars": 9,
-    "fvgAfterBars": null,
-    "eventAfterBars": null,
-    "eventType": null,
-    "invalidationAfterBars": 10
-   },
-   "settledRules": {
-    "R3": true,
-    "R4": true,
-    "R5": true
-   },
-   "label": null,
-   "labelReason": null,
-   "liquidity": {
-    "sweepsNearBlock": [
-     {
-      "index": 111,
-      "side": "buy",
-      "price": 25966.24,
-      "outcome": "continuation"
      },
      {
-      "index": 118,
+      "index": 85,
       "side": "sell",
-      "price": 25929.31,
-      "outcome": "reversal"
-     },
-     {
-      "index": 117,
-      "side": "sell",
-      "price": 26006,
-      "outcome": "reversal"
-     },
-     {
-      "index": 117,
-      "side": "sell",
-      "price": 26030.61,
-      "outcome": "reversal"
-     },
-     {
-      "index": 121,
-      "side": "buy",
-      "price": 26149.07,
+      "price": 24897.12,
       "outcome": "reversal"
      }
     ],
-    "sweepCount": 5,
-    "reversalCount": 4,
-    "note": null
-   }
-  },
-  {
-   "id": "C58",
-   "moveIndex": 125,
-   "moveTime": 1769731200,
-   "direction": "down",
-   "groupStartIndex": 123,
-   "groupEndIndex": 124,
-   "groupStartTime": 1769702400,
-   "groupEndTime": 1769716800,
-   "groupCandleCount": 2,
-   "levels": {
-    "open": 25452.33,
-    "mt": 25652.98,
-    "close": 25853.63,
-    "outerWick": 25900.28,
-    "fvg": 25414.59
-   },
-   "measurements": {
-    "atrAtGroup": 184.03,
-    "firstCandleRangeAtr": 1.386,
-    "firstCandleBodyPct": 0.488,
-    "blockBodyRatio": 0.826,
-    "blockBodySumRatio": 0.739,
-    "blockWeakestBodyPct": 0.699,
-    "ext1": 1.281,
-    "ext2": 1.474,
-    "ext3": 1.751,
-    "ext5": 2.168,
-    "ext8": 3.823,
-    "extLeg": 4.267,
-    "extLegBars": 9,
-    "survivedBars": 14,
-    "fvgAfterBars": 5,
-    "eventAfterBars": null,
-    "eventType": null,
-    "invalidationAfterBars": 15
-   },
-   "settledRules": {
-    "R3": true,
-    "R4": true,
-    "R5": true
-   },
-   "label": null,
-   "labelReason": null,
-   "liquidity": {
-    "sweepsNearBlock": [
-     {
-      "index": 111,
-      "side": "buy",
-      "price": 25966.24,
-      "outcome": "continuation"
-     },
-     {
-      "index": 118,
-      "side": "sell",
-      "price": 25929.31,
-      "outcome": "reversal"
-     },
-     {
-      "index": 117,
-      "side": "sell",
-      "price": 26006,
-      "outcome": "reversal"
-     },
-     {
-      "index": 117,
-      "side": "sell",
-      "price": 26030.61,
-      "outcome": "reversal"
-     },
-     {
-      "index": 121,
-      "side": "buy",
-      "price": 26149.07,
-      "outcome": "reversal"
-     }
-    ],
-    "sweepCount": 5,
-    "reversalCount": 4,
+    "sweepCount": 6,
+    "reversalCount": 5,
     "note": null
    }
   },
@@ -404,6 +130,7 @@
     "extLeg": 3.553,
     "extLegBars": 6,
     "survivedBars": 9,
+    "completedAfterBars": 1,
     "fvgAfterBars": 2,
     "eventAfterBars": null,
     "eventType": null,
@@ -412,7 +139,8 @@
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
@@ -461,51 +189,233 @@
    }
   },
   {
-   "id": "C83",
-   "moveIndex": 190,
-   "moveTime": 1770984000,
-   "direction": "up",
-   "groupStartIndex": 184,
-   "groupEndIndex": 189,
-   "groupStartTime": 1770897600,
-   "groupEndTime": 1770969600,
-   "groupCandleCount": 6,
+   "id": "C66",
+   "moveIndex": 146,
+   "moveTime": 1770192000,
+   "direction": "down",
+   "groupStartIndex": 143,
+   "groupEndIndex": 145,
+   "groupStartTime": 1770148800,
+   "groupEndTime": 1770177600,
+   "groupCandleCount": 3,
    "levels": {
-    "open": 25286.05,
-    "mt": 24967.11,
-    "close": 24648.16,
-    "outerWick": 24552.92,
-    "fvg": 25339.33
+    "open": 25210.08,
+    "mt": 25304.54,
+    "close": 25399.01,
+    "outerWick": 25410.7,
+    "fvg": 25164.36
    },
    "measurements": {
-    "atrAtGroup": 179.36,
-    "firstCandleRangeAtr": 1.956,
-    "firstCandleBodyPct": 0.266,
-    "blockBodyRatio": 0.811,
-    "blockBodySumRatio": 0.484,
-    "blockWeakestBodyPct": 0.023,
-    "ext1": 1.167,
-    "ext2": 1.533,
-    "ext3": 1.533,
-    "ext5": 1.533,
-    "ext8": 1.533,
-    "extLeg": 1.533,
-    "extLegBars": 2,
-    "survivedBars": 10,
-    "fvgAfterBars": null,
-    "eventAfterBars": null,
-    "eventType": null,
-    "invalidationAfterBars": 11
+    "atrAtGroup": 208.13,
+    "firstCandleRangeAtr": 0.736,
+    "firstCandleBodyPct": 0.173,
+    "blockBodyRatio": 0.767,
+    "blockBodySumRatio": 0.467,
+    "blockWeakestBodyPct": 0.067,
+    "ext1": 0.704,
+    "ext2": 1.892,
+    "ext3": 3.454,
+    "ext5": 3.454,
+    "ext8": 4.542,
+    "extLeg": 6.002,
+    "extLegBars": 11,
+    "survivedBars": 295,
+    "completedAfterBars": 1,
+    "fvgAfterBars": 2,
+    "eventAfterBars": 2,
+    "eventType": "MSS",
+    "invalidationAfterBars": 296
    },
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
    "liquidity": {
     "sweepsNearBlock": [
+     {
+      "index": 131,
+      "side": "sell",
+      "price": 25394.63,
+      "outcome": "continuation"
+     },
+     {
+      "index": 131,
+      "side": "sell",
+      "price": 25410.79,
+      "outcome": "continuation"
+     },
+     {
+      "index": 136,
+      "side": "buy",
+      "price": 25797.66,
+      "outcome": "continuation"
+     },
+     {
+      "index": 136,
+      "side": "buy",
+      "price": 25820.38,
+      "outcome": "continuation"
+     },
+     {
+      "index": 138,
+      "side": "buy",
+      "price": 25865.79,
+      "outcome": "continuation"
+     },
+     {
+      "index": 146,
+      "side": "sell",
+      "price": 25272.1,
+      "outcome": "continuation"
+     }
+    ],
+    "sweepCount": 6,
+    "reversalCount": 0,
+    "note": null
+   }
+  },
+  {
+   "id": "C73",
+   "moveIndex": 166,
+   "moveTime": 1770638400,
+   "direction": "up",
+   "groupStartIndex": 163,
+   "groupEndIndex": 165,
+   "groupStartTime": 1770595200,
+   "groupEndTime": 1770624000,
+   "groupCandleCount": 3,
+   "levels": {
+    "open": 25189.2,
+    "mt": 25075.14,
+    "close": 24961.09,
+    "outerWick": 24881.58,
+    "fvg": 25259.94
+   },
+   "measurements": {
+    "atrAtGroup": 240.56,
+    "firstCandleRangeAtr": 1.547,
+    "firstCandleBodyPct": 0.696,
+    "blockBodyRatio": 0.603,
+    "blockBodySumRatio": 0.447,
+    "blockWeakestBodyPct": 0.289,
+    "ext1": 1.164,
+    "ext2": 1.57,
+    "ext3": 1.57,
+    "ext5": 1.57,
+    "ext8": 1.663,
+    "extLeg": 1.752,
+    "extLegBars": 13,
+    "survivedBars": 19,
+    "completedAfterBars": 0,
+    "fvgAfterBars": 1,
+    "eventAfterBars": null,
+    "eventType": null,
+    "invalidationAfterBars": 20
+   },
+   "settledRules": {
+    "R3": true,
+    "R4": true,
+    "R5": true,
+    "R6": true
+   },
+   "label": null,
+   "labelReason": null,
+   "liquidity": {
+    "sweepsNearBlock": [
+     {
+      "index": 154,
+      "side": "sell",
+      "price": 24453.65,
+      "outcome": "continuation"
+     },
+     {
+      "index": 156,
+      "side": "sell",
+      "price": 24202.31,
+      "outcome": "reversal"
+     },
+     {
+      "index": 160,
+      "side": "buy",
+      "price": 25024.4,
+      "outcome": "continuation"
+     },
+     {
+      "index": 163,
+      "side": "buy",
+      "price": 25207.81,
+      "outcome": "reversal"
+     },
+     {
+      "index": 166,
+      "side": "sell",
+      "price": 24881.58,
+      "outcome": "reversal"
+     }
+    ],
+    "sweepCount": 5,
+    "reversalCount": 3,
+    "note": null
+   }
+  },
+  {
+   "id": "C79",
+   "moveIndex": 178,
+   "moveTime": 1770811200,
+   "direction": "up",
+   "groupStartIndex": 176,
+   "groupEndIndex": 177,
+   "groupStartTime": 1770782400,
+   "groupEndTime": 1770796800,
+   "groupCandleCount": 2,
+   "levels": {
+    "open": 25255.03,
+    "mt": 25191.5,
+    "close": 25127.96,
+    "outerWick": 25064.78,
+    "fvg": 25257.41
+   },
+   "measurements": {
+    "atrAtGroup": 169.29,
+    "firstCandleRangeAtr": 2.398,
+    "firstCandleBodyPct": 0.088,
+    "blockBodyRatio": 0.66,
+    "blockBodySumRatio": 0.582,
+    "blockWeakestBodyPct": 0.457,
+    "ext1": 1.504,
+    "ext2": 1.504,
+    "ext3": 1.504,
+    "ext5": 1.504,
+    "ext8": 1.504,
+    "extLeg": 1.504,
+    "extLegBars": 1,
+    "survivedBars": 6,
+    "completedAfterBars": 4,
+    "fvgAfterBars": 5,
+    "eventAfterBars": null,
+    "eventType": null,
+    "invalidationAfterBars": 7
+   },
+   "settledRules": {
+    "R3": true,
+    "R4": true,
+    "R5": true,
+    "R6": true
+   },
+   "label": null,
+   "labelReason": null,
+   "liquidity": {
+    "sweepsNearBlock": [
+     {
+      "index": 166,
+      "side": "sell",
+      "price": 24881.58,
+      "outcome": "reversal"
+     },
      {
       "index": 172,
       "side": "buy",
@@ -559,52 +469,10 @@
       "side": "buy",
       "price": 25262.15,
       "outcome": "reversal"
-     },
-     {
-      "index": 184,
-      "side": "buy",
-      "price": 25293.38,
-      "outcome": "reversal"
-     },
-     {
-      "index": 186,
-      "side": "sell",
-      "price": 24725.25,
-      "outcome": "continuation"
-     },
-     {
-      "index": 190,
-      "side": "sell",
-      "price": 24552.92,
-      "outcome": "reversal"
-     },
-     {
-      "index": 189,
-      "side": "sell",
-      "price": 24570.67,
-      "outcome": "reversal"
-     },
-     {
-      "index": 187,
-      "side": "sell",
-      "price": 24642.57,
-      "outcome": "reversal"
-     },
-     {
-      "index": 191,
-      "side": "buy",
-      "price": 24857.44,
-      "outcome": "reversal"
-     },
-     {
-      "index": 190,
-      "side": "buy",
-      "price": 24790.5,
-      "outcome": "continuation"
      }
     ],
-    "sweepCount": 16,
-    "reversalCount": 12,
+    "sweepCount": 10,
+    "reversalCount": 8,
     "note": null
    }
   },
@@ -640,6 +508,7 @@
     "extLeg": 2.341,
     "extLegBars": 4,
     "survivedBars": 8,
+    "completedAfterBars": 0,
     "fvgAfterBars": 1,
     "eventAfterBars": null,
     "eventType": null,
@@ -648,7 +517,8 @@
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
@@ -746,6 +616,7 @@
     "extLeg": 2.082,
     "extLegBars": 6,
     "survivedBars": 12,
+    "completedAfterBars": 2,
     "fvgAfterBars": null,
     "eventAfterBars": null,
     "eventType": null,
@@ -754,7 +625,8 @@
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
@@ -809,46 +681,174 @@
    }
   },
   {
-   "id": "C117",
-   "moveIndex": 247,
-   "moveTime": 1772121600,
+   "id": "C111",
+   "moveIndex": 233,
+   "moveTime": 1771920000,
    "direction": "up",
-   "groupStartIndex": 246,
-   "groupEndIndex": 246,
-   "groupStartTime": 1772107200,
-   "groupEndTime": 1772107200,
+   "groupStartIndex": 232,
+   "groupEndIndex": 232,
+   "groupStartTime": 1771905600,
+   "groupEndTime": 1771905600,
    "groupCandleCount": 1,
    "levels": {
-    "open": 25315.03,
-    "mt": 25135.73,
-    "close": 24956.43,
-    "outerWick": 24818.56,
-    "fvg": 25367.9
+    "open": 24821.42,
+    "mt": 24801.26,
+    "close": 24781.09,
+    "outerWick": 24770.75,
+    "fvg": 24835.31
    },
    "measurements": {
-    "atrAtGroup": 161.41,
-    "firstCandleRangeAtr": 1.278,
-    "firstCandleBodyPct": 0.291,
-    "blockBodyRatio": 0.653,
-    "blockBodySumRatio": 0.653,
-    "blockWeakestBodyPct": 0.653,
-    "ext1": 0.592,
-    "ext2": 0.592,
-    "ext3": 0.592,
-    "ext5": 0.619,
-    "ext8": 0.619,
-    "extLeg": 0.592,
-    "extLegBars": 1,
-    "survivedBars": 8,
-    "fvgAfterBars": null,
+    "atrAtGroup": 159.23,
+    "firstCandleRangeAtr": 0.656,
+    "firstCandleBodyPct": 0.016,
+    "blockBodyRatio": 0.625,
+    "blockBodySumRatio": 0.625,
+    "blockWeakestBodyPct": 0.625,
+    "ext1": 0.207,
+    "ext2": 1.219,
+    "ext3": 1.516,
+    "ext5": 1.772,
+    "ext8": 3.316,
+    "extLeg": 3.703,
+    "extLegBars": 10,
+    "survivedBars": 22,
+    "completedAfterBars": 1,
+    "fvgAfterBars": 2,
     "eventAfterBars": null,
     "eventType": null,
-    "invalidationAfterBars": 9
+    "invalidationAfterBars": 23
    },
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
+   },
+   "label": null,
+   "labelReason": null,
+   "liquidity": {
+    "sweepsNearBlock": [
+     {
+      "index": 220,
+      "side": "buy",
+      "price": 24897.53,
+      "outcome": "continuation"
+     },
+     {
+      "index": 221,
+      "side": "sell",
+      "price": 24685.53,
+      "outcome": "reversal"
+     },
+     {
+      "index": 221,
+      "side": "sell",
+      "price": 24697,
+      "outcome": "reversal"
+     },
+     {
+      "index": 221,
+      "side": "sell",
+      "price": 24752.78,
+      "outcome": "reversal"
+     },
+     {
+      "index": 222,
+      "side": "buy",
+      "price": 25066.19,
+      "outcome": "reversal"
+     },
+     {
+      "index": 226,
+      "side": "sell",
+      "price": 24752.78,
+      "outcome": "reversal"
+     },
+     {
+      "index": 227,
+      "side": "buy",
+      "price": 24914.9,
+      "outcome": "reversal"
+     },
+     {
+      "index": 228,
+      "side": "buy",
+      "price": 24946.9,
+      "outcome": "reversal"
+     },
+     {
+      "index": 229,
+      "side": "sell",
+      "price": 24620.59,
+      "outcome": "reversal"
+     },
+     {
+      "index": 234,
+      "side": "sell",
+      "price": 24709.53,
+      "outcome": "reversal"
+     },
+     {
+      "index": 233,
+      "side": "sell",
+      "price": 24722.52,
+      "outcome": "reversal"
+     },
+     {
+      "index": 234,
+      "side": "buy",
+      "price": 24946.9,
+      "outcome": "continuation"
+     }
+    ],
+    "sweepCount": 12,
+    "reversalCount": 10,
+    "note": null
+   }
+  },
+  {
+   "id": "C116",
+   "moveIndex": 246,
+   "moveTime": 1772107200,
+   "direction": "down",
+   "groupStartIndex": 244,
+   "groupEndIndex": 245,
+   "groupStartTime": 1772078400,
+   "groupEndTime": 1772092800,
+   "groupCandleCount": 2,
+   "levels": {
+    "open": 25253.62,
+    "mt": 25284.28,
+    "close": 25314.95,
+    "outerWick": 25354.53,
+    "fvg": 25236.14
+   },
+   "measurements": {
+    "atrAtGroup": 131.57,
+    "firstCandleRangeAtr": 4.175,
+    "firstCandleBodyPct": 0.653,
+    "blockBodyRatio": 0.518,
+    "blockBodySumRatio": 0.439,
+    "blockWeakestBodyPct": 0.249,
+    "ext1": 3.773,
+    "ext2": 3.773,
+    "ext3": 3.773,
+    "ext5": 3.773,
+    "ext8": 4.366,
+    "extLeg": 7.596,
+    "extLegBars": 20,
+    "survivedBars": 194,
+    "completedAfterBars": 0,
+    "fvgAfterBars": 1,
+    "eventAfterBars": 41,
+    "eventType": "BOS",
+    "invalidationAfterBars": 195
+   },
+   "settledRules": {
+    "R3": true,
+    "R4": true,
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
@@ -858,6 +858,12 @@
       "index": 234,
       "side": "sell",
       "price": 24709.53,
+      "outcome": "reversal"
+     },
+     {
+      "index": 233,
+      "side": "sell",
+      "price": 24722.52,
       "outcome": "reversal"
      },
      {
@@ -927,181 +933,275 @@
       "outcome": "reversal"
      }
     ],
-    "sweepCount": 12,
+    "sweepCount": 13,
+    "reversalCount": 8,
+    "note": null
+   }
+  },
+  {
+   "id": "C120",
+   "moveIndex": 251,
+   "moveTime": 1772179200,
+   "direction": "down",
+   "groupStartIndex": 249,
+   "groupEndIndex": 250,
+   "groupStartTime": 1772150400,
+   "groupEndTime": 1772164800,
+   "groupCandleCount": 2,
+   "levels": {
+    "open": 24951.5,
+    "mt": 24990.89,
+    "close": 25030.29,
+    "outerWick": 25036.35,
+    "fvg": 24912.5
+   },
+   "measurements": {
+    "atrAtGroup": 151.54,
+    "firstCandleRangeAtr": 1.112,
+    "firstCandleBodyPct": 0.714,
+    "blockBodyRatio": 0.636,
+    "blockBodySumRatio": 0.464,
+    "blockWeakestBodyPct": 0.381,
+    "ext1": 0.94,
+    "ext2": 1.912,
+    "ext3": 1.912,
+    "ext5": 2.689,
+    "ext8": 3.906,
+    "extLeg": 3.906,
+    "extLegBars": 8,
+    "survivedBars": 9,
+    "completedAfterBars": 0,
+    "fvgAfterBars": 4,
+    "eventAfterBars": null,
+    "eventType": null,
+    "invalidationAfterBars": 10
+   },
+   "settledRules": {
+    "R3": true,
+    "R4": true,
+    "R5": true,
+    "R6": true
+   },
+   "label": null,
+   "labelReason": null,
+   "liquidity": {
+    "sweepsNearBlock": [
+     {
+      "index": 237,
+      "side": "buy",
+      "price": 25022.53,
+      "outcome": "continuation"
+     },
+     {
+      "index": 246,
+      "side": "sell",
+      "price": 24949.47,
+      "outcome": "reversal"
+     },
+     {
+      "index": 245,
+      "side": "buy",
+      "price": 25317.5,
+      "outcome": "reversal"
+     },
+     {
+      "index": 242,
+      "side": "buy",
+      "price": 25326.55,
+      "outcome": "reversal"
+     },
+     {
+      "index": 246,
+      "side": "buy",
+      "price": 25354.53,
+      "outcome": "reversal"
+     },
+     {
+      "index": 242,
+      "side": "buy",
+      "price": 25361.04,
+      "outcome": "reversal"
+     },
+     {
+      "index": 246,
+      "side": "sell",
+      "price": 24941.13,
+      "outcome": "reversal"
+     },
+     {
+      "index": 251,
+      "side": "buy",
+      "price": 25036.35,
+      "outcome": "reversal"
+     },
+     {
+      "index": 252,
+      "side": "sell",
+      "price": 24818.56,
+      "outcome": "reversal"
+     },
+     {
+      "index": 252,
+      "side": "sell",
+      "price": 24887.85,
+      "outcome": "continuation"
+     }
+    ],
+    "sweepCount": 10,
+    "reversalCount": 8,
+    "note": null
+   }
+  },
+  {
+   "id": "C125",
+   "moveIndex": 258,
+   "moveTime": 1772438400,
+   "direction": "up",
+   "groupStartIndex": 257,
+   "groupEndIndex": 257,
+   "groupStartTime": 1772424000,
+   "groupEndTime": 1772424000,
+   "groupCandleCount": 1,
+   "levels": {
+    "open": 24753.37,
+    "mt": 24627.24,
+    "close": 24501.12,
+    "outerWick": 24491.99,
+    "fvg": 24777.64
+   },
+   "measurements": {
+    "atrAtGroup": 177.49,
+    "firstCandleRangeAtr": 1.413,
+    "firstCandleBodyPct": 0.579,
+    "blockBodyRatio": 0.883,
+    "blockBodySumRatio": 0.883,
+    "blockWeakestBodyPct": 0.883,
+    "ext1": 1.06,
+    "ext2": 2.364,
+    "ext3": 3.144,
+    "ext5": 3.144,
+    "ext8": 3.144,
+    "extLeg": 3.144,
+    "extLegBars": 3,
+    "survivedBars": 6,
+    "completedAfterBars": 1,
+    "fvgAfterBars": 2,
+    "eventAfterBars": null,
+    "eventType": null,
+    "invalidationAfterBars": 7
+   },
+   "settledRules": {
+    "R3": true,
+    "R4": true,
+    "R5": true,
+    "R6": true
+   },
+   "label": null,
+   "labelReason": null,
+   "liquidity": {
+    "sweepsNearBlock": [
+     {
+      "index": 246,
+      "side": "sell",
+      "price": 24949.47,
+      "outcome": "reversal"
+     },
+     {
+      "index": 245,
+      "side": "buy",
+      "price": 25317.5,
+      "outcome": "reversal"
+     },
+     {
+      "index": 246,
+      "side": "buy",
+      "price": 25354.53,
+      "outcome": "reversal"
+     },
+     {
+      "index": 246,
+      "side": "sell",
+      "price": 24941.13,
+      "outcome": "reversal"
+     },
+     {
+      "index": 251,
+      "side": "buy",
+      "price": 25036.35,
+      "outcome": "reversal"
+     },
+     {
+      "index": 252,
+      "side": "sell",
+      "price": 24818.56,
+      "outcome": "reversal"
+     },
+     {
+      "index": 252,
+      "side": "sell",
+      "price": 24887.85,
+      "outcome": "continuation"
+     },
+     {
+      "index": 258,
+      "side": "sell",
+      "price": 24491.99,
+      "outcome": "reversal"
+     }
+    ],
+    "sweepCount": 8,
     "reversalCount": 7,
     "note": null
    }
   },
   {
-   "id": "C134",
-   "moveIndex": 282,
-   "moveTime": 1772784000,
-   "direction": "down",
-   "groupStartIndex": 279,
-   "groupEndIndex": 281,
-   "groupStartTime": 1772740800,
-   "groupEndTime": 1772769600,
-   "groupCandleCount": 3,
-   "levels": {
-    "open": 24824.85,
-    "mt": 24959.96,
-    "close": 25095.07,
-    "outerWick": 25111.54,
-    "fvg": 24793.88
-   },
-   "measurements": {
-    "atrAtGroup": 208.63,
-    "firstCandleRangeAtr": 1.397,
-    "firstCandleBodyPct": 0.919,
-    "blockBodyRatio": 0.851,
-    "blockBodySumRatio": 0.72,
-    "blockWeakestBodyPct": 0.224,
-    "ext1": 1.382,
-    "ext2": 2.455,
-    "ext3": 2.455,
-    "ext5": 4.568,
-    "ext8": 5.375,
-    "extLeg": 5.375,
-    "extLegBars": 6,
-    "survivedBars": 14,
-    "fvgAfterBars": 1,
-    "eventAfterBars": 5,
-    "eventType": "BOS",
-    "invalidationAfterBars": 15
-   },
-   "settledRules": {
-    "R3": true,
-    "R4": true,
-    "R5": true
-   },
-   "label": null,
-   "labelReason": null,
-   "liquidity": {
-    "sweepsNearBlock": [
-     {
-      "index": 270,
-      "side": "buy",
-      "price": 24811.16,
-      "outcome": "continuation"
-     },
-     {
-      "index": 274,
-      "side": "buy",
-      "price": 25181.67,
-      "outcome": "reversal"
-     },
-     {
-      "index": 277,
-      "side": "sell",
-      "price": 24939.1,
-      "outcome": "continuation"
-     },
-     {
-      "index": 276,
-      "side": "sell",
-      "price": 24946.37,
-      "outcome": "continuation"
-     },
-     {
-      "index": 283,
-      "side": "sell",
-      "price": 24806.84,
-      "outcome": "continuation"
-     },
-     {
-      "index": 283,
-      "side": "sell",
-      "price": 24741.45,
-      "outcome": "continuation"
-     }
-    ],
-    "sweepCount": 6,
-    "reversalCount": 1,
-    "note": null
-   }
-  },
-  {
-   "id": "C153",
-   "moveIndex": 317,
-   "moveTime": 1773604800,
+   "id": "C159",
+   "moveIndex": 326,
+   "moveTime": 1773734400,
    "direction": "up",
-   "groupStartIndex": 314,
-   "groupEndIndex": 316,
-   "groupStartTime": 1773403200,
-   "groupEndTime": 1773432000,
-   "groupCandleCount": 3,
+   "groupStartIndex": 324,
+   "groupEndIndex": 325,
+   "groupStartTime": 1773705600,
+   "groupEndTime": 1773720000,
+   "groupCandleCount": 2,
    "levels": {
-    "open": 24645.9,
-    "mt": 24496.33,
-    "close": 24346.76,
-    "outerWick": 24343.28,
-    "fvg": 24788.33
+    "open": 24653.88,
+    "mt": 24599.58,
+    "close": 24545.28,
+    "outerWick": 24506.12,
+    "fvg": 24655.8
    },
    "measurements": {
-    "atrAtGroup": 200.7,
-    "firstCandleRangeAtr": 0.986,
-    "firstCandleBodyPct": 0.654,
-    "blockBodyRatio": 0.659,
-    "blockBodySumRatio": 0.508,
-    "blockWeakestBodyPct": 0.104,
-    "ext1": 0.661,
-    "ext2": 0.888,
-    "ext3": 1.108,
-    "ext5": 1.994,
-    "ext8": 2.241,
-    "extLeg": 3.161,
-    "extLegBars": 15,
-    "survivedBars": 20,
-    "fvgAfterBars": 1,
+    "atrAtGroup": 164.37,
+    "firstCandleRangeAtr": 0.71,
+    "firstCandleBodyPct": 0.338,
+    "blockBodyRatio": 0.726,
+    "blockBodySumRatio": 0.482,
+    "blockWeakestBodyPct": 0.171,
+    "ext1": 0.521,
+    "ext2": 2.051,
+    "ext3": 2.051,
+    "ext5": 2.245,
+    "ext8": 2.651,
+    "extLeg": 2.651,
+    "extLegBars": 6,
+    "survivedBars": 8,
+    "completedAfterBars": 1,
+    "fvgAfterBars": 2,
     "eventAfterBars": null,
     "eventType": null,
-    "invalidationAfterBars": 21
+    "invalidationAfterBars": 9
    },
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
    "liquidity": {
     "sweepsNearBlock": [
-     {
-      "index": 302,
-      "side": "buy",
-      "price": 25098.55,
-      "outcome": "reversal"
-     },
-     {
-      "index": 303,
-      "side": "sell",
-      "price": 24865.33,
-      "outcome": "continuation"
-     },
-     {
-      "index": 303,
-      "side": "sell",
-      "price": 24866.58,
-      "outcome": "continuation"
-     },
-     {
-      "index": 302,
-      "side": "sell",
-      "price": 24870.88,
-      "outcome": "continuation"
-     },
-     {
-      "index": 307,
-      "side": "buy",
-      "price": 24851.51,
-      "outcome": "reversal"
-     },
-     {
-      "index": 311,
-      "side": "sell",
-      "price": 24495.1,
-      "outcome": "continuation"
-     },
      {
       "index": 313,
       "side": "sell",
@@ -1131,59 +1231,7 @@
       "side": "sell",
       "price": 24334.59,
       "outcome": "reversal"
-     }
-    ],
-    "sweepCount": 11,
-    "reversalCount": 4,
-    "note": null
-   }
-  },
-  {
-   "id": "C162",
-   "moveIndex": 332,
-   "moveTime": 1773820800,
-   "direction": "down",
-   "groupStartIndex": 330,
-   "groupEndIndex": 331,
-   "groupStartTime": 1773792000,
-   "groupEndTime": 1773806400,
-   "groupCandleCount": 2,
-   "levels": {
-    "open": 24770.91,
-    "mt": 24851.53,
-    "close": 24932.15,
-    "outerWick": 24981.1,
-    "fvg": 24768.45
-   },
-   "measurements": {
-    "atrAtGroup": 150.79,
-    "firstCandleRangeAtr": 0.662,
-    "firstCandleBodyPct": 0.493,
-    "blockBodyRatio": 0.758,
-    "blockBodySumRatio": 0.716,
-    "blockWeakestBodyPct": 0.319,
-    "ext1": 0.424,
-    "ext2": 2.288,
-    "ext3": 3.417,
-    "ext5": 3.92,
-    "ext8": 5.478,
-    "extLeg": 9.093,
-    "extLegBars": 19,
-    "survivedBars": 87,
-    "fvgAfterBars": 1,
-    "eventAfterBars": 8,
-    "eventType": "BOS",
-    "invalidationAfterBars": 88
-   },
-   "settledRules": {
-    "R3": true,
-    "R4": true,
-    "R5": true
-   },
-   "label": null,
-   "labelReason": null,
-   "liquidity": {
-    "sweepsNearBlock": [
+     },
      {
       "index": 322,
       "side": "buy",
@@ -1209,8 +1257,98 @@
       "outcome": "continuation"
      }
     ],
-    "sweepCount": 4,
-    "reversalCount": 2,
+    "sweepCount": 9,
+    "reversalCount": 4,
+    "note": null
+   }
+  },
+  {
+   "id": "C170",
+   "moveIndex": 352,
+   "moveTime": 1774267200,
+   "direction": "down",
+   "groupStartIndex": 351,
+   "groupEndIndex": 351,
+   "groupStartTime": 1774252800,
+   "groupEndTime": 1774252800,
+   "groupCandleCount": 1,
+   "levels": {
+    "open": 23629.12,
+    "mt": 23903.29,
+    "close": 24177.45,
+    "outerWick": 24488.52,
+    "fvg": 23603.2
+   },
+   "measurements": {
+    "atrAtGroup": 241.06,
+    "firstCandleRangeAtr": 1.381,
+    "firstCandleBodyPct": 0.049,
+    "blockBodyRatio": 0.619,
+    "blockBodySumRatio": 0.619,
+    "blockWeakestBodyPct": 0.619,
+    "ext1": 0.184,
+    "ext2": 0.358,
+    "ext3": 0.358,
+    "ext5": 0.832,
+    "ext8": 1.066,
+    "extLeg": 0.184,
+    "extLegBars": 1,
+    "survivedBars": 64,
+    "completedAfterBars": 19,
+    "fvgAfterBars": 20,
+    "eventAfterBars": 24,
+    "eventType": "BOS",
+    "invalidationAfterBars": 65
+   },
+   "settledRules": {
+    "R3": true,
+    "R4": true,
+    "R5": true,
+    "R6": true
+   },
+   "label": null,
+   "labelReason": null,
+   "liquidity": {
+    "sweepsNearBlock": [
+     {
+      "index": 340,
+      "side": "buy",
+      "price": 24429,
+      "outcome": "reversal"
+     },
+     {
+      "index": 344,
+      "side": "sell",
+      "price": 24106.17,
+      "outcome": "continuation"
+     },
+     {
+      "index": 348,
+      "side": "sell",
+      "price": 23758.87,
+      "outcome": "continuation"
+     },
+     {
+      "index": 351,
+      "side": "buy",
+      "price": 24442.77,
+      "outcome": "reversal"
+     },
+     {
+      "index": 351,
+      "side": "buy",
+      "price": 24397.78,
+      "outcome": "reversal"
+     },
+     {
+      "index": 351,
+      "side": "buy",
+      "price": 24309.72,
+      "outcome": "reversal"
+     }
+    ],
+    "sweepCount": 6,
+    "reversalCount": 4,
     "note": null
    }
   },
@@ -1246,6 +1384,7 @@
     "extLeg": 0.968,
     "extLegBars": 1,
     "survivedBars": 13,
+    "completedAfterBars": 0,
     "fvgAfterBars": null,
     "eventAfterBars": null,
     "eventType": null,
@@ -1254,7 +1393,8 @@
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
@@ -1297,6 +1437,114 @@
    }
   },
   {
+   "id": "C178",
+   "moveIndex": 364,
+   "moveTime": 1774440000,
+   "direction": "down",
+   "groupStartIndex": 362,
+   "groupEndIndex": 363,
+   "groupStartTime": 1774411200,
+   "groupEndTime": 1774425600,
+   "groupCandleCount": 2,
+   "levels": {
+    "open": 24169.79,
+    "mt": 24227.04,
+    "close": 24284.29,
+    "outerWick": 24323.38,
+    "fvg": 24114.26
+   },
+   "measurements": {
+    "atrAtGroup": 216.75,
+    "firstCandleRangeAtr": 1.17,
+    "firstCandleBodyPct": 0.471,
+    "blockBodyRatio": 0.548,
+    "blockBodySumRatio": 0.498,
+    "blockWeakestBodyPct": 0.264,
+    "ext1": 0.965,
+    "ext2": 0.965,
+    "ext3": 0.976,
+    "ext5": 1.35,
+    "ext8": 3.264,
+    "extLeg": 6.938,
+    "extLegBars": 23,
+    "survivedBars": 52,
+    "completedAfterBars": 0,
+    "fvgAfterBars": 8,
+    "eventAfterBars": 12,
+    "eventType": "BOS",
+    "invalidationAfterBars": 53
+   },
+   "settledRules": {
+    "R3": true,
+    "R4": true,
+    "R5": true,
+    "R6": true
+   },
+   "label": null,
+   "labelReason": null,
+   "liquidity": {
+    "sweepsNearBlock": [
+     {
+      "index": 351,
+      "side": "buy",
+      "price": 24442.77,
+      "outcome": "reversal"
+     },
+     {
+      "index": 351,
+      "side": "buy",
+      "price": 24397.78,
+      "outcome": "reversal"
+     },
+     {
+      "index": 351,
+      "side": "buy",
+      "price": 24309.72,
+      "outcome": "reversal"
+     },
+     {
+      "index": 358,
+      "side": "sell",
+      "price": 23976.89,
+      "outcome": "reversal"
+     },
+     {
+      "index": 361,
+      "side": "buy",
+      "price": 24246.32,
+      "outcome": "continuation"
+     },
+     {
+      "index": 361,
+      "side": "buy",
+      "price": 24273.99,
+      "outcome": "continuation"
+     },
+     {
+      "index": 363,
+      "side": "buy",
+      "price": 24289.6,
+      "outcome": "reversal"
+     },
+     {
+      "index": 364,
+      "side": "buy",
+      "price": 24323.38,
+      "outcome": "reversal"
+     },
+     {
+      "index": 364,
+      "side": "sell",
+      "price": 24110.13,
+      "outcome": "continuation"
+     }
+    ],
+    "sweepCount": 9,
+    "reversalCount": 6,
+    "note": null
+   }
+  },
+  {
    "id": "C190",
    "moveIndex": 396,
    "moveTime": 1775059200,
@@ -1328,6 +1576,7 @@
     "extLeg": 2.856,
     "extLegBars": 6,
     "survivedBars": 12,
+    "completedAfterBars": 2,
     "fvgAfterBars": 3,
     "eventAfterBars": null,
     "eventType": null,
@@ -1336,7 +1585,8 @@
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
@@ -1397,308 +1647,140 @@
    }
   },
   {
-   "id": "C193",
-   "moveIndex": 401,
-   "moveTime": 1775131200,
+   "id": "C233",
+   "moveIndex": 486,
+   "moveTime": 1776916800,
    "direction": "up",
-   "groupStartIndex": 400,
-   "groupEndIndex": 400,
-   "groupStartTime": 1775116800,
-   "groupEndTime": 1775116800,
+   "groupStartIndex": 485,
+   "groupEndIndex": 485,
+   "groupStartTime": 1776902400,
+   "groupEndTime": 1776902400,
    "groupCandleCount": 1,
    "levels": {
-    "open": 23704.53,
-    "mt": 23606.27,
-    "close": 23508.01,
-    "outerWick": 23507.75,
-    "fvg": 23706.52
+    "open": 26949.94,
+    "mt": 26855.04,
+    "close": 26760.14,
+    "outerWick": 26701.07,
+    "fvg": 26951.15
    },
    "measurements": {
-    "atrAtGroup": 217.54,
-    "firstCandleRangeAtr": 2.515,
-    "firstCandleBodyPct": 0.825,
-    "blockBodyRatio": 0.989,
-    "blockBodySumRatio": 0.989,
-    "blockWeakestBodyPct": 0.989,
-    "ext1": 2.439,
-    "ext2": 2.492,
-    "ext3": 2.508,
-    "ext5": 2.97,
-    "ext8": 3.522,
-    "extLeg": 7.488,
-    "extLegBars": 29,
+    "atrAtGroup": 137.55,
+    "firstCandleRangeAtr": 0.877,
+    "firstCandleBodyPct": 0.738,
+    "blockBodyRatio": 0.759,
+    "blockBodySumRatio": 0.759,
+    "blockWeakestBodyPct": 0.759,
+    "ext1": 0.772,
+    "ext2": 1.026,
+    "ext3": 1.787,
+    "ext5": 1.787,
+    "ext8": 3.352,
+    "extLeg": 4.818,
+    "extLegBars": 30,
     "survivedBars": null,
-    "fvgAfterBars": 1,
-    "eventAfterBars": 16,
-    "eventType": "MSS",
+    "completedAfterBars": 6,
+    "fvgAfterBars": 8,
+    "eventAfterBars": 30,
+    "eventType": "BOS",
     "invalidationAfterBars": null
    },
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
    "liquidity": {
     "sweepsNearBlock": [
      {
-      "index": 389,
+      "index": 473,
       "side": "buy",
-      "price": 23336.06,
+      "price": 26668.2,
       "outcome": "continuation"
      },
      {
-      "index": 389,
+      "index": 475,
       "side": "buy",
-      "price": 23356.13,
-      "outcome": "continuation"
-     },
-     {
-      "index": 392,
-      "side": "buy",
-      "price": 23865.3,
-      "outcome": "continuation"
-     },
-     {
-      "index": 396,
-      "side": "buy",
-      "price": 24139.78,
+      "price": 26720.11,
       "outcome": "reversal"
      },
      {
-      "index": 401,
+      "index": 477,
       "side": "sell",
-      "price": 23507.75,
+      "price": 26411.65,
       "outcome": "reversal"
      }
     ],
-    "sweepCount": 5,
+    "sweepCount": 3,
     "reversalCount": 2,
     "note": null
    }
   },
   {
-   "id": "C202",
-   "moveIndex": 420,
-   "moveTime": 1775649600,
+   "id": "C244",
+   "moveIndex": 504,
+   "moveTime": 1777334400,
    "direction": "down",
-   "groupStartIndex": 415,
-   "groupEndIndex": 419,
-   "groupStartTime": 1775577600,
-   "groupEndTime": 1775635200,
-   "groupCandleCount": 5,
+   "groupStartIndex": 502,
+   "groupEndIndex": 503,
+   "groupStartTime": 1777305600,
+   "groupEndTime": 1777320000,
+   "groupCandleCount": 2,
    "levels": {
-    "open": 23941.53,
-    "mt": 24490.32,
-    "close": 25039.1,
-    "outerWick": 25075.2,
-    "fvg": 23910.53
+    "open": 27229.03,
+    "mt": 27292.28,
+    "close": 27355.53,
+    "outerWick": 27368.87,
+    "fvg": 27210.76
    },
    "measurements": {
-    "atrAtGroup": 218.97,
-    "firstCandleRangeAtr": 1.527,
-    "firstCandleBodyPct": 0.407,
-    "blockBodyRatio": 0.942,
-    "blockBodySumRatio": 0.806,
-    "blockWeakestBodyPct": 0.369,
-    "ext1": 1.311,
-    "ext2": 1.311,
-    "ext3": 1.311,
-    "ext5": 1.311,
-    "ext8": 1.311,
-    "extLeg": 1.311,
-    "extLegBars": 1,
-    "survivedBars": 7,
-    "fvgAfterBars": null,
+    "atrAtGroup": 143.29,
+    "firstCandleRangeAtr": 0.876,
+    "firstCandleBodyPct": 0.633,
+    "blockBodyRatio": 0.8,
+    "blockBodySumRatio": 0.676,
+    "blockWeakestBodyPct": 0.578,
+    "ext1": 0.725,
+    "ext2": 1.183,
+    "ext3": 2.855,
+    "ext5": 3.348,
+    "ext8": 3.348,
+    "extLeg": 3.348,
+    "extLegBars": 4,
+    "survivedBars": 11,
+    "completedAfterBars": 1,
+    "fvgAfterBars": 2,
     "eventAfterBars": null,
     "eventType": null,
-    "invalidationAfterBars": 8
+    "invalidationAfterBars": 12
    },
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
    "liquidity": {
     "sweepsNearBlock": [
      {
-      "index": 405,
+      "index": 503,
       "side": "buy",
-      "price": 24053.71,
-      "outcome": "continuation"
-     },
-     {
-      "index": 405,
-      "side": "buy",
-      "price": 24070.34,
-      "outcome": "continuation"
-     },
-     {
-      "index": 407,
-      "side": "buy",
-      "price": 24154.03,
-      "outcome": "continuation"
-     },
-     {
-      "index": 407,
-      "side": "buy",
-      "price": 24161.82,
-      "outcome": "continuation"
-     },
-     {
-      "index": 408,
-      "side": "buy",
-      "price": 24225.42,
+      "price": 27363.78,
       "outcome": "reversal"
      },
      {
-      "index": 409,
-      "side": "sell",
-      "price": 24074.54,
-      "outcome": "continuation"
-     },
-     {
-      "index": 411,
-      "side": "sell",
-      "price": 24033.46,
-      "outcome": "continuation"
-     },
-     {
-      "index": 413,
+      "index": 504,
       "side": "buy",
-      "price": 24188.82,
+      "price": 27368.87,
       "outcome": "reversal"
-     },
-     {
-      "index": 413,
-      "side": "buy",
-      "price": 24225.42,
-      "outcome": "reversal"
-     },
-     {
-      "index": 414,
-      "side": "sell",
-      "price": 23809.02,
-      "outcome": "reversal"
-     },
-     {
-      "index": 414,
-      "side": "sell",
-      "price": 23914.75,
-      "outcome": "reversal"
-     },
-     {
-      "index": 418,
-      "side": "buy",
-      "price": 24981.1,
-      "outcome": "continuation"
-     },
-     {
-      "index": 420,
-      "side": "buy",
-      "price": 25075.2,
-      "outcome": "reversal"
-     },
-     {
-      "index": 420,
-      "side": "sell",
-      "price": 24842.02,
-      "outcome": "continuation"
      }
     ],
-    "sweepCount": 14,
-    "reversalCount": 6,
-    "note": null
-   }
-  },
-  {
-   "id": "C240",
-   "moveIndex": 499,
-   "moveTime": 1777262400,
-   "direction": "down",
-   "groupStartIndex": 498,
-   "groupEndIndex": 498,
-   "groupStartTime": 1777248000,
-   "groupEndTime": 1777248000,
-   "groupCandleCount": 1,
-   "levels": {
-    "open": 27249.58,
-    "mt": 27319.45,
-    "close": 27389.33,
-    "outerWick": 27405.78,
-    "fvg": 27243.44
-   },
-   "measurements": {
-    "atrAtGroup": 153.08,
-    "firstCandleRangeAtr": 0.873,
-    "firstCandleBodyPct": 0.739,
-    "blockBodyRatio": 0.861,
-    "blockBodySumRatio": 0.861,
-    "blockWeakestBodyPct": 0.861,
-    "ext1": 0.776,
-    "ext2": 0.891,
-    "ext3": 1.481,
-    "ext5": 1.481,
-    "ext8": 2.894,
-    "extLeg": 3.355,
-    "extLegBars": 9,
-    "survivedBars": 16,
-    "fvgAfterBars": 7,
-    "eventAfterBars": null,
-    "eventType": null,
-    "invalidationAfterBars": 17
-   },
-   "settledRules": {
-    "R3": true,
-    "R4": true,
-    "R5": true
-   },
-   "label": null,
-   "labelReason": null,
-   "liquidity": {
-    "sweepsNearBlock": [
-     {
-      "index": 489,
-      "side": "sell",
-      "price": 26629.61,
-      "outcome": "reversal"
-     },
-     {
-      "index": 489,
-      "side": "sell",
-      "price": 26662.66,
-      "outcome": "reversal"
-     },
-     {
-      "index": 489,
-      "side": "sell",
-      "price": 26701.07,
-      "outcome": "reversal"
-     },
-     {
-      "index": 489,
-      "side": "sell",
-      "price": 26742.7,
-      "outcome": "reversal"
-     },
-     {
-      "index": 488,
-      "side": "buy",
-      "price": 26951.15,
-      "outcome": "continuation"
-     },
-     {
-      "index": 488,
-      "side": "buy",
-      "price": 26982.62,
-      "outcome": "continuation"
-     }
-    ],
-    "sweepCount": 6,
-    "reversalCount": 4,
+    "sweepCount": 2,
+    "reversalCount": 2,
     "note": null
    }
   },
@@ -1734,6 +1816,7 @@
     "extLeg": 5.903,
     "extLegBars": 23,
     "survivedBars": null,
+    "completedAfterBars": 7,
     "fvgAfterBars": 8,
     "eventAfterBars": 8,
     "eventType": "BOS",
@@ -1742,7 +1825,8 @@
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
@@ -1767,134 +1851,156 @@
    }
   },
   {
-   "id": "C272",
-   "moveIndex": 564,
-   "moveTime": 1778515200,
-   "direction": "down",
-   "groupStartIndex": 562,
-   "groupEndIndex": 563,
-   "groupStartTime": 1778486400,
-   "groupEndTime": 1778500800,
-   "groupCandleCount": 2,
+   "id": "C281",
+   "moveIndex": 579,
+   "moveTime": 1778731200,
+   "direction": "up",
+   "groupStartIndex": 578,
+   "groupEndIndex": 578,
+   "groupStartTime": 1778716800,
+   "groupEndTime": 1778716800,
+   "groupCandleCount": 1,
    "levels": {
-    "open": 29214.43,
-    "mt": 29284.48,
-    "close": 29354.53,
-    "outerWick": 29364.17,
-    "fvg": 29140.83
+    "open": 29525.35,
+    "mt": 29477,
+    "close": 29428.64,
+    "outerWick": 29414.5,
+    "fvg": 29585.52
    },
    "measurements": {
-    "atrAtGroup": 152.38,
-    "firstCandleRangeAtr": 0.723,
-    "firstCandleBodyPct": 0.342,
-    "blockBodyRatio": 0.627,
-    "blockBodySumRatio": 0.403,
-    "blockWeakestBodyPct": 0.206,
-    "ext1": 0.626,
-    "ext2": 0.916,
-    "ext3": 1.537,
-    "ext5": 2.161,
-    "ext8": 4.74,
-    "extLeg": 4.74,
-    "extLegBars": 7,
-    "survivedBars": 12,
+    "atrAtGroup": 192.26,
+    "firstCandleRangeAtr": 0.656,
+    "firstCandleBodyPct": 0.304,
+    "blockBodyRatio": 0.565,
+    "blockBodySumRatio": 0.565,
+    "blockWeakestBodyPct": 0.565,
+    "ext1": 0.545,
+    "ext2": 0.545,
+    "ext3": 1.254,
+    "ext5": 1.292,
+    "ext8": 1.292,
+    "extLeg": 1.292,
+    "extLegBars": 4,
+    "survivedBars": 6,
+    "completedAfterBars": 2,
     "fvgAfterBars": null,
     "eventAfterBars": null,
     "eventType": null,
-    "invalidationAfterBars": 13
+    "invalidationAfterBars": 7
    },
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
    "liquidity": {
     "sweepsNearBlock": [
      {
-      "index": 550,
-      "side": "buy",
-      "price": 28698.28,
-      "outcome": "reversal"
-     },
-     {
-      "index": 551,
+      "index": 566,
       "side": "sell",
-      "price": 28520.87,
-      "outcome": "reversal"
-     },
-     {
-      "index": 559,
-      "side": "buy",
-      "price": 29226.01,
+      "price": 29140.83,
       "outcome": "continuation"
      },
      {
-      "index": 560,
-      "side": "buy",
-      "price": 29270.01,
-      "outcome": "continuation"
-     },
-     {
-      "index": 563,
+      "index": 566,
       "side": "sell",
       "price": 29142.67,
+      "outcome": "continuation"
+     },
+     {
+      "index": 567,
+      "side": "sell",
+      "price": 29117.75,
+      "outcome": "continuation"
+     },
+     {
+      "index": 570,
+      "side": "sell",
+      "price": 28719.69,
       "outcome": "reversal"
      },
      {
-      "index": 564,
+      "index": 574,
       "side": "buy",
-      "price": 29364.17,
+      "price": 29312.04,
+      "outcome": "reversal"
+     },
+     {
+      "index": 574,
+      "side": "buy",
+      "price": 29266.81,
+      "outcome": "continuation"
+     },
+     {
+      "index": 576,
+      "side": "buy",
+      "price": 29369.36,
+      "outcome": "continuation"
+     },
+     {
+      "index": 578,
+      "side": "buy",
+      "price": 29541.03,
+      "outcome": "reversal"
+     },
+     {
+      "index": 580,
+      "side": "sell",
+      "price": 29407.25,
       "outcome": "reversal"
      }
     ],
-    "sweepCount": 6,
+    "sweepCount": 9,
     "reversalCount": 4,
     "note": null
    }
   },
   {
-   "id": "C306",
-   "moveIndex": 624,
-   "moveTime": 1779696000,
-   "direction": "down",
-   "groupStartIndex": 620,
-   "groupEndIndex": 623,
-   "groupStartTime": 1779480000,
-   "groupEndTime": 1779681600,
-   "groupCandleCount": 4,
+   "id": "C305",
+   "moveIndex": 620,
+   "moveTime": 1779480000,
+   "direction": "up",
+   "groupStartIndex": 619,
+   "groupEndIndex": 619,
+   "groupStartTime": 1779465600,
+   "groupEndTime": 1779465600,
+   "groupCandleCount": 1,
    "levels": {
-    "open": 29474.43,
-    "mt": 29684.95,
-    "close": 29895.46,
-    "outerWick": 29918.03,
-    "fvg": 29464.93
+    "open": 29609.57,
+    "mt": 29541.93,
+    "close": 29474.3,
+    "outerWick": 29455.9,
+    "fvg": 29667.32
    },
    "measurements": {
-    "atrAtGroup": 202.27,
-    "firstCandleRangeAtr": 0.305,
-    "firstCandleBodyPct": 0.02,
-    "blockBodyRatio": 0.929,
-    "blockBodySumRatio": 0.547,
-    "blockWeakestBodyPct": 0.094,
-    "ext1": 0.221,
-    "ext2": 0.305,
-    "ext3": 0.305,
-    "ext5": 0.981,
-    "ext8": 1.104,
-    "extLeg": 0,
-    "extLegBars": 0,
-    "survivedBars": 8,
-    "fvgAfterBars": 4,
-    "eventAfterBars": null,
-    "eventType": null,
-    "invalidationAfterBars": 9
+    "atrAtGroup": 218.19,
+    "firstCandleRangeAtr": 0.165,
+    "firstCandleBodyPct": 0.287,
+    "blockBodyRatio": 0.64,
+    "blockBodySumRatio": 0.64,
+    "blockWeakestBodyPct": 0.64,
+    "ext1": 0.122,
+    "ext2": 1.517,
+    "ext3": 2.005,
+    "ext5": 2.034,
+    "ext8": 2.034,
+    "extLeg": 4.547,
+    "extLegBars": 30,
+    "survivedBars": 61,
+    "completedAfterBars": 1,
+    "fvgAfterBars": 2,
+    "eventAfterBars": 2,
+    "eventType": "BOS",
+    "invalidationAfterBars": 62
    },
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
@@ -1967,76 +2073,6 @@
    }
   },
   {
-   "id": "C308",
-   "moveIndex": 627,
-   "moveTime": 1779739200,
-   "direction": "down",
-   "groupStartIndex": 626,
-   "groupEndIndex": 626,
-   "groupStartTime": 1779724800,
-   "groupEndTime": 1779724800,
-   "groupCandleCount": 1,
-   "levels": {
-    "open": 29846.72,
-    "mt": 29863.19,
-    "close": 29879.66,
-    "outerWick": 29882.4,
-    "fvg": 29836.89
-   },
-   "measurements": {
-    "atrAtGroup": 174.53,
-    "firstCandleRangeAtr": 0.801,
-    "firstCandleBodyPct": 0.683,
-    "blockBodyRatio": 0.724,
-    "blockBodySumRatio": 0.724,
-    "blockWeakestBodyPct": 0.724,
-    "ext1": 0.679,
-    "ext2": 1.046,
-    "ext3": 1.189,
-    "ext5": 1.189,
-    "ext8": 1.189,
-    "extLeg": 1.189,
-    "extLegBars": 3,
-    "survivedBars": 5,
-    "fvgAfterBars": 1,
-    "eventAfterBars": null,
-    "eventType": null,
-    "invalidationAfterBars": 6
-   },
-   "settledRules": {
-    "R3": true,
-    "R4": true,
-    "R5": true
-   },
-   "label": null,
-   "labelReason": null,
-   "liquidity": {
-    "sweepsNearBlock": [
-     {
-      "index": 617,
-      "side": "sell",
-      "price": 29411.83,
-      "outcome": "reversal"
-     },
-     {
-      "index": 617,
-      "side": "buy",
-      "price": 29528.83,
-      "outcome": "continuation"
-     },
-     {
-      "index": 619,
-      "side": "buy",
-      "price": 29637.78,
-      "outcome": "reversal"
-     }
-    ],
-    "sweepCount": 3,
-    "reversalCount": 2,
-    "note": null
-   }
-  },
-  {
    "id": "C309",
    "moveIndex": 630,
    "moveTime": 1779782400,
@@ -2068,6 +2104,7 @@
     "extLeg": 5.741,
     "extLegBars": 28,
     "survivedBars": 50,
+    "completedAfterBars": 2,
     "fvgAfterBars": 2,
     "eventAfterBars": 21,
     "eventType": "BOS",
@@ -2076,7 +2113,8 @@
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
@@ -2125,6 +2163,90 @@
    }
   },
   {
+   "id": "C315",
+   "moveIndex": 641,
+   "moveTime": 1779940800,
+   "direction": "up",
+   "groupStartIndex": 639,
+   "groupEndIndex": 640,
+   "groupStartTime": 1779912000,
+   "groupEndTime": 1779926400,
+   "groupCandleCount": 2,
+   "levels": {
+    "open": 29972.51,
+    "mt": 29857.28,
+    "close": 29742.04,
+    "outerWick": 29726.97,
+    "fvg": 30066.1
+   },
+   "measurements": {
+    "atrAtGroup": 187.1,
+    "firstCandleRangeAtr": 1.071,
+    "firstCandleBodyPct": 0.721,
+    "blockBodyRatio": 0.68,
+    "blockBodySumRatio": 0.502,
+    "blockWeakestBodyPct": 0.371,
+    "ext1": 0.818,
+    "ext2": 0.997,
+    "ext3": 2.54,
+    "ext5": 2.917,
+    "ext8": 2.973,
+    "extLeg": 5.44,
+    "extLegBars": 28,
+    "survivedBars": 39,
+    "completedAfterBars": 2,
+    "fvgAfterBars": 3,
+    "eventAfterBars": 10,
+    "eventType": "BOS",
+    "invalidationAfterBars": 40
+   },
+   "settledRules": {
+    "R3": true,
+    "R4": true,
+    "R5": true,
+    "R6": true
+   },
+   "label": null,
+   "labelReason": null,
+   "liquidity": {
+    "sweepsNearBlock": [
+     {
+      "index": 630,
+      "side": "buy",
+      "price": 29806.47,
+      "outcome": "continuation"
+     },
+     {
+      "index": 631,
+      "side": "buy",
+      "price": 29917.15,
+      "outcome": "continuation"
+     },
+     {
+      "index": 631,
+      "side": "buy",
+      "price": 29918.03,
+      "outcome": "continuation"
+     },
+     {
+      "index": 634,
+      "side": "buy",
+      "price": 30042.99,
+      "outcome": "continuation"
+     },
+     {
+      "index": 637,
+      "side": "buy",
+      "price": 30225.42,
+      "outcome": "reversal"
+     }
+    ],
+    "sweepCount": 5,
+    "reversalCount": 1,
+    "note": null
+   }
+  },
+  {
    "id": "C328",
    "moveIndex": 668,
    "moveTime": 1780488000,
@@ -2156,6 +2278,7 @@
     "extLeg": 13.517,
     "extLegBars": 15,
     "survivedBars": null,
+    "completedAfterBars": 0,
     "fvgAfterBars": 1,
     "eventAfterBars": 13,
     "eventType": "MSS",
@@ -2164,7 +2287,8 @@
    "settledRules": {
     "R3": true,
     "R4": true,
-    "R5": true
+    "R5": true,
+    "R6": true
    },
    "label": null,
    "labelReason": null,
@@ -2203,106 +2327,6 @@
     ],
     "sweepCount": 5,
     "reversalCount": 2,
-    "note": null
-   }
-  },
-  {
-   "id": "C335",
-   "moveIndex": 683,
-   "moveTime": 1780862400,
-   "direction": "up",
-   "groupStartIndex": 676,
-   "groupEndIndex": 682,
-   "groupStartTime": 1780603200,
-   "groupEndTime": 1780689600,
-   "groupCandleCount": 7,
-   "levels": {
-    "open": 30419.01,
-    "mt": 29602.29,
-    "close": 28785.57,
-    "outerWick": 28771.39,
-    "fvg": 30428.74
-   },
-   "measurements": {
-    "atrAtGroup": 242.3,
-    "firstCandleRangeAtr": 1.157,
-    "firstCandleBodyPct": 0.816,
-    "blockBodyRatio": 0.986,
-    "blockBodySumRatio": 0.751,
-    "blockWeakestBodyPct": 0.047,
-    "ext1": 1.134,
-    "ext2": 1.896,
-    "ext3": 1.896,
-    "ext5": 3.764,
-    "ext8": 3.764,
-    "extLeg": 3.764,
-    "extLegBars": 5,
-    "survivedBars": null,
-    "fvgAfterBars": 4,
-    "eventAfterBars": null,
-    "eventType": null,
-    "invalidationAfterBars": null
-   },
-   "settledRules": {
-    "R3": true,
-    "R4": true,
-    "R5": true
-   },
-   "label": null,
-   "labelReason": null,
-   "liquidity": {
-    "sweepsNearBlock": [
-     {
-      "index": 664,
-      "side": "buy",
-      "price": 30668.45,
-      "outcome": "continuation"
-     },
-     {
-      "index": 668,
-      "side": "buy",
-      "price": 30746.65,
-      "outcome": "reversal"
-     },
-     {
-      "index": 671,
-      "side": "sell",
-      "price": 30314.2,
-      "outcome": "reversal"
-     },
-     {
-      "index": 674,
-      "side": "sell",
-      "price": 30107.63,
-      "outcome": "reversal"
-     },
-     {
-      "index": 675,
-      "side": "buy",
-      "price": 30443.56,
-      "outcome": "reversal"
-     },
-     {
-      "index": 675,
-      "side": "buy",
-      "price": 30486.97,
-      "outcome": "reversal"
-     },
-     {
-      "index": 677,
-      "side": "sell",
-      "price": 30091.88,
-      "outcome": "continuation"
-     },
-     {
-      "index": 683,
-      "side": "sell",
-      "price": 28926.93,
-      "outcome": "reversal"
-     }
-    ],
-    "sweepCount": 8,
-    "reversalCount": 6,
     "note": null
    }
   }
