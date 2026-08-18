@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تسمية الزخم — QAIS SK</title>
+<title>تسمية الزخم والكتل — QAIS SK</title>
 <style>
   :root {
     --bg: #0a0a14; --panel: #12121f; --line: #23233a; --ink: #e8e8f2; --dim: #8b8ba8;
@@ -59,7 +59,7 @@
 </style>
 
 <header>
-  <h1>تسمية الزخم</h1>
+  <h1>تسمية الزخم والكتل</h1>
   <span class="meta" id="fx"></span>
   <span class="grow"></span>
   <span class="meta" id="prog"></span>
@@ -83,19 +83,32 @@
     الظل البنفسجي = مجموعة الشموع (الكتلة). الخط العمودي = بداية الحركة.
     الخطوط الأفقية = مستويات الكتلة الخمسة.
     المثلثات المنقّطة = كنسات سيولة (أحمر لفوق · أخضر لتحت · باهت = ما انعكس).
-    السؤال: <b>هل هاي الحركة زخم؟</b>
   </div>
   <div class="row" id="rules" style="gap:6px"></div>
   <div class="note" id="liq"></div>
   <div class="note">
-    القواعد المحسومة مفلترة سلفاً — السؤال الوحيد المتبقّي هو <b>الزخم</b>.
+    القواعد المحسومة (R3·R4·R5·R6) مفلترة سلفاً — بضل سؤالان تحت.
     ولو ظهر ✗ فوق، هاي حالة ما لازم تكون هون: قللي.
   </div>
 
-  <div class="row">
+  <div class="note" style="margin-block-start:14px"><b>١ · هل هاي الحركة زخم؟</b></div>
+  <div class="row" style="margin-block-start:6px">
     <button class="ok big" id="yes">زخم ✓</button>
     <button class="no big" id="no">مش زخم ✗</button>
     <button id="skip">مش متأكد — تخطّي</button>
+  </div>
+
+  <div class="note" style="margin-block-start:14px">
+    <b>٢ · وهل بتولّد كتلة أوامر صالحة للدخول؟</b>
+    سؤال منفصل: تصحيح ضد الاتجاه ممكن يكون سريع وحاسم — يعني زخم — وما بيعطي كتلة.
+  </div>
+  <div class="row" style="margin-block-start:6px">
+    <button id="ob-yes">كتلة صالحة ✓</button>
+    <button id="ob-no">تصحيح — ما بتعطي كتلة ✗</button>
+    <span class="tag pend" id="obstate">لسا</span>
+  </div>
+
+  <div class="row">
     <input type="text" id="why" placeholder="السبب (اختياري) — بيساعد باستخراج القاعدة">
   </div>
 
@@ -334,11 +347,19 @@ function render() {
   $("why").value = a?.reason || "";
   $("blockwrong").checked = a ? a.blockCorrect === false : false;
 
+  const ob = a?.isOrderBlock;
+  const os = $("obstate");
+  os.className = "tag " + (ob === true ? "ok" : ob === false ? "no" : "pend");
+  os.textContent = ob === true ? "كتلة صالحة ✓" : ob === false ? "تصحيح — ما بتعطي كتلة ✗" : "لسا";
+  $("ob-yes").disabled = !a;
+  $("ob-no").disabled = !a;
+
   /* قائمة القفز + عدّاد الباقي — عشان ما يعلق بحالة وما يضيع منه شي. */
-  const pending = CASES.filter((x) => !answers[x.id]);
+  const pending = CASES.filter((x) => { const a = answers[x.id]; return !a || a.isOrderBlock == null; });
   $("jump").innerHTML = CASES.map((x, i) => {
     const a = answers[x.id];
-    const mark = a ? (a.label === "valid" ? "✓" : a.label === "invalid" ? "✗" : "—") : "•";
+    const mark = !a ? "•" : a.isOrderBlock == null ? "½"
+      : a.label === "valid" ? "✓" : a.label === "invalid" ? "✗" : "—";
     return `<option value="${i}"${i === cur ? " selected" : ""}>${mark} ${x.id}</option>`;
   }).join("");
   $("nextpend").disabled = pending.length === 0;
@@ -376,18 +397,41 @@ function nextUnlabeledFrom(from) {
   const n = CASES.length;
   for (let step = 1; step <= n; step++) {
     const i = (from + step) % n;
-    if (!answers[CASES[i].id]) return i;
+    /* مكتملة = جاوب على الاتنين. لو الزخم بس، لسا ناقصة. */
+    const a = answers[CASES[i].id];
+    if (!a || a.isOrderBlock == null) return i;
   }
   return -1;
 }
 
+/* ⚠️ سؤالان منفصلان، وخلطهما كان يضيّع معلومة.
+   صاحب المنهجية سمّى C244 «زخم» وبنفس الوقت قال ما لازم تنرسم كتلة عرض
+   هون لأنها تصحيح ضد اتجاه صاعد. الاتنين صح: التصحيح ممكن يكون حاسم
+   (زخم) وما يعطي كتلة صالحة للدخول. فالسؤال انفصل.
+   `isOrderBlock: null` = لسا ما انجاوب — مش «لأ». */
 function answer(label) {
   const k = CASES[cur];
+  const prev = answers[k.id] || {};
   answers[k.id] = {
     label,
     reason: $("why").value.trim() || null,
     blockCorrect: !$("blockwrong").checked,
+    isOrderBlock: prev.isOrderBlock ?? null,
   };
+  save();
+  /* ما بينتقل إلا لما يجاوب على الاتنين — وإلا بيمرق السؤال التاني بصمت. */
+  if (answers[k.id].isOrderBlock !== null) {
+    const nxt = nextUnlabeledFrom(cur);
+    if (nxt !== -1) cur = nxt;
+  }
+  render();
+}
+
+function answerOB(isOB) {
+  const k = CASES[cur];
+  const prev = answers[k.id];
+  if (!prev) { $("obstate").textContent = "جاوب على سؤال الزخم أول"; return; }
+  answers[k.id] = { ...prev, isOrderBlock: isOB, reason: $("why").value.trim() || prev.reason };
   save();
   const nxt = nextUnlabeledFrom(cur);
   if (nxt !== -1) cur = nxt;
@@ -404,20 +448,26 @@ function updateOut() {
       direction: k.direction, groupStartIndex: k.groupStartIndex, groupEndIndex: k.groupEndIndex,
       levels: k.levels, label: answers[k.id].label, labelReason: answers[k.id].reason,
       blockCorrect: answers[k.id].blockCorrect,
+      isOrderBlock: answers[k.id].isOrderBlock,
       measurementsAtLabeling: k.measurements,
     })),
   };
   $("out").value = JSON.stringify(out, null, 1);
   const nv = out.labels.filter((l) => l.label === "valid").length;
   const bw = out.labels.filter((l) => l.blockCorrect === false).length;
+  const obv = out.labels.filter((l) => l.isOrderBlock === true).length;
+  const obn = out.labels.filter((l) => l.isOrderBlock === false).length;
   $("done").textContent =
     out.labels.length + " تسمية · " + nv + " زخم · " + (out.labels.length - nv) + " مش زخم" +
-    (bw ? " · " + bw + " كتلة غلط" : "");
+    " · كتلة صالحة " + obv + " / تصحيح " + obn +
+    (bw ? " · " + bw + " حدودها غلط" : "");
 }
 
 $("yes").onclick = () => answer("valid");
 $("no").onclick = () => answer("invalid");
 $("skip").onclick = () => answer("skip");
+$("ob-yes").onclick = () => answerOB(true);
+$("ob-no").onclick = () => answerOB(false);
 /* التنقّل بيلفّ — الوقوف عند الطرف بيبان كأن الأداة معلّقة. */
 $("prev").onclick = () => { cur = (cur - 1 + CASES.length) % CASES.length; render(); };
 $("next").onclick = () => { cur = (cur + 1) % CASES.length; render(); };
