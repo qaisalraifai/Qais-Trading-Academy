@@ -171,7 +171,7 @@ npm run build
 node --test lib/qais/structure/structure.test.js lib/qais/structure/verify/*.test.js lib/qais/liquidity-v2/*.test.js lib/qais/orderblock-v2/*.test.js lib/qais/orderblock-v2/verify/*.test.js lib/market-data/*.test.js
 ```
 
-٢١٥ اختبار، بـ`node --test` المدمج. **ما في test runner ولا أي تبعية اختبار** — لا تضيف وحدة.
+٢١٧ اختبار، بـ`node --test` المدمج. **ما في test runner ولا أي تبعية اختبار** — لا تضيف وحدة.
 الجذر `commonjs` بينما `lib` ESM، فمجلدات المحرك فيها `package.json` صغير `{"type":"module"}` حتى يشتغل `node --test`.
 
 **الشموع**: `/api/replay-candles` (Dukascopy → TwelveData → Yahoo). خلّي `count ≤ 900` بالفحص اليدوي — أكبر من هيك بينرفض ويتراجع لمصدر أضعف.
