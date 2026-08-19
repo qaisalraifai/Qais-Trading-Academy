@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowDownToLine, ArrowUpToLine, BarChart3, Bell, Blocks, Brain, ChevronDown, ChevronRight, CircleCheck as CheckCircle2, Clock, Crown, Droplets, ExternalLink, Eye, LayoutGrid, Radio, RefreshCw, RotateCcw, Rows3, Sparkles, Target, TrendingDown, TrendingUp, Zap } from "lucide-react";
+import { AlertTriangle, ArrowDownToLine, ArrowUpToLine, BarChart3, Bell, Blocks, Brain, ChevronDown, ChevronRight, CircleCheck as CheckCircle2, Clock, Crown, Droplets, ExternalLink, Eye, Layers, LayoutGrid, Radio, RefreshCw, RotateCcw, Rows3, Sparkles, Target, TrendingDown, TrendingUp, Zap } from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
 import { createClient } from "@/lib/supabase-client";
@@ -1228,6 +1228,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
       {/* تناقض بين الفريمات — لازم يبان قبل أي قراءة للتحليل */}
       <DataQualityBanner quality={result?.dataQuality} />
+      <SkV2Panel sk={result?.skV2} />
 
       {/* ================= TOP TOOLBAR ================= */}
       <div className="qmi-anim" style={{ ...glass, padding: "0.75rem 1.1rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
@@ -1449,6 +1450,92 @@ function AiSummaryCard({ summary }) {
    كل التحليل متعدد الفريمات بيفترض إنه الفريمات بتوصف نفس السوق. لو مش
    هيك، المستخدم لازم يشوفها **قبل** ما يقرا أي إشارة — مش بعد ما يتصرّف.
    ============================================================================ */
+/* لوحة سلسلة QAIS SK الجديدة — **عرض موازٍ** جنب المحرك القائم.
+   ما بتبدّل ولا رقم بالواجهة؛ بتعرض مخرج السلسلة الجديدة عشان تنقارن
+   بالقديمة على بيانات حقيقية قبل أي تبديل.
+
+   ⚠️ كل حالة توقّف بتنعرض بسببها ومرحلتها — «ما في صفقة» بلا سبب ما
+   بتعلّم إشي. */
+function SkV2Panel({ sk }) {
+  if (!sk) return null;
+
+  const stageLabel = {
+    third: "بانتظار عودة السعر تحت الثلث",
+    smt: "بانتظار SMT",
+    cisd: "بانتظار CISD",
+    stop: "إعداد غير صالح — اتجاه الستوب",
+    error: "خطأ",
+  };
+
+  if (sk.ok === false) {
+    return (
+      <div className="qmi-anim" style={{ ...glass, padding: "0.7rem 1rem", borderColor: "#4B5563" }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#C4B5FD" }}>سلسلة QAIS SK (تجريبية)</div>
+        <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 3 }}>{sk.why || sk.reason}</div>
+      </div>
+    );
+  }
+
+  const a = sk.activeSetup;
+  const waiting = (sk.setups || []).filter((s) => !s.setup?.ok);
+
+  return (
+    <div className="qmi-anim" style={{ ...glass, padding: "0.8rem 1rem", borderColor: a ? "#34D399" : "#4B5563" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+        <Layers size={15} style={{ color: "#A78BFA", flexShrink: 0 }} aria-hidden />
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#DDD6FE" }}>سلسلة QAIS SK — تشغيل موازٍ</span>
+        <span style={{ fontSize: 11, color: "#9CA3AF" }}>
+          {sk.counts.blocks} كتلة · {sk.counts.live} حيّة · {sk.counts.active} صفقة جاهزة
+        </span>
+      </div>
+
+      {sk.notes?.map((n, i) => (
+        <div key={i} style={{ fontSize: 11.5, color: "#FBBF24", marginTop: 4 }}>{n}</div>
+      ))}
+
+      {a ? (
+        <div style={{ marginTop: 8, display: "grid", gap: 3 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#34D399" }}>{a.side}</div>
+          <div style={{ fontSize: 12, color: "#E5E7EB", fontFamily: "ui-monospace, monospace" }}>
+            دخول {a.entry.toFixed(2)} · ستوب {a.stop.toFixed(2)} · مخاطرة {a.risk.toFixed(2)}
+          </div>
+          <div style={{ fontSize: 11.5, color: "#9CA3AF" }}>{a.reason}</div>
+          {a.targets ? (
+            <div style={{ fontSize: 11.5, color: "#C4B5FD", fontFamily: "ui-monospace, monospace" }}>
+              {a.rr.map((t) => `${t.key} ${t.price.toFixed(0)} (${t.r}R)`).join(" · ")}
+            </div>
+          ) : (
+            /* ⚠️ ما في أهداف مخترعة لما السيكونز ما اكتملت. */
+            <div style={{ fontSize: 11.5, color: "#FBBF24" }}>
+              الأهداف غير متاحة — السيكونز {a.targetsStage}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 6 }}>ما في صفقة جاهزة الآن</div>
+      )}
+
+      {waiting.length > 0 && (
+        <div style={{ marginTop: 8, display: "grid", gap: 2 }}>
+          {waiting.slice(0, 5).map((s, i) => (
+            <div key={i} style={{ fontSize: 11.5, color: "#9CA3AF", fontFamily: "ui-monospace, monospace" }}>
+              {s.direction === "up" ? "طلب" : "عرض"} MT {Number(s.levels.mt).toFixed(2)}
+              {"  —  "}
+              {stageLabel[s.setup?.blockedAt] || s.setup?.why || "—"}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {sk.barsToConfirmation && (
+        <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>
+          الكتلة ما بتتأكد إلا بعد وسيط {sk.barsToConfirmation.median} شمعة (أقصى {sk.barsToConfirmation.max})
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DataQualityBanner({ quality }) {
   if (!quality || quality.ok || !quality.warnings?.length) return null;
   const critical = quality.severity === "critical";
