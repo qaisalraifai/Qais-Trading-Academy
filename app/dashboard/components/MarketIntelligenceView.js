@@ -1473,76 +1473,75 @@ function AiSummaryCard({ summary }) {
 function SkV2Panel({ sk }) {
   if (!sk) return null;
 
-  const stageLabel = {
-    third: "بانتظار عودة السعر تحت الثلث",
-    smt: "بانتظار SMT",
-    cisd: "بانتظار CISD",
-    stop: "إعداد غير صالح — اتجاه الستوب",
-    error: "خطأ",
-  };
-
   if (sk.ok === false) {
     return (
       <div className="qmi-anim" style={{ ...glass, padding: "0.7rem 1rem", borderColor: "#4B5563" }}>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#C4B5FD" }}>سلسلة QAIS SK (تجريبية)</div>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#C4B5FD" }}>سلسلة QAIS SK</div>
         <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 3 }}>{sk.why || sk.reason}</div>
       </div>
     );
   }
 
-  const a = sk.activeSetup;
-  const waiting = (sk.setups || []).filter((s) => !s.setup?.ok);
+  const MARK = { met: "✓", pending: "⋯", unknown: "?" };
+  const COLOR = { met: "#34D399", pending: "#FBBF24", unknown: "#9CA3AF" };
+
+  const withTrade = (sk.setups || []).filter((s) => s.readiness?.status === "trade");
+  const waiting = (sk.setups || []).filter((s) => s.readiness?.status !== "trade");
+  const ordered = [...withTrade, ...waiting].slice(0, 10);
 
   return (
-    <div className="qmi-anim" style={{ ...glass, padding: "0.8rem 1rem", borderColor: a ? "#34D399" : "#4B5563" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+    <div className="qmi-anim" style={{ ...glass, padding: "0.85rem 1rem", borderColor: withTrade.length ? "#34D399" : "#4B5563" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: 8 }}>
         <Layers size={15} style={{ color: "#A78BFA", flexShrink: 0 }} aria-hidden />
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#DDD6FE" }}>سلسلة QAIS SK — تشغيل موازٍ</span>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#DDD6FE" }}>خريطة الشروط — QAIS SK</span>
         <span style={{ fontSize: 11, color: "#9CA3AF" }}>
-          {sk.counts.blocks} كتلة · {sk.counts.live} حيّة · {sk.counts.active} صفقة جاهزة
+          {sk.counts.live} كتلة حيّة · {withTrade.length} صفقة
         </span>
       </div>
 
+      {/* ⚠️ ما في نسبة ثقة ولا سكور — كل سطر تحت بيرجع لقاعدة إلها اسم. */}
       {sk.notes?.map((n, i) => (
-        <div key={i} style={{ fontSize: 11.5, color: "#FBBF24", marginTop: 4 }}>{n}</div>
+        <div key={i} style={{ fontSize: 11.5, color: "#FBBF24", marginBottom: 4 }}>{n}</div>
       ))}
 
-      {a ? (
-        <div style={{ marginTop: 8, display: "grid", gap: 3 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#34D399" }}>{a.side}</div>
-          <div style={{ fontSize: 12, color: "#E5E7EB", fontFamily: "ui-monospace, monospace" }}>
-            دخول {a.entry.toFixed(2)} · ستوب {a.stop.toFixed(2)} · مخاطرة {a.risk.toFixed(2)}
-          </div>
-          <div style={{ fontSize: 11.5, color: "#9CA3AF" }}>{a.reason}</div>
-          {a.targets ? (
-            <div style={{ fontSize: 11.5, color: "#C4B5FD", fontFamily: "ui-monospace, monospace" }}>
-              {a.rr.map((t) => `${t.key} ${t.price.toFixed(0)} (${t.r}R)`).join(" · ")}
-            </div>
-          ) : (
-            /* ⚠️ ما في أهداف مخترعة لما السيكونز ما اكتملت. */
-            <div style={{ fontSize: 11.5, color: "#FBBF24" }}>
-              الأهداف غير متاحة — السيكونز {a.targetsStage}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 6 }}>ما في صفقة جاهزة الآن</div>
-      )}
+      <div style={{ display: "grid", gap: 10 }}>
+        {ordered.map((s, i) => {
+          const R = s.readiness;
+          const isTrade = R.status === "trade";
+          const t = s.setup;
+          return (
+            <details key={i} open={isTrade} style={{ border: "1px solid #23233A", borderRadius: 8, padding: "0.5rem 0.7rem", background: "rgba(255,255,255,0.02)" }}>
+              <summary style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: isTrade ? "#34D399" : "#C4B5FD" }}>{R.headline}</span>
+                <span style={{ fontSize: 11.5, color: "#9CA3AF", fontFamily: "ui-monospace, monospace" }}>
+                  {s.direction === "up" ? "طلب" : "عرض"} MT {Number(s.levels.mt).toFixed(2)}
+                </span>
+                <span style={{ fontSize: 11, color: "#6B7280" }}>{R.metCount}/{R.totalCount} شرط</span>
+              </summary>
 
-      {waiting.length > 0 && (
-        <div style={{ marginTop: 8, display: "grid", gap: 2 }}>
-          {waiting.slice(0, 12).map((s, i) => (
-            <div key={i} style={{ fontSize: 11.5, color: "#9CA3AF", fontFamily: "ui-monospace, monospace" }}>
-              {s.direction === "up" ? "طلب" : "عرض"} MT {Number(s.levels.mt).toFixed(2)}
-              {"  —  "}
-              {stageLabel[s.setup?.blockedAt] || s.setup?.why || "—"}
-            </div>
-          ))}
-        </div>
-      )}
+              {isTrade && t?.ok && (
+                <div style={{ fontSize: 12, color: "#E5E7EB", fontFamily: "ui-monospace, monospace", margin: "6px 0" }}>
+                  دخول {t.entry.toFixed(2)} · ستوب {t.stop.toFixed(2)} · مخاطرة {t.risk.toFixed(2)}
+                </div>
+              )}
+
+              <div style={{ display: "grid", gap: 2, marginTop: 6 }}>
+                {R.rows.map((x, j) => (
+                  <div key={j} style={{ display: "flex", gap: 6, fontSize: 11.5, alignItems: "baseline" }}>
+                    <span style={{ color: COLOR[x.state], width: 12, flexShrink: 0 }}>{MARK[x.state]}</span>
+                    <span style={{ color: "#6B7280", width: 34, flexShrink: 0, fontFamily: "ui-monospace, monospace" }}>{x.id}</span>
+                    <span style={{ color: "#C4B5FD", minWidth: 92, flexShrink: 0 }}>{x.label}</span>
+                    <span style={{ color: "#9CA3AF", minWidth: 0 }}>{x.note || x.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          );
+        })}
+      </div>
 
       {sk.barsToConfirmation && (
-        <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>
+        <div style={{ fontSize: 11, color: "#6B7280", marginTop: 8 }}>
           الكتلة ما بتتأكد إلا بعد وسيط {sk.barsToConfirmation.median} شمعة (أقصى {sk.barsToConfirmation.max})
         </div>
       )}
