@@ -837,17 +837,16 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       seq?.points && seq.displayTF === renderedTF && sequencePointsInData(seq, timeSet);
 
 
+    /* ⚠️ هيكل السيكونز (0→A→B→C) وبس — **بلا أهدافها**.
+       -----------------------------------------------------------------
+       كانت الأهداف بتنرسم مرتين: مرة من C بـ`drawSequenceProjection` ومرة
+       من الدخول بـ`drawProjection`. نفس الأسعار، كومتا تسميات متراكبتين
+       على الحافة اليمين، وR:R مختلفة بين الاتنين لأن وحدة من C والتانية
+       من الدخول. الطالب بيشوف «TP5» مرتين بسعرين متطابقين ونسبتين مختلفتين.
+
+       الصفقة هي اللي بتهم — فالأهداف بتنرسم **من الدخول وبس**. */
     if (seqRenderable) {
       drawSequenceHistory(ctx, seq, timeToXSafe, priceToY, lastX, ease, t);
-      // أهداف السيكونز (TP1..TP4) — تترسم تلقائياً فور تأكيد C، بغض النظر عن
-      // اكتمال شروط الصفقة الكاملة (Entry/SL) — هاي أهداف الـ QAIS SK Engine
-      // الرسمية المسقطة من C مباشرة (تاسع عشر)
-      /* الأهداف بتنعرض بس لما تكون في **صفقة كاملة** (كل الشروط الإلزامية
-         تحققت) — مش لمجرد إنه C تأكدت. قبل هيك كان الشرط `stage === confirmed`،
-         فكانت تطلع أهداف لإعداد ناقص ما بينفع تدخل عليه. */
-      if (r.tradeValid && seq.targets?.length) {
-        drawSequenceProjection(ctx, seq, timeToXSafe, priceToY, plotW, h, ease);
-      }
     }
     /* كتلة الأوامر والـSMT — تحت كل شي (طبقة سياق) */
     drawOrderBlocks(ctx, r.orderBlocks, timeToXSafe, priceToY, plotW, h, ease, r.price, timeSet);
@@ -863,7 +862,12 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
        تحرّك ٥١٨. والستوب عنده من نقطة التصحيح مش من نقطة الـSMT. */
     const drawn = r.skV2?.chartTrade ?? r.lastTrade;
     if (drawn && drawn.displayTF === renderedTF) {
-      drawLastTrade(ctx, drawn, timeToXSafe, priceToY, plotW, h, ease, timeSet);
+      /* ⚠️ لما `drawProjection` تكون رسمت نفس الصفقة، تسمياتها بتغني عن
+         تسميات الصندوق: الدخول والستوب كانوا بينكتبوا **مرتين** بنفس
+         السعر — مرة بصندوق على الحافة اليمين ومرة كنص جنب الصندوق. */
+      const sameAsLive =
+        r.tradeValid && r.entry != null && Math.abs((drawn.entry?.price ?? NaN) - r.entry) < 1e-6;
+      drawLastTrade(ctx, drawn, timeToXSafe, priceToY, plotW, h, ease, timeSet, !sameAsLive);
     }
   }
 
@@ -1701,7 +1705,13 @@ function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, chartH, ease, last
   for (const o of near) {
     const tone = o.direction === "up" ? GREEN : RED;
     const mt = o.levels.mt;
-    const prices = [o.levels.fvg, o.levels.open, mt, o.levels.close, o.levels.outerWick]
+    /* ⚠️ **حدود المنطقة والمنتصف وبس** — تلات خطوط بدل خمسة.
+       -----------------------------------------------------------------
+       كانت بتنرسم `fvg` و`open` و`mt` و`close` و`outerWick` — خمس خطوط
+       لكل كتلة، وبثلاث كتل يعني ١٥ خط بمنطقة سعرية واحدة ضيّقة. الفجوة
+       (`fvg`) مستوى تشخيصي مش حدّ منطقة، و`outerWick` هو حد الإبطال نفسه
+       فبيتغطّى بالتظليل. الطالب بيحتاج يشوف: من وين لوين، ووين المنتصف. */
+    const prices = [o.levels.open, mt, o.levels.close]
       .filter((p) => Number.isFinite(p))
       .filter((p, i, arr) => arr.indexOf(p) === i);
 
@@ -1709,6 +1719,15 @@ function drawOrderBlocks(ctx, list, timeToX, priceToY, plotW, chartH, ease, last
     if (!ys.length) continue;
     const spanPx = Math.max(...ys) - Math.min(...ys);
     const x0 = Math.max(0, o.x0);
+
+    /* تظليل خفيف بين حدّي المنطقة — بيوضّح إنها **منطقة** مش خطوط منفصلة،
+       وبيغني عن خط الإبطال المستقل. */
+    const yTop = Math.min(...ys);
+    const yBot = Math.max(...ys);
+    if (yBot - yTop >= 1) {
+      ctx.fillStyle = `${tone}12`;
+      ctx.fillRect(x0, yTop, Math.max(2, labelX - 6 - x0), yBot - yTop);
+    }
 
     prices.forEach((price) => {
       const y = priceToY(price);
@@ -1794,7 +1813,7 @@ function drawSMT(ctx, smt, priceToY, plotW, ease) {
   ctx.restore();
 }
 
-function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeSet) {
+function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeSet, showLabels = true) {
   /* ⚠️ الدخول والستوب بينرسموا حتى بلا أهداف.
      الأهداف بتيجي من السيكونز، وممكن ما تكون مؤكَّدة بلحظة الدخول (C ما
      تشكّلت بعد، أو ما في سيكونز بنفس اتجاه الصفقة). الدخول والستوب
@@ -1862,50 +1881,32 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
   ctx.strokeStyle = GOLD_LIGHT;
   ctx.stroke();
 
-  /* تسميات مختصرة على حافة الصندوق — ثلاثة بس بدل خمس صناديق */
-  const rows = [
-    { y: ty, text: `${finalTarget.key}  ${fmt(finalTarget.price)}`, color: GREEN },
-    { y: ey, text: `${_t("radar.entryPoint")}  ${fmt(trade.entry.price)}`, color: GOLD_LIGHT },
-    { y: sy, text: `${_t("radar.stopLabel")}  ${fmt(stopPrice)}`, color: RED },
-  ];
-  ctx.font = "700 9.5px sans-serif";
-  ctx.textBaseline = "middle";
-  for (const rr of rows) {
-    ctx.fillStyle = rr.color;
-    ctx.fillText(rr.text, ex + boxW + 5, rr.y);
+  /* ⚠️ التسميات بتنرسم بس لما ما تكون `drawProjection` رسمت نفس الصفقة —
+     وإلا الدخول والستوب بينكتبوا مرتين بنفس السعر.
+
+     ⚠️ وكمان: `finalTarget` بيكون `null` لما الصفقة بلا أهداف، وكان
+     `finalTarget.key` بينقرا بلا حارس → TypeError بيطفّي الشارت. صار أوضح
+     بعد ما المحرك بلّش يرمي الأهداف المحقَّقة قبل الدخول. */
+  if (showLabels) {
+    const rows = [
+      finalTarget ? { y: ty, text: `${finalTarget.key}  ${fmt(finalTarget.price)}`, color: GREEN } : null,
+      { y: ey, text: `${_t("radar.entryPoint")}  ${fmt(trade.entry.price)}`, color: GOLD_LIGHT },
+      { y: sy, text: `${_t("radar.stopLabel")}  ${fmt(stopPrice)}`, color: RED },
+    ].filter(Boolean);
+    ctx.font = "700 9.5px sans-serif";
+    ctx.textBaseline = "middle";
+    for (const rr of rows) {
+      ctx.fillStyle = rr.color;
+      ctx.fillText(rr.text, ex + boxW + 5, rr.y);
+    }
+    ctx.textBaseline = "alphabetic";
   }
-  ctx.textBaseline = "alphabetic";
 
-  /* ---- سبب الدخول ---- بدون هالكتلة الصفقة بتبيّن وكأنها انفتحت بلا مبرر.
-     منعرض: من وين الدخول، هل الـSMT متحقق، وحدود الكتلة، ومستوى الإبطال. */
-  const reasonLines = [`${_t("radar.entryReason")}: ${_t("radar.viaOrderBlock")}`];
-  if (trade.obZone) {
-    reasonLines.push(`${_t("radar.obRange")}: ${fmt(trade.obZone.bottom)} – ${fmt(trade.obZone.top)}`);
-  }
-  reasonLines.push(
-    `SMT: ${trade.smtVerified ? _t("radar.smtVerified") : _t("radar.smtUnverified")}`
-  );
-  reasonLines.push(`${_t("radar.invalidationAt")}: ${fmt(stopPrice)}`);
-
-  const rlFont = "600 9px sans-serif";
-  ctx.font = rlFont;
-  const rlW = Math.max(...reasonLines.map((l) => ctx.measureText(l).width)) + 14;
-  const rlH = reasonLines.length * 12 + 8;
-  const rlX = Math.min(Math.max(4, ex - rlW / 2), plotW - rlW - 4);
-  const rlY = up ? Math.max(4, Math.min(ey, sy) - rlH - 26) : Math.min(chartH - rlH - 4, Math.max(ey, sy) + 26);
-
-  ctx.fillStyle = "rgba(18,20,24,0.94)";
-  ctx.strokeStyle = "#3D2F63";
-  ctx.lineWidth = 1;
-  roundRect(ctx, rlX, rlY, rlW, rlH, 5);
-  ctx.fill();
-  ctx.stroke();
-  ctx.textBaseline = "middle";
-  reasonLines.forEach((l, i) => {
-    ctx.fillStyle = i === 0 ? GOLD_LIGHT : "#A79FC4";
-    ctx.fillText(l, rlX + 7, rlY + 10 + i * 12);
-  });
-  ctx.textBaseline = "alphabetic";
+  /* ⚠️ صندوق «سبب الدخول» انشال من الشارت.
+     -----------------------------------------------------------------
+     كان بيعرض: من وين الدخول · هل الـSMT متحقق · حدود الكتلة · الإبطال.
+     نفس المحتوى صار معروضاً بخريطة الشروط باللوحة (R3…R12) بسطور مرتّبة
+     وقابلة للقراءة — بينما هون كان صندوقاً عائماً فوق الشموع. */
 
   // وسم الحالة فوق الصندوق
   /* ثلاث حالات مش ثنتين: محققة / ضاربة وقف / قيد التتبّع.
