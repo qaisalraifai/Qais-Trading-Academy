@@ -1517,7 +1517,7 @@ function SkV2Panel({ sk }) {
 
       {waiting.length > 0 && (
         <div style={{ marginTop: 8, display: "grid", gap: 2 }}>
-          {waiting.slice(0, 5).map((s, i) => (
+          {waiting.slice(0, 12).map((s, i) => (
             <div key={i} style={{ fontSize: 11.5, color: "#9CA3AF", fontFamily: "ui-monospace, monospace" }}>
               {s.direction === "up" ? "طلب" : "عرض"} MT {Number(s.levels.mt).toFixed(2)}
               {"  —  "}
