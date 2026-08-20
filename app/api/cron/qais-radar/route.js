@@ -3,6 +3,7 @@ import { createNotification } from "@/lib/notifications";
 import { fetchYahooCandles } from "@/lib/yahoo-candles";
 import { getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
+import { radarRow } from "@/lib/qais/symbol-readiness";
 import { DEFAULT_RADAR_SYMBOLS, RADAR_TIMEFRAMES, CANDLE_COUNT, getSymbolCurrencies, NEWS_BLOCK_WINDOW_MINUTES } from "@/lib/qais/config";
 import { getActiveNewsBlock } from "@/lib/economic-calendar";
 
@@ -116,51 +117,36 @@ export async function GET(request) {
         continue;
       }
 
+      /* ⚠️ الصف بينتبنى بـ`radarRow` — مصدر واحد للشكل، بيستعمله الكرون
+         واللوحة معاً. قبل هيك كان كل واحد بيبني صفه بإيده، فصار ممكن
+         يتناقضوا. والأعمدة اللي مصدرها انشال بتنكتب `null` صراحةً بدل ما
+         تضل قيمة قديمة معلّقة. */
       await supabase.from("qais_radar_state").upsert({
-        symbol,
-        status: result.status,
-        score: result.score,
-        direction: result.direction,
-        price: result.price,
-        timeframe: result.timeframe,
-        reason_tags: result.reasonTags,
+        ...radarRow(result),
         decision: result,
         updated_at: new Date().toISOString(),
-        // -------- Smart Market Radar v2 (إضافي — ما بيلمس الأعمدة القديمة فوق) --------
-        radar_status: result.radarStatus,
-        radar_score: result.radarScore,
-        radar_signal_label: result.radarSignalLabel,
-        radar_signal_strength: result.radarSignalStrengthLabel,
-        htf_trend: result.htfTrend,
-        market_structure: result.marketStructure,
-        bos_status: result.bosStatus,
-        choch_status: result.chochStatus,
-        fvg_status: result.fvgStatus,
-        liquidity_status: result.liquidityStatus,
-        premium_discount: result.premiumDiscount,
-        session: result.session,
-        session_label: result.sessionLabel,
-        entry_status: result.entryStatus,
-        risk_reward: result.riskReward,
-        why: result.why,
       });
 
-      // -------- Signal History (v2): فتح/إغلاق صفقة تلقائياً حسب انتقال radar_status --------
-      const ACTIVE_RADAR_STATUSES = ["green", "blue", "orange", "red"]; // أي إشارة اتجاهية معتمدة (Buy/Sell) بنظام v2
-      const wasRadarActive = ACTIVE_RADAR_STATUSES.includes(previousState?.radar_status);
-      const isRadarActive = ACTIVE_RADAR_STATUSES.includes(result.radarStatus);
+      /* -------- تاريخ الإشارات --------
+         ⚠️ كان الفتح/الإغلاق مربوطاً بـ`radar_status` من `decision.js` —
+         يعني بحالة مشتقّة من مجموع موزون. صار مربوطاً بـ`tradeValid`:
+         السلسلة اكتملت فعلاً (كتلة → ثلث → SMT → CISD) ولا لأ. */
+      const wasRadarActive = previousState?.radar_status === "green";
+      const isRadarActive = !!result.tradeValid;
       const radarDirectionFlipped = wasRadarActive && isRadarActive && previousState?.direction !== result.direction;
 
       if (isRadarActive && (!wasRadarActive || radarDirectionFlipped)) {
         await supabase.from("qais_signal_history").insert({
           symbol,
           direction: result.direction,
-          entry_price: result.price,
+          /* الدخول الفعلي من السلسلة — مش سعر اللحظة. */
+          entry_price: result.entry ?? result.price,
           entry_time: new Date().toISOString(),
           rr_target: result.riskReward,
           status: "open",
-          signal_label: result.radarSignalLabel,
-          score: result.radarScore,
+          signal_label: result.signal,
+          /* ⚠️ ما في رقم — `score` كان `radarScore`. */
+          score: null,
         });
       } else if (wasRadarActive && (!isRadarActive || radarDirectionFlipped)) {
         const { data: openRows } = await supabase
@@ -186,36 +172,38 @@ export async function GET(request) {
         }
       }
 
-      // إشعار فقط عند تحوّل جديد للأخضر (score >= 85) — مش بكل تشغيلة كرون لنفس الإشارة القائمة
-      const justTurnedGreen = result.shouldNotify && previousState?.status !== "green";
-      // إشعار v2 إضافي مستقل: فقط عند Strong Buy/Strong Sell الجديدة بنظام الرادار الجديد —
-      // ما بيكرر إشعار لو نفس التحوّل أصلاً غطّاه الشرط الأصلي فوق بنفس التشغيلة
-      const justConfirmedRadarV2 =
-        !justTurnedGreen && result.radarShouldNotify && previousState?.radar_status !== result.radarStatus;
+      /* إشعار عند اكتمال سلسلة جديدة وبس — مش بكل تشغيلة كرون.
+         ⚠️ كان في مساران للإشعار (`shouldNotify` و`radarShouldNotify`)،
+         الاتنين مربوطين بعتبة على مجموع موزون (`score >= 85`). صار مسار
+         واحد: السلسلة اكتملت، والرسالة بتقول **الشرط** مش نسبة. */
+      const justBecameValid = result.tradeValid && !wasRadarActive;
 
-      if (justTurnedGreen || justConfirmedRadarV2) {
+      if (justBecameValid) {
         const { data: watchers } = await supabase.from("qais_watchlist").select("user_id").eq("symbol", symbol);
         const userIds = [...new Set((watchers || []).map((w) => w.user_id))];
+        const met = result.readiness?.metCount ?? null;
+        const total = result.readiness?.totalCount ?? null;
         for (const userId of userIds) {
-          if (justTurnedGreen) {
-            await createNotification(supabase, userId, {
-              type: "qais_radar_signal",
- title: `${symbol} جاهز `,
-              message: `Setup: SK + ICT ${result.direction === "up" ? "Buy" : "Sell"} — Confidence: ${result.confidence}% — Timeframe: ${result.timeframe}`,
-              link: `/trading-radar?symbol=${symbol}`,
-            });
-          } else {
-            await createNotification(supabase, userId, {
-              type: "qais_radar_signal",
-              title: `${symbol} — ${result.radarSignalLabel} (${result.direction === "up" ? "Long" : "Short"})`,
-              message: `Confidence: ${result.radarScore}% — ${result.sessionLabel} — Tap to open chart`,
-              link: `/trading-radar?symbol=${symbol}`,
-            });
-          }
+          await createNotification(supabase, userId, {
+            type: "qais_radar_signal",
+            title: `${symbol} — ${result.signal} (${result.direction === "up" ? "Long" : "Short"})`,
+            /* عدّ صريح بدل «Confidence: ٩٥٪». */
+            message:
+              `${met != null && total != null ? `${met}/${total} شرط · ` : ""}` +
+              `دخول ${result.entry ?? "—"} · ستوب ${result.stopLoss ?? "—"}` +
+              `${result.riskReward != null ? ` · ${result.riskReward}R` : ""} — ${result.sessionLabel}`,
+            link: `/trading-radar?symbol=${symbol}`,
+          });
         }
       }
 
-      results.push({ symbol, status: result.status, score: result.score, radarStatus: result.radarStatus, radarScore: result.radarScore });
+      results.push({
+        symbol,
+        tradeValid: result.tradeValid,
+        signal: result.signal,
+        entryStatus: result.entryStatus,
+        conditions: result.readiness?.metCount != null ? `${result.readiness.metCount}/${result.readiness.totalCount}` : null,
+      });
     } catch (e) {
       errors.push({ symbol, error: e.message });
     }

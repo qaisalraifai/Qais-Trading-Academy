@@ -152,51 +152,73 @@ export default function TradeDetailsClient({ tradeId }) {
         </div>
       </div>
 
-      {/* ================= لماذا دخل الـ AI (Why) ================= */}
-      {Array.isArray(a.why) && a.why.length > 0 && (
-        <div style={{ ...glass, padding: "1.1rem 1.3rem" }}>
-          <SectionTitle icon={CheckCircle2} title={t("aiTrades.whyAiEntered")} />
-          <ul style={{ margin: "10px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-            {a.why.map((w, i) => (
-              <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#ddd" }}>
-                <CheckCircle2 size={14} color={GREEN} style={{ flexShrink: 0, marginTop: 2 }} />
-                {w}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* ================= خريطة الشروط =================
+          ⚠️ حلّت محل «Why» و«Full Technical Analysis» و«Checklist».
+          التلاتة كانوا بيعرضوا حقول `decision.js` (marketStructure ·
+          liquidityStatus · bosStatus · chochStatus · fvgStatus ·
+          premiumDiscount · htfTrend) — وذاك المحرك انشال.
 
-      {/* ================= التحليل الفني الكامل ================= */}
-      <div style={{ ...glass, padding: "1.1rem 1.3rem" }}>
-        <SectionTitle icon={Layers} title={t("aiTrades.fullTechnicalAnalysis")} />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginTop: 12 }}>
-          <AnalysisRow icon={GitBranch} label="Market Structure" value={a.marketStructure} />
-          <AnalysisRow icon={Waves} label="Liquidity" value={a.liquidityStatus} />
-          <AnalysisRow icon={GitCommit} label="BOS" value={a.bosStatus} />
-          <AnalysisRow icon={GitCommit} label="CHOCH" value={a.chochStatus} />
-          <AnalysisRow icon={Box} label="Order Block" value={a.ob?.status || (a.ob ? "Detected" : null)} />
-          <AnalysisRow icon={FvgIcon} label="Fair Value Gap" value={a.fvgStatus} />
-          <AnalysisRow icon={Radio} label="Session" value={a.sessionLabel || a.session} />
-          <AnalysisRow icon={Target} label="Premium / Discount" value={a.premiumDiscount} />
-          <AnalysisRow icon={TrendingUp} label="HTF Trend" value={a.htfTrend} />
-        </div>
-      </div>
-
-      {/* ================= منطق الدخول (Checklist) ================= */}
-      {Array.isArray(a.reasonsChecklist) && a.reasonsChecklist.length > 0 && (
+          البديل: كل سطر بيرجع لقاعدة إلها رقم واسم بالمنهجية، وحالته
+          صريحة. ما في نسبة ولا «ثقة». */}
+      {Array.isArray(a.conditions) && a.conditions.length > 0 && (
         <div style={{ ...glass, padding: "1.1rem 1.3rem" }}>
-          <SectionTitle icon={CheckCircle2} title={t("aiTrades.entryLogicChecklist")} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8, marginTop: 12 }}>
-            {a.reasonsChecklist.map((c) => (
-              <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 8, background: "#141024", border: "1px solid #241C3E", borderRadius: 3, padding: "8px 10px" }}>
-                {c.ok ? <CheckCircle2 size={14} color={GREEN} /> : <XCircle size={14} color="#4A4368" />}
-                <span style={{ fontSize: 12, color: c.ok ? "#ddd" : "#6E6690" }}>{c.label}</span>
-              </div>
-            ))}
+          <SectionTitle icon={Layers} title={t("aiTrades.conditionsMap")} />
+          {a.conditionsMet != null && a.conditionsTotal != null && (
+            <div style={{ fontSize: 12, color: "#A79FC4", marginTop: 6 }}>
+              {a.conditionsMet} / {a.conditionsTotal} {t("aiTrades.conditionsMet")}
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
+            {a.conditions.map((c) => {
+              const met = c.state === "met";
+              return (
+                <div
+                  key={c.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    background: "#141024",
+                    border: "1px solid #241C3E",
+                    borderRadius: 3,
+                    padding: "9px 11px",
+                  }}
+                >
+                  {met ? (
+                    <CheckCircle2 size={14} color={GREEN} style={{ flexShrink: 0, marginTop: 2 }} />
+                  ) : (
+                    <XCircle size={14} color="#4A4368" style={{ flexShrink: 0, marginTop: 2 }} />
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: met ? "#ddd" : "#6E6690", fontWeight: 700 }}>
+                      <span style={{ color: BLUE, marginInlineEnd: 6 }}>{c.id}</span>
+                      {c.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#6E6690", marginTop: 2 }}>{c.note || c.detail}</div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
+
+      {/* ================= الجلسة والاتجاه ================= */}
+      <div style={{ ...glass, padding: "1.1rem 1.3rem" }}>
+        <SectionTitle icon={Layers} title={t("aiTrades.fullTechnicalAnalysis")} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginTop: 12 }}>
+          <AnalysisRow
+            icon={GitBranch}
+            label={t("aiTrades.direction")}
+            value={a.direction === "up" ? t("aiTrades.bullish") : a.direction === "down" ? t("aiTrades.bearish") : null}
+          />
+          <AnalysisRow icon={Box} label={t("aiTrades.orderBlock")} value={a.blockLevels ? `MT ${a.blockLevels.mt}` : null} />
+          <AnalysisRow icon={Waves} label="SMT" value={a.chain?.smt?.reason || null} />
+          <AnalysisRow icon={GitCommit} label="CISD" value={a.chain?.cisd?.reason || null} />
+          <AnalysisRow icon={Target} label={t("aiTrades.third")} value={a.chain?.touch?.thirds?.map((x) => `${x.timeframe} ${Math.round(x.threshold)}`).join(" · ") || null} />
+          <AnalysisRow icon={Radio} label="Session" value={a.sessionLabel || a.session} />
+        </div>
+      </div>
 
       <div style={{ fontSize: 11, color: "#4A4368", textAlign: "center" }}>
         {t("aiTrades.internalTradeDisclaimer")}

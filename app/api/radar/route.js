@@ -36,9 +36,12 @@ export async function GET() {
     ...(bySymbol[symbol] || {
       symbol,
       status: "gray",
-      score: 0,
+      /* ⚠️ `null` مش صفر: الرمز لسا ما انحسب أبداً. صفر بيقول «انفحص وطلع
+         صفر»، وهاد غلط. والحقلان أصلاً ما عاد يكتب فيهن رقم — شوف
+         `radarRow` بـ`lib/qais/symbol-readiness.js`. */
+      score: null,
       radar_status: "gray",
-      radar_score: 0,
+      radar_score: null,
       direction: null,
       price: null,
       timeframe: "M15",

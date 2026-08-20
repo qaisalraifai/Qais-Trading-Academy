@@ -85,22 +85,24 @@ export async function POST(request) {
     tp2: tpPrice(1),
     tp3: tpPrice(2),
     tp4: tpPrice(3),
-    confidence: decision.aiConfidence ?? decision.radarScore ?? decision.confidence ?? null,
+    /* ⚠️ `confidence` بيطلع `null`. كان `aiConfidence` — مجموع موزون ثابت
+       بـ`decision.js`، ما إله علاقة بأي نموذج. العمود انترك بمكانه لأن
+       تغيير المخطط قرار منفصل، بس ما بينكتب فيه رقم مخترع. */
+    confidence: null,
     risk_reward: decision.riskReward ?? null,
     ai_analysis: {
-      why: decision.why || [],
-      marketStructure: decision.marketStructure || null,
-      liquidityStatus: decision.liquidityStatus || null,
-      bosStatus: decision.bosStatus || null,
-      chochStatus: decision.chochStatus || null,
-      fvgStatus: decision.fvgStatus || null,
-      premiumDiscount: decision.premiumDiscount || null,
-      htfTrend: decision.htfTrend || null,
+      /* خريطة الشروط كاملة — كل سطر بيرجع لقاعدة إلها رقم واسم بالمنهجية.
+         هاي اللي بتتعرض بصفحة الصفقة بدل «Confidence ٩٥٪». */
+      conditions: decision.readiness?.rows || null,
+      conditionsMet: decision.readiness?.metCount ?? null,
+      conditionsTotal: decision.readiness?.totalCount ?? null,
+      /* سلسلة الدخول الفعلية: الكتلة → الثلث → SMT → CISD. */
+      chain: decision.skV2?.activeSetup?.chain || null,
+      blockLevels: decision.skV2?.activeSetup?.block?.levels || null,
+      direction: decision.direction || null,
       session: decision.session || null,
       sessionLabel: decision.sessionLabel || null,
-      ob: decision.ob || null,
       sequence: decision.sequence || null,
-      reasonsChecklist: decision.reasonsChecklist || null,
     },
     status: "Open",
     source: "QAIS AI",

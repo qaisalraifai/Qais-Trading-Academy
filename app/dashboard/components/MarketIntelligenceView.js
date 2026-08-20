@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowDownToLine, ArrowUpToLine, BarChart3, Bell, Blocks, Brain, ChevronDown, ChevronRight, CircleCheck as CheckCircle2, Clock, Crown, Droplets, ExternalLink, Eye, Layers, LayoutGrid, Radio, RefreshCw, RotateCcw, Rows3, Sparkles, Target, TrendingDown, TrendingUp, Zap } from "lucide-react";
 import { ASSETS, getAssetByValue } from "@/lib/assets";
 import { analyzeSymbol, getCorrelatedSymbol } from "@/lib/qais/engine";
+import { radarRow } from "@/lib/qais/symbol-readiness";
 import { createClient } from "@/lib/supabase-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
@@ -305,15 +306,21 @@ function DataTabBar({ active, onSelect, counts }) {
   );
 }
 
+/* ⚠️ كانت ست حالات (`green`/`blue`/`yellow`/`orange`/`red`/`gray`) مشتقّة من
+   عتبات على `radarScore` بـ`decision.js`. المحرك انشال، وما ضل إلا سؤال واحد
+   له جواب واحد: **السلسلة اكتملت ولا لأ**.
+
+   `neutral` = كل الكتل لسا بتستنى شرطاً. `gray` = الرمز ما انحسب أبداً. */
 function radarStatusMeta(it) {
   const MAP = {
     green: { color: GREEN, label: it?.radar_signal_label || _t("radar.strongBuy") },
-    blue: { color: BLUE, label: it?.radar_signal_label || _t("radar.buySetup") },
-    yellow: { color: "#F0A13C", label: it?.radar_signal_label || _t("radar.neutralWaiting") },
-    orange: { color: AMBER, label: it?.radar_signal_label || _t("radar.sellSetup") },
-    red: { color: RED, label: it?.radar_signal_label || _t("radar.strongSell") },
-    gray: { color: "#6E6690", label: it?.radar_signal_label || _t("radar.noSetup") },
+    neutral: { color: AMBER, label: _t("radar.neutralWaiting") },
+    gray: { color: "#6E6690", label: _t("radar.noSetup") },
   };
+  if (it?.radar_status === "green") {
+    /* الاتجاه بيحدد التسمية — شراء ولا بيع. */
+    return { color: it.direction === "down" ? RED : GREEN, label: it.radar_signal_label || _t("radar.strongBuy") };
+  }
   return MAP[it?.radar_status] || MAP.gray;
 }
 
@@ -462,73 +469,6 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       const analysis = analyzeSymbol({ symbol, candlesByTF, correlated, newsBlocked });
       if (analysis.error) throw new Error(analysis.error);
 
-      /* ============ تشخيص مؤقت — احذف هالكتلة بعد ما نحل موضوع الـOB ============ */
-      try {
-        const d = analysis.lastTradeDebug || {};
-        const iso = (x) => (x ? new Date(x * 1000).toISOString().replace("T", " ").slice(0, 16) : "—");
-        const L = (m) => console.log(m);
-
-        L(`%c[QAIS] ${symbol} · فريم ${d.timeframe} · مترابط ${d.correlated || "—"}`, "color:#D4AF37;font-weight:bold");
-        L(`  BOS: ${d.bosCandidates ?? 0} · كتل: ${d.obZoneCount ?? 0} · SMT: ${d.hasSmtCtx ? "موجود" : "مفقود"}`);
-
-        if (analysis.lastTrade) {
-          const t = analysis.lastTrade;
-          L(`  ✅ صفقة: ${t.direction} · دخول ${t.entry.price} @ ${iso(t.entry.time)}`);
-        } else {
-          const rej = d.rejections || [];
-          const byReason = {};
-          for (const r of rej) byReason[r.reason] = (byReason[r.reason] || 0) + 1;
-          L("  ❌ ما في صفقة. توزيع أسباب الرفض:");
-          Object.entries(byReason)
-            .sort((x, y) => y[1] - x[1])
-            .forEach(([reason, n]) => L(`      ${String(n).padStart(3)} ×  ${reason}`));
-          L("  آخر ٥ مرشّحات:");
-          const n1 = (v) => (Number.isFinite(v) ? v.toFixed(1) : "—");
-          rej.slice(0, 5).forEach((r) => {
-            L(`      ${iso(r.bosTime)}  ${r.dir}  →  ${r.reason}`);
-            if (Number.isFinite(r.origin)) {
-              L(`          نقاط: 0=${n1(r.origin)}  A=${n1(r.A)}  B=${n1(r.B)}  من ${iso(r.originTime)}`);
-            }
-            if (r.obSameDir != null) {
-              L(
-                `          كتل بنفس الاتجاه: ${r.obSameDir} · ضمن نطاق الساق [${n1(r.legLo)}–${n1(r.legHi)}]: ${r.obInLegRange}` +
-                  ` · بلا مطابقة وقت: ${r.obTimedOut}`
-              );
-            }
-            if (r.entryPrice != null) {
-              L(
-                `          لمسة عند ${n1(r.entryPrice)} @ ${iso(r.entryTime)} (كتلة ${n1(r.obBottom)}–${n1(r.obTop)})` +
-                  ` · أحداث بعدها: أصلنا ${r.evAafter} / المترابط ${r.evBafter}`
-              );
-            }
-            if (r.evA != null) L(`          أحداث هيكلية: أصلنا ${r.evA} / المترابط ${r.evB}`);
-          });
-        }
-
-        const sd = analysis.obScanDebug || {};
-        if (sd.legs) {
-          L(`  مسح الكتل: ${sd.candleCount} شمعة · ${sd.fvgCount} FVG · ${sd.legs.length} ساق`);
-          sd.legs.slice(-6).forEach((l) =>
-            L(`      ساق ${l.dir} [${l.from}→${l.to}]  سعر ${l.priceFrom?.toFixed(0)}→${l.priceTo?.toFixed(0)}  كتل: ${l.obs}`)
-          );
-        }
-        const obs = analysis.orderBlocks || [];
-        L(`  كتل الأوامر (${obs.length}) — أقرب ٨ للسعر ${analysis.price}:`);
-        [...obs]
-          .filter((o) => o.levels?.mt != null)
-          .sort((p, q) => Math.abs(p.levels.mt - analysis.price) - Math.abs(q.levels.mt - analysis.price))
-          .slice(0, 8)
-          .forEach((o) =>
-            L(
-              `      ${iso(o.time)}  ${o.direction === "up" ? "OB+" : "OB-"}  ${String(o.status).padEnd(7)}` +
-                ` MT ${o.levels.mt?.toFixed(1)}  Open ${o.levels.open?.toFixed(1)}  Close ${o.levels.close?.toFixed(1)}` +
-                `  FVG ${o.levels.fvg?.toFixed(1)}  Wick ${o.levels.outerWick?.toFixed(1)}`
-            )
-          );
-      } catch (e) {
-        console.warn("[QAIS] فشل التشخيص:", e);
-      }
-      /* ============ نهاية التشخيص المؤقت ============ */
 
       setAllCandles(candlesByTF);
       setResult(analysis);
@@ -545,33 +485,9 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       // بس بيانات بعمرين مختلفين). باقي الرموز غير المفتوحة حالياً بتضل من الكرون
       // لحد ما توصل دورتها الحية الخاصة فيها.
       setRadarItems((prev) => {
-        const patched = {
-          symbol,
-          status: analysis.status,
-          score: analysis.score,
-          direction: analysis.direction,
-          price: analysis.price,
-          timeframe: analysis.timeframe,
-          reason_tags: analysis.reasonTags,
-          decision: analysis,
-          updated_at: new Date().toISOString(),
-          radar_status: analysis.radarStatus,
-          radar_score: analysis.radarScore,
-          radar_signal_label: analysis.radarSignalLabel,
-          radar_signal_strength: analysis.radarSignalStrengthLabel,
-          htf_trend: analysis.htfTrend,
-          market_structure: analysis.marketStructure,
-          bos_status: analysis.bosStatus,
-          choch_status: analysis.chochStatus,
-          fvg_status: analysis.fvgStatus,
-          liquidity_status: analysis.liquidityStatus,
-          premium_discount: analysis.premiumDiscount,
-          session: analysis.session,
-          session_label: analysis.sessionLabel,
-          entry_status: analysis.entryStatus,
-          risk_reward: analysis.riskReward,
-          why: analysis.why,
-        };
+        /* ⚠️ نفس `radarRow` اللي بيستعمله الكرون — مصدر واحد للشكل.
+           قبل هيك كان كل واحد بيبني صفه بإيده فصار ممكن يتناقضوا. */
+        const patched = { ...radarRow(analysis), decision: analysis, updated_at: new Date().toISOString() };
         const idx = prev.findIndex((i) => i.symbol === symbol);
         if (idx === -1) return [...prev, patched];
         const next = prev.slice();
@@ -1010,8 +926,11 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       if (lo != null) add(lo, `#3D2F63`, `POI ${poi.type}`);
       if (hi != null && hi !== lo) add(hi, `#3D2F63`, `POI ${poi.type}`);
     }
-    if (r.ob?.eligible && r.ob.status !== "Invalid" && !r.tradeValid) {
-      add(r.ob.levels.mt, `${NEUTRAL}88`, `MT (${r.ob.status})`);
+    /* ⚠️ كان `r.ob` من `orderblock.js` المشال. صار مستوى MT للكتلة
+       المُمثِّلة بالسلسلة الجديدة — نفس المستوى اللي بتقيسه `levelsFromGroup`. */
+    if (!r.tradeValid) {
+      const repMt = r.skV2?.setups?.find((s) => s.blockId === r.readiness?.blockId)?.levels?.mt;
+      if (repMt != null) add(repMt, `${NEUTRAL}88`, `MT (${r.readiness?.waitingFor || "—"})`);
     }
   }
 
@@ -1045,31 +964,33 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   const chartVolume = useMemo(() => lastVolume(dailyCandles), [dailyCandles]);
 
   /* -------- Live Market Status Bar (الهيدر) — تجميع حي من radarItems الحقيقية -------- */
+  /* ⚠️ كان مبنياً على `radar_score` — نسبة من مجموع موزون بـ`decision.js`.
+     صار مبنياً على **عدّ الشروط المتحققة** (`readiness.metCount`) و«في صفقة
+     ولا لأ» (`radar_status === "green"`). ما في متوسط نسب ولا «الأقوى ٩٥٪». */
   const marketStatus = useMemo(() => {
-    const withScore = radarItems.filter((i) => (i.radar_score ?? i.score ?? 0) > 0);
-    const active = radarItems.filter((i) => ["green", "blue", "orange", "red"].includes(i.radar_status));
-    const strongest = withScore.length
-      ? withScore.reduce((a, b) => ((b.radar_score ?? b.score ?? 0) > (a.radar_score ?? a.score ?? 0) ? b : a))
-      : null;
-    const weakest = withScore.length
-      ? withScore.reduce((a, b) => ((b.radar_score ?? b.score ?? 0) < (a.radar_score ?? a.score ?? 0) ? b : a))
-      : null;
+    const metOf = (i) => i.decision?.readiness?.metCount ?? null;
+    const withMap = radarItems.filter((i) => metOf(i) != null);
+    const active = radarItems.filter((i) => i.radar_status === "green");
+    /* الأبعد بالسلسلة والأقرب لبدايتها — عدّ صريح، مش ترتيب بنسبة. */
+    const closest = withMap.length ? withMap.reduce((a, b) => (metOf(b) > metOf(a) ? b : a)) : null;
+    const furthest = withMap.length ? withMap.reduce((a, b) => (metOf(b) < metOf(a) ? b : a)) : null;
     const bullish = active.filter((i) => i.direction === "up").length;
     const bearish = active.filter((i) => i.direction === "down").length;
     const totalDir = bullish + bearish;
     const biasLbl = totalDir === 0 ? "Neutral" : bullish >= bearish ? "Bullish" : "Bearish";
-    const avgConfidence = withScore.length
-      ? Math.round(withScore.reduce((s, i) => s + (i.radar_score ?? i.score ?? 0), 0) / withScore.length)
-      : null;
     const lastScan = radarItems.reduce((max, i) => (i.updated_at && (!max || new Date(i.updated_at) > new Date(max)) ? i.updated_at : max), null);
     return {
       lastScan,
       scanned: radarItems.length,
       activeCount: active.length,
-      strongest,
-      weakest,
+      /* الأسماء انحفظت عشان المستهلكين، بس المعنى تغيّر: مش «الأقوى» بل
+         **الأقرب لاكتمال السلسلة**. */
+      strongest: closest,
+      weakest: furthest,
       biasLbl,
-      avgConfidence,
+      /* عدّاد بدل نسبة: كم رمز سلسلته اكتملت من كم رمز مفحوص. */
+      readyCount: active.length,
+      mappedCount: withMap.length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [radarItems]);
@@ -1080,7 +1001,8 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     const currencies = snapshot?.currencies || {};
     const entries = Object.entries(currencies).filter(([, v]) => v != null);
     const strongestCcy = entries.length ? entries.reduce((a, b) => (b[1] > a[1] ? b : a)) : null;
-    const qualitySetups = radarItems.filter((i) => (i.radar_score ?? i.score ?? 0) >= 80).length;
+    /* ⚠️ كان «نسبة ≥ ٨٠». صار: كم رمز اكتملت سلسلته فعلاً. */
+    const qualitySetups = radarItems.filter((i) => i.radar_status === "green").length;
     const leadAsset = marketStatus.strongest;
     const leadAssetSymbol = leadAsset ? (getAssetByValue(leadAsset.symbol)?.label || leadAsset.symbol) : null;
 
@@ -1091,17 +1013,16 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         : t("radar.marketRemainsOverall", { bias: t(marketStatus.biasLbl === "Bullish" ? "radar.dBullish" : "radar.dBearish") })
     );
     if (leadAsset) {
-      const zone = leadAsset.decision?.premiumDiscount;
       const dirTxt =
         leadAsset.direction === "up"
           ? t("radar.dirTxtBullish")
           : leadAsset.direction === "down"
           ? t("radar.dirTxtBearish")
           : t("radar.dirTxtRanging");
-      const zoneNote =
-        zone && zone !== "—"
-          ? t("radar.leadSetupZoneNote", { zone: (zone === "Premium Zone" ? t("radar.dPremiumZone") : zone === "Discount Zone" ? t("radar.dDiscountZone") : zone).toLowerCase() })
-          : "";
+      /* ⚠️ كان بيقول «بمنطقة Premium/Discount» — من `decision.js` المشال.
+         صار بيقول الشرط اللي واقف عنده فعلاً، وهو سطر بالخريطة. */
+      const waiting = leadAsset.decision?.readiness?.waitingFor;
+      const zoneNote = waiting ? t("radar.leadSetupWaitingNote", { condition: waiting }) : "";
       lines.push(t("radar.leadSetupLine", { symbol: leadAssetSymbol, dirTxt, zoneNote }));
     }
     if (strongestCcy) {
@@ -1159,7 +1080,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
         .qmi-liq-row {
           display: grid;
-          grid-template-columns: 1.1fr 0.8fr 0.7fr 1.3fr 1.2fr 1.1fr 1fr 0.8fr 1.2fr;
+          grid-template-columns: 1.1fr 0.8fr 0.7fr 1.6fr 1.3fr 0.8fr 1.2fr;
           align-items: center;
           gap: 8px;
           padding: 10px 12px;
@@ -1292,10 +1213,14 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           {loading ? t("radar.analyzing") : t("radar.aiAnalyze")}
         </button>
 
+        {/* ⚠️ كانت «الثقة ٧٥٪» — رقم من مجموع موزون ثابت. صارت عدّ الشروط
+            المتحققة من الخريطة: كل واحدة سطر بيرجع لقاعدة بالمنهجية. */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#1C1630", border: `1px solid ${GREEN}40`, borderRadius: 20, padding: "6px 12px" }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: GREEN }} className="qmi-dot" />
-          <span style={{ fontSize: 11.5, color: "#aaa" }}>{t("radar.confidence")}</span>
-          <span style={{ fontSize: 13, fontWeight: 800, color: GREEN }}>{result?.aiConfidence ?? result?.radarScore ?? 0}%</span>
+          <span style={{ fontSize: 11.5, color: "#aaa" }}>{t("radar.conditions")}</span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: GREEN }}>
+            {result?.readiness?.metCount != null ? `${result.readiness.metCount}/${result.readiness.totalCount}` : "—"}
+          </span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#141024", border: "1px solid #1C1630", borderRadius: 20, padding: "6px 12px" }}>
@@ -1590,22 +1515,31 @@ function DataQualityBanner({ quality }) {
 
 function LiveMarketStatusBar({ status }) {
   const { t } = useLocale();
-  const { lastScan, scanned, activeCount, strongest, weakest, biasLbl, avgConfidence } = status;
+  const { lastScan, scanned, activeCount, strongest, weakest, biasLbl, readyCount, mappedCount } = status;
   const biasColor = biasLbl === "Bullish" ? GREEN : biasLbl === "Bearish" ? RED : "#6E6690";
+
+  /* عدّ الشروط المتحققة لرمز — من خريطته، مش نسبة. */
+  const cond = (it) => {
+    const m = it?.decision?.readiness?.metCount;
+    const n = it?.decision?.readiness?.totalCount;
+    return m != null && n != null ? `${m}/${n}` : "—";
+  };
 
   const items = [
     { label: t("radar.lastScan"), value: lastScan ? relTime(lastScan, t) : "—", icon: <Radio size={13} color={BLUE} /> },
     { label: t("radar.assetsScanned"), value: scanned, icon: <Eye size={13} color={GOLD_LIGHT} /> },
     { label: t("radar.activeOpportunities"), value: activeCount, icon: <Zap size={13} color={GOLD} /> },
+    /* ⚠️ «الأقوى/الأضعف» كانوا ترتيباً بنسبة مخترعة. صاروا **الأقرب/الأبعد
+       عن اكتمال السلسلة** بعدّ الشروط. */
     {
-      label: t("radar.strongestAsset"),
-      value: strongest ? `${strongest.symbol} · ${strongest.radar_score ?? strongest.score}%` : "—",
+      label: t("radar.closestToEntry"),
+      value: strongest ? `${strongest.symbol} · ${cond(strongest)}` : "—",
       icon: <TrendingUp size={13} color={GREEN} />,
       color: GREEN,
     },
     {
-      label: t("radar.weakestAsset"),
-      value: weakest ? `${weakest.symbol} · ${weakest.radar_score ?? weakest.score}%` : "—",
+      label: t("radar.furthestFromEntry"),
+      value: weakest ? `${weakest.symbol} · ${cond(weakest)}` : "—",
       icon: <TrendingDown size={13} color={RED} />,
       color: RED,
     },
@@ -1616,8 +1550,9 @@ function LiveMarketStatusBar({ status }) {
       color: biasColor,
     },
     {
-      label: t("radar.marketConfidence"),
-      value: avgConfidence != null ? `${avgConfidence}%` : "—",
+      /* ⚠️ كان «ثقة السوق ٧٣٪» = متوسط نسب مخترعة. صار عدّ صريح. */
+      label: t("radar.completeChains"),
+      value: mappedCount ? `${readyCount} / ${mappedCount}` : "—",
       icon: <Brain size={13} color={GOLD} />,
     },
   ];
@@ -2211,7 +2146,7 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
 
   const rows = [
     { y: entryY, color: GOLD_LIGHT, dash: [2, 3], lines: ["ENTRY", fmt(r.entry)] },
-    { y: slY, color: RED, dash: [2, 3], lines: [`SL · ${r.slSource === "SMT" ? "SMT" : _t("radar.obInvalidation")}`, fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`] },
+    { y: slY, color: RED, dash: [2, 3], lines: ["SL · SMT", fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`] },
   ];
   targets.forEach((t) => {
     const y = priceToY(t.price);
@@ -2456,7 +2391,7 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10, marginBottom: 16 }}>
-        <TradeCardStat label={t("radar.confidence")} value={`${r.aiConfidence ?? r.radarScore ?? 0}%`} color={GOLD_LIGHT} />
+        <TradeCardStat label={t("radar.conditions")} value={r.readiness?.metCount != null ? `${r.readiness.metCount}/${r.readiness.totalCount}` : "—"} color={GOLD_LIGHT} />
         <TradeCardStat label={t("radar.entry")} value={fmt(r.entry)} />
         <TradeCardStat label={t("radar.stopLoss")} value={fmt(r.stopLoss)} color={RED} />
         <TradeCardStat label="TP1" value={fmt(tps[0])} color={GREEN} />
@@ -2519,63 +2454,50 @@ function TradeCardStat({ label, value, color = "#F5F3FF" }) {
    ============================================================================ */
 function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
   const { t } = useLocale();
-  // Single source of truth: every value below reads directly from the same
-  // decision object (r) that Active Opportunities / Liquidity Map / AI
-  // Briefing also read — nothing here is recomputed independently anymore.
-  const STATUS_COLOR = { green: GREEN, blue: BLUE, orange: AMBER, yellow: "#F0A13C", red: RED, gray: "#6E6690" };
-  const scoreColor = STATUS_COLOR[r?.radarStatus] || "#6E6690";
-  // Quality Score = how complete the setup is. AI Confidence = how likely it is to play out.
-  // Shown separately and labeled — see decision.js for the full definitions.
-  const qualityScore = r?.qualityScore ?? r?.score ?? 0;
-  const aiConfidence = r?.aiConfidence ?? r?.radarScore ?? 0;
-  const signalColor = signal === "BUY" ? GREEN : signal === "SELL" ? RED : "#6E6690";
+  /* ============================================================================
+     ⚠️ هاللوحة كانت بتعرض `aiConfidence` و`qualityScore` كنسبتين مئويتين مع
+     قرص دائري. الاتنين كانوا مجاميع موزونة ثابتة بـ`decision.js` — ما في
+     نموذج ولا تكامل LLM بالمشروع، فالنسبة كانت بتوهم بدقة غير موجودة.
 
-  const htfTrend = r?.htfTrend ?? (r?.context?.weekly?.trend || r?.structureLadder?.[0]?.trend || r?.direction);
-  const marketStructure = r?.marketStructure || (r?.direction === "up" ? t("radar.hhHl") : r?.direction === "down" ? t("radar.lhLl") : "—");
-  const bosOk = r?.bosStatus === "Detected";
-  const chochOk = r?.chochStatus === "Detected";
-  const liquidityLabel = r?.liquidityStatus || t("radar.notSwept");
-  const premiumDiscount = r?.premiumDiscount || "—";
-  const volume = r?.volumeConfirmed ? t("radar.levelHigh") : r?.ob?.eligible ? t("radar.levelMedium") : t("radar.levelLow");
-  // entryStatus and signalStrength come straight from the engine — both are
-  // gated by the same tradeValid boolean as `signal`, so they can never say
-  // "Ready" / t("radar.strong") while signal says WAIT.
+     وكمان كانت بتعرض `marketStructure` · `bosStatus` · `chochStatus` ·
+     `liquidityStatus` · `premiumDiscount` · `volumeConfirmed` — كلها من
+     نفس المحرك المشال. (و«CHOCH» أصلاً **مش من المنهجية**: ما في CHOCH
+     لا كنوع ولا كمرحلة.)
+
+     البديل: **خريطة الشروط**. كل سطر بيرجع لقاعدة إلها رقم واسم، وحالته
+     صريحة، والعدّاد `metCount/totalCount` عدّ مش نسبة مرجّحة.
+     ============================================================================ */
+  const rd = r?.readiness ?? null;
+  const met = rd?.metCount ?? null;
+  const total = rd?.totalCount ?? null;
+  const signalColor = signal === "BUY" ? GREEN : signal === "SELL" ? RED : "#6E6690";
+  const ringColor = r?.tradeValid ? GREEN : met != null && total ? GOLD : "#6E6690";
+  /* نسبة القوس = **عدّ الشروط نفسه**، مش رقم مشتق. والنص جوّاه بيقول
+     «٦/١٠» مش «٦٠٪» حتى ما ينقرا كثقة. */
+  const ringDeg = met != null && total ? (met / total) * 360 : 0;
+
   const entryStatus = r?.entryStatus || t("radar.monitoring");
-  const signalStrength = r?.radarSignalStrengthLabel || "—";
   const lastTarget = r?.targets?.[r.targets.length - 1];
   const rr = lastTarget && r?.entry != null && r?.stopLoss != null
     ? Math.abs(lastTarget.price - r.entry) / Math.abs(r.entry - r.stopLoss)
     : null;
 
-  // -------- تسلسل الأهمية البصرية (نفس القيم المحسوبة فوق تماماً، فقط إعادة تنظيم للعرض) --------
-  // Tier 1: أهم شي يشوفه المتداول أول ثانية — Signal / Confidence / Current Status / Session
+  const MARK = { met: "✓", pending: "⋯", unknown: "?" };
+  const ROW_COLOR = { met: GREEN, pending: GOLD, unknown: "#6E6690" };
+
+  // -------- Tier 1: أول ثانية — إشارة · عدّ الشروط · الحالة · الجلسة --------
   const tier1 = [
     { label: t("radar.signal"), value: signal || "—", color: signalColor },
-    { label: t("radar.aiConfidence"), value: `${aiConfidence}%`, color: scoreColor },
-    { label: t("radar.qualityScore"), value: `${qualityScore}%`, color: qualityScore >= 80 ? GREEN : qualityScore >= 50 ? GOLD_LIGHT : "#6E6690" },
+    { label: t("radar.conditions"), value: met != null ? `${met} / ${total}` : "—", color: ringColor },
     { label: t("radar.currentStatus"), value: entryStatus, color: entryStatus === "Ready" ? GREEN : GOLD_LIGHT },
     { label: t("radar.session"), value: primarySession, color: BLUE },
   ];
-  // Tier 2: اتجاه وهيكلية السوق
-  const tier2 = [
-    { label: t("radar.trend"), value: r?.direction === "up" ? "Bullish" : r?.direction === "down" ? "Bearish" : "—", color: r?.direction === "up" ? GREEN : r?.direction === "down" ? RED : "#6E6690" },
-    { label: t("radar.htfTrend"), value: htfTrend === "up" ? "Bullish" : htfTrend === "down" ? "Bearish" : "—", color: htfTrend === "up" ? GREEN : htfTrend === "down" ? RED : "#6E6690" },
-    { label: t("radar.marketStructure"), value: marketStructure },
-    { label: t("radar.liquidity"), value: liquidityLabel },
-  ];
-  // Tier 3: تفاصيل الأكشن السعري
-  const tier3 = [
-    { label: t("radar.orderBlock"), value: r?.ob?.eligible ? `${r.ob.status} ${r.direction === "up" ? "Bullish" : "Bearish"} OB` : t("radar.notFormed") },
-    { label: t("radar.fvg"), value: r?.ob?.fvgExists ? "Open" : "None" },
-    { label: "CHOCH", value: chochOk ? t("radar.confirmed") : t("radar.pending"), color: chochOk ? GREEN : "#6E6690" },
-    { label: "BOS", value: bosOk ? t("radar.confirmed") : t("radar.pending"), color: bosOk ? GREEN : "#6E6690" },
-  ];
-  // معلومات إضافية (Premium/Discount, Volume, Signal Strength) — نفس القيم القديمة، منعرضها ضمن تير 3 كصف ثاني
-  const tier3b = [
-    { label: t("radar.premiumDiscount"), value: premiumDiscount },
-    { label: t("radar.volume"), value: volume },
-    { label: t("radar.signalStrength"), value: signalStrength },
-  ];
+  // -------- Tier 2: الاتجاه لكل فريم — من سلّم الهيكل المقيس مباشرة --------
+  const tier2 = (r?.structureLadder || []).map((s) => ({
+    label: `${s.timeframe.toUpperCase()}${s.isMain ? " ★" : ""}`,
+    value: s.trend === "up" ? "Bullish" : s.trend === "down" ? "Bearish" : "—",
+    color: s.trend === "up" ? GREEN : s.trend === "down" ? RED : "#6E6690",
+  }));
 
   return (
     <div style={{ ...glass, padding: "1rem", display: "flex", flexDirection: "column", gap: 12, maxHeight: CHART_H + 56, overflowY: "auto" }} className="qmi-scroll">
@@ -2598,15 +2520,17 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
                 {signal}
               </span>
             )}
+            {/* القوس = عدّ الشروط المتحققة نفسه. النص جوّاه «٦/١٠» مش «٦٠٪». */}
             <div
               style={{
                 width: 58, height: 58, borderRadius: "50%", flexShrink: 0,
-                background: `conic-gradient(${scoreColor} ${aiConfidence * 3.6}deg, #1C1630 0deg)`,
+                background: `conic-gradient(${ringColor} ${ringDeg}deg, #1C1630 0deg)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
               <div style={{ width: 46, height: 46, borderRadius: "50%", background: "#141024", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: "#F5F3FF" }}>{aiConfidence}%</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: "#F5F3FF" }}>{met != null ? `${met}/${total}` : "—"}</span>
+                <span style={{ fontSize: 8, color: "#6E6690" }}>{t("radar.conditions")}</span>
               </div>
             </div>
           </div>
@@ -2656,28 +2580,39 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
                 </div>
               </div>
 
-              {/* -------- Tier 2: اتجاه وهيكلية السوق -------- */}
-              <div>
-                <TierLabel text="Trend &amp; Structure" />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
-                  {tier2.map((it) => (
-                    <PriorityStat key={it.label} label={it.label} value={it.value} color={it.color} size="md" />
-                  ))}
+              {/* -------- Tier 2: الاتجاه لكل فريم — من سلّم الهيكل المقيس -------- */}
+              {tier2.length > 0 && (
+                <div>
+                  <TierLabel text={t("radar.trendByTimeframe")} />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+                    {tier2.map((it) => (
+                      <PriorityStat key={it.label} label={it.label} value={it.value} color={it.color} size="md" />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* -------- Tier 3: تفاصيل الأكشن السعري -------- */}
-              <div>
-                <TierLabel text={t("radar.priceActionDetail")} />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                  {tier3.map((it) => (
-                    <PriorityStat key={it.label} label={it.label} value={it.value} color={it.color} size="sm" />
-                  ))}
-                  {tier3b.map((it) => (
-                    <PriorityStat key={it.label} label={it.label} value={it.value} color={it.color} size="sm" />
-                  ))}
+              {/* -------- Tier 3: خريطة الشروط — بديل «تفاصيل الأكشن السعري» -------- */}
+              {rd?.rows?.length > 0 && (
+                <div>
+                  <TierLabel text={t("radar.conditionsMap")} />
+                  <div style={{ display: "grid", gap: 3 }}>
+                    {rd.rows.map((x) => (
+                      <div
+                        key={x.id}
+                        style={{ display: "flex", gap: 7, fontSize: 11.5, alignItems: "baseline", background: "#141024", borderRadius: 3, padding: "5px 8px" }}
+                      >
+                        <span style={{ color: ROW_COLOR[x.state], width: 11, flexShrink: 0 }}>{MARK[x.state]}</span>
+                        <span style={{ color: "#6E6690", width: 26, flexShrink: 0, fontFamily: "ui-monospace, monospace" }}>{x.id}</span>
+                        <span style={{ color: "#C4B5FD", minWidth: 78, flexShrink: 0 }}>{x.label}</span>
+                        <span style={{ color: "#8B84A8", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {x.note || x.detail}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* -------- أخيراً: مستويات الصفقة -------- */}
               <div>
@@ -2691,21 +2626,31 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
               </div>
             </div>
           ) : (
+            /* ⚠️ كان بيعرض `reasonTags` و`reasonsChecklist` من `decision.js`
+               وينهي بـ«Quality Score ‎/100». صار بيعرض **نفس** الخريطة بس
+               بالملاحظة كاملة لكل شرط — الطالب بيقرا ليش، مش كم النسبة. */
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {r.reasonTags?.length > 0 && (
-                <div style={{ fontSize: 12, color: "#A79FC4", lineHeight: 1.7 }}>
-                  {t("radar.signalBasedOn")} <b style={{ color: GOLD_LIGHT }}>{r.reasonTags.join(" + ")}</b>
-                </div>
-              )}
-              {(r.reasonsChecklist || []).map((c) => (
-                <div key={c.key} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: c.ok ? "#ddd" : "#6E6690" }}>
-                  <span style={{ color: c.ok ? GREEN : "#4A4368" }}>{c.ok ? "✓" : "○"}</span>
-                  <span>{c.label}</span>
+              <div style={{ fontSize: 12, color: "#A79FC4", lineHeight: 1.7 }}>
+                {r.tradeValid
+                  ? t("radar.allConditionsMet")
+                  : rd?.waitingFor
+                    ? t("radar.waitingOnCondition", { condition: rd.waitingFor })
+                    : t("radar.conditionsPending")}
+              </div>
+              {(rd?.rows || []).map((x) => (
+                <div key={x.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: x.state === "met" ? "#ddd" : "#6E6690" }}>
+                  <span style={{ color: ROW_COLOR[x.state], flexShrink: 0 }}>{MARK[x.state]}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <b style={{ color: "#C4B5FD" }}>{x.id}</b> {x.label}
+                    {(x.note || x.detail) && <span style={{ color: "#6E6690" }}> — {x.note || x.detail}</span>}
+                  </span>
                 </div>
               ))}
-              <div style={{ fontSize: 11, color: "#6E6690", marginTop: 6, lineHeight: 1.7 }}>
-                QAIS Quality Score: {qualityScore}/100 — {r.tradeValid ? t("radar.allConditionsMet") : t("radar.conditionsPending")}
-              </div>
+              {met != null && (
+                <div style={{ fontSize: 11, color: "#6E6690", marginTop: 6, lineHeight: 1.7 }}>
+                  {met} / {total} {t("radar.conditionsMetSuffix")}
+                </div>
+              )}
             </div>
           )}
         </>
@@ -3014,9 +2959,12 @@ function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
   // بدل ما يظهر كفرصة "جاهزة" جديدة — هيك ما بيصير التعارض (يشوف الطالب
   // BUY جاهزة، يضغط، ويلاقي صفقة SELL شغّالة من قبل بدل ما ينفّذ اللي شافه).
   const { ready, forming, openPositions } = useMemo(() => {
-    const order = { green: 0, blue: 1, orange: 2, red: 3, yellow: 4, gray: 5 };
+    /* ⚠️ الترتيب كان بالنسبة (`radar_score`). صار بـ**عدّ الشروط المتحققة** —
+       الأقرب لاكتمال السلسلة أول. */
+    const order = { green: 0, neutral: 1, gray: 2 };
+    const metOf = (i) => i.decision?.readiness?.metCount ?? -1;
     const byScore = (a, b) =>
-      (order[a.radar_status] ?? 9) - (order[b.radar_status] ?? 9) || (b.radar_score ?? b.score ?? 0) - (a.radar_score ?? a.score ?? 0);
+      (order[a.radar_status] ?? 9) - (order[b.radar_status] ?? 9) || metOf(b) - metOf(a);
     const hasOpenTrade = (i) => openTradeSymbols?.has(i.symbol);
     const ready = items.filter((i) => i.entry_status === "Ready" && !hasOpenTrade(i)).sort(byScore);
     const forming = items.filter((i) => i.entry_status !== "Ready" && !hasOpenTrade(i)).sort(byScore);
@@ -3051,7 +2999,9 @@ function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
               const isReady = it.entry_status === "Ready";
               const dirLabel = it.direction === "up" ? (isReady ? "BUY" : t("radar.buyBias")) : it.direction === "down" ? (isReady ? "SELL" : t("radar.sellBias")) : "—";
               const dirColor = it.direction === "up" ? GREEN : it.direction === "down" ? RED : "#6E6690";
-              const confidence = it.radar_score ?? it.score ?? 0;
+              /* عدّ الشروط من الخريطة — بديل النسبة. */
+              const rMet = it.decision?.readiness?.metCount ?? null;
+              const rTotal = it.decision?.readiness?.totalCount ?? null;
               return (
                 <button
                   key={it.symbol}
@@ -3084,8 +3034,10 @@ function LiveOpportunitiesCard({ items, openTradeSymbols, onOpen, nowTick }) {
                   </div>
 
                   <div style={{ textAlign: "left", flexShrink: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 800, color: confidence >= 80 ? GREEN : confidence >= 60 ? GOLD_LIGHT : "#A79FC4" }}>{confidence}%</div>
-                    <div style={{ fontSize: 8, color: "#6E6690" }}>{t("radar.score")}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 800, color: isReady ? GREEN : "#A79FC4" }}>
+                      {rMet != null ? `${rMet}/${rTotal}` : "—"}
+                    </div>
+                    <div style={{ fontSize: 8, color: "#6E6690" }}>{t("radar.conditions")}</div>
                   </div>
                 </button>
               );
@@ -3120,7 +3072,8 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
     () =>
       [...items]
         .filter((i) => i.decision)
-        .sort((a, b) => (b.radar_score ?? b.score ?? 0) - (a.radar_score ?? a.score ?? 0))
+        /* ⚠️ الترتيب بعدّ الشروط المتحققة — مش بنسبة. */
+        .sort((a, b) => (b.decision?.readiness?.metCount ?? -1) - (a.decision?.readiness?.metCount ?? -1))
         .slice(0, limit),
     [items, limit]
   );
@@ -3141,38 +3094,39 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
           <ConceptCard icon={ArrowDownToLine} title={t("radar.belowLow")} lines={[t("radar.sweptLows"), t("radar.takesSellSide")]} color={GREEN} />
           <ConceptCard icon={Blocks} title={t("radar.orderBlock")} lines={[t("radar.obDesc")]} color={GOLD_LIGHT} />
           <ConceptCard icon={Rows3} title={t("radar.fvg")} lines={[t("radar.fvgDesc")]} color={BLUE} />
-          <ConceptCard icon={Target} title={t("radar.qualityScore")} lines={[t("radar.qualityDescLong")]} color={GOLD} />
-          <ConceptCard icon={Brain} title={t("radar.aiConfidence")} lines={[t("radar.confidenceDescLong")]} color={GOLD_LIGHT} />
+          {/* ⚠️ كرتا «Quality Score» و«AI Confidence» انشالوا — الاتنين كانوا
+              بيشرحوا نسبتين من مجموع موزون. البديل بيشرح الخريطة نفسها. */}
+          <ConceptCard icon={Target} title={t("radar.conditionsMap")} lines={[t("radar.conditionsMapDesc")]} color={GOLD} />
+          <ConceptCard icon={Brain} title={t("radar.waitingOn")} lines={[t("radar.waitingOnDesc")]} color={GOLD_LIGHT} />
         </div>
 
         {sorted.length === 0 ? (
           <EmptyNote text={t("radar.waitingFirstCycle")} />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            {/* ⚠️ الأعمدة تغيّرت. راحت: Score و Confidence (نسبتان من مجموع
+                موزون) و FVG و Liquidity Status (من `decision.js` المشال).
+                إجت: عدّ الشروط، والشرط اللي واقفة عنده — الاتنين من الخريطة،
+                وكل واحد بيرجع لقاعدة إلها اسم. */}
             <div className="qmi-liq-row qmi-liq-head">
               <span>{t("radar.symbol")}</span>
               <span>{t("radar.direction")}</span>
-              <span>{t("radar.score")}</span>
-              <span>{t("radar.liquidityStatus")}</span>
+              <span>{t("radar.conditions")}</span>
+              <span>{t("radar.waitingOn")}</span>
               <span>{t("radar.orderBlock")}</span>
-              <span>{t("radar.fvg")}</span>
-              <span>{t("radar.confidence")}</span>
               <span>{t("radar.timeframe")}</span>
               <span>{t("radar.status")}</span>
             </div>
             {sorted.map((it) => {
               const d = it.decision;
-              const swept = !!d?.liquidityStatus?.startsWith?.("Swept");
-              const liqLabel = swept ? (it.direction === "up" ? t("radar.belowLow") : t("radar.aboveHigh")) : d?.liquidityStatus || t("radar.notSwept");
-              const liqColor = swept ? (it.direction === "up" ? GREEN : RED) : "#6E6690";
-              const obLabel = d?.ob?.eligible ? `${it.direction === "up" ? "Bullish" : "Bearish"} OB` : "—";
-              const fvgLabel = d?.fvgStatus || "—";
-              // Quality Score (setup completeness) vs AI Confidence (likelihood to play out) —
-              // two distinct metrics, same numbers Active Opportunities / Analysis Panel show.
-              const score = it.score ?? 0;
-              const confidence = it.radar_score ?? d?.radarScore ?? 0;
-              const confLabel = confidence >= 80 ? t("radar.levelHigh") : confidence >= 50 ? t("radar.levelMedium") : t("radar.levelLow");
-              const confColor = confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : "#6E6690";
+              const rd = d?.readiness ?? null;
+              const rMet = rd?.metCount ?? null;
+              const rTotal = rd?.totalCount ?? null;
+              const isReady = it.entry_status === "Ready";
+              const waitLabel = isReady ? t("radar.allConditionsMet") : rd?.waitingFor || "—";
+              /* الكتلة المُمثِّلة — مستوى MT الفعلي، مش «Bullish OB». */
+              const blockMt = d?.skV2?.setups?.find((s) => s.blockId === rd?.blockId)?.levels?.mt ?? null;
+              const obLabel = blockMt != null ? `MT ${Number(blockMt).toFixed(1)}` : "—";
               const dirLabel = it.direction === "up" ? "BUY" : it.direction === "down" ? "SELL" : "—";
               const dirColor = it.direction === "up" ? GREEN : it.direction === "down" ? RED : "#6E6690";
               const meta = radarStatusMeta(it);
@@ -3195,16 +3149,23 @@ export function LiquidityMapSection({ items, selectedSymbol, onSelect, limit = 8
                   <span data-label={t("radar.direction")}>
                     <span style={{ fontSize: 10, fontWeight: 800, color: dirColor, background: `${dirColor}20`, borderRadius: 3, padding: "3px 8px" }}>{dirLabel}</span>
                   </span>
-                  <span data-label={t("radar.score")} style={{ fontWeight: 800, color: score >= 85 ? GREEN : "#A79FC4" }}>{score}%</span>
-                  <span data-label={t("radar.liquidityStatus")} style={{ color: liqColor, fontWeight: 700 }}>{liqLabel}</span>
-                  <span data-label={t("radar.orderBlock")} style={{ color: d?.ob?.eligible ? GOLD_LIGHT : "#6E6690" }}>{obLabel}</span>
-                  <span data-label={t("radar.fvg")} style={{ color: fvgLabel === "Present" ? BLUE : "#6E6690" }}>{fvgLabel}</span>
-                  <span data-label={t("radar.confidence")} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ width: 34, height: 5, borderRadius: 3, background: "#0E0A1A", overflow: "hidden", flexShrink: 0 }}>
-                      <span style={{ display: "block", height: "100%", width: `${confidence}%`, background: confColor, borderRadius: 3 }} />
+                  {/* الشريط = عدّ الشروط نفسه، والنص جنبه «٦/١٠» مش نسبة. */}
+                  <span data-label={t("radar.conditions")} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 30, height: 5, borderRadius: 3, background: "#0E0A1A", overflow: "hidden", flexShrink: 0 }}>
+                      <span
+                        style={{
+                          display: "block", height: "100%", borderRadius: 3,
+                          width: rMet != null && rTotal ? `${(rMet / rTotal) * 100}%` : "0%",
+                          background: isReady ? GREEN : GOLD,
+                        }}
+                      />
                     </span>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: confColor }}>{confLabel}</span>
+                    <span style={{ fontWeight: 800, color: isReady ? GREEN : "#A79FC4" }}>
+                      {rMet != null ? `${rMet}/${rTotal}` : "—"}
+                    </span>
                   </span>
+                  <span data-label={t("radar.waitingOn")} style={{ color: isReady ? GREEN : GOLD_LIGHT, fontWeight: 700 }}>{waitLabel}</span>
+                  <span data-label={t("radar.orderBlock")} style={{ color: blockMt != null ? GOLD_LIGHT : "#6E6690" }}>{obLabel}</span>
                   <span data-label={t("radar.timeframe")} style={{ color: "#A79FC4", fontWeight: 700 }}>{it.timeframe || "—"}</span>
                   <span data-label={t("radar.status")}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 800, color: meta.color, background: `${meta.color}1f`, borderRadius: 3, padding: "3px 8px" }}>
@@ -3272,6 +3233,16 @@ function translateZoneLabel(zone) {
   return zone;
 }
 
+/* ============================================================================
+   ⚠️ انبنى من جديد على المحرك الجديد (٢٠٢٦-٠٨-٢٠).
+
+   كان بيقرا `htfTrend` · `liquidityStatus` · `premiumDiscount` · `bosStatus` ·
+   `ob.quality` · `reasonsChecklist` · `aiConfidence` — كلها من `decision.js`
+   المشال، وآخرها نسبة من مجموع موزون ثابت.
+
+   المصادر الجديدة كلها مقيسة: سلّم الهيكل، آخر كنسة سيولة فعلية، وخريطة
+   الشروط. و«الثقة» صارت **عدّ شروط** مش نسبة.
+   ============================================================================ */
 function buildAiBriefing(item, d) {
   if (!d) return null;
 
@@ -3279,36 +3250,38 @@ function buildAiBriefing(item, d) {
   const dir = d.direction; // 'up' | 'down' | null
   const dirKey = dir === "up" ? "radar.dBullish" : dir === "down" ? "radar.dBearish" : "radar.dNeutral";
   const dirLabel = _t(dirKey);
-  const htfDirKey = d.htfTrend === "up" ? "radar.dBullish" : d.htfTrend === "down" ? "radar.dBearish" : null;
-  const htfLabel = htfDirKey ? _t(htfDirKey) : null;
-  const liq = d.liquidityStatus || "";
-  const swept = liq.startsWith("Swept");
-  const approaching = liq === "Approaching";
-  const zone = d.premiumDiscount;
+
+  /* اتجاه الفريم الأعلى = أول درجة بالسلّم (external) — مقيس، مش حقل مشتق. */
+  const htfTrend = d.structureLadder?.[0]?.trend ?? null;
+  const htfLabel = htfTrend === "up" ? _t("radar.dBullish") : htfTrend === "down" ? _t("radar.dBearish") : null;
+
+  /* السيولة من آخر كنسة فعلية بـ`liquidity-v2` — بركة إلها سعر ووقت ونوع. */
+  const touched = d.poi?.touchedZone ?? null;
+  const swept = !!touched;
+  const sweptSide = touched?.side ?? null; // 'buy' = كنس قيعان · 'sell' = كنس قمم
   const session = translateSessionLabel(d.sessionLabel) || _t("radar.rightNow");
-  const bosOk = d.bosStatus === "Detected";
-  const obReady = !!d.ob?.eligible && d.ob.status !== "Invalid";
-  const obQuality = d.ob?.quality;
+
+  const rd = d.readiness ?? null;
+  const rows = rd?.rows ?? [];
+  const metOf = (id) => rows.find((x) => x.id === id)?.state === "met";
+  /* R1 = الزخم (أول حدث هيكل بنفس اتجاه الكتلة) — بديل `bosStatus`. */
+  const eventOk = metOf("R1");
+  const blockOk = metOf("R3") && metOf("R6");
   const tradeValid = !!d.tradeValid;
   const targets = d.targets || [];
   const tp1 = targets[0];
   const tpLast = targets[targets.length - 1];
-  // AI Briefing's "confidence" is the same AI Confidence number shown in the
-  // Analysis Panel and Active Opportunities (radarScore) — not the legacy
-  // quality-completeness score, so the briefing never contradicts the rest
-  // of the page.
-  const score = d.aiConfidence ?? d.radarScore ?? d.score ?? 0;
+  const met = rd?.metCount ?? null;
+  const total = rd?.totalCount ?? null;
 
-  /* ---------- 1) Current Market Situation ---------- */
+  /* ---------- 1) وضع السوق الآن ---------- */
   let situation;
   if (!dir) {
     situation = _t("radar.briefNoTrend", { symbol });
   } else {
     let s = _t("radar.briefSituationBase", { symbol, dir: dirLabel });
     if (swept) {
-      s += liq.includes("Below") ? _t("radar.briefSweptBelow") : liq.includes("Above") ? _t("radar.briefSweptAbove") : _t("radar.briefSweptGeneric");
-    } else if (approaching) {
-      s += _t("radar.briefApproaching");
+      s += sweptSide === "buy" ? _t("radar.briefSweptBelow") : sweptSide === "sell" ? _t("radar.briefSweptAbove") : _t("radar.briefSweptGeneric");
     }
     s += ".";
     if (htfLabel && htfLabel !== dirLabel) {
@@ -3316,16 +3289,15 @@ function buildAiBriefing(item, d) {
     } else if (htfLabel && htfLabel === dirLabel) {
       s += _t("radar.briefHtfAlign", { trend: htfLabel });
     }
-    if (zone && zone !== "—") {
-      const favors = (dir === "up" && zone === "Discount Zone") || (dir === "down" && zone === "Premium Zone");
-      const zoneVars = { zone: translateZoneLabel(zone), session };
-      s += favors ? _t("radar.briefZoneFavor", zoneVars) : _t("radar.briefZoneNeutral", zoneVars);
+    if (rd?.waitingFor) {
+      s += _t("radar.briefWaitingOn", { condition: rd.waitingFor, session });
     }
     situation = s;
   }
 
-  /* ---------- 2) What Are We Waiting For ---------- */
-  const waitingFor = (d.reasonsChecklist || []).filter((c) => !c.ok).map((c) => (CHECKLIST_KEYS[c.key] ? _t(CHECKLIST_KEYS[c.key]) : c.label));
+  /* ---------- 2) شو ناقص ---------- */
+  /* من الخريطة مباشرة — كل سطر مش متحقق هو شرط بالمنهجية إله اسم. */
+  const waitingFor = rows.filter((x) => x.state !== "met").map((x) => `${x.id} · ${x.label}`);
 
   /* ---------- 3) Bullish Scenario ---------- */
   let bullish;
@@ -3353,43 +3325,41 @@ function buildAiBriefing(item, d) {
     bearish = _t("radar.briefBearishNeedsReject");
   }
 
-  /* ---------- 5) AI Confidence ---------- */
-  const confidenceLabel = score >= 80 ? _t("radar.levelHigh") : score >= 50 ? _t("radar.levelMedium") : _t("radar.levelLow");
-  const confidenceReasons = [];
-  confidenceReasons.push(dir ? _t("radar.briefTrendIs", { dir: dirLabel }) : _t("radar.noTrendYet"));
-  confidenceReasons.push(swept ? _t("radar.liquiditySwept") : approaching ? _t("radar.liquidityNotSwept") : _t("radar.noSweepYet"));
-  confidenceReasons.push(bosOk ? _t("radar.bosConfirmed") : _t("radar.bosNotConfirmed"));
-  if (obReady) confidenceReasons.push(_t("radar.briefObQualityReason", { quality: obQuality }));
-  confidenceReasons.push(tradeValid ? _t("radar.entryComplete") : _t("radar.entryIncomplete"));
+  /* ---------- 5) الشروط ----------
+     ⚠️ كان اسمه «AI Confidence» ورقمه نسبة. صار **عدّ شروط**، وكل سبب تحته
+     بيرجع لسطر بالخريطة. */
+  const conditionReasons = [];
+  conditionReasons.push(dir ? _t("radar.briefTrendIs", { dir: dirLabel }) : _t("radar.noTrendYet"));
+  conditionReasons.push(swept ? _t("radar.liquiditySwept") : _t("radar.noSweepYet"));
+  conditionReasons.push(blockOk ? _t("radar.briefBlockFormed") : _t("radar.briefBlockNotFormed"));
+  conditionReasons.push(eventOk ? _t("radar.briefMomentumConfirmed") : _t("radar.briefMomentumPending"));
+  conditionReasons.push(tradeValid ? _t("radar.entryComplete") : _t("radar.entryIncomplete"));
 
-  /* ---------- 6) Recommendation ---------- */
+  /* ---------- 6) التوصية ---------- */
   let recommendation;
   if (tradeValid && dir === "up") recommendation = { text: _t("radar.buyValid"), tone: "buy" };
   else if (tradeValid && dir === "down") recommendation = { text: _t("radar.sellValid"), tone: "sell" };
   else if (!dir) recommendation = { text: _t("radar.briefRecRanging"), tone: "range" };
-  else if (approaching) recommendation = { text: _t("radar.waitSweep"), tone: "wait" };
-  else if (!bosOk) recommendation = { text: _t("radar.waitBos"), tone: "wait" };
+  else if (rd?.waitingFor) recommendation = { text: _t("radar.briefRecWaitingOn", { condition: rd.waitingFor }), tone: "wait" };
   else recommendation = { text: _t("radar.briefRecDefaultWait"), tone: "wait" };
 
-  /* ---------- 7) Risk Factors ---------- */
+  /* ---------- 7) عوامل المخاطرة ---------- */
   const riskFactors = [];
   if (htfLabel && dir && htfLabel !== dirLabel) {
     riskFactors.push(_t("radar.briefRiskCounterTrend", { trend: htfLabel }));
   }
-  if (obReady && obQuality != null && obQuality < 60) {
-    riskFactors.push(_t("radar.briefRiskObQuality", { quality: obQuality }));
-  }
-  if (!swept && approaching) {
+  if (!swept) {
     riskFactors.push(_t("radar.briefRiskNoSweep"));
   }
-  if (!bosOk) {
-    riskFactors.push(_t("radar.briefRiskNoBos"));
+  if (!eventOk) {
+    riskFactors.push(_t("radar.briefRiskNoMomentum"));
   }
-  if (zone && ((dir === "up" && zone === "Premium Zone") || (dir === "down" && zone === "Discount Zone"))) {
-    riskFactors.push(_t("radar.briefRiskZone", { zone: translateZoneLabel(zone), dir: dirLabel }));
+  /* ⚠️ بدل «الثقة أقل من ٥٠٪»: كم شرط لسا ناقص فعلاً. */
+  if (met != null && total != null && total - met > 0) {
+    riskFactors.push(_t("radar.briefRiskConditionsPending", { count: total - met }));
   }
-  if (score < 50) {
-    riskFactors.push(_t("radar.briefRiskLowConfidence"));
+  if (d.newsBlock) {
+    riskFactors.push(_t("radar.briefRiskNews", { title: d.newsBlock.title }));
   }
   if (riskFactors.length === 0) {
     riskFactors.push(_t("radar.briefRiskNone"));
@@ -3401,7 +3371,9 @@ function buildAiBriefing(item, d) {
     bullish,
     bearish,
     riskFactors,
-    confidence: { score, label: confidenceLabel, reasons: confidenceReasons },
+    /* ⚠️ `met`/`total` بدل `score`. ما في `label` («عالية/متوسطة») لأنها
+       كانت تصنيفاً لنسبة مخترعة. */
+    conditions: { met, total, reasons: conditionReasons },
     recommendation,
   };
 }
@@ -3413,8 +3385,13 @@ const BRIEFING_TONE = {
   range: { color: AMBER, bg: "rgba(245,158,11,0.08)" },
 };
 
-function BriefingCard({ icon: Icon, title, color, delay, confidence, children }) {
-  const confColor = confidence == null ? "#6E6690" : confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : AMBER;
+/* ⚠️ الشارة كانت «٧٥٪ conf.» بلون حسب عتبات ٨٠/٥٠. صارت «٦/١٠» — عدّ الشروط،
+   واللون أخضر بس لما تكتمل كلها. ما في تدرّج على نسبة. */
+function BriefingCard({ icon: Icon, title, color, delay, conditions, children }) {
+  const met = conditions?.met ?? null;
+  const total = conditions?.total ?? null;
+  const complete = met != null && total != null && met === total;
+  const confColor = met == null ? "#6E6690" : complete ? GREEN : GOLD_LIGHT;
   return (
     <div
       className="qmi-anim qmi-briefing-card"
@@ -3432,7 +3409,7 @@ function BriefingCard({ icon: Icon, title, color, delay, confidence, children })
           {Icon && <Icon size={15} strokeWidth={1.75} color={color} aria-hidden />}
           <span style={{ fontSize: 11.5, fontWeight: 800, color, letterSpacing: 0.4, textTransform: "uppercase" }}>{title}</span>
         </div>
-        {confidence != null && (
+        {met != null && (
           <span
             style={{
               fontSize: 10,
@@ -3445,7 +3422,7 @@ function BriefingCard({ icon: Icon, title, color, delay, confidence, children })
               flexShrink: 0,
             }}
           >
-            {confidence}% conf.
+            {met}/{total}
           </span>
         )}
       </div>
@@ -3482,12 +3459,12 @@ function AiBriefing({ item, d }) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {/* 1. Current Market Situation */}
-        <BriefingCard icon={Brain} title={t("radar.currentSituation")} color={BLUE} delay={0} confidence={briefing.confidence.score}>
+        <BriefingCard icon={Brain} title={t("radar.currentSituation")} color={BLUE} delay={0} conditions={briefing.conditions}>
           <div style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.8 }}>{briefing.situation}</div>
         </BriefingCard>
 
         {/* 2. What Are We Waiting For */}
-        <BriefingCard icon={Eye} title="What Are We Waiting For" color={BLUE} delay={60} confidence={briefing.confidence.score}>
+        <BriefingCard icon={Eye} title="What Are We Waiting For" color={BLUE} delay={60} conditions={briefing.conditions}>
           {briefing.waitingFor.length === 0 ? (
             <div style={{ fontSize: 12, color: GREEN, lineHeight: 1.8, display: "flex", alignItems: "center", gap: 6 }}>
               <CheckCircle2 size={13} color={GREEN} /> All entry confirmations are complete — nothing left to wait for.
@@ -3504,17 +3481,17 @@ function AiBriefing({ item, d }) {
         </BriefingCard>
 
         {/* 3. Bullish Scenario */}
-        <BriefingCard icon={TrendingUp} title={t("radar.bullishScenario")} color={GREEN} delay={120} confidence={briefing.confidence.score}>
+        <BriefingCard icon={TrendingUp} title={t("radar.bullishScenario")} color={GREEN} delay={120} conditions={briefing.conditions}>
           <div style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.8 }}>{briefing.bullish}</div>
         </BriefingCard>
 
         {/* 4. Bearish Scenario */}
-        <BriefingCard icon={TrendingDown} title={t("radar.bearishScenario")} color={RED} delay={180} confidence={briefing.confidence.score}>
+        <BriefingCard icon={TrendingDown} title={t("radar.bearishScenario")} color={RED} delay={180} conditions={briefing.conditions}>
           <div style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.8 }}>{briefing.bearish}</div>
         </BriefingCard>
 
         {/* 5. Risk Factors */}
-        <BriefingCard icon={AlertTriangle} title={t("radar.riskFactors")} color={AMBER} delay={240} confidence={briefing.confidence.score}>
+        <BriefingCard icon={AlertTriangle} title={t("radar.riskFactors")} color={AMBER} delay={240} conditions={briefing.conditions}>
           <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 5 }}>
             {briefing.riskFactors.map((r, i) => (
               <li key={i} style={{ fontSize: 12, color: "#F5F3FF", lineHeight: 1.7 }}>
@@ -3525,7 +3502,7 @@ function AiBriefing({ item, d }) {
         </BriefingCard>
 
         {/* 6. AI Recommendation */}
-        <BriefingCard icon={Target} title={t("radar.aiRecommendation")} color={tone.color} delay={300} confidence={briefing.confidence.score}>
+        <BriefingCard icon={Target} title={t("radar.aiRecommendation")} color={tone.color} delay={300} conditions={briefing.conditions}>
           <div
             style={{
               display: "flex",
@@ -3542,18 +3519,29 @@ function AiBriefing({ item, d }) {
             <span style={{ fontSize: 12.5, fontWeight: 800, color: tone.color }}>{briefing.recommendation.text}</span>
           </div>
 
+          {/* ⚠️ كان «٧٥٪ · high confidence» مع شريط. صار عدّ الشروط، والشريط
+              بيمثّل نفس العدّ — لا نسبة ولا تصنيف ثقة. */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 18, fontWeight: 900, color: GOLD_LIGHT }}>{briefing.confidence.score}%</span>
-            <span style={{ fontSize: 11, fontWeight: 800, color: BLUE }}>{briefing.confidence.label} confidence</span>
+            <span style={{ fontSize: 18, fontWeight: 900, color: GOLD_LIGHT }}>
+              {briefing.conditions.met != null ? `${briefing.conditions.met} / ${briefing.conditions.total}` : "—"}
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: BLUE }}>{t("radar.conditionsMetSuffix")}</span>
           </div>
           <div style={{ height: 6, borderRadius: 3, background: "#0E0A1A", overflow: "hidden", marginBottom: 8 }}>
             <div
               className="qmi-conf-bar"
-              style={{ height: "100%", width: `${briefing.confidence.score}%`, background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`, borderRadius: 3 }}
+              style={{
+                height: "100%",
+                width: briefing.conditions.met != null && briefing.conditions.total
+                  ? `${(briefing.conditions.met / briefing.conditions.total) * 100}%`
+                  : "0%",
+                background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT})`,
+                borderRadius: 3,
+              }}
             />
           </div>
           <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 4 }}>
-            {briefing.confidence.reasons.map((r, i) => (
+            {briefing.conditions.reasons.map((r, i) => (
               <li key={i} style={{ fontSize: 11.5, color: "#aaa", lineHeight: 1.6 }}>
                 {r}
               </li>
@@ -3577,29 +3565,39 @@ function AnalysisWorkspace({ item }) {
     );
   }
 
+  /* ⚠️ كل الحقول تحت انبنت من جديد. القديمة (`htfTrend` · `liquidityStatus` ·
+     `marketStructure` · `bosStatus` · `ob.quality` · `fvgStatus` ·
+     `aiConfidence` · `qualityScore`) كانت من `decision.js` المشال. */
   const d = item.decision;
   const dirLabel = item.direction === "up" ? "Bullish" : item.direction === "down" ? "Bearish" : "Neutral";
   const dirColor = item.direction === "up" ? GREEN : item.direction === "down" ? RED : "#6E6690";
-  const htfLabel = d?.htfTrend === "up" ? "Bullish" : d?.htfTrend === "down" ? "Bearish" : "—";
-  const htfColor = d?.htfTrend === "up" ? GREEN : d?.htfTrend === "down" ? RED : "#6E6690";
-  const swept = !!d?.liquidityStatus?.startsWith?.("Swept");
-  const liqTypeLabel = swept
-    ? item.direction === "up"
-      ? "Below Low — Sell-Side Liquidity Taken"
-      : "Above High — Buy-Side Liquidity Taken"
-    : d?.liquidityStatus || t("radar.notSweptYet");
-  const obLabel = d?.ob?.eligible ? `${dirLabel} OB · ${d.ob.status} · Quality ${d.ob.quality}%` : t("radar.obInvalid");
+
+  /* الفريم الأعلى من سلّم الهيكل المقيس. */
+  const htfTrend = d?.structureLadder?.[0]?.trend ?? null;
+  const htfLabel = htfTrend === "up" ? "Bullish" : htfTrend === "down" ? "Bearish" : "—";
+  const htfColor = htfTrend === "up" ? GREEN : htfTrend === "down" ? RED : "#6E6690";
+
+  /* السيولة: آخر كنسة فعلية — بركة إلها نوع وسعر ووقت. */
+  const touched = d?.poi?.touchedZone ?? null;
+  const swept = !!touched;
+  const liqTypeLabel = touched
+    ? `${touched.type} @ ${fmt(touched.level)}`
+    : t("radar.notSweptYet");
+  const remaining = d?.poi?.rankedZones?.length ?? 0;
+
+  const rd = d?.readiness ?? null;
+  const rows = rd?.rows ?? [];
+  const metOf = (id) => rows.find((x) => x.id === id)?.state === "met";
+  const blockMt = d?.skV2?.setups?.find((s) => s.blockId === rd?.blockId)?.levels?.mt ?? null;
+  const obLabel = blockMt != null ? `${dirLabel} OB · MT ${Number(blockMt).toFixed(1)}` : t("radar.obInvalid");
   const lastTarget = d?.targets?.[d.targets.length - 1];
   const expectedMove = d?.entry != null && lastTarget ? `${fmt(d.entry)} → ${fmt(lastTarget.price)}` : "—";
-  // Same AI Confidence / Quality Score / Entry Status fields the Analysis
-  // Panel and Active Opportunities use — single source of truth.
-  const confidence = d?.aiConfidence ?? d?.radarScore ?? 0;
-  const qualityScore = d?.qualityScore ?? d?.score ?? 0;
   const entryStatus = d?.entryStatus || t("radar.monitoring");
-  const structureLabel = d?.marketStructure || (d?.bosStatus === "Detected" ? t("radar.bos") : t("radar.ranging"));
+  const structureLabel = d?.structureLadder?.find((s) => s.isMain)?.lastEvent || t("radar.ranging");
+  const met = rd?.metCount ?? null;
+  const total = rd?.totalCount ?? null;
 
-  /* -------- Smart Explanations — كل قيمة بتفسّر حالها بجملة بسيطة، مبنية من
-     نفس القيم المحسوبة فوق فقط (لا نص عشوائي، ولا رقم جديد) -------- */
+  /* -------- شروحات — كل وحدة مبنية من نفس القيم المقيسة فوق -------- */
   const explain = {
     trend:
       item.direction === "up"
@@ -3608,24 +3606,15 @@ function AnalysisWorkspace({ item }) {
         ? t("radar.lowerHighs")
         : t("radar.noCommitment"),
     htf:
-      d?.htfTrend == null
+      htfTrend == null
         ? t("radar.noHtfBias")
-        : d.htfTrend === item.direction
+        : htfTrend === item.direction
         ? t("radar.htfAgrees")
-        : "The bigger picture disagrees — this move is against the broader trend.",
-    structure:
-      d?.bosStatus === "Detected"
-        ? "A new swing has broken the previous structure, confirming the current direction."
-        : "Price hasn't broken a clear structural level yet — still building the next move.",
-    liqType: swept
-      ? item.direction === "up"
-        ? t("radar.sellSideTaken")
-        : t("radar.buySideTaken")
-      : "This liquidity pool hasn't been taken yet — price may still reach for it first.",
-    ob: d?.ob?.eligible
-      ? "Institutional supply/demand zone — price could react strongly if it retests this area."
-      : t("radar.obNone"),
-    fvg: d?.fvgStatus === "Present" ? t("radar.fvgRevisit") : t("radar.fvgNone"),
+        : t("radar.htfDisagrees"),
+    structure: structureLabel === "MSS" ? t("radar.explainMss") : structureLabel === "BOS" ? t("radar.explainBos") : t("radar.explainNoEvent"),
+    liqType: swept ? t("radar.explainSwept") : t("radar.explainNotSwept"),
+    ob: blockMt != null ? t("radar.explainBlock") : t("radar.obNone"),
+    conditions: t("radar.conditionsMapDesc"),
   };
 
   return (
@@ -3633,20 +3622,24 @@ function AnalysisWorkspace({ item }) {
       <SectionHeader icon={Brain} title={t("radar.analysisWorkspace")} subtitle={`Full breakdown for ${item.symbol} — always visible, refreshes automatically when you pick another asset above.`} />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10, marginTop: 14 }}>
-        <WorkspaceStat label={t("radar.liquidityStatus")} value={d?.liquidityStatus || "—"} explain={explain.liqType} />
-        <WorkspaceStat label={t("radar.marketStructure")} value={structureLabel} explain={explain.structure} />
         <WorkspaceStat label={t("radar.trend")} value={dirLabel} color={dirColor} explain={explain.trend} />
         <WorkspaceStat label={t("radar.htfTrend")} value={htfLabel} color={htfColor} explain={explain.htf} />
-        <WorkspaceStat label={t("radar.liquidityType")} value={liqTypeLabel} color={swept ? (item.direction === "up" ? GREEN : RED) : "#6E6690"} explain={explain.liqType} />
-        <WorkspaceStat label={t("radar.orderBlock")} value={obLabel} color={d?.ob?.eligible ? GOLD_LIGHT : "#6E6690"} explain={explain.ob} />
-        <WorkspaceStat label={t("radar.fvg")} value={d?.fvgStatus || "—"} color={d?.fvgStatus === "Present" ? BLUE : "#6E6690"} explain={explain.fvg} />
+        <WorkspaceStat label={t("radar.lastEvent")} value={structureLabel} explain={explain.structure} />
+        <WorkspaceStat label={t("radar.liquidityType")} value={liqTypeLabel} color={swept ? GOLD_LIGHT : "#6E6690"} explain={explain.liqType} />
+        <WorkspaceStat label={t("radar.remainingPools")} value={remaining || "—"} color={remaining ? BLUE : "#6E6690"} />
+        <WorkspaceStat label={t("radar.orderBlock")} value={obLabel} color={blockMt != null ? GOLD_LIGHT : "#6E6690"} explain={explain.ob} />
         <WorkspaceStat label={t("radar.expectedMove")} value={expectedMove} color={GOLD_LIGHT} />
         <WorkspaceStat label={t("radar.entryZone")} value={fmt(d?.entry)} color={GOLD_LIGHT} />
         <WorkspaceStat label={t("radar.stopLoss")} value={fmt(d?.stopLoss)} color={RED} />
         <WorkspaceStat label={t("radar.takeProfit")} value={lastTarget ? fmt(lastTarget.price) : "—"} color={GREEN} />
         <WorkspaceStat label={t("radar.entryStatus")} value={entryStatus} color={entryStatus === "Ready" ? GREEN : GOLD_LIGHT} />
-        <WorkspaceStat label={t("radar.qualityScore")} value={`${qualityScore}%`} color={qualityScore >= 85 ? GREEN : GOLD_LIGHT} explain={t("radar.qualityDesc")} />
-        <WorkspaceStat label={t("radar.aiConfidence")} value={`${confidence}%`} color={confidence >= 85 ? GREEN : GOLD_LIGHT} explain={t("radar.confidenceDesc")} />
+        {/* ⚠️ بديل «Quality Score» و«AI Confidence» — عدّ صريح، وتحته الشرط الواقف عنده. */}
+        <WorkspaceStat
+          label={t("radar.conditions")}
+          value={met != null ? `${met} / ${total}` : "—"}
+          color={met === total && met != null ? GREEN : GOLD_LIGHT}
+          explain={rd?.waitingFor ? t("radar.waitingOnCondition", { condition: rd.waitingFor }) : explain.conditions}
+        />
       </div>
 
       <AiBriefing item={item} d={d} />
@@ -3765,7 +3758,12 @@ function LiveNotificationsCard({ items, onOpen }) {
                 <div style={{ fontSize: 11.5, color: "#F5F3FF", fontWeight: 700 }}>
                   New Opportunity — {it.symbol} <span style={{ color: it.direction === "up" ? GREEN : RED }}>{it.direction === "up" ? "BUY" : "SELL"}</span>
                 </div>
-                <div style={{ fontSize: 10, color: "#6E6690" }}>{it.radar_score ?? it.score}% Confidence · {relTime(it.updated_at, t)}</div>
+                <div style={{ fontSize: 10, color: "#6E6690" }}>
+                  {it.decision?.readiness?.metCount != null
+                    ? `${it.decision.readiness.metCount}/${it.decision.readiness.totalCount} ${t("radar.conditionsMetSuffix")}`
+                    : t("radar.conditions")}
+                  {" · "}{relTime(it.updated_at, t)}
+                </div>
               </div>
             </button>
           ))}

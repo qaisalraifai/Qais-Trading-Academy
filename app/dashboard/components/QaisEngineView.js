@@ -321,8 +321,11 @@ export default function QaisEngineView() {
       if (lo != null) add(lo, `#3D2F63`, `POI ${poi.type}`);
       if (hi != null && hi !== lo) add(hi, `#3D2F63`, `POI ${poi.type}`);
     }
-    if (r.ob?.eligible && r.ob.status !== "Invalid" && !r.tradeValid) {
-      add(r.ob.levels.mt, `${NEUTRAL}88`, `MT (${r.ob.status})`);
+    /* ⚠️ كان `r.ob` من `orderblock.js` المشال. صار مستوى MT للكتلة المُمثِّلة
+       بالسلسلة الجديدة — نفس المستوى اللي بتقيسه `levelsFromGroup`. */
+    if (!r.tradeValid) {
+      const repMt = r.skV2?.setups?.find((s) => s.blockId === r.readiness?.blockId)?.levels?.mt;
+      if (repMt != null) add(repMt, `${NEUTRAL}88`, `MT (${r.readiness?.waitingFor || "—"})`);
     }
   }
 
@@ -585,7 +588,7 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
   ctx.stroke();
   const riskPct = (Math.abs(r.entry - r.stopLoss) / r.entry) * 100;
   const slHit = dir === "up" ? false : false; // يُحدَّث فعلياً بمعرفة السعر الحي — راجع ملاحظة أسفل الكرت
-  drawLevelTick(ctx, slX, slY, RED, `SL (${r.slSource === "SMT" ? "SMT" : "OB"})`, fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`, slHit, true);
+  drawLevelTick(ctx, slX, slY, RED, "SL (SMT)", fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`, slHit, true);
 
   // -------- TP1..TP4 (سلّم صاعد بالمسافة X — كل هدف أبعد شوي عن السابق) --------
   let tpX = slX;
@@ -695,10 +698,21 @@ function AnalysisPanel({ result: r }) {
   const [open, setOpen] = useState(true);
   const [openRow, setOpenRow] = useState(null);
 
-  const ob = r?.ob;
   const poi = r?.poi?.touchedZone;
+  const rd = r?.readiness ?? null;
 
-  const rows = r
+  /* ============================================================================
+     ⚠️ الصفوف انبنت من جديد على **خريطة الشروط** (٢٠٢٦-٠٨-٢٠).
+
+     كانت ثمانية صفوف مكتوبة بالإيد على حقول `decision.js`: `priceLocation`
+     (Premium/Discount) و`ob.status` و`smt.valid` و`status` و`score`. المحرك
+     ذاك انشال، وآخر صف كان بيقول «QAIS Score: ‎/100» — رقم من مجموع موزون.
+
+     هلق الصفوف بتيجي من `readiness.rows` نفسها: كل سطر شرط بالمنهجية إله
+     معرّف (R3 · R4 · …) وحالة، والصفان الأولان (الاتجاه والسلّم) بيضلوا
+     لأنهم سياق مقيس مش شرط دخول.
+     ============================================================================ */
+  const CONTEXT_ROWS = r
     ? [
         {
           key: "trend",
@@ -706,7 +720,7 @@ function AnalysisPanel({ result: r }) {
           name: "TREND",
           result: r.direction === "up" ? "Bullish" : r.direction === "down" ? "Bearish" : "—",
           color: r.direction === "up" ? GREEN : r.direction === "down" ? RED : "#6E6690",
-          detail: "الاتجاه المعتمد من External Structure/الفريم الأعلى — ما بيتغيّر إلا بعد MSS كامل.",
+          detail: "الاتجاه المعتمد من الفريم الرئيسي — ما بيتغيّر إلا بحدث MSS.",
         },
         {
           key: "structure",
@@ -720,60 +734,40 @@ function AnalysisPanel({ result: r }) {
               .join("  •  ") || "لا توجد بيانات هيكلية كافية.",
         },
         {
-          key: "location",
-          ok: !!r.priceLocation,
-          name: "PRICE LOCATION",
-          result: r.priceLocation
-            ? r.priceLocation.zone === "discount"
-              ? "Discount"
-              : r.priceLocation.zone === "premium"
-              ? "Premium"
-              : "Equilibrium"
-            : "—",
-          color: "#ddd",
-          detail: r.priceLocation ? `نسبة الموقع: ${r.priceLocation.ratio} (0=قمة/Premium، 1=قاع/Discount).` : "لسا ما تحدد موقع السعر بدقة.",
-        },
-        {
           key: "poi",
           ok: !!poi,
           name: "POI",
           result: poi ? poi.type : "—",
           color: "#ddd",
           detail: poi
-            ? `منطقة ضمن الحركة الرئيسية (${r.poi?.window?.anchor || ""}) — لامسها السعر.`
-            : "السعر لسا ما وصل لمنطقة اهتمام ضمن آخر حركة هيكلية (MSS↔BOS).",
+            ? `آخر بركة سيولة كنسها السعر عند ${poi.level} — والباقي ${r.poi?.rankedZones?.length ?? 0} بركة.`
+            : "ما في كنسة سيولة مسجّلة بعد على الفريم الرئيسي.",
         },
-        {
-          key: "smt",
-          ok: !!r.smt?.valid,
-          name: "SMT",
-          result: r.smt?.valid ? "Confirmed" : "Not Confirmed",
-          color: r.smt?.valid ? GREEN : "#6E6690",
-          detail: r.smt?.symbolB ? `مقارنة مع: ${r.smt.symbolB} — ${r.smt.strength || ""}` : r.smt?.reason || "لا يوجد أصل مترابط معروف لهذا الرمز.",
-        },
-        {
-          key: "ob",
-          ok: !!ob?.eligible && ob.status !== "Invalid",
-          name: "OB",
-          result: ob?.eligible ? ob.status : "Not Formed",
-          color: ob?.status === "Strong" || ob?.status === "Normal" ? GREEN : ob?.status === "Weak" ? "#F0A13C" : "#6E6690",
-          detail: r.executionTimeframe ? `${TF_LABELS[r.executionTimeframe]} • ${ob?.direction === "up" ? "صاعد" : "هابط"}` : ob?.reason || "",
-        },
-        {
-          key: "entryModel",
-          ok: !!r.tradeValid,
-          name: "ENTRY MODEL",
-          result: r.executionTimeframe ? `${TF_LABELS[r.executionTimeframe]} ${ob?.direction === "up" ? "Bullish" : "Bearish"} OB` : "—",
-          color: r.tradeValid ? GREEN : "#6E6690",
-          detail: r.tradeValid ? "كل شروط الدخول اكتملت." : "لسا في شرط أو أكثر ما تحقق — راجع الصفوف فوق.",
-        },
+      ]
+    : [];
+
+  /* كل شرط بالخريطة = صف. `pending` مش فشل — هو «لسا». */
+  const CONDITION_ROWS = (rd?.rows ?? []).map((x) => ({
+    key: x.id,
+    ok: x.state === "met",
+    name: `${x.id} · ${x.label}`,
+    result: x.state === "met" ? "تحقق" : x.state === "pending" ? "لسا" : "ما انقاس",
+    color: x.state === "met" ? GREEN : x.state === "pending" ? "#F0A13C" : "#6E6690",
+    detail: x.note || x.detail,
+  }));
+
+  const rows = r
+    ? [
+        ...CONTEXT_ROWS,
+        ...CONDITION_ROWS,
         {
           key: "status",
-          ok: r.status === "green",
+          ok: !!r.tradeValid,
           name: "STATUS",
-          result: r.tradeValid ? "Valid Setup" : r.status === "orange" ? "Developing" : r.status === "yellow" ? "Approaching" : "No Setup",
-          color: r.status === "green" ? GREEN : r.status === "red" ? RED : r.status === "orange" ? "#F0A13C" : "#6E6690",
-          detail: `QAIS Score: ${r.score}/100`,
+          result: r.tradeValid ? "Valid Setup" : rd?.waitingFor ? `بانتظار ${rd.waitingFor}` : "No Setup",
+          color: r.tradeValid ? GREEN : "#6E6690",
+          /* ⚠️ كان «QAIS Score: ‎/100». صار عدّ صريح. */
+          detail: rd?.metCount != null ? `${rd.metCount} من ${rd.totalCount} شرط تحقق` : "الخريطة غير قابلة للتقييم بالبيانات الحالية.",
         },
       ]
     : [];
@@ -852,12 +846,12 @@ function TradePlanCard({ result: r, symbol }) {
     const lines = [
       `QAIS SK ENGINE — ${symbol}`,
       `التاريخ: ${new Date().toLocaleString("ar-EG")}`,
-      `Score: ${r.score}/100 | Status: ${r.status}`,
+      `الشروط: ${r.readiness?.metCount ?? "—"}/${r.readiness?.totalCount ?? "—"} | Entry Status: ${r.entryStatus}`,
       `Direction: ${r.direction || "—"}`,
       `Main TF: ${r.mainTimeframe || "—"} | Execution TF: ${r.executionTimeframe || "—"}`,
-      `Entry: ${r.entry ?? "—"} | Stop Loss: ${r.stopLoss ?? "—"} (${r.slSource || "—"})`,
+      `Entry: ${r.entry ?? "—"} | Stop Loss: ${r.stopLoss ?? "—"} (SMT)`,
       `Targets: ${(r.targets || []).map((t) => `${t.key} (${t.ratio} Fib)=${t.price.toFixed(2)}`).join(" | ") || "—"}`,
-      `Reasons: ${(r.reasonTags || []).join(" + ")}`,
+      `الشروط المتحققة: ${(r.readiness?.rows || []).filter((x) => x.state === "met").map((x) => x.id).join(" + ") || "—"}`,
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -896,7 +890,7 @@ function TradePlanCard({ result: r, symbol }) {
             <>
               <PlanRow label="Direction" value={r.direction === "up" ? "BUY" : "SELL"} color={r.direction === "up" ? GREEN : RED} />
               <PlanRow label="Entry" value={fmt(r.entry)} color={GOLD_LIGHT} />
-              <PlanRow label={`Stop Loss (${r.slSource})`} value={fmt(r.stopLoss)} color={RED} />
+              <PlanRow label="Stop Loss (SMT)" value={fmt(r.stopLoss)} color={RED} />
               <PlanRow label="Risk %" value={`${riskPercent.toFixed(2)}%`} />
               <div style={{ height: 6 }} />
               {r.targets?.map((t) => (
