@@ -885,7 +885,16 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     const lastX = ts.logicalToCoordinate(candles.length - 1) ?? timeToX(lastCandle.time);
     if (lastX == null) return;
 
-    const seq = r.sequence;
+    /* ⚠️ السيكونز ما بتنرسم إلا مع **صفقة كاملة** — قراره (٢٠٢٦-٠٨-١٩):
+       «السيكونز ما بتنرسم غير لما يكون في صفقة تمام، وتكون أكبر سيكونز
+        باتجاه الصفقة.»
+
+       الشرط التاني (الاتجاه) مطبَّق بالمحرك: `buildTradeSetup` بتمرّر
+       `direction: block.direction` لاختيار السيكونز. والشرط الأول هون:
+       بلا صفقة، ما في سيكونز على الشارت — لأن السيكونز وحدها بتوهم
+       بإعداد جاهز وهي مجرد هيكل. */
+    const tradeForSeq = r.skV2?.chartTrade ?? r.lastTrade;
+    const seq = tradeForSeq ? r.sequence : null;
     /* مجموعة أوقات الشموع المعروضة — منبنيها مرة لكل مصفوفة شموع (مش كل فريم،
        لأنه حلقة rAF بتنادي draw ٦٠ مرة بالثانية) */
     if (timeSetRef.current.src !== candles) {
@@ -932,8 +941,13 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
     /* آخر صفقة كاملة تكوّنت تاريخياً — بتنرسم دايماً (حتى لو محققة) طالما
        هي على نفس فريم العرض. بتنرسم أخيراً حتى تقعد فوق باقي الطبقات. */
-    if (r.lastTrade && r.lastTrade.displayTF === renderedTF) {
-      drawLastTrade(ctx, r.lastTrade, timeToXSafe, priceToY, plotW, h, ease, timeSet);
+    /* ⚠️ المصدر صار **السلسلة الجديدة**. القديم تراجع بس، لحد ما ينشال.
+       الفرق مقيس: القديم كان بيبني الساق على سوينغ كل ٤.٨ شمعة فتطلع
+       أهداف ضئيلة — صفقة ذهب أعطت TP5 على بُعد ٩٦.٨ نقطة بينما السعر
+       تحرّك ٥١٨. والستوب عنده من نقطة التصحيح مش من نقطة الـSMT. */
+    const drawn = r.skV2?.chartTrade ?? r.lastTrade;
+    if (drawn && drawn.displayTF === renderedTF) {
+      drawLastTrade(ctx, drawn, timeToXSafe, priceToY, plotW, h, ease, timeSet);
     }
   }
 
@@ -1847,7 +1861,13 @@ function drawSMT(ctx, smt, priceToY, plotW, ease) {
 }
 
 function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeSet) {
-  if (!trade?.entry || !trade.targets?.length) return;
+  /* ⚠️ الدخول والستوب بينرسموا حتى بلا أهداف.
+     الأهداف بتيجي من السيكونز، وممكن ما تكون مؤكَّدة بلحظة الدخول (C ما
+     تشكّلت بعد، أو ما في سيكونز بنفس اتجاه الصفقة). الدخول والستوب
+     **معروفان** وقتها — إخفاء الصفقة كلها بيضيّع معلومة مؤكَّدة عشان
+     وحدة ناقصة. والناقص بينتعلّم صراحةً باللوحة. */
+  if (!trade?.entry) return;
+  const hasTargets = !!trade.targets?.length;
   if (timeSet && !timeSet.has(trade.entry.time)) return;
 
   const ex = timeToX(trade.entry.time);
@@ -1855,10 +1875,17 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
   if (ex == null || ey == null) return;
 
   const up = trade.direction === "up";
-  const stopPrice = trade.points?.B?.price;
-  const finalTarget = trade.targets[trade.targets.length - 1];
+  /* ⚠️ الستوب من `trade.stop` — قاعدة صاحب المنهجية: **تحت نقطة الـSMT**.
+     `points.B.price` تراجع للمحرك القديم اللي كان بياخده من نقطة التصحيح،
+     وهاد مستوى تاني تماماً. */
+  const stopPrice = trade.stop ?? trade.points?.B?.price;
+  const finalTarget = hasTargets ? trade.targets[trade.targets.length - 1] : null;
   const sy = stopPrice != null ? priceToY(stopPrice) : null;
-  const ty = finalTarget ? priceToY(finalTarget.price) : null;
+  /* بلا أهداف: الصندوق بيمتد بمقدار المخاطرة (1R) عشان يبان الاتجاه
+     والنسبة — مش عشان يوهم بهدف. اللوحة بتقول صراحةً إنه ما في أهداف. */
+  const ty = finalTarget
+    ? priceToY(finalTarget.price)
+    : priceToY(up ? trade.entry.price + (trade.risk || 0) : trade.entry.price - (trade.risk || 0));
   if (sy == null || ty == null) return;
 
   /* صندوق الصفقة — مثبَّت من لحظة الدخول لقدّام، زي أداة Long/Short Position
