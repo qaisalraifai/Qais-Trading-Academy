@@ -2050,7 +2050,11 @@ function drawSequenceProjection(ctx, seq, timeToX, priceToY, chartW, chartH, eas
       y: priceToY(t.price),
       price: t.price,
       ratio: t.ratio,
-      key: t.key, // "TP1".."TP4"
+      /* ⚠️ TP1 بالمحرك الجديد **سوينغ حقيقي مش نسبة فيبو**، فـ`ratio` عمداً
+         `null`. بدونه كان `row.ratio.toFixed(3)` بيرمي TypeError ويطفّي
+         الصفحة كلها. */
+      isRealLevel: !!t.isRealLevel || t.ratio == null,
+      key: t.key, // "TP1".."TP5"
       idx: i + 1,
       color: i === 0 ? GREEN : BLUE,
       hit: !!t.hit,
@@ -2117,7 +2121,12 @@ function drawSequenceProjection(ctx, seq, timeToX, priceToY, chartW, chartH, eas
       ctx,
       rightEdge,
       row.labelY,
-      [`${row.key}  ·  Target ${row.idx} (${row.ratio.toFixed(3)})`, fmt(row.price)],
+      [
+        row.isRealLevel
+          ? `${row.key}  ·  ${_t("radar.realLevelTarget")}`
+          : `${row.key}  ·  Target ${row.idx} (${row.ratio.toFixed(3)})`,
+        fmt(row.price),
+      ],
       row.color,
       row.hit
     );
@@ -2151,9 +2160,15 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
   targets.forEach((t) => {
     const y = priceToY(t.price);
     if (y == null) return;
-    const color = t.color === "green" ? GREEN : BLUE;
+    /* ⚠️ الهدف الأول سوينغ حقيقي (`isRealLevel`) — بلا نسبة فيبو. كان
+       بيطبع «null Fib». */
+    const isReal = !!t.isRealLevel || t.ratio == null;
+    const color = isReal ? GREEN : BLUE;
     const rr = Math.abs(t.price - r.entry) / Math.abs(r.entry - r.stopLoss);
-    rows.push({ y, color, dash: [5, 4], glow: t.hit, lines: [`${t.key} · ${t.ratio} Fib`, fmt(t.price), `RR 1 : ${rr.toFixed(2)}`] });
+    rows.push({
+      y, color, dash: [5, 4], glow: t.hit,
+      lines: [`${t.key} · ${isReal ? _t("radar.realLevelTarget") : `${t.ratio} Fib`}`, fmt(t.price), `RR 1 : ${rr.toFixed(2)}`],
+    });
   });
 
   // Decluttering: بنفصل موقع الليبل (labelY) عن موقع السعر الحقيقي (y) عشان

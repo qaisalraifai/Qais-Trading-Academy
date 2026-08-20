@@ -596,9 +596,13 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
     tpX += step;
     const y = priceToY(t.price);
     if (y == null) continue;
-    const color = t.color === "green" ? GREEN : BLUE;
+    /* ⚠️ الهدف الأول سوينغ حقيقي (`isRealLevel`) — بلا نسبة فيبو، فـ`ratio`
+       عمداً `null`. كان بيطبع «null Fib». */
+    const isReal = !!t.isRealLevel || t.ratio == null;
+    const color = isReal ? GREEN : BLUE;
     const rr = Math.abs(t.price - r.entry) / Math.abs(r.entry - r.stopLoss);
-    drawLevelTick(ctx, tpX, y, color, t.key, `${t.ratio} Fib  •  ${fmt(t.price)}`, `RR 1:${rr.toFixed(2)}`, t.hit, true, t.hit);
+    const tLabel = isReal ? "سوينغ حقيقي" : `${t.ratio} Fib`;
+    drawLevelTick(ctx, tpX, y, color, t.key, `${tLabel}  •  ${fmt(t.price)}`, `RR 1:${rr.toFixed(2)}`, t.hit, true, t.hit);
   }
 
   ctx.restore();
@@ -850,7 +854,7 @@ function TradePlanCard({ result: r, symbol }) {
       `Direction: ${r.direction || "—"}`,
       `Main TF: ${r.mainTimeframe || "—"} | Execution TF: ${r.executionTimeframe || "—"}`,
       `Entry: ${r.entry ?? "—"} | Stop Loss: ${r.stopLoss ?? "—"} (SMT)`,
-      `Targets: ${(r.targets || []).map((t) => `${t.key} (${t.ratio} Fib)=${t.price.toFixed(2)}`).join(" | ") || "—"}`,
+      `Targets: ${(r.targets || []).map((t) => `${t.key} (${t.ratio == null ? "سوينغ حقيقي" : `${t.ratio} Fib`})=${t.price.toFixed(2)}`).join(" | ") || "—"}`,
       `الشروط المتحققة: ${(r.readiness?.rows || []).filter((x) => x.state === "met").map((x) => x.id).join(" + ") || "—"}`,
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
@@ -896,7 +900,7 @@ function TradePlanCard({ result: r, symbol }) {
               {r.targets?.map((t) => (
                 <PlanRow
                   key={t.key}
-                  label={`${t.key} — ${t.ratio} Fib`}
+                  label={`${t.key} — ${t.ratio == null ? "سوينغ حقيقي" : `${t.ratio} Fib`}`}
                   value={fmt(t.price)}
                   color={t.color === "green" ? GREEN : BLUE}
                   strong={t.hit}
