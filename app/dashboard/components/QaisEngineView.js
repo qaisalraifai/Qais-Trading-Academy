@@ -449,7 +449,7 @@ export default function QaisEngineView() {
         </button>
 
         <div style={{ marginRight: "auto" }}>
-          <ScoreBadge score={result?.score || 0} status={result?.status} />
+          <ConditionsBadge readiness={result?.readiness} valid={result?.tradeValid} />
         </div>
       </div>
 
@@ -673,10 +673,15 @@ function fmt(n) {
   return n >= 100 ? n.toFixed(2) : n.toFixed(4);
 }
 
-/* -------- Score Badge -------- */
-function ScoreBadge({ score, status }) {
-  const STATUS_COLOR = { green: GREEN, orange: "#F0A13C", yellow: "#F0A13C", red: RED, gray: "#6E6690" };
-  const color = STATUS_COLOR[status] || "#6E6690";
+/* -------- شارة عدّ الشروط --------
+   ⚠️ كانت `ScoreBadge` بتعرض «QAIS Score ${score}/100» من `result.score`
+   و`result.status` — الحقلان **انشالوا** مع `decision.js`، فالشارة صارت
+   ترسم «0/100» ثابتاً على كل رمز. هاد أسوأ من رقم مخترع: رقم **ميت**.
+   البديل عدّ الشروط من الخريطة. */
+function ConditionsBadge({ readiness, valid }) {
+  const met = readiness?.metCount ?? null;
+  const total = readiness?.totalCount ?? null;
+  const color = valid ? GREEN : met != null ? "#F0A13C" : "#6E6690";
   return (
     <div
       style={{
@@ -690,8 +695,8 @@ function ScoreBadge({ score, status }) {
       }}
     >
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: color }} />
-      <span style={{ fontSize: 10.5, color: "#6E6690" }}>QAIS Score</span>
-      <span style={{ fontSize: 13, fontWeight: 700, color: "#F5F3FF" }}>{score}/100</span>
+      <span style={{ fontSize: 10.5, color: "#6E6690" }}>الشروط</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: "#F5F3FF" }}>{met != null ? `${met}/${total}` : "—"}</span>
     </div>
   );
 }

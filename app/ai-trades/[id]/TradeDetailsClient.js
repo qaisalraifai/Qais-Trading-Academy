@@ -135,7 +135,18 @@ export default function TradeDetailsClient({ tradeId }) {
         <StatusProgress status={trade.status} />
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10, marginTop: 16 }}>
-          <Stat label="Confidence" value={trade.confidence != null ? `${trade.confidence}%` : "—"} color={GOLD_LIGHT} />
+          {/* ⚠️ عمود `confidence` بقاعدة البيانات صار `null` دايماً من يوم ما
+              انشال `decision.js` — فالشارة كانت بترسم «—» على كل صفقة.
+              العدّ محفوظ بـ`ai_analysis`. */}
+          <Stat
+            label={t("aiTrades.conditionsMap")}
+            value={
+              trade.ai_analysis?.conditionsMet != null
+                ? `${trade.ai_analysis.conditionsMet}/${trade.ai_analysis.conditionsTotal}`
+                : "—"
+            }
+            color={GOLD_LIGHT}
+          />
           <Stat label="Entry" value={fmt(trade.entry)} />
           <Stat label="Stop Loss" value={fmt(trade.stop_loss)} color={RED} />
           <Stat label="TP1" value={fmt(trade.tp1)} color={GREEN} />
