@@ -1047,7 +1047,9 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       lines.push(t("radar.newsHoldLine", { symbol: leadAssetSymbol, currency: leadNewsBlock.currency, title: leadNewsBlock.title }));
     }
 
-    return { lines, confidence: marketStatus.avgConfidence, biasLbl: marketStatus.biasLbl };
+    /* ⚠️ `avgConfidence` انشال مع الأرقام المخترعة — الكرت صار ياخد
+       العدّ الصريح (كم رمز سلسلته اكتملت من كم). */
+    return { lines, ready: marketStatus.readyCount, scanned: marketStatus.mappedCount, biasLbl: marketStatus.biasLbl };
   }, [snapshot, radarItems, marketStatus]);
 
   return (
@@ -1332,9 +1334,9 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
    ============================================================================ */
 function AiSummaryCard({ summary }) {
   const { t } = useLocale();
-  const { lines, confidence, biasLbl } = summary;
+  const { lines, ready, scanned, biasLbl } = summary;
   const biasColor = biasLbl === "Bullish" ? GREEN : biasLbl === "Bearish" ? RED : "#6E6690";
-  const confColor = confidence == null ? "#6E6690" : confidence >= 80 ? GREEN : confidence >= 50 ? GOLD_LIGHT : AMBER;
+  const confColor = ready ? GREEN : "#6E6690";
 
   return (
     <div
@@ -1371,8 +1373,8 @@ function AiSummaryCard({ summary }) {
             </div>
           </div>
           <div style={{ background: "#141024", border: `1px solid ${confColor}40`, borderRadius: 0, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
-            <div style={{ fontSize: 9, color: "#6E6690", letterSpacing: 0.4, textTransform: "uppercase" }}>{t("radar.overallConfidence")}</div>
-            <div style={{ fontSize: 14, fontWeight: 900, color: confColor, marginTop: 3 }}>{confidence != null ? `${confidence}%` : "—"}</div>
+            <div style={{ fontSize: 9, color: "#6E6690", letterSpacing: 0.4, textTransform: "uppercase" }}>{t("radar.completeChains")}</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: confColor, marginTop: 3 }}>{scanned ? `${ready} / ${scanned}` : "—"}</div>
           </div>
         </div>
       </div>
@@ -2441,7 +2443,13 @@ function AITradeCard({ result: r, symbol, asset, timeframeLabel, executedTrade, 
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10 }}>
-          <TradeCardStat label={t("radar.confidence")} value={syncedTrade.confidence != null ? `${syncedTrade.confidence}%` : "—"} color={GOLD_LIGHT} />
+          {/* ⚠️ عمود `confidence` بقاعدة البيانات صار `null` دايماً — العدّ
+              محفوظ بـ`ai_analysis`. */}
+          <TradeCardStat
+            label={t("radar.conditions")}
+            value={syncedTrade.ai_analysis?.conditionsMet != null ? `${syncedTrade.ai_analysis.conditionsMet}/${syncedTrade.ai_analysis.conditionsTotal}` : "—"}
+            color={GOLD_LIGHT}
+          />
           <TradeCardStat label={t("radar.entry")} value={fmt(syncedTrade.entry)} />
           <TradeCardStat label={t("radar.stopLoss")} value={fmt(syncedTrade.stop_loss)} color={RED} />
           <TradeCardStat label="TP1" value={fmt(syncedTrade.tp1)} color={GREEN} />
@@ -3817,7 +3825,9 @@ function MarketSummaryCard({ snapshot, radarItems, newsToday }) {
   return (
     <CardShell title={t("radar.marketSummary")} icon={BarChart3}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
-        <SummaryStat label={t("radar.overallBias")} value={biasLabel} sub={total ? `${biasPct}% confidence` : t("radar.notEnoughDataShort")} color={biasColor} />
+        {/* ⚠️ كان «100% confidence» — نصيب الاتجاه الغالب معروضاً كثقة.
+            برمز واحد بيطلع دايماً ١٠٠٪. صار عدّاً صريحاً. */}
+        <SummaryStat label={t("radar.overallBias")} value={biasLabel} sub={total ? `${Math.max(bullish, bearish)} / ${total}` : t("radar.notEnoughDataShort")} color={biasColor} />
         <SummaryStat label={t("radar.strongestCurrency")} value={strongest ? strongest[0] : "—"} sub={strongest ? `${strongest[1]}` : ""} color={GREEN} />
         <SummaryStat label={t("radar.weakestCurrency")} value={weakest ? weakest[0] : "—"} sub={weakest ? `${weakest[1]}` : ""} color={RED} />
         <SummaryStat label={t("radar.activeOpportunities")} value={active.length} sub={t("radar.liveFromRadar")} color={GOLD_LIGHT} />
