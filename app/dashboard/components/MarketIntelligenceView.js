@@ -1168,6 +1168,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       {/* تناقض بين الفريمات — لازم يبان قبل أي قراءة للتحليل */}
       <DataQualityBanner quality={result?.dataQuality} />
       <SkV2Panel sk={result?.skV2} />
+      <MatryoshkaPanel m={result?.matryoshka} />
 
       {/* ================= TOP TOOLBAR ================= */}
       <div className="qmi-anim" style={{ ...glass, padding: "0.75rem 1.1rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
@@ -1399,6 +1400,97 @@ function AiSummaryCard({ summary }) {
 
    ⚠️ كل حالة توقّف بتنعرض بسببها ومرحلتها — «ما في صفقة» بلا سبب ما
    بتعلّم إشي. */
+/* ============================================================================
+   مبدأ المتروشكا — سيكونس أساسي جوّاه فرعيات.
+
+   ⚠️ **لوحة نصّية، بلا أي خط جديد على الشارت.** قاعدته «السيكونز ما بتنرسم
+   إلا لما يكون في صفقة» منطوقة عن الشارت، وهو وقف على العجقة صراحةً
+   (٢٠٢٦-٠٨-٢٠). تسع سيكونسات فرعية على الشارت بترجّع نفس المشكلة.
+
+   ⚠️ ولا رقم دخول ولا ستوب هون — من ملفه انأخذ تحديد السيكونز والأهداف
+   وبس (قراره ٢٠٢٦-٠٨-٢١).
+   ============================================================================ */
+function MatryoshkaPanel({ m }) {
+  if (!m) return null;
+
+  if (!m.ok) {
+    return (
+      <div className="qmi-anim" style={{ ...glass, padding: "0.7rem 1rem", borderColor: "#4B5563" }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#C4B5FD" }}>المتروشكا</div>
+        <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 3 }}>{m.reason || "غير متاحة"}</div>
+      </div>
+    );
+  }
+
+  const p = m.primary;
+  const fmtP = (x) => (Number.isFinite(x) ? x.toFixed(2) : "—");
+  const dirLabel = (d) => (d === "up" ? "صاعد" : "هابط");
+
+  return (
+    <div className="qmi-anim" style={{ ...glass, padding: "0.85rem 1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+        <Layers size={15} style={{ color: "#A78BFA", flexShrink: 0 }} aria-hidden />
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#DDD6FE" }}>المتروشكا — سيكونس أساسي وفرعياته</span>
+        <span style={{ fontSize: 11, color: "#9CA3AF" }}>{m.timeframe?.toUpperCase()}</span>
+      </div>
+
+      {/* ── الأساسي: العمود الفقري ─────────────────────────────────── */}
+      <div style={{ border: "1px solid #2A2145", borderRadius: 6, padding: "0.55rem 0.7rem", background: "rgba(255,255,255,0.02)" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: p.direction === "up" ? GREEN : RED }}>
+            الأساسي · {dirLabel(p.direction)}
+          </span>
+          <span style={{ fontSize: 11, color: "#6E6690" }}>ساق {fmtP(p.legLength)}</span>
+        </div>
+        <div style={{ fontSize: 11.5, color: "#A79FC4", fontFamily: "ui-monospace, monospace", marginTop: 4, overflowX: "auto", whiteSpace: "nowrap" }}>
+          0 {fmtP(p.points?.origin?.price)} → A {fmtP(p.points?.A?.price)} → B {fmtP(p.points?.B?.price)}
+          {p.points?.C ? ` → C ${fmtP(p.points.C.price)}` : ""}
+        </div>
+        {p.targets?.length > 0 && (
+          <div style={{ fontSize: 11, color: "#8B84A8", marginTop: 4, overflowX: "auto", whiteSpace: "nowrap" }}>
+            أهداف: {p.targets.map((t) => `${t.key} ${fmtP(t.price)}`).join("  ·  ")}
+          </div>
+        )}
+      </div>
+
+      {/* ── الفرعيات ───────────────────────────────────────────────── */}
+      <div style={{ fontSize: 11, color: "#6E6690", margin: "9px 0 5px" }}>
+        {m.counts?.nested ?? 0} فرعية محتواة · {m.counts?.corrections ?? 0} تصحيح · {m.counts?.extensions ?? 0} امتداد
+      </div>
+
+      {m.subs?.length ? (
+        <div style={{ display: "grid", gap: 3 }}>
+          {m.subs.map((s, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex", alignItems: "baseline", gap: 8, fontSize: 11.5,
+                background: "#141024", borderRadius: 3, padding: "5px 8px",
+                /* إزاحة بصرية بسيطة: الفرعية جوّا الأساسي. */
+                marginInlineStart: 12,
+                borderInlineStart: `2px solid ${s.role === "correction" ? AMBER : GREEN}55`,
+              }}
+            >
+              <span style={{ color: s.role === "correction" ? AMBER : GREEN, width: 46, flexShrink: 0 }}>
+                {s.role === "correction" ? "تصحيح" : "امتداد"}
+              </span>
+              <span style={{ color: "#A79FC4", fontFamily: "ui-monospace, monospace", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {fmtP(s.origin?.price)} → {fmtP(s.A?.price)} → {fmtP(s.B?.price)}
+              </span>
+              <span style={{ color: "#6E6690", marginInlineStart: "auto", flexShrink: 0 }}>
+                ساق {fmtP(s.legLength)} · تصحيح {Math.round((s.retracement ?? 0) * 100)}%
+                {s.alive ? " · حيّة" : ""}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: 11.5, color: "#6E6690" }}>ما في سيكونز فرعي محتوى جوّا الأساسي</div>
+      )}
+    </div>
+  );
+}
+
 function SkV2Panel({ sk }) {
   if (!sk) return null;
 
