@@ -588,7 +588,7 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
   ctx.stroke();
   const riskPct = (Math.abs(r.entry - r.stopLoss) / r.entry) * 100;
   const slHit = dir === "up" ? false : false; // يُحدَّث فعلياً بمعرفة السعر الحي — راجع ملاحظة أسفل الكرت
-  drawLevelTick(ctx, slX, slY, RED, "SL (SMT)", fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`, slHit, true);
+  drawLevelTick(ctx, slX, slY, RED, `SL (${r.stopLabel || "SMT"})`, fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`, slHit, true);
 
   // -------- TP1..TP4 (سلّم صاعد بالمسافة X — كل هدف أبعد شوي عن السابق) --------
   let tpX = slX;
@@ -853,7 +853,7 @@ function TradePlanCard({ result: r, symbol }) {
       `الشروط: ${r.readiness?.metCount ?? "—"}/${r.readiness?.totalCount ?? "—"} | Entry Status: ${r.entryStatus}`,
       `Direction: ${r.direction || "—"}`,
       `Main TF: ${r.mainTimeframe || "—"} | Execution TF: ${r.executionTimeframe || "—"}`,
-      `Entry: ${r.entry ?? "—"} | Stop Loss: ${r.stopLoss ?? "—"} (SMT)`,
+      `Entry: ${r.entry ?? "—"} | Stop Loss: ${r.stopLoss ?? "—"} (${r.stopLabel || "SMT"})`,
       `Targets: ${(r.targets || []).map((t) => `${t.key} (${t.ratio == null ? "سوينغ حقيقي" : `${t.ratio} Fib`})=${t.price.toFixed(2)}`).join(" | ") || "—"}`,
       `الشروط المتحققة: ${(r.readiness?.rows || []).filter((x) => x.state === "met").map((x) => x.id).join(" + ") || "—"}`,
     ];
@@ -894,7 +894,7 @@ function TradePlanCard({ result: r, symbol }) {
             <>
               <PlanRow label="Direction" value={r.direction === "up" ? "BUY" : "SELL"} color={r.direction === "up" ? GREEN : RED} />
               <PlanRow label="Entry" value={fmt(r.entry)} color={GOLD_LIGHT} />
-              <PlanRow label="Stop Loss (SMT)" value={fmt(r.stopLoss)} color={RED} />
+              <PlanRow label={`Stop Loss (${r.stopLabel || "SMT"})`} value={fmt(r.stopLoss)} color={RED} />
               <PlanRow label="Risk %" value={`${riskPercent.toFixed(2)}%`} />
               <div style={{ height: 6 }} />
               {r.targets?.map((t) => (

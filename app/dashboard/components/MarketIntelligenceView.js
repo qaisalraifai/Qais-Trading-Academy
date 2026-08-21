@@ -2248,7 +2248,9 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
 
   const rows = [
     { y: entryY, color: GOLD_LIGHT, dash: [2, 3], lines: ["ENTRY", fmt(r.entry)] },
-    { y: slY, color: RED, dash: [2, 3], lines: ["SL · SMT", fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`] },
+    /* ⚠️ التسمية من المحرك — كانت «SMT» محفورة، فلما تبدّل مصدر الستوب
+       لحد إبطال الكتلة صارت تكذب على الطالب. */
+    { y: slY, color: RED, dash: [2, 3], lines: [`SL · ${r.stopLabel || "SMT"}`, fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`] },
   ];
   targets.forEach((t) => {
     const y = priceToY(t.price);
