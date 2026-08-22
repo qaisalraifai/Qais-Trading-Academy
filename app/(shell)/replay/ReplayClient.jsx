@@ -3633,9 +3633,12 @@ export default function ReplayClient({ userId }) {
       return;
     }
     // نحوّل الخطوط لصفقة "مفتوحة" مراقَبة بدل ما نمسحها، عشان تنقفل تلقائي لما يلمس السعر الهدف أو الإيقاف
+    /* ⚠️ `openedInMode` مش زينة — بدونها الصفقة بتنقفل لحالها أول ما ترجع
+       للمباشر. شوفي `evaluateOpenPositionsFull` للتفصيل. */
     openPositionsRef.current.push({
       dbId: data.id, tag: pt.tag, direction: pt.direction, entry: pt.entry, sl, tp, lot,
       riskAmount, rewardAmount, asset: pt.asset, entryTime: pt.entryTime,
+      openedInMode: mode,
     });
     setOpenPositionsList([...openPositionsRef.current]);
     setPendingTrade(null);
@@ -3752,9 +3755,26 @@ export default function ReplayClient({ userId }) {
 
      المقارنة بتستخدم High/Low الشمعة (مش بس Close) + تسامح نسبي صغير
      (priceTolerance) عشان مشاكل دقة الفاصلة العائمة ما تمنع الإغلاق. */
+  /* ⚠️ **الصفقة بتتقيّم بس على الخط الزمني اللي انفتحت فيه.**
+     -----------------------------------------------------------------------
+     كان في عطل مبلَّغ: «بس اكون فاتح صفقة بالريبلاي وارجع للايف بتسكر، بدي
+     اتضل موجودة ما تسكر».
+
+     السبب: أول ما ترجع للمباشر بيصير `revealCount` = كل الشموع لحد **الآن**،
+     وهاي الدالة بتنفحص من لحظة الدخول التاريخية لهلق. الصفقة انفتحت بنقطة
+     ماضية، وبين تلك النقطة واليوم في أيام/أسابيع حركة سعر حقيقية — فأكيد
+     بتلاقي ستوب أو هدف بالطريق وبتسكّر فوراً.
+
+     الفحص مش غلط حسابياً؛ الغلط إنه **بيخلط خطين زمنيين**. صفقة تمرين على
+     نقطة ماضية ما بتنحكم بسعر اليوم لمجرد إنك بدّلت الوضع لتتفرّج.
+
+     فصفقة انفتحت بالتدريب بتتقيّم بالتدريب وبس، وصفقة انفتحت بالمباشر
+     بالمباشر وبس. ⚠️ الصفقات اللي انفتحت قبل هالتعديل ما عندها الحقل —
+     بتنعامل زي قبل بالضبط (بتتقيّم دايماً) عشان ما يتغيّر سلوكها فجأة. */
   function evaluateOpenPositionsFull(knownCandles) {
     if (!knownCandles || !knownCandles.length || openPositionsRef.current.length === 0) return;
     for (const pos of [...openPositionsRef.current]) {
+      if (pos.openedInMode != null && pos.openedInMode !== mode) continue;
       // صفقات قديمة اتفتحت قبل هالتحديث وما عندها entryTime مسجّل - منسيبها
       // على منطق المراقبة اللحظية القديم (checkOpenPositionsRef) بدل ما نخمّن وقتها
       if (pos.entryTime == null) continue;
@@ -3825,6 +3845,10 @@ export default function ReplayClient({ userId }) {
   checkOpenPositionsRef.current = function checkOpenPositions(price) {
     if (!price || openPositionsRef.current.length === 0) return;
     for (const pos of [...openPositionsRef.current]) {
+      /* ⚠️ نفس قاعدة `evaluateOpenPositionsFull`: صفقة التدريب ما بتنحكم
+         بسعر المباشر. بدون هالسطر كان خط الدفاع التاني بيسكّرها من ورا
+         الإصلاح — سعر السوق الحالي بيوصل لستوبها بأول تِك تقريباً. */
+      if (pos.openedInMode != null && pos.openedInMode !== mode) continue;
       const hitSl = pos.direction === "buy" ? lteWithTolerance(price, pos.sl) : gteWithTolerance(price, pos.sl);
       const hitTp = pos.direction === "buy" ? gteWithTolerance(price, pos.tp) : lteWithTolerance(price, pos.tp);
       if (hitSl) { closeOpenPosition(pos, "loss", pos.sl); continue; }
@@ -5140,6 +5164,7 @@ export default function ReplayClient({ userId }) {
       } else {
         setRevealCount(candles.length);
         startLivePoll(candles);
+        warmOtherTimeframes(cacheSymbol, assetInfo, tdParam, dukParam);
       }
     } catch (e) {
       if (myRequestId !== loadRequestIdRef.current) return; // طلب قديم فشل بعد ما تجاوزه طلب أحدث - نتجاهله بصمت
@@ -5149,6 +5174,50 @@ export default function ReplayClient({ userId }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetValue, interval, mode, maxBars, randomChart]);
+
+  /* ===== تسخين هادي لباقي الفريمات =====
+     ⚠️ المشكلة المبلَّغة: «في بطء بالتنقل بالفريمات». مقيسة على SPX500:
+
+       ساعة (أول مرة)      ١٦٣٨ ك.ب ·  ٧٠٧ms
+       ٤ ساعات (أول مرة)   ١٦٦٨ ك.ب · ١٩٦٦ms
+       ساعة (مرة تانية)      ٣٧ ك.ب ·   ٣٣ms   ← من التخزين
+
+     يعني التخزين بيشتغل، بس **لكل فريم على حدة** — فأول زيارة لكل فريم
+     بتدفع تحميلاً كاملاً. الحل إنه نجيبهن قبل ما يطلبهن، وقت ما الشارت
+     ساكت.
+
+     ⚠️ محروس بأربع قيود، وكل وحدة إلها سبب:
+     · **بس بالمباشر** — بالتدريب المستخدم مركّز وما بدنا نزاحمه بطلبات.
+     · **بس اللي مش محفوظ** — ولا طلب زايد لفريم موجود أصلاً.
+     · **واحد ورا التاني بمهلة** — الحد على TwelveData ٨ طلبات/دقيقة، وستّة
+       طلبات دفعة وحدة بتحرقه (وهاد صار فعلاً وقت اختبار سابق).
+     · **بينلغى فوراً لو تحرّك المستخدم** — طلبه أولى من التسخين. */
+  const warmAbortRef = useRef(0);
+  async function warmOtherTimeframes(cacheSymbol, assetInfo, tdParam, dukParam) {
+    const runId = ++warmAbortRef.current;
+    /* مهلة أولية: نخلّي الشارت يستقر ويرسم قبل ما نشغّل الشبكة. */
+    await new Promise((r) => setTimeout(r, 4000));
+    for (const it of INTERVALS) {
+      if (runId !== warmAbortRef.current) return;      // المستخدم بدّل — بنوقف
+      if (it.value === intervalRef.current) continue;
+      try {
+        if (await readSeries(cacheSymbol, it.value)) continue;   // محفوظ أصلاً
+        await fetch(
+          `/api/replay-candles?symbol=${encodeURIComponent(cacheSymbol)}` +
+          `&interval=${INTERVAL_MAP[it.value]}&count=${maxBars}${tdParam}${dukParam}`
+        )
+          .then((r) => r.json())
+          .then((d) => {
+            if (runId !== warmAbortRef.current) return;
+            const c = sanitizeCandles(d?.candles || []);
+            if (c.length) writeSeries(cacheSymbol, it.value, c);
+          });
+      } catch { /* التسخين تحسين — فشله ما بيهمّ المستخدم أبداً */ }
+      await new Promise((r) => setTimeout(r, 8000));
+    }
+  }
+  /* أي تبديل أصل/فريم/وضع بيلغي تسخيناً شغّالاً — طلب المستخدم أولى. */
+  useEffect(() => { warmAbortRef.current++; }, [assetValue, interval, mode]);
 
   /* ===== تمديد الشموع للأمام تلقائياً =====
      بتنجيب دفعة جديدة من نفس المصدر (بنفس منطق loadData بالضبط، بس بـanchor
@@ -5241,7 +5310,24 @@ export default function ReplayClient({ userId }) {
     const prev = lastCutSkipCtxRef.current;
     const sameLoadCtx =
       prev && prev.asset === assetValue && prev.interval === interval && prev.maxBars === maxBars;
-    if (cutInsideLoaded && sameLoadCtx) return () => { stopLivePoll(); stopCountdownTick(); };
+
+    /* ⚠️ **ممنوع التخطّي وقت "الرجوع لمكان التوقف"** — وهاد كان عطلاً فعلياً.
+       -------------------------------------------------------------------
+       التخطّي مبني على إنه `revealCount` صار صح **قبل** ما يوصل التأثير:
+       `finalizeCut` بتعيّنه بنفسها (`setRevealCount(fromIdx + 1)`) فالتخطّي
+       سليم. أما `resumeSavedSession` فبتعيّن `replayStateRef` والرسومات
+       ومنطقة القص وبس — وبتتّكل على `loadData` → `pickTrainingRevealCount`
+       عشان تحسب مكان التوقف على البيانات الحالية.
+
+       فلما كانت البيانات المحمّلة تغطّي نقطة القص القديمة، الحارس كان
+       يتخطّى التحميل، وما بينحسب `revealCount` أبداً — فبتبان **كل**
+       الشموع مكشوفة وكأنه ما في قص. بالضبط: «ما بيقص الشموع يلي كانت
+       مقصوصة».
+
+       الرجوع لمكان التوقف حدث نادر (ضغطة واحدة)، فدفع تحميل كامل مرة
+       وحدة مقبول — الصحة قبل السرعة. */
+    const resuming = pendingResumeRef.current != null;
+    if (cutInsideLoaded && sameLoadCtx && !resuming) return () => { stopLivePoll(); stopCountdownTick(); };
 
     lastCutSkipCtxRef.current = { asset: assetValue, interval, maxBars };
     // تأخير بسيط (350ms) قبل التحميل الفعلي - لو صار كذا تغيير سريع متتالي
