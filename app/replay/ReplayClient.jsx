@@ -6,6 +6,7 @@ import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets
 import { createClient } from "@/lib/supabase-client";
 import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
+import { readSeries, writeSeries, mergeCandles, canExtendFrom } from "@/lib/candle-cache";
 import WatchlistPanel from "./WatchlistPanel";
 
 const GOLD = "#DCD4F7";
@@ -5056,8 +5057,52 @@ export default function ReplayClient({ userId }) {
           : "";
       const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
       const dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
+      /* ===== التخزين المحلي: نرسم فوراً، وبعدين نجيب الذيل بس =====
+         ⚠️ المشكلة اللي بيحلّها مقيسة: فتح الشارت كان ينتظر **٢.٧ لـ٦.٣
+         ثانية** قبل أول بايت، ونقل البيانات نفسه ٧–١٤ ملّي ثانية. يعني
+         الانتظار كله جلب من المزوّد بالخادم (Dukascopy بتبني ١٦ ألف شمعة من
+         ملفات أرشيف)، وما في أي تخزين مؤقت بالمسار — فكل فتحة صفحة بتعيد
+         نفس الشغل من الصفر.
+
+         الشموع التاريخية **ما بتتغيّر**، فالمحفوظ منها صالح للأبد. منعرضه
+         فوراً (الشارت بيبان بلا انتظار)، وبنطلب من آخر شمعة محفوظة لحد الآن
+         بس — طلب صغير بدل ١.٥ ميجا.
+
+         ⚠️ العرض الفوري **بس بوضع المباشر**. بوضع التدريب نقطة الكشف
+         (`revealCount`) بتنحسب من المصفوفة، وعرض مصفوفة مؤقتة بيخلّيها
+         تتحرّك مرتين — فبنستنى البيانات النهائية. */
+      const cacheSymbol = assetInfo.yahooSpot || assetInfo.yahoo;
+      const intervalSecs = (INTERVAL_MS[interval] || 900000) / 1000;
+      let cached = null;
+      if (!anchorParam) {
+        cached = await readSeries(cacheSymbol, interval);
+        if (myRequestId !== loadRequestIdRef.current) return;
+        if (cached?.candles?.length && mode === "live") {
+          /* شارت شغّال بالحال — الجلب تحت بيكمّله لما يوصل. */
+          setAllCandles(cached.candles);
+          setRevealCount(cached.candles.length);
+          setLoading(false);
+        }
+      }
+
+      /* لو المحفوظ قريب كفاية من الآن، بنطلب الذيل بس (مرساة على آخر شمعة
+         محفوظة). وإلا بنطلب المدى الكامل زي قبل — فجوة كبيرة ما بيسدّها طلب
+         ذيل، وثقب بالنص أسوأ من انتظار. */
+      const canTail = !anchorParam && cached?.candles?.length && canExtendFrom(cached.candles, intervalSecs);
+      const lastCachedTime = canTail ? cached.candles[cached.candles.length - 1].time : null;
+      const effAnchor = canTail ? `&anchor=${lastCachedTime}` : anchorParam;
+
+      /* ⚠️ `count` كمان لازم يصغر مع الذيل — مش المرساة وحدها.
+         -----------------------------------------------------------------
+         تضييق المدى بالمرساة مطبَّق بـ`lib/yahoo-candles.js` بس؛ Dukascopy
+         بتاخد `wanted` كما هو. فأول نسخة ضلّت تجيب **١.٥ ميجا** بطلب الذيل
+         رغم إنها بدها شمعتين: مقيس، `count=20000` مع مرساة = 1586KB.
+         بنطلب فجوة الوقت + هامش ٤٠٠ شمعة (تداخل يضمن ما يضل ثقب). */
+      const gapBars = canTail ? Math.ceil((Date.now() / 1000 - lastCachedTime) / intervalSecs) : 0;
+      const effCount = canTail ? Math.min(maxBars, gapBars + 400) : maxBars;
+
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}${anchorParam}${tdParam}${dukParam}`
+        `/api/replay-candles?symbol=${encodeURIComponent(cacheSymbol)}&interval=${tdInterval}&count=${effCount}${effAnchor}${tdParam}${dukParam}`
       );
       const data = await res.json();
       // طلب أحدث صار وخلص قبل ما هاد يوصل جوابه - نتجاهل هاد الجواب "القديم"
@@ -5065,8 +5110,14 @@ export default function ReplayClient({ userId }) {
       // allCandles/pendingReprojectRef يلي أصلاً محدَّثين بالطلب الأحدث.
       if (myRequestId !== loadRequestIdRef.current) return;
       if (data.error) throw new Error(data.error);
-      const candles = sanitizeCandles(data.candles || []);
+      const fetched = sanitizeCandles(data.candles || []);
+      /* ⚠️ الدمج بالوقت مش بالفهرس — الفهارس بتختلف بين طلبين بمدى مختلف،
+         والوقت هو المعرّف الثابت الوحيد للشمعة. والجاي بيغلب المحفوظ عند
+         تساوي الوقت (آخر شمعة محفوظة ممكن تكون كانت جارية وقتها). */
+      const candles = cached?.candles?.length ? mergeCandles(cached.candles, fetched) : fetched;
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
+      /* ما بننتظر الحفظ — التخزين تحسين، وأي فشل فيه ما بيهمّ المستخدم. */
+      if (!anchorParam) writeSeries(cacheSymbol, interval, candles);
       dataSourceRef.current = {
         symbol: data.sourceSymbol || assetInfo.yahoo,
         usedFallback: false,
