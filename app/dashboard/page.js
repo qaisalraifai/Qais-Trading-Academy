@@ -8,6 +8,18 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // ⚠️ الاستعلامان متوازيان — `batch_enrollments` ما بتعتمد على `profiles`،
+  // الاتنين بيسألوا عن `user.id` اللي معنا أصلاً. كانوا متسلسلين فكان فتح
+  // الداشبورد يدفع رحلتين شبكيتين ورا بعض بدل وحدة. (نفس التعديل بـ
+  // lib/shell-profile.js لباقي الصفحات.)
+  // ⚠️ `.catch` لازم: الأدمن ما بينتظر هالوعد، ووعد مرفوض بلا مستمع بيرمي
+  // unhandledRejection. الفشل بيصير {count:null} = نفس سلوك فشل الاستعلام قبل.
+  const enrollmentPromise = createAdminClient()
+    .from("batch_enrollments")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .then((r) => r, () => ({ count: null }));
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("username, role, subscription_end, current_streak, longest_streak")
@@ -20,11 +32,7 @@ export default async function DashboardPage() {
   // بوابة اختيار الدفعة — الداشبورد ما بيستخدم getShellProfile (عندها منطق
   // بروفايل خاص فيها)، فلازم نفس الفحص هون تحديدًا كمان.
   if (!isAdmin) {
-    const admin = createAdminClient();
-    const { count } = await admin
-      .from("batch_enrollments")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id);
+    const { count } = await enrollmentPromise;
     if (!count) redirect("/select-batch");
   }
 
