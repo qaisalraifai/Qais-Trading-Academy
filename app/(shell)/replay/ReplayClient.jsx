@@ -3773,6 +3773,21 @@ export default function ReplayClient({ userId }) {
      بتنعامل زي قبل بالضبط (بتتقيّم دايماً) عشان ما يتغيّر سلوكها فجأة. */
   function evaluateOpenPositionsFull(knownCandles) {
     if (!knownCandles || !knownCandles.length || openPositionsRef.current.length === 0) return;
+    /* ⚠️ **ممنوع التقييم وقت "الرجوع لمكان التوقف"** — سباق زمني حقيقي.
+       -------------------------------------------------------------------
+       `resumeSavedSession` بتعيّن الوضع لـ"تدريب" **فوراً**، بس
+       `revealCount` بيجي بعدين من `loadData` → `pickTrainingRevealCount`.
+       فبين اللحظتين بيصير: الوضع = تدريب، و`revealCount` = **كل** الشموع
+       لحد اليوم (قيمة المباشر).
+
+       بهاي اللحظة الحارس تحت ما بيحمي: الصفقة موسومة "تدريب" والوضع
+       "تدريب" فبتنفحص — من لحظة دخولها التاريخية لهلق. النتيجة: «توصلت
+       للهدف — الصفقة اتقفلت ربح» بمجرد ما ترجع للقص، رغم إنه الريبلاي لسا
+       ما وصل هناك.
+
+       `pendingResumeRef` مضبوط بالضبط على هالنافذة (بتتصفّر لما يخلص
+       `loadData` ويعيّن مكان الكشف الصح)، فهو الفحص الدقيق للحظة. */
+    if (pendingResumeRef.current != null) return;
     for (const pos of [...openPositionsRef.current]) {
       if (pos.openedInMode != null && pos.openedInMode !== mode) continue;
       // صفقات قديمة اتفتحت قبل هالتحديث وما عندها entryTime مسجّل - منسيبها
@@ -3844,6 +3859,9 @@ export default function ReplayClient({ userId }) {
      ونفس أولوية SL أولاً، عشان يكون سلوك محرك التنفيذ موحّد بكل مكان بالكود. */
   checkOpenPositionsRef.current = function checkOpenPositions(price) {
     if (!price || openPositionsRef.current.length === 0) return;
+    /* نفس نافذة "الرجوع لمكان التوقف" (شوفي evaluateOpenPositionsFull):
+       سعر لحظي من المباشر ممكن يوصل هون والوضع صار "تدريب" أصلاً. */
+    if (pendingResumeRef.current != null) return;
     for (const pos of [...openPositionsRef.current]) {
       /* ⚠️ نفس قاعدة `evaluateOpenPositionsFull`: صفقة التدريب ما بتنحكم
          بسعر المباشر. بدون هالسطر كان خط الدفاع التاني بيسكّرها من ورا
