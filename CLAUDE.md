@@ -329,6 +329,20 @@ const far = fars.reduce((m, s) => (dirUp ? s.price > m.price : s.price < m.price
 
 `symbol-readiness.test.js` — ٧ اختبارات، منها **حارس بيفشل لو رجع أي حقل نسبة للمخرج**.
 
+⚠️ **الأرقام الميتة أخطر من المخترعة — وتلاتة نجوا حتى بعد شيل المحرك.**
+كل لوحة انفحصت بالتشغيل اليدوي طلع فيها واحد، وما مسكه لا البناء ولا اختبارات المحرك ولا فحص المخرج:
+
+| اللوحة | القراءة الميتة | اللي كانت ترسمه |
+|---|---|---|
+| الرادار | `marketStatus.avgConfidence` (مشال) | «—» دايماً |
+| الرادار | نصيب الاتجاه كنسبة | «100% confidence» برمز واحد |
+| QAIS Engine | `result.score` · `result.status` (مشالين) | **«QAIS Score 0/100» على كل رمز** |
+| تفاصيل الصفقة | عمود `confidence` (صار `null`) | «—» دايماً |
+
+السبب: JavaScript بترجّع `undefined` بصمت، فالواجهة بترسم «—» أو «0» بدل ما تنكسر.
+
+`ui-contract.test.js` — حارس بيقارن **قراءات الواجهة** بـ**حقول المخرج الفعلية** (من تشغيل `analyzeSymbol`، مش من قائمة مكتوبة بالإيد عشان ما يصير هو نفسه قديماً). بيشيل التعليقات قبل الفحص، وفيه **فحص ذاتي** بيتأكد إنه بيقرا ملفات فعلاً مش صفر. متحقَّق إنه بيفشل لما ترجع القراءة الميتة، وبيسمّي الملف والحقل.
+
 ### طبقة البيانات
 
 `lib/market-data/timeframe-consistency.js` — حارس بيفحص إذا الشمعة الكبيرة بتحتوي شموعها الصغيرة. موصول بمخرج `analyzeSymbol` كـ`dataQuality` وظاهر بالرادار كشريط تحذير.
@@ -377,10 +391,10 @@ const far = fars.reduce((m, s) => (dirUp ? s.price > m.price : s.price < m.price
 
 ```bash
 npm run build
-node --test lib/qais/structure/structure.test.js lib/qais/structure/verify/*.test.js lib/qais/liquidity-v2/*.test.js lib/qais/orderblock-v2/*.test.js lib/qais/orderblock-v2/verify/*.test.js lib/market-data/*.test.js
+node --test lib/qais/*.test.js lib/qais/structure/structure.test.js lib/qais/structure/verify/*.test.js lib/qais/liquidity-v2/*.test.js lib/qais/orderblock-v2/*.test.js lib/qais/orderblock-v2/verify/*.test.js lib/market-data/*.test.js
 ```
 
-٢٦٧ اختبار، بـ`node --test` المدمج. **ما في test runner ولا أي تبعية اختبار** — لا تضيف وحدة.
+٣٠٦ اختبار، بـ`node --test` المدمج. **ما في test runner ولا أي تبعية اختبار** — لا تضيف وحدة.
 الجذر `commonjs` بينما `lib` ESM، فمجلدات المحرك فيها `package.json` صغير `{"type":"module"}` حتى يشتغل `node --test`.
 
 **الشموع**: `/api/replay-candles` (Dukascopy → TwelveData → Yahoo). خلّي `count ≤ 900` بالفحص اليدوي — أكبر من هيك بينرفض ويتراجع لمصدر أضعف.
