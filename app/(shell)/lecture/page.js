@@ -1,0 +1,169 @@
+import { BookOpen, Clock } from "lucide-react";
+import { resolveIcon } from "@/lib/icon-registry";
+import { createClient } from "@/lib/supabase-server";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+
+export default async function LecturesPage() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+
+  // الكورسات الثلاثة
+  const { data: courses } = await supabase
+    .from("courses")
+    .select("*")
+    .order("order_index", { ascending: true });
+
+  // كل المحاضرات (باش نحسب عدد الدروس والساعات لكل كورس)
+  const { data: lectures } = await supabase
+    .from("lectures")
+    .select("id, course_id, duration_seconds");
+
+  // تقدم الطالب
+  const { data: progress } = await supabase
+    .from("lecture_progress")
+    .select("lecture_id, completed")
+    .eq("user_id", user.id);
+
+  const completedIds = new Set(
+    (progress || []).filter((p) => p.completed).map((p) => p.lecture_id)
+  );
+
+  const courseStats = (courses || []).map((course) => {
+    const courseLectures = (lectures || []).filter((l) => l.course_id === course.id);
+    const totalLessons = courseLectures.length;
+    const totalSeconds = courseLectures.reduce((sum, l) => sum + (l.duration_seconds || 0), 0);
+    const completedCount = courseLectures.filter((l) => completedIds.has(l.id)).length;
+    const progressPct = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+    const totalHours = totalSeconds / 3600;
+    return { ...course, totalLessons, totalHours, completedCount, progressPct };
+  });
+
+  return (
+    <div style={{
+    minHeight: "100vh",
+    background: "radial-gradient(ellipse at top, #120B24 0%, #0E0A1A 60%)",
+    color: "#fff",
+    fontFamily: "'Segoe UI', sans-serif",
+    direction: "rtl",
+    padding: "2rem",
+    }}>
+    <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: "50%",
+            border: "2px solid #DCD4F7",
+            boxShadow: "0 0 20px #3D2F63",
+            overflow: "hidden", flexShrink: 0,
+          }}>
+            <img src="/logo.svg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+          <div>
+            <p style={{ color: "#DCD4F7", fontSize: 11, letterSpacing: 3, margin: 0 }}>QAIS TRADING ACADEMY</p>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>البرامج التعليمية</h1>
+          </div>
+        </div>
+        <Link href="/dashboard" style={{ color: "#4A4368", fontSize: 13, textDecoration: "none" }}>← رجوع</Link>
+      </div>
+
+      <p style={{ color: "#4A4368", fontSize: 14, marginBottom: "2rem" }}>اختر البرنامج وابدأ رحلتك التعليمية</p>
+
+      {/* Course Cards */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+        gap: "1.5rem",
+      }}>
+        {courseStats.map((course) => (
+          <Link key={course.id} href={`/course/${course.id}`} style={{ textDecoration: "none" }}>
+            <div style={{
+              background: "#141024",
+              border: "1px solid #2A2145",
+              borderRadius: 0,
+              padding: "1.75rem",
+              cursor: "pointer",
+              boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
+              transition: "transform 0.15s ease",
+            }}>
+              {/* Icon */}
+              <div style={{ display: "flex" }}>
+                {(() => {
+                  const CourseIcon = resolveIcon(course.icon, BookOpen);
+                  return <CourseIcon size={36} strokeWidth={1.5} color="#F5F3FF" aria-hidden />;
+                })()}
+              </div>
+
+              {/* Title + Description */}
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 19, color: "#fff", marginBottom: 6 }}>{course.title}</div>
+                {course.description && (
+                  <div style={{ color: "#6E6690", fontSize: 13, lineHeight: 1.6 }}>{course.description}</div>
+                )}
+              </div>
+
+              {/* Stats */}
+              <div style={{ display: "flex", gap: "1.25rem", fontSize: 12, color: "#A79FC4" }}>
+                <span>{course.totalLessons} درس</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <Clock size={12} strokeWidth={1.75} aria-hidden />
+                  {course.totalHours.toFixed(1)} ساعة
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{ marginTop: "auto" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#DCD4F7", marginBottom: 6 }}>
+                  <span>التقدم</span>
+                  <span>{course.progressPct}%</span>
+                </div>
+                <div style={{ width: "100%", height: 8, background: "#1E1836", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{
+                    width: `${course.progressPct}%`,
+                    height: "100%",
+                    background: "linear-gradient(90deg, #DCD4F7, #F5F3FF)",
+                    borderRadius: 3,
+                    transition: "width 0.3s ease",
+                  }} />
+                </div>
+                <div style={{ fontSize: 11, color: "#4A4368", marginTop: 4 }}>
+                  {course.completedCount} / {course.totalLessons} درس
+                </div>
+              </div>
+
+              {/* Continue button */}
+              <div style={{
+                background: "linear-gradient(135deg, #DCD4F7, #8A7CB8)",
+                color: "#000",
+                fontWeight: 700,
+                fontSize: 13,
+                textAlign: "center",
+                padding: "0.65rem",
+                borderRadius: 3,
+                boxShadow: "0 4px 12px #2A2145",
+              }}>
+                {course.progressPct > 0 ? "متابعة" : "ابدأ الآن"}
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {(!courseStats || courseStats.length === 0) && (
+        <div style={{ color: "#4A4368", textAlign: "center", padding: "3rem 0" }}>
+          لا توجد برامج تعليمية بعد.
+        </div>
+      )}
+
+    </div>
+    </div>
+  );
+}
