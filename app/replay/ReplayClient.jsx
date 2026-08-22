@@ -1716,6 +1716,19 @@ export default function ReplayClient({ userId }) {
   function effectiveLineColor(it, line) { return it?.style?.colors?.[line.key] || line.color; }
   function effectiveLineWidth(it, line) { return it?.style?.widths?.[line.key] || line.lineWidth || 1.4; }
 
+  /* ===== شموع المقارنة المسموح عرضها الآن — المصدر الوحيد للقص =====
+     ⚠️ انبنت لأن القص كان مكرَّراً بمكان واحد وناقص بالتاني، فأي مسار
+     بينسى يقصّ بيسرّب مستقبل الرمز المترابط بوضع التدريب. أي مكان بيكتب
+     على سيريز المقارنة لازم يمرّ من هون — مش من `compareCandles` مباشرة.
+
+     بوضع المباشر ما في قص: الشارتان عايشان بنفس اللحظة. */
+  function compareCandlesUpToReveal() {
+    if (mode !== "training" || !allCandles.length) return compareCandles;
+    const cutTime = allCandles[Math.min(revealCount, allCandles.length) - 1]?.time;
+    if (cutTime == null) return compareCandles;
+    return compareCandles.filter((c) => c.time <= cutTime);
+  }
+
   /* أي تغيير بإعدادات لوحة المقارنة (نوع الشارت أو ألوانه): نعيد بناء السيريز فوراً ونحفظ بالمتصفح.
      منقّاة بنفس بيانات الشمعة الحالية عشان يبان التغيير مباشرة بدون قفل/إعادة تحميل. */
   useEffect(() => {
@@ -1727,7 +1740,20 @@ export default function ReplayClient({ userId }) {
     const series = buildCompareSeries(compareChartRef.current, compareSettings);
     compareSeriesRef.current = series;
     try {
-      series.setData(compareSeriesData(compareSettings.type, compareCandles));
+      /* ⚠️ **لازم نقصّ هون كمان — مش نحط compareCandles كاملة.**
+         ------------------------------------------------------------------
+         في مكانين بيكتبوا على نفس السيريز: هاد (لما يتغيّر نوع الشارت أو
+         لونه) والتأثير تحت (سطر ~4790، لما تتغيّر البيانات أو تتقدّم نقطة
+         الكشف). التاني بيقصّ عند نقطة الريبلاي؛ هاد كان بيحط **كل** شموع
+         المقارنة بلا قص.
+
+         النتيجة: بوضع التدريب، أول ما تبدّلي شكل لوحة المقارنة (شموع/خط/
+         منطقة أو أي لون)، بتنكشف بيانات الرمز المترابط **لليوم** — يعني
+         مستقبل ما وصله الريبلاي بعد. وبتضل مكشوفة لحد ما تتقدّم شمعة تانية
+         فيرجع التأثير التاني يقصّها.
+
+         بأداة تدريب، تسريب المستقبل مش خلل عرض — هو بيبطّل التمرين نفسه. */
+      series.setData(compareSeriesData(compareSettings.type, compareCandlesUpToReveal()));
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareSettings]);
@@ -4763,12 +4789,9 @@ export default function ReplayClient({ userId }) {
      هيك ما ينكشف "مستقبل" لرمز المقارنة قبل ما يوصله الريبلاي. */
   useEffect(() => {
     if (compareSeriesRef.current) {
-      let sourceCandles = compareCandles;
-      if (mode === "training" && allCandles.length) {
-        const cutTime = allCandles[Math.min(revealCount, allCandles.length) - 1]?.time;
-        if (cutTime != null) sourceCandles = compareCandles.filter((c) => c.time <= cutTime);
-      }
-      const data = compareSeriesData(compareSettings.type, sourceCandles);
+      /* ⚠️ القص انتقل لـ`compareCandlesUpToReveal` (فوق) — كان مكرَّراً هون
+         وناقص بمسار إعدادات المقارنة، فتبديل نوع الشارت كان بيسرّب المستقبل. */
+      const data = compareSeriesData(compareSettings.type, compareCandlesUpToReveal());
       try {
         compareSeriesRef.current.setData(data);
         // نحاذي بالموضع المنطقي (logical range) مش بالتوقيت المطلق - نفس السبب
@@ -5127,7 +5150,49 @@ export default function ReplayClient({ userId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealCount, allCandles, mode, randomChart]);
 
+  /* ===== القص ما بيستدعي إعادة تحميل — الشموع اللي بدها محمّلة أصلاً =====
+     ⚠️ **هاد كان سبب مشكلتين مع بعض: «بطيء لمّا تقصّ» و«الرسومات بتقفز».**
+     ---------------------------------------------------------------------
+     `finalizeCut` بتنادي `setMode("training")`، وتأثير التحميل تحت بيعتمد
+     على `mode` — فكل قصّة كانت تطلق `loadData()` كاملة. وبما إنه في نقطة قص
+     شغالة، الطلب بيروح مع `&anchor=`، واللي بيرجع **مصفوفة تانية بالكامل**.
+
+     مقيس فعلياً (ES=F · 15 دقيقة · قص عند ٣٠ يوليو):
+
+       قبل القص   ٣٦٤٠ شمعة · بتبلّش ٢٥ يونيو
+       بعد القص   ١٧٤٤ شمعة · بتبلّش ٢٧ يوليو   ← ضاع شهر تاريخ
+       نفس لحظة القص: الفهرس ٢١٨٤ → ٢٨٨  (إزاحة ١٨٩٦ عمود)
+
+     تضييق المدى **متعمّد** بـ`lib/yahoo-candles.js` (يوهو بيقصّ الجزء الأقدم
+     بصمت لو طلبنا مدى ضخم، فبنطلب من «نقطة القص ناقص ٣٠٠ شمعة» لحد الآن
+     عشان نضمن إنها موجودة). بس نتيجته إنه ما بيضل قبل نقطة القص غير ~٣ أيام.
+
+     والرسومات مخزّنة بـ{time, price} — فأي رسمة أقدم من بداية المصفوفة
+     الجديدة بتطلع **برّا النطاق** وبتنحسب بالاستقراء (خطوة ثابتة بتتجاهل
+     فجوات السوق) بدل ما تنربط بعمود حقيقي. هاد هو القفز.
+
+     الحل: ما نجيب أصلاً. لحظة القص **دايماً** جوّا البيانات المحمّلة — إنت
+     بتقصّ على شمعة شايفها قدامك. فلو المصفوفة الحالية بتغطّيها، منكمّل فيها
+     زي ما هي: ولا طلب شبكة، ولا إزاحة أعمدة، ولا رسمة بتقفز.
+
+     ⚠️ الحارس **ضيّق عمداً**: بس انتقال «قص لتدريب» بنفس الأصل والفريم
+     وعدد الشموع. أي تبديل تاني (أصل · فريم · maxBars · رجوع للمباشر) بيمرّ
+     على `loadData` عادي زي قبل. */
+  const lastCutSkipCtxRef = useRef(null);
   useEffect(() => {
+    const st = replayStateRef.current;
+    const cutTs = st.currentTimestamp;
+    const cutInsideLoaded =
+      mode === "training" && st.isActive && cutTs != null && !randomChart &&
+      allCandles.length > 0 && allCandles[0].time <= cutTs && cutTs <= allCandles[allCandles.length - 1].time;
+    /* نفس الأصل/الفريم/العدد يلي البيانات المحمّلة جاية منه؟ لو تغيّر واحد
+       منهن فالمصفوفة الحالية ما بتمثّله وبنحتاج تحميل فعلي. */
+    const prev = lastCutSkipCtxRef.current;
+    const sameLoadCtx =
+      prev && prev.asset === assetValue && prev.interval === interval && prev.maxBars === maxBars;
+    if (cutInsideLoaded && sameLoadCtx) return () => { stopLivePoll(); stopCountdownTick(); };
+
+    lastCutSkipCtxRef.current = { asset: assetValue, interval, maxBars };
     // تأخير بسيط (350ms) قبل التحميل الفعلي - لو صار كذا تغيير سريع متتالي
     // (كليكات قص، تبديل فريم/أصل/وضع) قبل ما تخلص هاي الفترة، بننفّذ طلب
     // واحد بس للحالة الأخيرة بدل طلب منفصل لكل تغيير وسيط. هاد يلي كان عم
@@ -5573,21 +5638,71 @@ export default function ReplayClient({ userId }) {
     return () => clearInterval(playTimerRef.current);
   }, [isPlaying, speed, allCandles.length]);
 
+  /* ===== حفظ جلسة القص/التدريب =====
+     ⚠️ **كانت بتنكتب بمكان واحد بس: لحظة الضغط على «مباشر».**
+     ---------------------------------------------------------------------
+     يعني أي خروج تاني — refresh · تسكير التاب · الرجوع للخلف · إغلاق
+     المتصفح — بيروح فيه **كل شي**: نقطة القص وكل الرسومات، بدون أي إنذار.
+     والقارئ (سطر ~1205) بيقرأ عند التحميل فبيلاقي فاضي، فبيبان كأنه ما في
+     جلسة محفوظة أصلاً.
+
+     الحفظ صار من مصدر واحد بيتنادى من تلات مواقف: تبديل الوضع (زي قبل)،
+     وتقدّم الريبلاي (مبطَّأ عشان ما نكتب على القرص كل شمعة)، وإخفاء الصفحة
+     (`pagehide`/`visibilitychange` — بيغطّي الـrefresh والتسكير، و`pagehide`
+     بالذات هو الحدث الوحيد الموثوق على الموبايل).
+
+     ⚠️ ما بيتغيّر ولا سلوك ظاهر: نفس المفتاح ونفس شكل اللقطة، فأي جلسة
+     محفوظة قديمة بتنقرا زي ما هي. */
+  function buildPausedSnapshot() {
+    return {
+      assetValue,
+      interval,
+      replayState: { ...replayStateRef.current },
+      appliedCutRegion,
+      drawings: drawingsRef.current.map((d) => ({ ...d })),
+    };
+  }
+  /* ⚠️ بعد ما تختار «قص جديد» بتنمسح اللقطة القديمة عمداً — فممنوع الحفظ
+     التلقائي يرجع يكتبها قبل ما يكتمل القص الجديد. القفل بينفتح بـfinalizeCut. */
+  const suppressPersistRef = useRef(false);
+  function persistPausedSession() {
+    if (suppressPersistRef.current) return;
+    if (mode !== "training" || !replayStateRef.current.isActive) return;
+    const snapshot = buildPausedSnapshot();
+    savedSessionRef.current = snapshot;
+    try { localStorage.setItem(PAUSED_SESSION_KEY, JSON.stringify(snapshot)); } catch {}
+  }
+  /* مرجع حيّ للدالة: مستمعو الأحداث تحت بينتسجّلوا مرة وحدة، وبدون هاد
+     بيمسكوا قيم أول رندر (نقطة قص قديمة ورسومات قديمة). */
+  const persistPausedSessionRef = useRef(persistPausedSession);
+  persistPausedSessionRef.current = persistPausedSession;
+
+  useEffect(() => {
+    const onHide = () => persistPausedSessionRef.current();
+    const onVisibility = () => { if (document.visibilityState === "hidden") persistPausedSessionRef.current(); };
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  /* تقدّم الريبلاي: نحفظ بعد ثانية من آخر خطوة (مش كل خطوة) — على سرعة
+     ١٠ شموع/ثانية هاد بيعني كتابة وحدة بدل عشرة. */
+  useEffect(() => {
+    if (mode !== "training") return;
+    const id = setTimeout(() => persistPausedSessionRef.current(), 1000);
+    return () => clearTimeout(id);
+  }, [revealCount, mode]);
+
   function switchMode(m) {
     // راجعة للمباشر من جلسة تدريب/قص شغالة فعلياً؟ نحفظ لقطة كاملة منها قبل
     // ما loadData يصفّر الرسومات ونقطة القص (شوفي "سوق مختلف كلياً" فوق) -
     // عشان نقدر نعرضلها "ارجعي لمكانك" لو ضغطت قص تاني بعدين.
     if (m === "live" && mode === "training" && replayStateRef.current.isActive) {
-      const snapshot = {
-        assetValue,
-        interval,
-        replayState: { ...replayStateRef.current },
-        appliedCutRegion,
-        drawings: drawingsRef.current.map((d) => ({ ...d })),
-      };
-      savedSessionRef.current = snapshot;
+      persistPausedSession();
       setHasSavedSession(true);
-      try { localStorage.setItem(PAUSED_SESSION_KEY, JSON.stringify(snapshot)); } catch {}
     }
     setMode(m);
   }
@@ -5597,6 +5712,7 @@ export default function ReplayClient({ userId }) {
   function startFreshCut() {
     savedSessionRef.current = null;
     setHasSavedSession(false);
+    suppressPersistRef.current = true; // بينفتح بـfinalizeCut للقص الجديد
     try { localStorage.removeItem(PAUSED_SESSION_KEY); } catch {}
     setCutChoiceOpen(false);
     openCutModeFresh();
@@ -5767,6 +5883,7 @@ export default function ReplayClient({ userId }) {
     stopLivePoll();
     setMode("training");
     setIsPlaying(false);
+    suppressPersistRef.current = false; // القص الجديد اكتمل — الحفظ التلقائي يرجع يشتغل
     replayStateRef.current = { isActive: true, anchorTimestamp: fromCandle.time, currentTimestamp: fromCandle.time, originalTimeframe: intervalRef.current };
     setRevealCount(fromIdx + 1);
     // openEnded=true (قص بكليك واحد): ما في نهاية مقصودة فعلياً - toTime هون
@@ -7026,12 +7143,32 @@ export default function ReplayClient({ userId }) {
   }
 
   /* لوحة صغيرة تعرض الصفقات المفتوحة حالياً وتسمح بتعديل الهدف/الإيقاف تبعها كتابياً
-     حتى بعد ما اتأكدت وانسجلت (التعديل بينحفظ فوراً بقاعدة البيانات) */
+     حتى بعد ما اتأكدت وانسجلت (التعديل بينحفظ فوراً بقاعدة البيانات)
+
+     ⚠️ الموضع العمودي (top) **مش تجميلي — هو اللي كان بيمنع فتح أكتر من صفقة.**
+     -----------------------------------------------------------------------
+     كانت هاي اللوحة عند top:10 بـzIndex 11، فوق عمودين تانيين بنفس العمود
+     (left:10) وبـzIndex أقل:
+
+       top 10  ارتفاع 23   شريط الرمز/OHLC        (z 8)
+       top 42  ارتفاع 47   أزرار البيع/الشراء      (z 8)
+
+     أول ما تنفتح صفقة وحدة، بطاقتها (ارتفاعها ١٤٦ بكسل مقيسة: عنوان + سعر
+     دخول + حقلَي TP/SL + زر إغلاق) بتمتد من 10 لـ156 — فبتغطّي **الاتنين**.
+     وبما إنه zIndex أعلى، كانت بتاخد الضغطة بدل الزر: `elementFromPoint` على
+     زر الشراء كانت ترجّع بطاقة الصفقة مش الزر.
+
+     فالمستخدم بيقرأها «الأزرار مطفية» وهي مش مطفية أصلاً — مغطّاة. وكل صفقة
+     إضافية بتطوّل العمود أكتر (flex column بفجوة 8) فبتغطّي أكتر.
+
+     89 = 42 (أعلى صف الأزرار) + 47 (ارتفاعه). فـ96 بيترك فجوة ٧ بكسل تحته،
+     وفوق شريط الزوم (top ~575) بمسافة واسعة. */
+  const OPEN_POSITIONS_PANEL_TOP = 96;
   function renderOpenPositionsPanel() {
     if (!openPositionsList.length) return null;
     return (
       <div style={{
-        position: "absolute", top: 10, left: 10, zIndex: 11, width: 230,
+        position: "absolute", top: OPEN_POSITIONS_PANEL_TOP, left: 10, zIndex: 11, width: 230,
         display: "flex", flexDirection: "column", gap: 8,
       }}>
         {openPositionsList.map((pos) => {
