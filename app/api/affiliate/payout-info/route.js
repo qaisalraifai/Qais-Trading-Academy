@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from "@/lib/supabase-server";
 // POST /api/affiliate/payout-info  { method: "paypal" | "wise" | "bank", details: {...} }
 // يخزّن بيانات استلام العمولة. التحويل الفعلي يدوي حالياً (لحد ربط PayPal/Wise API).
 export async function POST(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

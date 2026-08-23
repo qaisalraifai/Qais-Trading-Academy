@@ -31,7 +31,7 @@ import { logActivity, getClientIp, parseDevice, lookupCountry } from "@/lib/acti
    بهويته المتحققة** بدل هوية بيدّعيها.
    ============================================================================ */
 export async function POST(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

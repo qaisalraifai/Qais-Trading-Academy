@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase-server";
 // لما تكون فاتحة خبر لسا تحليله ما خلص، حتى تعرف أول ما يجهز بدون ما المستخدم
 // يعمل Refresh يدوي.
 export async function GET(request, { params }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -8,7 +8,7 @@ import CalendarClient from "./CalendarClient";
 // المباشرة، ومواعيد تسليم الواجبات) بشكل مرئي منظّم. ما فيها أي جدول جديد —
 // بس تجميع لبيانات موجودة أصلاً من مراحل سابقة.
 export default async function BatchCalendarPage({ params }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
      تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
   const userId = await getVerifiedUserId();

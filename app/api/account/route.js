@@ -6,7 +6,7 @@ import { getWhop } from "@/lib/whop";
 // بيرجع بيانات اشتراك المستخدم الحالي نفسه (مش أي مستخدم تاني) + سجل مدفوعاته.
 // يُستخدم من صفحة "الإعدادات" بالداشبورد.
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -6,7 +6,7 @@ import { assertLiveSessionAccess } from "@/lib/live-access";
 // POST /api/live/token { sessionId } — بتصدر Access Token لأي مستخدم مسموحله
 // (مسجّل بدفعة البث أو مدرب/أدمن) عشان ينضم لغرفة LiveKit. الدور بيتحدد سيرفر-سايد فقط.
 export async function POST(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

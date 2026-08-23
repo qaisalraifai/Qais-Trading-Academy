@@ -7,7 +7,7 @@ const BUCKET = "batch-files";
 // GET /api/batches/files?course_id=... — ملفات دفعة الطالب المسجّل فيها لهاي الدورة بس
 // (نفس منطق فلترة المحتوى بالمرحلة 6: كل طالب يشوف بس ملفات دفعته)
 export async function GET(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

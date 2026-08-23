@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from "@/lib/supabase-server";
 
 // GET /api/notifications?limit=20 — آخر إشعارات المستخدم الحالي + عدد غير المقروء
 export async function GET(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -33,7 +33,7 @@ export async function GET(request) {
 // PATCH /api/notifications  { id }  -> يأشر إشعار واحد كمقروء
 // PATCH /api/notifications  { all: true } -> يأشر كل الإشعارات كمقروءة
 export async function PATCH(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

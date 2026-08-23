@@ -15,7 +15,7 @@ async function ensureBucket(supabaseAdmin) {
 // multipart/form-data: file? (اختياري), note? (اختياري) — لازم واحد منهم عالأقل
 // إعادة التسليم بتصفّر الدرجة والتقييم القديم لأنه صار تسليم جديد يحتاج تقييم من جديد
 export async function POST(request, { params }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

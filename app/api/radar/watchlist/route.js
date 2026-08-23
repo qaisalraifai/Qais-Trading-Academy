@@ -5,7 +5,7 @@ import { ASSETS } from "@/lib/assets";
 const SUPPORTED_SYMBOLS = new Set(ASSETS.flatMap((g) => g.items.map((i) => i.v)));
 
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -20,7 +20,7 @@ export async function GET() {
 
 // POST { symbol } — يضيف رمز لقائمة المتابعة
 export async function POST(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -40,7 +40,7 @@ export async function POST(request) {
 
 // DELETE { symbol } — يشيل رمز من قائمة المتابعة
 export async function DELETE(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from "@/lib/supabase-server";
 
 // POST /api/live/polls/vote { pollId, optionIndex }
 export async function POST(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 

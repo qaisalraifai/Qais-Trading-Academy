@@ -9,7 +9,7 @@ import { releaseSignupCommissionIfEligible } from "@/lib/referral-commissions";
 // تسجيل بانتظار راعي هالطالب (awaiting_lesson) ومنحررها فوراً — هاد هو
 // شرط "أكمل أول درس" المطلوب قبل ما تُدفع عمولة التسجيل.
 export async function POST(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

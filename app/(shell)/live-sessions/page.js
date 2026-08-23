@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // Workspace مستقلة لـ "البث المباشر". المكوّن (LiveView) لم يتغيّر إطلاقاً.
 export default async function LiveSessionsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
      تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
   const userId = await getVerifiedUserId();

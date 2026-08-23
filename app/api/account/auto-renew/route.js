@@ -12,7 +12,7 @@ import { getWhop } from "@/lib/whop";
 // لإلغاء/استئناف العضوية — تأكد منه بصفحة docs.whop.com/api-reference/memberships
 // قبل النشر لو تغيّر بنسخة الـ SDK عندك.
 export async function POST(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -14,7 +14,7 @@ async function ensureBucket(admin) {
 // POST /api/payments/manual/submit
 // FormData: transactionId, walletId, network, txid, file (صورة/PDF إثبات التحويل)
 export async function POST(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

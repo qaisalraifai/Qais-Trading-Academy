@@ -7,7 +7,7 @@ import { logActivity } from "@/lib/activity-log";
 // الكوبون بخصم حقيقي بـ Whop عبر Promo Codes API)، فمنسجل الطلب بسجل النشاطات (type: "discount")
 // حتى فريق الدعم يطبقه يدوياً على الفاتورة الجاية.
 export async function POST(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

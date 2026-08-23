@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 // Workspace مستقلة لـ "التقويم الاقتصادي". نفس منطق الجلب والتحليل بالضبط،
 // منقول من تبويب الداشبورد القديم لملف EconomicCalendarClient.js.
 export default async function EconomicCalendarPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
      تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
   const userId = await getVerifiedUserId();

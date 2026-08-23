@@ -5,7 +5,7 @@ import { getActiveClientsCount } from "@/lib/tiers";
 // GET /api/affiliate/leaderboard — أفضل 20 مسوّق حسب (الأرباح | العملاء النشطين | معدل التحويل).
 // إظهار/إخفاء الأسماء يُتحكم به بالكامل من لوحة الأدمن (affiliate_settings.leaderboard_show_names).
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

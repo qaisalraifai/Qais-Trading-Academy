@@ -6,7 +6,7 @@ import { startCheckout } from "@/lib/payments/billing-service";
 // نقطة الدخول الموحّدة لبدء أي عملية دفع، بغض النظر عن المزوّد. بتحل محل
 // app/api/checkout القديم (اللي ضل شغال لأجل التوافق ومربوط بنفس المنطق).
 export async function POST(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

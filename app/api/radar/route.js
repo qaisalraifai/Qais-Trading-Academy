@@ -5,7 +5,7 @@ import { DEFAULT_RADAR_SYMBOLS } from "@/lib/qais/config";
 // GET /api/radar — بيرجع حالة الرادار الحالية لكل الأصول اللي بمتابعة الطالب.
 // أول زيارة للطالب: بننشئله قائمة متابعة افتراضية تلقائياً (DEFAULT_RADAR_SYMBOLS)
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -4,7 +4,7 @@ import { checkAndAwardBadges } from "@/lib/badges";
 
 // GET /api/affiliate/badges — شارات المسوّق (ممنوحة + الباقية)، بتفحص وتمنح أي شارة مستحقّة لسا ما انمنحت
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

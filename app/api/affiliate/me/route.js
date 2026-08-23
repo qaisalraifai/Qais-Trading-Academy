@@ -4,7 +4,7 @@ import { getAffiliateTierStatus, getCancelledClientsCount } from "@/lib/tiers";
 
 // GET /api/affiliate/me — بيانات وإحصائيات المسوّق الحالي (الشبكة + الأرباح + الدفعات + الإحالات + السلاسل الزمنية)
 export async function GET(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

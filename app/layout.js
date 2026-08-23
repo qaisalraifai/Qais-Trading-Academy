@@ -65,8 +65,8 @@ export const metadata = {
   },
 };
 
-export default function RootLayout({ children }) {
-  const locale = getServerLocale();
+export default async function RootLayout({ children }) {
+  const locale = await getServerLocale();
 
   return (
     <html

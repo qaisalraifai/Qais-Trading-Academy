@@ -5,7 +5,7 @@ import { logActivity } from "@/lib/activity-log";
 
 // POST /api/affiliate/apply — الطالب يطلب ينضم لبرنامج التسويق بالعمولة
 export async function POST() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

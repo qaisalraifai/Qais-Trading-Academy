@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from "@/lib/supabase-server";
 // GET /api/affiliate/achievements — كل الإنجازات المفعّلة + حالة كل وحدة للمسوّق الحالي
 // (مفتوحة/غير مفتوحة + نسبة التقدّم الحالية نحوها). كل الإنجازات تراكمية (Lifetime).
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -40,7 +40,7 @@ async function fetchCandles(origin, asset, interval, count, cookie) {
 }
 
 export async function GET(req) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

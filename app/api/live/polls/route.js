@@ -4,7 +4,7 @@ import { assertLiveSessionAccess } from "@/lib/live-access";
 
 // GET /api/live/polls?sessionId=... — كل الاستطلاعات بهالبث + نتائجها
 export async function GET(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 
@@ -42,7 +42,7 @@ export async function GET(request) {
 
 // POST /api/live/polls { sessionId, question, options[] } — بس المدرب/المشرف
 export async function POST(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 
@@ -69,7 +69,7 @@ export async function POST(request) {
 
 // PATCH /api/live/polls { pollId, sessionId } — يقفل استطلاع (مدرب/مشرف)
 export async function PATCH(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 

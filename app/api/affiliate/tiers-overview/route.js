@@ -5,7 +5,7 @@ import { getAllTiers, getAffiliateTierStatus } from "@/lib/tiers";
 // GET /api/affiliate/tiers-overview — كل المستويات (للجميع)، + تقدّمي الشخصي
 // لو كنت مسوّق مفعّل (لعرض المستوى الحالي وشريط التقدم بنفس الصفحة).
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -9,7 +9,7 @@
    ما يخلص الخادم، وبعدين تقفز الصفحة الجديدة دفعة وحدة.
 
    والانتظار مش قصير: كل انتقال بيمرّ على **خمس رحلات شبكية متسلسلة** لـ
-   Supabase — تنتان بالـmiddleware (`auth.getUser()` ثم `profiles`) وتلاتة
+   Supabase — تنتان بالـproxy (`auth.getUser()` ثم `profiles`) وتلاتة
    بالصفحة (`auth.getUser()` ثم `profiles` ثم `batch_enrollments`) —
    وتنتان منهن **مكرَّرتان حرفياً** بين الطبقتين.
 
