@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { jsonHandler } from "@/lib/api-guard";
 import { createClient } from "@/lib/supabase-server";
 import { selectCryptoCurrency } from "@/lib/payments/billing-service";
 
 // POST /api/payments/nowpayments/select-currency  { transactionId, payCurrency }
 // بيرجع عنوان محفظة + مبلغ محدد نعرضهم مباشرة بواجهتنا (بدون أي تحويل خارجي)
-export async function POST(request) {
+async function POSTImpl(request) {
   const supabase = createClient();
   const {
     data: { user },
@@ -25,3 +26,5 @@ export async function POST(request) {
     return NextResponse.json({ error: e.message || "تعذر إنشاء عملية الدفع" }, { status: 400 });
   }
 }
+
+export const POST = jsonHandler(POSTImpl);

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
+import { jsonHandler } from "@/lib/api-guard";
 import { createClient } from "@/lib/supabase-server";
 import { startCheckout } from "@/lib/payments/billing-service";
 
 // POST /api/payments/checkout  { providerCode: "whop" | "manual_usdt" | ... }
 // نقطة الدخول الموحّدة لبدء أي عملية دفع، بغض النظر عن المزوّد. بتحل محل
 // app/api/checkout القديم (اللي ضل شغال لأجل التوافق ومربوط بنفس المنطق).
-export async function POST(request) {
+async function POSTImpl(request) {
   const supabase = createClient();
   const {
     data: { user },
@@ -40,3 +41,5 @@ export async function POST(request) {
     return NextResponse.json({ error: e.message || "تعذر بدء عملية الدفع" }, { status: 502 });
   }
 }
+
+export const POST = jsonHandler(POSTImpl);

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
+import { readJson } from "@/lib/http-json";
 import QrCodeBox from "../components/QrCodeBox";
 
 const gold = "#DCD4F7";
@@ -45,7 +46,7 @@ export default function CryptoAutoPaymentPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ providerCode: "nowpayments" }),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (!res.ok) throw new Error(data.error || "تعذر بدء عملية الدفع");
 
       setPlan(data.plan);
@@ -68,7 +69,7 @@ export default function CryptoAutoPaymentPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transactionId, payCurrency: currency.code }),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (!res.ok) throw new Error(data.error || "تعذر إنشاء عملية الدفع");
 
       setPayment(data.payment);
@@ -103,7 +104,7 @@ export default function CryptoAutoPaymentPage() {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/payments/status?transactionId=${transactionId}`);
-        const data = await res.json();
+        const data = await readJson(res);
         if (!res.ok) return;
         setTxStatus(data.transaction.status);
         if (data.transaction.status === "succeeded") {

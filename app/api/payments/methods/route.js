@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { jsonHandler } from "@/lib/api-guard";
 import { listEnabledProviders } from "@/lib/payments/registry";
 
 // يمنع Next.js من تجميد نتيجة هالـ route وقت البناء (Build Time) — لازم
@@ -11,7 +12,9 @@ export const revalidate = 0;
 // بيرجع وسائل الدفع المفعّلة حالياً (يقرأها من جدول payment_providers) —
 // صفحة /payment بتبني الأزرار حسب هاد الرد، فتفعيل/تعطيل وسيلة من لوحة
 // الأدمن بينعكس فوراً على الواجهة بدون أي تعديل كود.
-export async function GET() {
+async function GETImpl() {
   const providers = await listEnabledProviders();
   return NextResponse.json({ providers });
 }
+
+export const GET = jsonHandler(GETImpl);

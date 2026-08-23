@@ -22,7 +22,11 @@ const CANONICAL_ORIGIN = "https://www.qta-academy.store";
    ═══════════════════════════════════════════════════════════════════════════ */
 export const AUTH_HEADER = "x-qta-uid";
 
-export async function middleware(request) {
+/** المسارات اللي بتتطلب جلسة + اشتراك فعّال. على مستوى الوحدة عشان الحارس
+    تحت يقدر يوصلها كمان — لازم يعرف مين محمي ليفشل **مقفولاً**. */
+const PROTECTED_PATHS = ["/dashboard", "/lecture", "/course", "/quiz", "/backtest", "/replay", "/discord", "/affiliate"];
+
+async function middlewareImpl(request) {
   // 1) لو الطلب جاي من الدومين القديم (vercel.app)، منحوّله بشكل دائم (308)
   //    للدومين الجديد — هيك Google بمرور الوقت بيشيل الرابط القديم من نتائج
   //    البحث ويعرض بس الدومين الجديد.
@@ -34,6 +38,42 @@ export async function middleware(request) {
 
   const cleanHeaders = new Headers(request.headers);
   cleanHeaders.delete(AUTH_HEADER);
+
+  /* ═══ مسارات API ما بتمرّ على فحص المصادقة هون ═══
+     ---------------------------------------------------------------------
+     ⚠️ `auth.getUser()` **رحلة شبكية** لخادم Supabase، وكانت تنفّذ على
+     **كل** طلب — بما فيه كل نداء `/api/*`. ونتيجتها ما بتنقرا إلا جوّا
+     `isProtected`، و`/api` **مش** بقائمة الحماية أصلاً. يعني كانت رحلة
+     كاملة بتروح وبترجع بلا ما حدا يستعملها.
+
+     الكلفة مش نظرية: بالمنصّة استطلاعات دورية شغّالة بالخلفية — السعر
+     اللحظي بالريبلاي كل ٥ ثواني، وتلات لوحات كل ١٥، وتلاتة كل ٢٠،
+     وأربعة كل ٦٠ — وكل وحدة منهن كانت تدفع هالرحلة.
+
+     ⚠️ **ولا قرار مصادقة بيتغيّر.** انفحصت الـ١٣٩ مسار API: ١٣٥ منهن
+     بيفحصوا بنفسهم (`auth.getUser` أو `requireAdmin`)، والأربعة الباقية
+     بيانات سوق عامة (الشموع · التسعيرات · طرق الدفع · تحليل السوق) وما
+     كانت محمية هون أصلاً.
+
+     ⚠️ **وتجديد الجلسة ما بيتأثر.** كل **انتقال صفحة** لسا بيمرّ من هون
+     ويجدّد. نداءات API ما بتصير لحالها بمعزل عن تصفّح، فالإيقاع محفوظ.
+
+     ⚠️ ما انشال الفحص من الصفحات غير المحمية عمداً — قائمة `protectedPaths`
+     ناقصة صفحات منصّة فعلية (/trading-radar · /settings · /reports …)،
+     وشيل التجديد عنهن بيعني إنه مستخدم يشتغل ساعة عليهن ما بينجدد توكنه
+     أبداً → بينتهي → بينطلع برّا. الحل الصح إكمال القائمة أول.
+
+     ⚠️ **والخروج بيصير قبل `createServerClient` عن قصد.** كان تحته، يعني
+     كل نداء API بيبني عميل Supabase بلا ما يستعمله — وأهم من الكلفة: لو
+     البناء رمى (متغيّر بيئة ناقص مثلاً)، الـmiddleware بينهار وNext بيردّ
+     **صفحة HTML** على نداء API. والواجهة بتناديها بـ`res.json()` فبتطلع
+     `Unexpected token '<'` بدل السبب. هلّق `/api` ما بيلمس Supabase هون.
+     */
+  const isApi = request.nextUrl.pathname.startsWith("/api");
+
+  const isProtected = !isApi && PROTECTED_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
+
+  if (isApi) return NextResponse.next({ request: { headers: cleanHeaders } });
 
   /* ⚠️ كوكيز تجديد الجلسة بتنجمع بمصفوفة مش على `response` مباشرة.
      -------------------------------------------------------------------------
@@ -63,36 +103,6 @@ export async function middleware(request) {
     for (const c of pendingCookies) res.cookies.set(c);
     return res;
   };
-
-  /* ═══ مسارات API ما بتمرّ على فحص المصادقة هون ═══
-     ---------------------------------------------------------------------
-     ⚠️ `auth.getUser()` **رحلة شبكية** لخادم Supabase، وكانت تنفّذ على
-     **كل** طلب — بما فيه كل نداء `/api/*`. ونتيجتها ما بتنقرا إلا جوّا
-     `isProtected`، و`/api` **مش** بقائمة الحماية أصلاً. يعني كانت رحلة
-     كاملة بتروح وبترجع بلا ما حدا يستعملها.
-
-     الكلفة مش نظرية: بالمنصّة استطلاعات دورية شغّالة بالخلفية — السعر
-     اللحظي بالريبلاي كل ٥ ثواني، وتلات لوحات كل ١٥، وتلاتة كل ٢٠،
-     وأربعة كل ٦٠ — وكل وحدة منهن كانت تدفع هالرحلة.
-
-     ⚠️ **ولا قرار مصادقة بيتغيّر.** انفحصت الـ١٣٩ مسار API: ١٣٥ منهن
-     بيفحصوا بنفسهم (`auth.getUser` أو `requireAdmin`)، والأربعة الباقية
-     بيانات سوق عامة (الشموع · التسعيرات · طرق الدفع · تحليل السوق) وما
-     كانت محمية هون أصلاً.
-
-     ⚠️ **وتجديد الجلسة ما بيتأثر.** كل **انتقال صفحة** لسا بيمرّ من هون
-     ويجدّد. نداءات API ما بتصير لحالها بمعزل عن تصفّح، فالإيقاع محفوظ.
-
-     ⚠️ ما انشال الفحص من الصفحات غير المحمية عمداً — قائمة `protectedPaths`
-     ناقصة صفحات منصّة فعلية (/trading-radar · /settings · /reports …)،
-     وشيل التجديد عنهن بيعني إنه مستخدم يشتغل ساعة عليهن ما بينجدد توكنه
-     أبداً → بينتهي → بينطلع برّا. الحل الصح إكمال القائمة أول. */
-  const isApi = request.nextUrl.pathname.startsWith("/api");
-
-  const protectedPaths = ["/dashboard", "/lecture", "/course", "/quiz", "/backtest", "/replay", "/discord", "/affiliate"];
-  const isProtected = !isApi && protectedPaths.some((p) => request.nextUrl.pathname.startsWith(p));
-
-  if (isApi) return NextResponse.next({ request: { headers: cleanHeaders } });
 
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -126,6 +136,46 @@ export async function middleware(request) {
 
   return withCookies(NextResponse.next({ request: { headers: cleanHeaders } }));
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ⚠️ **الحارس — الـmiddleware ما بيرمي أبداً.**
+   ---------------------------------------------------------------------------
+   الـmiddleware بيمرق عليه **كل** طلب بالمنصّة. ولما يرمي، Next بيردّ صفحة
+   خطأ HTML — يعني رمية وحدة = المنصّة كلها واقفة، ونداءات API بترجّع HTML
+   بدل JSON فالواجهة بتطلّع `Unexpected token '<'` بدل أي سبب مفهوم.
+
+   وكان **بلا أي try/catch**: بناء عميل Supabase، و`auth.getUser()` (رحلة
+   شبكية لخادم خارجي) — كلهن مكشوفين.
+
+   ---------------------------------------------------------------------------
+   🔴 **الفشل مقفول على المحمي، مفتوح على غيره.**
+
+   لو انهار الفحص، ممنوع نمرّق طلباً لصفحة محمية — هاد بيصير **تجاوز مصادقة**
+   بالضبط لما يكون النظام مهزوز. فالمحمي بينحوّل لـ`/login`.
+
+   وغير المحمي بيمرق: ما في قرار مصادقة بينبنى عليه أصلاً، وقفله بيوقّف صفحات
+   عامة بلا فايدة أمنية.
+
+   ⚠️ وبكل الحالات الترويسة الداخلية بتنمسح — نفس المسحة غير المشروطة، عشان
+   ما ينفتح باب انتحال هوية من طريق مسار الفشل.
+   ═══════════════════════════════════════════════════════════════════════════ */
+export async function middleware(request) {
+  try {
+    return await middlewareImpl(request);
+  } catch (e) {
+    console.error("[middleware] انهيار غير متوقَّع:", e);
+
+    const path = request.nextUrl.pathname;
+    const clean = new Headers(request.headers);
+    clean.delete(AUTH_HEADER);
+
+    if (!path.startsWith("/api") && PROTECTED_PATHS.some((p) => path.startsWith(p))) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return NextResponse.next({ request: { headers: clean } });
+  }
+}
+
 
 export const config = {
   matcher: [

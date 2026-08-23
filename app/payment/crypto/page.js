@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
+import { readJson } from "@/lib/http-json";
 import QrCodeBox from "../components/QrCodeBox";
 
 const gold = "#DCD4F7";
@@ -48,7 +49,7 @@ export default function CryptoPaymentPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ providerCode: "manual_usdt" }),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (!res.ok) throw new Error(data.error || "تعذر بدء عملية الدفع");
 
       setPlan(data.plan);
@@ -84,7 +85,7 @@ export default function CryptoPaymentPage() {
       if (file) formData.append("file", file);
 
       const res = await fetch("/api/payments/manual/submit", { method: "POST", body: formData });
-      const data = await res.json();
+      const data = await readJson(res);
       if (!res.ok) throw new Error(data.error || "تعذر إرسال إثبات الدفع");
 
       setStep("pending");
@@ -100,7 +101,7 @@ export default function CryptoPaymentPage() {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/payments/status?transactionId=${transactionId}`);
-        const data = await res.json();
+        const data = await readJson(res);
         if (!res.ok) return;
         setTxStatus(data.transaction.status);
         if (data.transaction.status === "succeeded") {

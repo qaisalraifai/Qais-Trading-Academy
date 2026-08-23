@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { jsonHandler } from "@/lib/api-guard";
 import { createClient, createAdminClient } from "@/lib/supabase-server";
 
 // GET /api/payments/status?transactionId=...
 // بيرجع حالة عملية دفع معيّنة تخص المستخدم الحالي فقط — تستخدمه صفحة
 // "بانتظار المراجعة" بالدفع اليدوي حتى تعرف لما الأدمن يوافق أو يرفض.
-export async function GET(request) {
+async function GETImpl(request) {
   const supabase = createClient();
   const {
     data: { user },
@@ -26,3 +27,5 @@ export async function GET(request) {
   if (error || !tx) return NextResponse.json({ error: "غير موجود" }, { status: 404 });
   return NextResponse.json({ transaction: tx });
 }
+
+export const GET = jsonHandler(GETImpl);

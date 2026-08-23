@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { jsonHandler } from "@/lib/api-guard";
 import { createClient, createAdminClient } from "@/lib/supabase-server";
 import { submitManualPayment } from "@/lib/payments/billing-service";
 
@@ -13,7 +14,7 @@ async function ensureBucket(admin) {
 
 // POST /api/payments/manual/submit
 // FormData: transactionId, walletId, network, txid, file (صورة/PDF إثبات التحويل)
-export async function POST(request) {
+async function POSTImpl(request) {
   const supabase = createClient();
   const {
     data: { user },
@@ -69,3 +70,5 @@ export async function POST(request) {
     return NextResponse.json({ error: e.message || "تعذر إرسال إثبات الدفع" }, { status: 400 });
   }
 }
+
+export const POST = jsonHandler(POSTImpl);
