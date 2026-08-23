@@ -6,7 +6,7 @@ import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets
 import { createClient } from "@/lib/supabase-client";
 import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
-import { readSeries, writeSeries, mergeCandles, canExtendFrom } from "@/lib/candle-cache";
+import { readSeries, writeSeries, mergeCandles, canExtendFrom, cutCacheKey } from "@/lib/candle-cache";
 import WatchlistPanel from "./WatchlistPanel";
 
 const GOLD = "#DCD4F7";
@@ -5037,7 +5037,9 @@ export default function ReplayClient({ userId }) {
       prevCtx.asset === assetValue &&
       prevCtx.randomChart === randomChart &&
       (prevCtx.mode === mode || justCutIntoTraining);
-    lastLoadContextRef.current = { asset: assetValue, mode, randomChart, hasLoaded: true };
+    /* ⚠️ `interval` جزء من السجل — الدمج تحت بيعتمد عليه عشان ما يخلط
+       سلسلتين بفريمين مختلفين. */
+    lastLoadContextRef.current = { asset: assetValue, interval, mode, randomChart, hasLoaded: true };
     if (sameMarketContext) {
       // ملاحظة: نقاط الرسم نفسها ما بتحتاج ولا أي معالجة هون - مخزّنة بصيغة
       // {time, price} مطلقة أصلاً (مش logical)، فبترتسم صح تلقائياً بأي فريم
@@ -5166,7 +5168,33 @@ export default function ReplayClient({ userId }) {
         if (cached?.candles?.length && mode === "live") {
           /* شارت شغّال بالحال — الجلب تحت بيكمّله لما يوصل. */
           setAllCandles(cached.candles);
+          loadedSeriesRef.current = { asset: assetValue, interval };
           setRevealCount(cached.candles.length);
+          setLoading(false);
+        }
+      } else {
+        /* ===== نافذة القص محفوظة بمفتاح منفصل =====
+           ⚠️ **ممنوع تنخزّن بمفتاح المباشر.** نافذة المرساة بتغطّي تاريخاً
+           حوالين نقطة القص وبتنتهي عندها تقريباً — يعني ما فيها «الآن».
+           لو انخزّنت بنفس مفتاح المباشر، أول تحميل مباشر بيقرا نافذة قديمة
+           ويبني عليها ذيلاً، فبيصير عنده ثقب بالنص. المفتاح المنفصل بيمنع
+           هالخلط كلياً. */
+        const cutCached = await readSeries(cutCacheKey(cacheSymbol), interval);
+        if (myRequestId !== loadRequestIdRef.current) return;
+        const cutTs = replayStateRef.current.currentTimestamp;
+        const cc = cutCached?.candles;
+        /* بنستعملها **بس** لو بتغطّي نقطة القص فعلاً — نافذة لتاريخ تاني
+           ما بتنفع، والثقب أسوأ من الانتظار. */
+        if (cc?.length && cutTs != null && cc[0].time <= cutTs && cutTs <= cc[cc.length - 1].time) {
+          cached = cutCached;
+          /* عرض فوري بدل انتظار الشبكة (٢–٩ ثواني حسب المزوّد). نقطة الكشف
+             بتنحسب بالوقت مش بالفهرس، فحتى لو الدمج تحت أضاف تاريخاً أقدم
+             وزحزح الفهارس، الشمعة المكشوفة بتضل **هي هي**. */
+          setAllCandles(cc);
+          loadedSeriesRef.current = { asset: assetValue, interval };
+          const rc = pickTrainingRevealCount(cc);
+          expectedRevealRef.current = rc;
+          setRevealCount(rc);
           setLoading(false);
         }
       }
@@ -5174,7 +5202,24 @@ export default function ReplayClient({ userId }) {
       /* لو المحفوظ قريب كفاية من الآن، بنطلب الذيل بس (مرساة على آخر شمعة
          محفوظة). وإلا بنطلب المدى الكامل زي قبل — فجوة كبيرة ما بيسدّها طلب
          ذيل، وثقب بالنص أسوأ من انتظار. */
-      const canTail = !anchorParam && cached?.candles?.length && canExtendFrom(cached.candles, intervalSecs);
+      /* ⚠️ **ممنوع نبني ذيلاً فوق محفوظ ضحل.**
+         -----------------------------------------------------------------
+         عيب بتصميم التخزين انكشف بالتشغيل: أي جلبة ترجع ناقصة — Dukascopy
+         بتفشل أو تتأخر، فيوقع الطلب على يوهو اللي بيضيّق المدى بالمرساة
+         لـ«القص ناقص ٣٠٠ شمعة» — بتنخزّن كما هي. وبعدها كل تحميل بيقرا
+         المحفوظ الضحل ويجيب **الذيل بس**، فبيندمج ضحل + ٤٠٠ شمعة = ضحل
+         للأبد. المستخدم بيفقد عمق التاريخ ولا بيرجعله إلا بمسح التخزين.
+
+         مقيس: مصفوفة انتهت بـ٣٦٩ شمعة (٤ أيام) على فريم ١٥ دقيقة رغم إنه
+         المطلوب ٢٠٠٠٠.
+
+         فالذيل مسموح **بس** لما يكون المحفوظ عميقاً فعلاً. غير هيك بنجيب
+         المدى الكامل وبنستبدله. النصف عتبة متساهلة عمداً: المزوّد أحياناً
+         بيرجّع أقل من المطلوب بشكل مشروع (عمق الأداة نفسها)، وما بدنا نمنع
+         الذيل على أصل تاريخه قصير أصلاً — بس ٣٦٩ من ٢٠٠٠٠ مش «عمق أداة»،
+         هي جلبة مكسورة. */
+      const deepEnough = cached?.candles?.length >= Math.max(1000, maxBars * 0.5);
+      const canTail = !anchorParam && deepEnough && canExtendFrom(cached.candles, intervalSecs);
       const lastCachedTime = canTail ? cached.candles[cached.candles.length - 1].time : null;
       const effAnchor = canTail ? `&anchor=${lastCachedTime}` : anchorParam;
 
@@ -5199,11 +5244,50 @@ export default function ReplayClient({ userId }) {
       const fetched = sanitizeCandles(data.candles || []);
       /* ⚠️ الدمج بالوقت مش بالفهرس — الفهارس بتختلف بين طلبين بمدى مختلف،
          والوقت هو المعرّف الثابت الوحيد للشمعة. والجاي بيغلب المحفوظ عند
-         تساوي الوقت (آخر شمعة محفوظة ممكن تكون كانت جارية وقتها). */
-      const candles = cached?.candles?.length ? mergeCandles(cached.candles, fetched) : fetched;
+         تساوي الوقت (آخر شمعة محفوظة ممكن تكون كانت جارية وقتها).
+
+         ⚠️ **والجلبة بمرساة بتضيف، ما بتستبدل** — وهاد عطل مبلَّغ.
+         -----------------------------------------------------------------
+         القص بيطلب بمرساة عشان يوصل لتاريخ حوالين نقطة القص (هيك كان يوصل
+         لـ٢٠٠٥). بس لما يفشل Dukascopy — وبيفشل: مهلته ٨ ثواني والأرشيف
+         بطيء — بيقع الطلب على يوهو، ويوهو بيضيّق المدى بالمرساة لـ«القص
+         ناقص ٣٠٠ شمعة». مقيس بالتشغيل:
+
+           قبل القص  ٣٩٧٤ شمعة من ٢٦ يونيو
+           بعد القص   ٢٤٩ شمعة من ١٩ أغسطس   ← الطلب رجّع ٢٢ ك.ب بـ٩.٧ ثانية
+
+         وبما إنه مسار المرساة ما كان يدمج (بيستبدل)، جلبة مكسورة وحدة
+         بتمسح كل التاريخ اللي بالشاشة. بلاغه: «بدي الشموع ترجع كثيرة زي
+         قبل».
+
+         الدمج بالوقت **ما بيخسّر ولا شمعة**: لو الجلبة عميقة بتضيف تاريخاً
+         أقدم، ولو مكسورة بيضل اللي عنا مكانه. وفوقها بيثبّت أعمدة الرسومات
+         (بتنربط بالوقت، والوقت موجود بالحالتين).
+
+         ⚠️ الدمج **بس** لنفس الأصل والفريم — وإلا بنخلط سلاسل مختلفة. */
+      /* ⚠️ لازم **السجل القديم** (`prevCtx`، مالتقط قبل الجلب) مش الحالي —
+         `lastLoadContextRef` بينكتب فيه الفريم الجديد بأول `loadData`، فلو
+         قارنّا فيه بيطلع «نفس السلسلة» دايماً.
+
+         مقيس بالتشغيل: تبديل ٤ ساعات ← ساعة ← يومي راكم الشموع
+         ٢٠٩١٤ → ٣٢٦٧٧ → ٣٢٩٩٠ وكلهن يبلّشوا من نفس التاريخ — يعني الدمج
+         كان يخلط ثلاث سلاسل بفريمات مختلفة بمصفوفة وحدة. */
+      const ls = loadedSeriesRef.current;
+      const sameSeries = ls.asset === assetValue && ls.interval === interval;
+      const base = cached?.candles?.length
+        ? cached.candles
+        : (sameSeries ? allCandles : null);
+      const candles = base?.length ? mergeCandles(base, fetched) : fetched;
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
-      /* ما بننتظر الحفظ — التخزين تحسين، وأي فشل فيه ما بيهمّ المستخدم. */
-      if (!anchorParam) writeSeries(cacheSymbol, interval, candles);
+      /* ما بننتظر الحفظ — التخزين تحسين، وأي فشل فيه ما بيهمّ المستخدم.
+         ⚠️ وما بنخزّن جلبة **أضحل من المحفوظ** — وإلا جلبة مكسورة وحدة
+         (Dukascopy فشلت ووقع على يوهو الضيّق) بتدوس على تاريخ سليم وبتفقّر
+         التخزين للأبد. الحفظ بيتقدّم بس، ما بيتراجع. */
+      const notShallower = candles.length >= (cached?.candles?.length || 0);
+      if (notShallower) {
+        if (anchorParam) writeSeries(cutCacheKey(cacheSymbol), interval, candles);
+        else writeSeries(cacheSymbol, interval, candles);
+      }
       dataSourceRef.current = {
         symbol: data.sourceSymbol || assetInfo.yahoo,
         usedFallback: false,
@@ -5215,6 +5299,7 @@ export default function ReplayClient({ userId }) {
       setUsedFuturesApprox(false);
 
       setAllCandles(candles);
+      loadedSeriesRef.current = { asset: assetValue, interval };
       // وصلت بيانات حقيقية (مباشر أو تدريب) - أي "رجوع لمكان توقف" قيد التنفيذ
       // خلص فعلياً هون (pickTrainingRevealCount تحت رح تستخدم نقطة التوقف
       // الصح المحفوظة بـ replayStateRef.current)، فما في داعي شبكة الأمان تفرضها
@@ -5227,6 +5312,11 @@ export default function ReplayClient({ userId }) {
         const rc = pickTrainingRevealCount(candles);
         expectedRevealRef.current = rc;
         setRevealCount(rc);
+        /* بقراره: نسخّن باقي الفريمات **بمرساة القص** كمان، مش بالمباشر
+           وحده — عشان تبديل الفريم أثناء التمرين يصير فوري زي المباشر. */
+        if (anchorParam) {
+          warmOtherTimeframes(cacheSymbol, assetInfo, tdParam, dukParam, anchorParam);
+        }
       } else {
         setRevealCount(candles.length);
         startLivePoll(candles);
@@ -5258,25 +5348,42 @@ export default function ReplayClient({ userId }) {
      · **واحد ورا التاني بمهلة** — الحد على TwelveData ٨ طلبات/دقيقة، وستّة
        طلبات دفعة وحدة بتحرقه (وهاد صار فعلاً وقت اختبار سابق).
      · **بينلغى فوراً لو تحرّك المستخدم** — طلبه أولى من التسخين. */
+  /* ⚠️ **وبيسخّن نافذة القص كمان** (بقراره) — لأن بالتمرين تبديل الفريم
+     بيدفع جلبة بمرساة كاملة (٢–٩ ثواني حسب المزوّد). لما `anchorSuffix`
+     ينمرّر، بينخزّن بمفتاح القص المنفصل، وبيبان فوراً عند التبديل.
+
+     ⚠️ نافذة القص **بتنحفظ بمفتاح تاني** (`cutCacheKey`) — نافذة المرساة
+     ما فيها «الآن»، فخلطها بمفتاح المباشر بيعمل ثقب بالبيانات. */
   const warmAbortRef = useRef(0);
-  async function warmOtherTimeframes(cacheSymbol, assetInfo, tdParam, dukParam) {
+  async function warmOtherTimeframes(cacheSymbol, assetInfo, tdParam, dukParam, anchorSuffix = "") {
     const runId = ++warmAbortRef.current;
+    const key = anchorSuffix ? cutCacheKey(cacheSymbol) : cacheSymbol;
     /* مهلة أولية: نخلّي الشارت يستقر ويرسم قبل ما نشغّل الشبكة. */
     await new Promise((r) => setTimeout(r, 4000));
     for (const it of INTERVALS) {
       if (runId !== warmAbortRef.current) return;      // المستخدم بدّل — بنوقف
       if (it.value === intervalRef.current) continue;
       try {
-        if (await readSeries(cacheSymbol, it.value)) continue;   // محفوظ أصلاً
+        /* محفوظ أصلاً؟ بنافذة القص لازم كمان **تغطّي نقطة القص** — نافذة
+           لتاريخ تاني موجودة بس ما بتنفع. */
+        const have = await readSeries(key, it.value);
+        const hc = have?.candles;
+        if (hc?.length) {
+          if (!anchorSuffix) continue;
+          const cutTs = replayStateRef.current.currentTimestamp;
+          if (cutTs != null && hc[0].time <= cutTs && cutTs <= hc[hc.length - 1].time) continue;
+        }
         await fetch(
           `/api/replay-candles?symbol=${encodeURIComponent(cacheSymbol)}` +
-          `&interval=${INTERVAL_MAP[it.value]}&count=${maxBars}${tdParam}${dukParam}`
+          `&interval=${INTERVAL_MAP[it.value]}&count=${maxBars}${anchorSuffix}${tdParam}${dukParam}`
         )
           .then((r) => r.json())
           .then((d) => {
             if (runId !== warmAbortRef.current) return;
             const c = sanitizeCandles(d?.candles || []);
-            if (c.length) writeSeries(cacheSymbol, it.value, c);
+            /* ⚠️ ما بنخزّن أضحل من الموجود — جلبة مكسورة (Dukascopy فشلت
+               فوقع على يوهو الضيّق) بتفقّر التخزين وما بيتعمّق بعدها. */
+            if (c.length && c.length >= (hc?.length || 0)) writeSeries(key, it.value, c);
           });
       } catch { /* التسخين تحسين — فشله ما بيهمّ المستخدم أبداً */ }
       await new Promise((r) => setTimeout(r, 8000));
@@ -5336,83 +5443,28 @@ export default function ReplayClient({ userId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealCount, allCandles, mode, randomChart]);
 
-  /* ===== القص ما بيستدعي إعادة تحميل — الشموع اللي بدها محمّلة أصلاً =====
-     ⚠️ **هاد كان سبب مشكلتين مع بعض: «بطيء لمّا تقصّ» و«الرسومات بتقفز».**
+  /* ⚠️ **كان هون حارس بيتخطّى إعادة التحميل عند القص — وانشال.**
      ---------------------------------------------------------------------
-     `finalizeCut` بتنادي `setMode("training")`، وتأثير التحميل تحت بيعتمد
-     على `mode` — فكل قصّة كانت تطلق `loadData()` كاملة. وبما إنه في نقطة قص
-     شغالة، الطلب بيروح مع `&anchor=`، واللي بيرجع **مصفوفة تانية بالكامل**.
+     الفكرة كانت: لحظة القص جوّا البيانات المحمّلة أصلاً، فليش نجيب من جديد؟
+     وفعلاً شال جلبة كاملة عن كل قصّة.
 
-     مقيس فعلياً (ES=F · 15 دقيقة · قص عند ٣٠ يوليو):
+     بس هو **شال معها الشي الوحيد اللي بيعطي عمقاً تاريخياً**: الجلب بمرساة.
+     Dukascopy بتبني النافذة حوالين نقطة القص — `[القص − مدى، القص + هامش]`
+     (شوفي `lib/dukascopy-candles.js`) — فالقص على تاريخ قديم بيجيب التاريخ
+     اللي حواليه. بدون هالجلبة بتضل عالق بنافذة المباشر (آخر ~٢.٨ سنة على
+     فريم الساعة) وما بتقدر توصل لـ٢٠٠٥ زي قبل.
 
-       قبل القص   ٣٦٤٠ شمعة · بتبلّش ٢٥ يونيو
-       بعد القص   ١٧٤٤ شمعة · بتبلّش ٢٧ يوليو   ← ضاع شهر تاريخ
-       نفس لحظة القص: الفهرس ٢١٨٤ → ٢٨٨  (إزاحة ١٨٩٦ عمود)
+     بلاغه صريح: «أثناء الريبلاي كنت أقدر أوصل لـ2005 … بدي الشموع ترجع
+     كثيرة زي قبل». فالعمق أهم من الجلبة المشالة، والحارس انشال بالكامل.
 
-     تضييق المدى **متعمّد** بـ`lib/yahoo-candles.js` (يوهو بيقصّ الجزء الأقدم
-     بصمت لو طلبنا مدى ضخم، فبنطلب من «نقطة القص ناقص ٣٠٠ شمعة» لحد الآن
-     عشان نضمن إنها موجودة). بس نتيجته إنه ما بيضل قبل نقطة القص غير ~٣ أيام.
-
-     والرسومات مخزّنة بـ{time, price} — فأي رسمة أقدم من بداية المصفوفة
-     الجديدة بتطلع **برّا النطاق** وبتنحسب بالاستقراء (خطوة ثابتة بتتجاهل
-     فجوات السوق) بدل ما تنربط بعمود حقيقي. هاد هو القفز.
-
-     الحل: ما نجيب أصلاً. لحظة القص **دايماً** جوّا البيانات المحمّلة — إنت
-     بتقصّ على شمعة شايفها قدامك. فلو المصفوفة الحالية بتغطّيها، منكمّل فيها
-     زي ما هي: ولا طلب شبكة، ولا إزاحة أعمدة، ولا رسمة بتقفز.
-
-     ⚠️ الحارس **ضيّق عمداً**: بس انتقال «قص لتدريب» بنفس الأصل والفريم
-     وعدد الشموع. أي تبديل تاني (أصل · فريم · maxBars · رجوع للمباشر) بيمرّ
-     على `loadData` عادي زي قبل. */
-  const lastCutSkipCtxRef = useRef(null);
+     ⚠️ وبيرجع معه سلوكان كنت عالجتهن فيه، والمعالجة انتقلت لمكانها الصح:
+     · «الرسومات ما بتنمسح بالرجوع للمباشر» — كان سببه إنه سجل السياق
+       (`lastLoadContextRef`) بيضل `live` مع التخطّي. مع رجوع التحميل،
+       `loadData` بتسجّله بنفسها زي الأصل.
+     · «الرسومات بتقفز بعد القص» — هاد مسار **يوهو** تحديداً: بيضيّق المدى
+       لـ«القص ناقص ٣٠٠ شمعة» فبتطلع الرسومات القديمة برّا النطاق. الأصول
+       اللي عندها Dukascopy (زي الذهب) ما بتعاني منه لأن نافذتها واسعة. */
   useEffect(() => {
-    const st = replayStateRef.current;
-    const cutTs = st.currentTimestamp;
-    const cutInsideLoaded =
-      mode === "training" && st.isActive && cutTs != null && !randomChart &&
-      allCandles.length > 0 && allCandles[0].time <= cutTs && cutTs <= allCandles[allCandles.length - 1].time;
-    /* نفس الأصل/الفريم/العدد يلي البيانات المحمّلة جاية منه؟ لو تغيّر واحد
-       منهن فالمصفوفة الحالية ما بتمثّله وبنحتاج تحميل فعلي. */
-    const prev = lastCutSkipCtxRef.current;
-    const sameLoadCtx =
-      prev && prev.asset === assetValue && prev.interval === interval && prev.maxBars === maxBars;
-
-    /* ⚠️ **ممنوع التخطّي وقت "الرجوع لمكان التوقف"** — وهاد كان عطلاً فعلياً.
-       -------------------------------------------------------------------
-       التخطّي مبني على إنه `revealCount` صار صح **قبل** ما يوصل التأثير:
-       `finalizeCut` بتعيّنه بنفسها (`setRevealCount(fromIdx + 1)`) فالتخطّي
-       سليم. أما `resumeSavedSession` فبتعيّن `replayStateRef` والرسومات
-       ومنطقة القص وبس — وبتتّكل على `loadData` → `pickTrainingRevealCount`
-       عشان تحسب مكان التوقف على البيانات الحالية.
-
-       فلما كانت البيانات المحمّلة تغطّي نقطة القص القديمة، الحارس كان
-       يتخطّى التحميل، وما بينحسب `revealCount` أبداً — فبتبان **كل**
-       الشموع مكشوفة وكأنه ما في قص. بالضبط: «ما بيقص الشموع يلي كانت
-       مقصوصة».
-
-       الرجوع لمكان التوقف حدث نادر (ضغطة واحدة)، فدفع تحميل كامل مرة
-       وحدة مقبول — الصحة قبل السرعة. */
-    const resuming = pendingResumeRef.current != null;
-    if (cutInsideLoaded && sameLoadCtx && !resuming) {
-      /* ⚠️ **لازم نسجّل الوضع الجديد رغم التخطّي** — وإلا بينكسر المسح.
-         -----------------------------------------------------------------
-         `loadData` بتقرّر «سوق مختلف كلياً» بمقارنة `lastLoadContextRef`
-         بالحالي، ومن ضمنه **الوضع**. وهي بتسجّله جوّاها — فلما نتخطّاها،
-         السجل بيضل مكتوب فيه `live` مع إنّا صرنا بالتدريب.
-
-         النتيجة كانت: أول ما ترجع للمباشر، المقارنة بتطلع `live` مقابل
-         `live` → «نفس السياق» → فما بتنمسح الرسومات ولا خطوط الصفقات، وبتضل
-         كل اللي عملته بالتمرين ظاهر فوق السوق الحقيقي. (بلاغه: «اللي رسمته
-         وعملته بالقص ما بده يبين لما أرجع للايف».)
-
-         تسجيل الوضع هون بيرجّع السلوك الأصلي بالضبط: الرجوع للمباشر =
-         سياق مختلف = مسح. والرسومات مش ضايعة — `switchMode` بتحفظ لقطة
-         كاملة قبل، و«الرجوع لمكان التوقف» بترجّعها. */
-      lastLoadContextRef.current = { asset: assetValue, mode, randomChart, hasLoaded: true };
-      return () => { stopLivePoll(); stopCountdownTick(); };
-    }
-
-    lastCutSkipCtxRef.current = { asset: assetValue, interval, maxBars };
     // تأخير بسيط (350ms) قبل التحميل الفعلي - لو صار كذا تغيير سريع متتالي
     // (كليكات قص، تبديل فريم/أصل/وضع) قبل ما تخلص هاي الفترة، بننفّذ طلب
     // واحد بس للحالة الأخيرة بدل طلب منفصل لكل تغيير وسيط. هاد يلي كان عم
@@ -5435,7 +5487,11 @@ export default function ReplayClient({ userId }) {
   const forceFullReloadRef = useRef(false);
   // آخر "سياق سوق" تم التحميل فيه (أصل/وضع/شارت عشوائي) - نقارنه بالسياق الجديد
   // عشان نعرف إذا لازم نمسح الرسومات (سوق مختلف) أو نحافظ عليها (فريم بس تغيّر)
-  const lastLoadContextRef = useRef({ asset: null, mode: null, randomChart: null, hasLoaded: false });
+  const lastLoadContextRef = useRef({ asset: null, interval: null, mode: null, randomChart: null, hasLoaded: false });
+  /* ⚠️ الفريم/الأصل اللي `allCandles` الحالية جاية منهن فعلاً — بينكتب **بعد**
+     ما توصل البيانات، مش بأول `loadData`. `lastLoadContextRef` بينكتب بالأول
+     فبيحمل الوجهة الجديدة، واستعماله للدمج بيخلط سلسلتين. */
+  const loadedSeriesRef = useRef({ asset: null, interval: null });
   // لما يتغيّر الفريم بس (نفس السوق)، منخزّن هون مصفوفة الشموع "القديمة" +
   // الـ visible logical range مؤقتاً، لحد ما توصل بيانات الفريم الجديد، وقتها
   // منحوّل هاد المدى (Zoom+Pan بس - نقاط الرسم نفسها ما إلها علاقة، شوفي
