@@ -1762,6 +1762,15 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
   useEffect(() => { magnetRef.current = magnetOn; }, [magnetOn]);
   useEffect(() => { intervalRef.current = interval; }, [interval]);
+  /* مرجع حيّ للوضع — لازم للدوال غير المتزامنة (استطلاع السوق الحي) اللي
+     ممكن يوصل ردّها بعد ما يتبدّل الوضع، فلازم تقرا القيمة **وقت الوصول**
+     مش وقت الانطلاق. */
+  const modeRef = useRef(mode);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
+  /* مكان الكشف اللي `loadData` عيّنته وننتظر وصوله فعلياً. طول ما الفعلي
+     مش مساوي إله، الرندرة ما استقرت (مصفوفة شموع جديدة + مكان كشف قديم)
+     فأي حساب مبني على الفهرس بيكون غلط. */
+  const expectedRevealRef = useRef(null);
   useEffect(() => { drawingsVisibleRef.current = drawingsVisible; scheduleDraw(); }, [drawingsVisible]);
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
   useEffect(() => { setDrawingTemplatesMenuOpen(false); setTextPopoverOpen(false); }, [selectedDrawingId]);
@@ -3788,15 +3797,43 @@ export default function ReplayClient({ userId }) {
        `pendingResumeRef` مضبوط بالضبط على هالنافذة (بتتصفّر لما يخلص
        `loadData` ويعيّن مكان الكشف الصح)، فهو الفحص الدقيق للحظة. */
     if (pendingResumeRef.current != null) return;
+    /* الرندرة لسا ما استقرت (مصفوفة جديدة + مكان كشف قديم) — أي تقييم هون
+       بيمشي على شموع مش مكشوفة فعلاً. شوفي `expectedRevealRef`. */
+    if (expectedRevealRef.current != null && revealCount !== expectedRevealRef.current) return;
+
+    /* ⚠️ **القصّ بالوقت مش بالفهرس** — الفهرس بيكذب بين رندرتين.
+       -------------------------------------------------------------------
+       المنادي بيمرّر `allCandles.slice(0, revealCount)`. الاتنين حالة، وReact
+       ممكن يرسم بمصفوفة شموع **جديدة** ومكان كشف **قديم** — وهاد صار فعلاً
+       وانقاس بأثر على لحظة الإغلاق:
+
+         ms 4477  تعيين مكان الكشف الصح (نقطة القص)
+         ms 4524  الإغلاق — reveal: 16242 (قديم) · nCandles: 16318 (جديد)
+
+       يعني القصّ بالفهرس أعطى شموعاً لحد ٧٦ شمعة قبل **اليوم** بدل نقطة
+       القص، فالتقييم لقى الهدف وسكّر صفقة التمرين.
+
+       `replayStateRef.current.currentTimestamp` هو «آخر وقت وصله الريبلاي
+       فعلاً» — قيمة زمنية مطلقة ما بتتأثر بترتيب الرندرات ولا بطول
+       المصفوفة. فبنقصّ عليها، وبيصير الفهرس تفصيلاً غير مؤثّر. */
+    let candles = knownCandles;
+    if (mode === "training") {
+      const upto = replayStateRef.current.currentTimestamp;
+      if (upto != null && knownCandles[knownCandles.length - 1].time > upto) {
+        candles = knownCandles.filter((c) => c.time <= upto);
+        if (!candles.length) return;
+      }
+    }
+
     for (const pos of [...openPositionsRef.current]) {
       if (pos.openedInMode != null && pos.openedInMode !== mode) continue;
       // صفقات قديمة اتفتحت قبل هالتحديث وما عندها entryTime مسجّل - منسيبها
       // على منطق المراقبة اللحظية القديم (checkOpenPositionsRef) بدل ما نخمّن وقتها
       if (pos.entryTime == null) continue;
-      let startIdx = knownCandles.findIndex((c) => c.time >= pos.entryTime);
+      let startIdx = candles.findIndex((c) => c.time >= pos.entryTime);
       if (startIdx === -1) continue; // لسا ما وصلنا وقت الدخول بالبيانات المعروضة حالياً
-      for (let i = startIdx; i < knownCandles.length; i++) {
-        const c = knownCandles[i];
+      for (let i = startIdx; i < candles.length; i++) {
+        const c = candles[i];
         const hitSl = pos.direction === "buy" ? lteWithTolerance(c.low, pos.sl) : gteWithTolerance(c.high, pos.sl);
         const hitTp = pos.direction === "buy" ? gteWithTolerance(c.high, pos.tp) : lteWithTolerance(c.low, pos.tp);
         // نفس الشمعة وصلت للهدف والإيقاف مع بعض وما عنا بيانات داخل الشمعة (intrabar):
@@ -3859,14 +3896,21 @@ export default function ReplayClient({ userId }) {
      ونفس أولوية SL أولاً، عشان يكون سلوك محرك التنفيذ موحّد بكل مكان بالكود. */
   checkOpenPositionsRef.current = function checkOpenPositions(price) {
     if (!price || openPositionsRef.current.length === 0) return;
-    /* نفس نافذة "الرجوع لمكان التوقف" (شوفي evaluateOpenPositionsFull):
-       سعر لحظي من المباشر ممكن يوصل هون والوضع صار "تدريب" أصلاً. */
-    if (pendingResumeRef.current != null) return;
     for (const pos of [...openPositionsRef.current]) {
-      /* ⚠️ نفس قاعدة `evaluateOpenPositionsFull`: صفقة التدريب ما بتنحكم
-         بسعر المباشر. بدون هالسطر كان خط الدفاع التاني بيسكّرها من ورا
-         الإصلاح — سعر السوق الحالي بيوصل لستوبها بأول تِك تقريباً. */
-      if (pos.openedInMode != null && pos.openedInMode !== mode) continue;
+      /* ⚠️ **صفقات المباشر وبس — مش «اللي بتطابق الوضع الحالي»**.
+         -----------------------------------------------------------------
+         هالدالة بتنتغذّى من استطلاع السوق الحي حصراً (تلات نداءات، كلهن
+         بمسار `startLivePoll`) — يعني السعر اللي بيوصلها هو سعر **الآن**
+         دايماً، مهما كان الوضع المعروض.
+
+         أول نسخة ربطتها بالوضع الحالي، فانكشفت نافذة سباق: أثناء «الرجوع
+         لمكان التوقف» بيصير الوضع "تدريب" بينما تِك من الاستطلاع الحي لسا
+         بالطريق — فبتنطبق المطابقة وبتنقفل صفقة التمرين بسعر اليوم.
+         (مقيس: الصفقة انقفلت وخطّاها انشالوا معها، ٣ رسومات → ١.)
+
+         الربط بـ"live" صراحةً بيقفل النافذة كلها: سعر الآن ما بيحكم إلا
+         صفقة انفتحت على سعر الآن. */
+      if (pos.openedInMode != null && pos.openedInMode !== "live") continue;
       const hitSl = pos.direction === "buy" ? lteWithTolerance(price, pos.sl) : gteWithTolerance(price, pos.sl);
       const hitTp = pos.direction === "buy" ? gteWithTolerance(price, pos.tp) : lteWithTolerance(price, pos.tp);
       if (hitSl) { closeOpenPosition(pos, "loss", pos.sl); continue; }
@@ -5178,7 +5222,11 @@ export default function ReplayClient({ userId }) {
       pendingResumeRef.current = null;
 
       if (mode === "training") {
-        setRevealCount(pickTrainingRevealCount(candles));
+        /* ⚠️ منسجّل القيمة المتوقَّعة عشان تأثير مزامنة المرساة يعرف إنه
+           الرندرة لسا ما استقرت — شوفي التعليق عنده. */
+        const rc = pickTrainingRevealCount(candles);
+        expectedRevealRef.current = rc;
+        setRevealCount(rc);
       } else {
         setRevealCount(candles.length);
         startLivePoll(candles);
@@ -5345,7 +5393,24 @@ export default function ReplayClient({ userId }) {
        الرجوع لمكان التوقف حدث نادر (ضغطة واحدة)، فدفع تحميل كامل مرة
        وحدة مقبول — الصحة قبل السرعة. */
     const resuming = pendingResumeRef.current != null;
-    if (cutInsideLoaded && sameLoadCtx && !resuming) return () => { stopLivePoll(); stopCountdownTick(); };
+    if (cutInsideLoaded && sameLoadCtx && !resuming) {
+      /* ⚠️ **لازم نسجّل الوضع الجديد رغم التخطّي** — وإلا بينكسر المسح.
+         -----------------------------------------------------------------
+         `loadData` بتقرّر «سوق مختلف كلياً» بمقارنة `lastLoadContextRef`
+         بالحالي، ومن ضمنه **الوضع**. وهي بتسجّله جوّاها — فلما نتخطّاها،
+         السجل بيضل مكتوب فيه `live` مع إنّا صرنا بالتدريب.
+
+         النتيجة كانت: أول ما ترجع للمباشر، المقارنة بتطلع `live` مقابل
+         `live` → «نفس السياق» → فما بتنمسح الرسومات ولا خطوط الصفقات، وبتضل
+         كل اللي عملته بالتمرين ظاهر فوق السوق الحقيقي. (بلاغه: «اللي رسمته
+         وعملته بالقص ما بده يبين لما أرجع للايف».)
+
+         تسجيل الوضع هون بيرجّع السلوك الأصلي بالضبط: الرجوع للمباشر =
+         سياق مختلف = مسح. والرسومات مش ضايعة — `switchMode` بتحفظ لقطة
+         كاملة قبل، و«الرجوع لمكان التوقف» بترجّعها. */
+      lastLoadContextRef.current = { asset: assetValue, mode, randomChart, hasLoaded: true };
+      return () => { stopLivePoll(); stopCountdownTick(); };
+    }
 
     lastCutSkipCtxRef.current = { asset: assetValue, interval, maxBars };
     // تأخير بسيط (350ms) قبل التحميل الفعلي - لو صار كذا تغيير سريع متتالي
@@ -5475,9 +5540,11 @@ export default function ReplayClient({ userId }) {
       console.error("chart data error:", err);
       setError("صار خطأ بعرض بيانات هالفريم، جربي فريم/أصل تاني أو حدّثي الصفحة.");
     }
-    // تقييم كامل للصفقات المفتوحة على كل الشموع المعروفة لحد الآن - بغض النظر
-    // عن مسار التحديث (تشغيل عادي أو تبديل فريم/أصل كامل)، عشان الصفقة تتقفل
-    // فوراً إذا كانت وصلت SL/TP، بدون انتظار ضغطة Play (شوفي TEST 3 بالطلب)
+    /* تقييم الصفقات المفتوحة على الشموع المكشوفة، عشان الصفقة تتقفل فوراً
+       إذا وصلت SL/TP بدون انتظار ضغطة Play (شوفي TEST 3 بالطلب).
+
+       ⚠️ التقييم محروس جوّا `evaluateOpenPositionsFull` نفسها (رندرة غير
+       مستقرة · نافذة الرجوع · قصّ بالوقت مش بالفهرس) — شوفي التعليق هناك. */
     evaluateOpenPositionsFull(allCandles.slice(0, revealCount));
     recalcAllIndicatorData(allCandles.slice(0, revealCount));
     prevRevealRef.current = revealCount;
@@ -5490,6 +5557,41 @@ export default function ReplayClient({ userId }) {
      بتتفعّل بوضع التدريب بتصير هي "نقطة القص" (anchor) تلقائياً. */
   useEffect(() => {
     if (mode !== "training" || !allCandles.length || revealCount < 1) return;
+    /* ⚠️ **ممنوع المزامنة وقت "الرجوع لمكان التوقف"** — هون كان جذر عطلين.
+       -------------------------------------------------------------------
+       `resumeSavedSession` بترجّع `replayStateRef` (نقطة القص المحفوظة) ثم
+       بتعيّن الوضع "تدريب". بس `revealCount` بيضل على قيمة المباشر (كل
+       الشموع) لحد ما يخلص `loadData`.
+
+       فبهالرندر بالضبط، هالتأثير بيشتغل ويقرا آخر شمعة **مكشوفة** — وهي
+       شمعة اليوم — وبيكتبها فوق `currentTimestamp`، فبتضيع نقطة القص
+       المستعادة. وبعدها `pickTrainingRevealCount` بتقرا النقطة المشوّهة
+       وبترجّع **كل** الشموع.
+
+       ومن هون بيطلع العطلان اللي أبلغ عنهن:
+         · «ارجع لمكان التوقف ما بيقص الشموع» — لأن الكشف صار كامل.
+         · «بيحكيلي وصلت الهدف وبسجلها» — لأن تقييم الصفقات بيمشي على كل
+           التاريخ لحد اليوم فبيلاقي الهدف.
+
+       مقيس بأثر على موضع التعيين نفسه: `pickTrainingRevealCount` رجّعت
+       16242 = عدد الشموع كلها.
+
+       `pendingResumeRef` مضبوط بالضبط على هالنافذة وبتتصفّر لما يخلص
+       `loadData` — فهو الفحص الصح. */
+    if (pendingResumeRef.current) return;
+    /* ⚠️ **ولا وقت الرندرة المتضاربة كمان.**
+       -------------------------------------------------------------------
+       `setAllCandles` و`setRevealCount` بـ`loadData` ما بينزلوا دايماً
+       برندرة وحدة — مقيس بأثر: رندرة بمصفوفة شموع **جديدة** ومكان كشف
+       **قديم**. بهاي الرندرة هالتأثير بيقرا «آخر شمعة مكشوفة» غلط (شمعة
+       قريبة من اليوم) وبيكتبها فوق نقطة القص، فبتنهار نفس الطريقة.
+
+       `expectedRevealRef` بينحط وقت التعيين بـ`loadData`، فمنعرف إنه
+       الرندرة ما استقرت لحد ما توصل القيمة الفعلية للمتوقَّعة. */
+    if (expectedRevealRef.current != null) {
+      if (revealCount !== expectedRevealRef.current) return;
+      expectedRevealRef.current = null;
+    }
     if (suppressAnchorSyncOnceRef.current) {
       suppressAnchorSyncOnceRef.current = false;
       return;
@@ -5546,6 +5648,12 @@ export default function ReplayClient({ userId }) {
   }
 
   async function pollLiveOnce() {
+    /* ⚠️ الاستطلاع بيرفع `revealCount` لكل الشموع — وهاد معناه شي واحد بس
+       بوضع المباشر. لو وصل رد كان بالطريق بعد ما تبدّل الوضع للتدريب
+       (الشبكة أبطأ من الضغطة)، بيخرّب نقطة الكشف وبيسكّر صفقات التمرين.
+       `stopLivePoll` بتوقف المؤقّت، بس ما بتلغي طلباً منطلقاً — فهاد الفحص
+       هو اللي بيمسك الرد المتأخر. */
+    if (modeRef.current !== "live") return;
     if (randomChart) {
       // بمحاكاة الشارت العشوائي، نولّد حركة سعر بسيطة على آخر شمعة
       setAllCandles((prev) => {
@@ -5882,6 +5990,18 @@ export default function ReplayClient({ userId }) {
     const s = savedSessionRef.current;
     setCutChoiceOpen(false);
     if (!s) return;
+    /* ⚠️ **إيقاف استطلاع السوق الحي أول إشي** — `finalizeCut` بتعمله وهاي
+       كانت ناسيته، والنتيجة عطل مبلَّغ.
+       -------------------------------------------------------------------
+       الاستطلاع بيرفع `revealCount` لكل الشموع مع كل تحديث (سطر ~5701).
+       فبعد ما بيصير الوضع "تدريب" هون، تِك واحد منه بيكفي يخلّي الحالة:
+       الوضع = تدريب · revealCount = **كل** الشموع لحد اليوم — فبينفحص
+       تقييم الصفقات على كل التاريخ وبيسكّر صفقة التمرين.
+
+       مقيس بأثر على لحظة الإغلاق نفسها:
+         mode: training · reveal: 16242 · resuming: false · src: full
+       (16242 = كل الشموع، مش نقطة القص.) */
+    stopLivePoll();
     replayStateRef.current = { ...s.replayState };
     // منخزّن نفس الهدف هون كمان كـ "شبكة أمان" - شوفي التعليق فوق pendingResumeRef
     // تعريفه. بيضل يتفرض من جديد لحد ما loadData الحقيقي لبيانات التدريب يخلص
@@ -7320,13 +7440,27 @@ export default function ReplayClient({ userId }) {
      وفوق شريط الزوم (top ~575) بمسافة واسعة. */
   const OPEN_POSITIONS_PANEL_TOP = 96;
   function renderOpenPositionsPanel() {
-    if (!openPositionsList.length) return null;
+    /* ⚠️ الصفقة بتبان بس بالخط الزمني اللي انفتحت فيه.
+       -------------------------------------------------------------------
+       خطوط الصفقة (الدخول/الهدف/الستوب) بتنمسح لحالها مع باقي الرسومات لما
+       ترجع للمباشر، بس هالبطاقة مصدرها `openPositionsList` مش الرسومات —
+       فكانت تضل معلّقة فوق السوق الحقيقي بلا خطوطها. صفقة تمرين ما إلها
+       محل بشاشة المباشر.
+
+       ⚠️ إخفاء وبس — الصفقة **ما بتنقفل ولا بتنشال**. بترجع تبان كما هي أول
+       ما ترجع للقص، وبتضل مسجّلة بقاعدة البيانات.
+
+       الصفقات المفتوحة قبل هالتحديث ما عندها الوسم — بتبان دايماً زي قبل. */
+    const visible = openPositionsList.filter(
+      (p) => p.openedInMode == null || p.openedInMode === mode
+    );
+    if (!visible.length) return null;
     return (
       <div style={{
         position: "absolute", top: OPEN_POSITIONS_PANEL_TOP, left: 10, zIndex: 11, width: 230,
         display: "flex", flexDirection: "column", gap: 8,
       }}>
-        {openPositionsList.map((pos) => {
+        {visible.map((pos) => {
           const isBuy = pos.direction === "buy";
           const edits = openPosEdits[pos.dbId] || { tp: pos.tp.toFixed(2), sl: pos.sl.toFixed(2) };
           return (
