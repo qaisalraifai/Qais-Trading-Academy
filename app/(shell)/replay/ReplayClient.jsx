@@ -5162,6 +5162,7 @@ export default function ReplayClient({ userId }) {
       const cacheSymbol = assetInfo.yahooSpot || assetInfo.yahoo;
       const intervalSecs = (INTERVAL_MS[interval] || 900000) / 1000;
       let cached = null;
+      let renderedFromCache = false;
       if (!anchorParam) {
         cached = await readSeries(cacheSymbol, interval);
         if (myRequestId !== loadRequestIdRef.current) return;
@@ -5171,6 +5172,7 @@ export default function ReplayClient({ userId }) {
           loadedSeriesRef.current = { asset: assetValue, interval };
           setRevealCount(cached.candles.length);
           setLoading(false);
+          renderedFromCache = true;
         }
       } else {
         /* ===== نافذة القص محفوظة بمفتاح منفصل =====
@@ -5192,6 +5194,7 @@ export default function ReplayClient({ userId }) {
              وزحزح الفهارس، الشمعة المكشوفة بتضل **هي هي**. */
           setAllCandles(cc);
           loadedSeriesRef.current = { asset: assetValue, interval };
+          renderedFromCache = true;
           const rc = pickTrainingRevealCount(cc);
           expectedRevealRef.current = rc;
           setRevealCount(rc);
@@ -5232,9 +5235,65 @@ export default function ReplayClient({ userId }) {
       const gapBars = canTail ? Math.ceil((Date.now() / 1000 - lastCachedTime) / intervalSecs) : 0;
       const effCount = canTail ? Math.min(maxBars, gapBars + 400) : maxBars;
 
-      const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(cacheSymbol)}&interval=${tdInterval}&count=${effCount}${effAnchor}${tdParam}${dukParam}`
-      );
+      const urlFor = (n, anchor) =>
+        `/api/replay-candles?symbol=${encodeURIComponent(cacheSymbol)}&interval=${tdInterval}&count=${n}${anchor}${tdParam}${dukParam}`;
+
+      /* ═══ تحميل على مرحلتين — نافذة سريعة تبان فوراً، والعمق بيلحق ═══
+         -----------------------------------------------------------------
+         ⚠️ بلاغه المتكرر: «التنقل بين الفريمات بطيء». جرّبت التسخين الخلفي
+         فهنّق، وربطته بالسكوت فرجع البطء، وربطته بفتح القائمة فما كفى.
+         السبب إني كنت أعالج **متى** نجيب، والمشكلة بـ**كم** نجيب.
+
+         مقيس على الـAPI مباشرة (ES=F · فريم الساعة):
+
+           count=500      ٤١ ك.ب     ٦٨ms
+           count=1500    ١٢٣ ك.ب     ٥١ms
+           count=3000    ٢٤٥ ك.ب     ٧٦ms
+           count=20000   ٤٠٧ ك.ب   ٢٥٠٢ms   ← ٣٣× أبطأ مقابل ١٦٢ ك.ب
+
+         الوقت مش نقل — هو Dukascopy عم تبني تاريخاً عميقاً من ملفات أرشيف.
+         يعني كل تبديل كان يدفع ٢.٥ ثانية مقابل عمق **ما بيحتاجه باللحظة**:
+         هو بده يشوف الشارت، والعمق بده لما يرجع للورا.
+
+         فصار: نافذة سريعة أول (بتبان بأقل من ١٠٠ms)، وبعدها المدى الكامل
+         بالخلفية وبينندمج. العمق ما بينقص ولا شمعة — بس ما عاد يوقف العرض.
+
+         ⚠️ المرحلة السريعة **بتحترم المرساة**: بوضع التدريب النافذة بتتبنى
+         حوالين نقطة القص (شوفي lib/dukascopy-candles.js)، فبتحتويها — وإلا
+         كان `pickTrainingRevealCount` ما بيلاقيها ويرجع لبداية عشوائية.
+
+         ⚠️ وما بتنخزّن: التخزين للعمق الكامل بس، والحارس `deepEnough` أصلاً
+         بيرفض بناء ذيل فوق محفوظ ضحل. */
+      const FAST_COUNT = 3000;
+      /* ⚠️ ما في داعي لمرحلة سريعة لو عرضنا من التخزين أصلاً — الشارت بان،
+         والباقي هو تعميق بالخلفية وبس. */
+      const twoStage = !canTail && !renderedFromCache && effCount > FAST_COUNT;
+      let fastStage = null;   // بينستعمل كأساس دمج تحت
+
+      if (twoStage) {
+        try {
+          const fastRes = await fetch(urlFor(FAST_COUNT, effAnchor));
+          const fastData = await fastRes.json();
+          if (myRequestId !== loadRequestIdRef.current) return;
+          const fast = sanitizeCandles(fastData?.candles || []);
+          if (fast.length) {
+            fastStage = fast;
+            setAllCandles(fast);
+            loadedSeriesRef.current = { asset: assetValue, interval };
+            if (mode === "training") {
+              const rcFast = pickTrainingRevealCount(fast);
+              expectedRevealRef.current = rcFast;
+              setRevealCount(rcFast);
+            } else {
+              setRevealCount(fast.length);
+            }
+            setLoading(false);
+          }
+        } catch { /* المرحلة السريعة تحسين — لو فشلت بنكمّل للكاملة عادي */ }
+        if (myRequestId !== loadRequestIdRef.current) return;
+      }
+
+      const res = await fetch(urlFor(effCount, effAnchor));
       const data = await res.json();
       // طلب أحدث صار وخلص قبل ما هاد يوصل جوابه - نتجاهل هاد الجواب "القديم"
       // نهائياً (ما منكمل ولا حتى ما بعد try/catch/finally) عشان ما يفسد
@@ -5274,9 +5333,12 @@ export default function ReplayClient({ userId }) {
          كان يخلط ثلاث سلاسل بفريمات مختلفة بمصفوفة وحدة. */
       const ls = loadedSeriesRef.current;
       const sameSeries = ls.asset === assetValue && ls.interval === interval;
+      /* ⚠️ المرحلة السريعة أساس دمج كمان: المدى الكامل **المفروض** يكون
+         شاملاً لها (نفس المرساة بمدى أوسع)، بس لو رجّع المزوّد أقل لأي سبب
+         ما بدنا نخسر اللي عرضناه أصلاً. */
       const base = cached?.candles?.length
         ? cached.candles
-        : (sameSeries ? allCandles : null);
+        : (fastStage || (sameSeries ? allCandles : null));
       const candles = base?.length ? mergeCandles(base, fetched) : fetched;
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
       /* ما بننتظر الحفظ — التخزين تحسين، وأي فشل فيه ما بيهمّ المستخدم.
@@ -5398,7 +5460,21 @@ export default function ReplayClient({ userId }) {
        الحل مش تصغير الفايدة — هو التوقيت: التسخين **بس لما يسكت**، وبينلغي
        أول ما يتحرّك. لو ضل شغّال بالشارت، ما بيصير ولا طلب خلفي إطلاقاً؛
        ولو ترك الشاشة لحظة، بتتسخّن الفريمات وبيلاقيها فورية لما يرجع. */
-    const IDLE_MS = 6000;      // كم لازم يسكت قبل ما نبلّش
+    /* ⚠️ **التسخين بالنافذة السريعة (٣٠٠٠) مش الكاملة (٢٠٠٠٠).**
+       -------------------------------------------------------------------
+       بقراره: «كل الفريمات سخّن». وهاد صار ممكن بلا تهنيق بعد ما انقاس
+       الفرق على الـAPI:
+
+         count=3000    ٢٤٥ ك.ب ·   ٧٦ms
+         count=20000   ٤٠٧ ك.ب · ٢٥٠٢ms   ← ٣٣× أبطأ مقابل ١٦٢ ك.ب
+
+       النسخة اللي هنّقت كانت تجيب ٢٠٠٠٠ لكل فريم — ٥.٢٦ ميجا وثواني من
+       الشبكة وسط شغله. بالنافذة السريعة بتصير الستة أقل من ١.٥ ميجا
+       وبأجزاء من الثانية، فبتخلص قبل ما يحسّ فيها.
+
+       والعمق ما بيضيع: أول ما يبدّل فعلياً لفريم، المرحلة الكاملة بتشتغل
+       بالخلفية وبتندمج (شوفي التحميل على مرحلتين فوق). */
+    const IDLE_MS = 0;         // بقراره: ما في انتظار سكوت — بيسخّن دايماً
     const POLL_MS = 1000;
 
     /** بتستنى سكوتاً حقيقياً، وبترجّع false لو المستخدم بدّل السياق. */
@@ -5430,7 +5506,7 @@ export default function ReplayClient({ userId }) {
         }
         await fetch(
           `/api/replay-candles?symbol=${encodeURIComponent(cacheSymbol)}` +
-          `&interval=${INTERVAL_MAP[it.value]}&count=${maxBars}${anchorSuffix}${tdParam}${dukParam}`
+          `&interval=${INTERVAL_MAP[it.value]}&count=3000${anchorSuffix}${tdParam}${dukParam}`
         )
           .then((r) => r.json())
           .then((d) => {
@@ -5438,13 +5514,15 @@ export default function ReplayClient({ userId }) {
             const c = sanitizeCandles(d?.candles || []);
             /* ⚠️ ما بنخزّن أضحل من الموجود — جلبة مكسورة (Dukascopy فشلت
                فوقع على يوهو الضيّق) بتفقّر التخزين وما بيتعمّق بعدها. */
+            /* ⚠️ ما منقارن بالعمق: نافذة التسخين **مقصود** إنها ضحلة، وهي
+               للعرض الفوري بس — المرحلة الكاملة بتعمّقها عند أول تبديل. */
             if (c.length && c.length >= (hc?.length || 0)) writeSeries(key, it.value, c);
           });
       } catch { /* التسخين تحسين — فشله ما بيهمّ المستخدم أبداً */ }
       /* فاصل بين الطلبات (حد TwelveData ٨ طلبات/دقيقة)، **ثم** ننتظر سكوتاً
          من جديد: لو رجع يشتغل بالشارت بين فريم وفريم، بنوقف بدل ما نكمّل
          ونزاحمه. */
-      await new Promise((r) => setTimeout(r, onIntent ? 1200 : 8000));
+      await new Promise((r) => setTimeout(r, 900));
       if (!onIntent && !(await waitForIdle())) return;
     }
   }
