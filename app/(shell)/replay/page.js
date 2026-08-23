@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+import { getVerifiedUserId } from "@/lib/auth-context";
 import ReplayClient from "./ReplayClient";
 
 export const dynamic = "force-dynamic";
@@ -8,13 +9,13 @@ export const dynamic = "force-dynamic";
 // (Journal) + AI Coach + الإحصائيات. المكوّن (ReplayClient) لم يتغيّر إطلاقاً.
 export default async function ReplayPage() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
+     تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
+  const userId = await getVerifiedUserId();
+  if (!userId) redirect("/login");
 
 
   return (
-    <ReplayClient userId={user.id} />
+    <ReplayClient userId={userId} />
   );
 }

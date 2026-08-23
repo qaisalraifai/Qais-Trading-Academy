@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+import { getVerifiedUserId } from "@/lib/auth-context";
 import { getStudentBatchId } from "@/lib/student-batch";
 import CalendarClient from "./CalendarClient";
 
@@ -8,15 +9,17 @@ import CalendarClient from "./CalendarClient";
 // بس تجميع لبيانات موجودة أصلاً من مراحل سابقة.
 export default async function BatchCalendarPage({ params }) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
+     تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
+  const userId = await getVerifiedUserId();
+  if (!userId) redirect("/login");
 
 
   const { data: course } = await supabase.from("courses").select("id, title, icon").eq("id", params.id).single();
   if (!course) redirect("/lecture");
 
   // نفس منطق المرحلة 6: لازم الطالب يكون فاتح صفحة الدورة واختار/انسجّل بدفعة أول
-  const studentBatchId = await getStudentBatchId(user.id, params.id);
+  const studentBatchId = await getStudentBatchId(userId, params.id);
   if (!studentBatchId) redirect(`/course/${params.id}`);
 
   const { data: batch } = await supabase

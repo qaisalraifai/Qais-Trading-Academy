@@ -99,26 +99,56 @@ export async function POST(request) {
     }
   }
 
+  /* ⚠️ **إنشاء فقط — ممنوع الكتابة فوق صف موجود.**
+     ---------------------------------------------------------------------
+     كان `upsert(..., { ignoreDuplicates: false })`، والمسار **بلا مصادقة**
+     (عن قصد: وقت التسجيل ممكن ما يكون في جلسة لو تفعيل الإيميل مطلوب).
+     وفحص `getUserById` بيثبت إنه المعرّف **موجود** — مش إنه المنادي صاحبه.
+
+     فأي حدا بيعرف معرّف مستخدم كان يقدر يبعت طلباً واحداً ويدوس على صفّه:
+
+       role → "student"                  تنزيل أدمن لطالب
+       subscription_status → "inactive"  قطع اشتراك مدفوع
+       referred_by → كود المهاجم         سرقة عمولات الإحالة بنظام الشبكة
+       username → أي قيمة
+
+     `insert` بدل `upsert` بتقفلها من الجذر: الصف الموجود ما بينلمس. وخطأ
+     تكرار المفتاح (23505) بينعامل **نجاحاً** لأن الغاية محقَّقة أصلاً
+     (البروفايل موجود) — وهيك بيضل المسار قابلاً لإعادة النداء بلا أثر
+     جانبي، بلا ما نفحص-ثم-نكتب (سباق).
+
+     ⚠️ ملاحظة مقصودة: لو الصف موجود وما فيه `referred_by`، **ما منضيفه**.
+     السماح بذلك بيرجّع نفس الاختطاف من باب تاني. */
   const { error: profileError } = await supabase
     .from("profiles")
-    .upsert(
-      {
-        id: userId,
-        username: username.trim(),
-        role: "student",
-        subscription_status: "inactive",
-        referred_by: referredBy,
-      },
-      { onConflict: "id", ignoreDuplicates: false }
-    );
+    .insert({
+      id: userId,
+      username: username.trim(),
+      role: "student",
+      subscription_status: "inactive",
+      referred_by: referredBy,
+    });
 
-  if (profileError) {
-    console.error("create-profile upsert failed:", profileError);
+  /* 23505 = انتهاك قيد التفرّد = البروفايل موجود من قبل. */
+  const alreadyExists = profileError?.code === "23505";
+  if (profileError && !alreadyExists) {
+    console.error("create-profile insert failed:", profileError);
     return NextResponse.json(
       { error: profileError.message },
       { status: 400 }
     );
   }
+
+  /* ⚠️ البروفايل موجود من قبل = ما في تسجيل جديد صار هون، فبنوقف.
+     -----------------------------------------------------------------------
+     تحت في آثار جانبية بتفترض «حساب جديد»: تسجيل بصمة جهاز، وربط نقرة
+     إحالة، و**إشعار «عضو جديد بشبكتك»**. وبما إنه المسار بلا مصادقة، تركها
+     تشتغل على حساب قائم بتخلّي أي حدا يقصف صاحب أي كود إحالة بإشعارات
+     كاذبة، ويلوّث بيانات مكافحة الغش بنداءات مكرّرة.
+
+     الرجوع بنجاح مقصود: الغاية (وجود البروفايل) محقَّقة، وما بدنا نكشف
+     للمنادي إذا الحساب موجود أو لأ. */
+  if (alreadyExists) return NextResponse.json({ success: true });
 
   await recordSignupFingerprint(supabase, userId, {
     deviceFingerprint,

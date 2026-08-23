@@ -43,12 +43,13 @@ import { getShellProfile } from "@/lib/shell-profile";
    ============================================================================ */
 export default async function ShellLayout({ children }) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  /* الهوية من ترويسة الـmiddleware المتحقَّقة — الفحص انعمل هناك أصلاً،
+     وإعادته هون رحلة شبكية تانية لنفس الشي. بترجع لـ`auth.getUser()`
+     لو الترويسة غابت (شوفي `lib/auth-context.js`). */
+  const userId = await getVerifiedUserId();
+  if (!userId) redirect("/login");
 
-  const shellProfile = await getShellProfile(supabase, user);
+  const shellProfile = await getShellProfile(supabase, userId);
 
   return <PageShell {...shellProfile}>{children}</PageShell>;
 }

@@ -20,12 +20,10 @@ export default function LoginPage() {
     if (loginError) { setError("الإيميل أو كلمة المرور غلط"); setLoading(false); return; }
     const { data: { user } } = await supabase.auth.getUser();
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-    // تسجيل IP/الجهاز/الـ Timeline من السيرفر — ما بيوقف تسجيل الدخول لو فشل
-    fetch("/api/log-login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id }),
-    }).catch(() => {});
+    /* تسجيل IP/الجهاز/الـ Timeline من السيرفر — ما بيوقف تسجيل الدخول لو فشل.
+       ⚠️ ما بينبعت `userId`: المسار بيقرا الهوية من الجلسة حصراً. كان بياخدها
+       من الجسم بلا مصادقة، فكان أي حدا يقدر يزوّر سجلّ دخول أي حساب. */
+    fetch("/api/log-login", { method: "POST" }).catch(() => {});
     router.push("/dashboard");
   }
 

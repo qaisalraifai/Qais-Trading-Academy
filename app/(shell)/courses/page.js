@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+import { getVerifiedUserId } from "@/lib/auth-context";
 import { getProfileBasics } from "@/lib/shell-profile";
 import CoursesClient from "./CoursesClient";
 
@@ -9,20 +10,20 @@ export const dynamic = "force-dynamic";
 // منقول من تبويب الداشبورد القديم لملف CoursesClient.js.
 export default async function CoursesPage() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
+     تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
+  const userId = await getVerifiedUserId();
+  if (!userId) redirect("/login");
 
   /* بيانات البروفايل لمنطق هالصفحة نفسها — الغلاف صار باللياوت.
      نسخة خفيفة بلا بوابة الدفعة (اللياوت بينفّذها مرة وحدة). */
-  const shellProfile = await getProfileBasics(supabase, user);
+  const shellProfile = await getProfileBasics(supabase, userId);
 
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("current_streak")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
 
   return (

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+import { getVerifiedUserId } from "@/lib/auth-context";
 import QaisEngineView from "../dashboard/components/QaisEngineView";
 
 export const dynamic = "force-dynamic";
@@ -9,10 +10,10 @@ export const dynamic = "force-dynamic";
 // وخطة الصفقة). المكوّن (QaisEngineView) وكل حساباته لم تتغيّر إطلاقاً.
 export default async function MarketIntelligencePage() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
+     تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
+  const userId = await getVerifiedUserId();
+  if (!userId) redirect("/login");
 
 
   return (

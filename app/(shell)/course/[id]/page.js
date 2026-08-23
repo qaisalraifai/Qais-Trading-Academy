@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from "@/lib/supabase-server";
+import { getVerifiedUserId } from "@/lib/auth-context";
 import { redirect } from "next/navigation";
 import CourseClient from "./CourseClient";
 import BatchSelectClient from "./BatchSelectClient";
@@ -6,8 +7,10 @@ import { getStudentBatchId } from "@/lib/student-batch";
 
 export default async function CoursePage({ params }) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
+     تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
+  const userId = await getVerifiedUserId();
+  if (!userId) redirect("/login");
 
 
   const { data: course } = await supabase
@@ -21,7 +24,7 @@ export default async function CoursePage({ params }) {
   // أول مرة الطالب يفتح هاي الدورة، لازم يختار دفعته قبل ما يشوف أي محتوى —
   // هاد كان معمول من قبل (BatchSelectClient + getStudentBatchId) بس ما كان
   // مربوط فعليًا بالصفحة. صلّحناها هون.
-  const batchId = await getStudentBatchId(user.id, params.id);
+  const batchId = await getStudentBatchId(userId, params.id);
 
   if (!batchId) {
     const admin = createAdminClient();
@@ -85,7 +88,7 @@ export default async function CoursePage({ params }) {
   const { data: progress } = await supabase
     .from("lecture_progress")
     .select("*")
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
   const progressMap = {};
   (progress || []).forEach((p) => {

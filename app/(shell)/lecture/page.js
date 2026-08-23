@@ -1,4 +1,5 @@
 import { BookOpen, Clock } from "lucide-react";
+import { getVerifiedUserId } from "@/lib/auth-context";
 import { resolveIcon } from "@/lib/icon-registry";
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
@@ -6,8 +7,10 @@ import Link from "next/link";
 
 export default async function LecturesPage() {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
+     تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
+  const userId = await getVerifiedUserId();
+  if (!userId) redirect("/login");
 
 
   // الكورسات الثلاثة
@@ -25,7 +28,7 @@ export default async function LecturesPage() {
   const { data: progress } = await supabase
     .from("lecture_progress")
     .select("lecture_id, completed")
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
   const completedIds = new Set(
     (progress || []).filter((p) => p.completed).map((p) => p.lecture_id)

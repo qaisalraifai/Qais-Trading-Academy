@@ -1,12 +1,15 @@
 import { createClient } from "@/lib/supabase-server";
+import { getVerifiedUserId } from "@/lib/auth-context";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import LectureCompleteButton from "./LectureCompleteButton";
 
 export default async function LecturePage({ params }) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
+     تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
+  const userId = await getVerifiedUserId();
+  if (!userId) redirect("/login");
 
 
   const { data: lecture } = await supabase
@@ -16,7 +19,7 @@ export default async function LecturePage({ params }) {
   const { data: progress } = await supabase
     .from("lecture_progress")
     .select("completed")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("lecture_id", params.id)
     .maybeSingle();
 

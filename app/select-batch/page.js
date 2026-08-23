@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+import { getVerifiedUserId } from "@/lib/auth-context";
 import PageShell from "@/app/components/layout/PageShell";
 import { getShellProfile } from "@/lib/shell-profile";
 import SelectBatchClient from "./SelectBatchClient";
@@ -9,11 +10,12 @@ import SelectBatchClient from "./SelectBatchClient";
 // شي بالمنصة (البث، الدورات، الإعلانات...) — تسجيل بمستوى الدفعة الكاملة.
 export default async function SelectBatchPage() {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية تانية. */
+  const userId = await getVerifiedUserId();
+  if (!userId) redirect("/login");
 
   // skipBatchGate: true — عشان نتفادى حلقة تحويل لا نهائية على نفس الصفحة
-  const shellProfile = await getShellProfile(supabase, user, { skipBatchGate: true });
+  const shellProfile = await getShellProfile(supabase, userId, { skipBatchGate: true });
 
   const admin = createAdminClient();
 
@@ -21,7 +23,7 @@ export default async function SelectBatchPage() {
   const { count: existingCount } = await admin
     .from("batch_enrollments")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
   if (existingCount) redirect("/dashboard");
 
   const { data: rawBatches } = await admin
