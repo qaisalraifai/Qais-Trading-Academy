@@ -5355,11 +5355,53 @@ export default function ReplayClient({ userId }) {
      ⚠️ نافذة القص **بتنحفظ بمفتاح تاني** (`cutCacheKey`) — نافذة المرساة
      ما فيها «الآن»، فخلطها بمفتاح المباشر بيعمل ثقب بالبيانات. */
   const warmAbortRef = useRef(0);
+  /* آخر لحظة تفاعَل فيها المستخدم — التسخين ما بيشتغل إلا لما يسكت.
+
+     ⚠️ **بيبلّش من لحظة التحميل مش من صفر.** بصفر بيصير `الآن − 0` رقم
+     هائل، فشرط السكوت بيمرق **فوراً بأول تحميل** وبينطلق التسخين قبل ما
+     يتفاعل المستخدم ولا مرة — يعني الحارس بلا أثر بالضبط بالحالة اللي
+     انبنى لها. مقيسة: التسخين انطلق بالثانية ٥.٨ رغم تفاعل متواصل. */
+  const lastInteractionRef = useRef(Date.now());
+  useEffect(() => {
+    const touch = () => { lastInteractionRef.current = Date.now(); };
+    const evs = ["mousedown", "mousemove", "wheel", "keydown", "touchstart"];
+    for (const e of evs) window.addEventListener(e, touch, { passive: true });
+    return () => { for (const e of evs) window.removeEventListener(e, touch); };
+  }, []);
+
   async function warmOtherTimeframes(cacheSymbol, assetInfo, tdParam, dukParam, anchorSuffix = "") {
     const runId = ++warmAbortRef.current;
     const key = anchorSuffix ? cutCacheKey(cacheSymbol) : cacheSymbol;
-    /* مهلة أولية: نخلّي الشارت يستقر ويرسم قبل ما نشغّل الشبكة. */
-    await new Promise((r) => setTimeout(r, 4000));
+
+    /* ⚠️ **التسخين ما بيزاحم المستخدم — بلاغ مؤكَّد بالقياس.**
+       -------------------------------------------------------------------
+       بلاغه: «الريبلاي كثير بطيء بالتنقل بالفريمات وفي تهنيق». مقيس على
+       جلسة قصيرة برمز واحد:
+
+         ١٤ طلب · ٥.٢٦ ميجا
+         أكبرهن: فريم الدقيقة ١.٨٤ ميجا · اليومي ٧١١ ك.ب
+
+       السبب: التسخين بيجيب `count=20000` **لكل فريم**، وكان يبلّش بعد ٤
+       ثواني وبس — يعني وسط ما المستخدم عم يتنقّل ويقصّ. فبتتزاحم جلبته
+       الفعلية مع خمس جلبات خلفية ما طلبهن.
+
+       الحل مش تصغير الفايدة — هو التوقيت: التسخين **بس لما يسكت**، وبينلغي
+       أول ما يتحرّك. لو ضل شغّال بالشارت، ما بيصير ولا طلب خلفي إطلاقاً؛
+       ولو ترك الشاشة لحظة، بتتسخّن الفريمات وبيلاقيها فورية لما يرجع. */
+    const IDLE_MS = 6000;      // كم لازم يسكت قبل ما نبلّش
+    const POLL_MS = 1000;
+
+    /** بتستنى سكوتاً حقيقياً، وبترجّع false لو المستخدم بدّل السياق. */
+    const waitForIdle = async () => {
+      for (;;) {
+        if (runId !== warmAbortRef.current) return false;
+        const quiet = Date.now() - lastInteractionRef.current;
+        if (quiet >= IDLE_MS) return true;
+        await new Promise((r) => setTimeout(r, POLL_MS));
+      }
+    };
+
+    if (!(await waitForIdle())) return;
     for (const it of INTERVALS) {
       if (runId !== warmAbortRef.current) return;      // المستخدم بدّل — بنوقف
       if (it.value === intervalRef.current) continue;
@@ -5386,7 +5428,11 @@ export default function ReplayClient({ userId }) {
             if (c.length && c.length >= (hc?.length || 0)) writeSeries(key, it.value, c);
           });
       } catch { /* التسخين تحسين — فشله ما بيهمّ المستخدم أبداً */ }
+      /* فاصل بين الطلبات (حد TwelveData ٨ طلبات/دقيقة)، **ثم** ننتظر سكوتاً
+         من جديد: لو رجع يشتغل بالشارت بين فريم وفريم، بنوقف بدل ما نكمّل
+         ونزاحمه. */
       await new Promise((r) => setTimeout(r, 8000));
+      if (!(await waitForIdle())) return;
     }
   }
   /* أي تبديل أصل/فريم/وضع بيلغي تسخيناً شغّالاً — طلب المستخدم أولى. */
