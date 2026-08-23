@@ -5537,7 +5537,28 @@ export default function ReplayClient({ userId }) {
             const newFrom = timeToLogicalForCandles(tFrom, toVisible);
             const newTo = timeToLogicalForCandles(tTo, toVisible);
             if (Number.isFinite(newFrom) && Number.isFinite(newTo) && newTo > newFrom) {
-              restoreVisibleRange = { from: newFrom, to: newTo };
+              /* ===== حدّ قابلية القراءة عند تبديل الفريم =====
+                 ⚠️ الإسقاط فوق بيحافظ على **نفس النافذة الزمنية**، وهاد صح
+                 بالمبدأ بس بيعطي زوماً متطرفاً لما يكون فرق الفريمين كبير:
+                 ٣ أيام على ١٥ دقيقة = ٢٨٨ شمعة، ونفس الـ٣ أيام على اليومي
+                 = **٣ شموع** بتملا الشاشة. وبالعكس، سنتين على اليومي بتصير
+                 قرابة مليون شمعة على فريم الدقيقة. بلاغه: «لما أغيّر الفريم
+                 لازم يعمل إعادة تنسيق مرتّب، ما يكون زوم إن كثير ولا زوم
+                 آوت كثير».
+
+                 الحدّ **مش عدد شموع ثابت** — هو عرض الشمعة بالبكسل، لأنه هو
+                 اللي بيحدّد إذا الشارت مقروء أصلاً. أقل من ~1.5px بتصير
+                 الشموع خطوطاً ملتصقة، وأكتر من ~40px بتصير أعمدة عملاقة.
+                 بينهن بنحترم زوم المستخدم كما هو.
+
+                 الطرف اليمين (`to`) بيضل مثبّتاً — هو «وين واقف بالزمن»،
+                 والتعديل بيصير على العمق للورا وحده. */
+              const px = chartContainerRef.current?.clientWidth || 900;
+              const MIN_BAR_PX = 1.5;
+              const MAX_BAR_PX = 40;
+              const span = newTo - newFrom;
+              const clamped = Math.min(Math.max(span, px / MAX_BAR_PX), px / MIN_BAR_PX);
+              restoreVisibleRange = { from: newTo - clamped, to: newTo };
             }
           }
         }
