@@ -14,7 +14,7 @@ async function requireApprovedAffiliate(admin, userId) {
 // GET /api/affiliate/campaign-links — يرجّع كل روابط الحملات تبعي مع إحصائياتها
 // (نقرات + تحويلات محسوبة حيًّا من affiliate_clicks، بدون تخزين مكرر)
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -54,7 +54,7 @@ export async function GET() {
 
 // POST /api/affiliate/campaign-links  { slug, label }
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -93,7 +93,7 @@ export async function POST(request) {
 
 // DELETE /api/affiliate/campaign-links?id=...
 export async function DELETE(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

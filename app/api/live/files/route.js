@@ -4,7 +4,7 @@ import { assertLiveSessionAccess } from "@/lib/live-access";
 
 // GET /api/live/files?sessionId=...
 export async function GET(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 
@@ -29,7 +29,7 @@ export async function GET(request) {
 // POST /api/live/files { sessionId, fileName, fileUrl, sizeBytes } — الرفع الفعلي عالفرونت لـ Supabase Storage،
 // وهون منسجّل بس الميتاداتا. بس المدرب/المشرف مسموحلهم.
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 

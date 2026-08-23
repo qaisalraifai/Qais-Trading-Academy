@@ -48,7 +48,7 @@ async function buildSubtree(supabaseAdmin, nodeId, depth) {
 }
 
 export async function GET(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 

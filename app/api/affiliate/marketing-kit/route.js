@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from "@/lib/supabase-server";
 
 // GET /api/affiliate/marketing-kit — قائمة الشعارات/البانرات/الفيديوهات الجاهزة للمسوّقين المفعّلين
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

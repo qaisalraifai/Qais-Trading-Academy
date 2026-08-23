@@ -4,7 +4,7 @@ import { assertLiveSessionAccess } from "@/lib/live-access";
 
 // GET /api/live/chat?sessionId=... — آخر 100 رسالة (تاريخ الدردشة لمين ينضم متأخر)
 export async function GET(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 
@@ -29,7 +29,7 @@ export async function GET(request) {
 
 // POST /api/live/chat { sessionId, body } — يحفظ رسالة (البث الحي نفسه بيصير عبر data channel بـ LiveKit)
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 

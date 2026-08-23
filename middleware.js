@@ -22,7 +22,7 @@ const CANONICAL_ORIGIN = "https://www.qta-academy.store";
    ═══════════════════════════════════════════════════════════════════════════ */
 export const AUTH_HEADER = "x-qta-uid";
 
-export async function proxy(request) {
+export async function middleware(request) {
   // 1) لو الطلب جاي من الدومين القديم (vercel.app)، منحوّله بشكل دائم (308)
   //    للدومين الجديد — هيك Google بمرور الوقت بيشيل الرابط القديم من نتائج
   //    البحث ويعرض بس الدومين الجديد.

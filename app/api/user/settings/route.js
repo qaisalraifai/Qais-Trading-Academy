@@ -10,7 +10,7 @@ import { createClient, createAdminClient } from "@/lib/supabase-server";
 // GET — يرجع كل الإعدادات المحفوظة بحساب المستخدم الحالي (أو data:null لو
 // مش مسجّل دخول / زائر)
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -42,7 +42,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

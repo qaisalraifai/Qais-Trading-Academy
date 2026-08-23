@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from "@/lib/supabase-server";
 
 // GET /api/radar/favorites — رموز المفضّلة للطالب الحالي
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -18,7 +18,7 @@ export async function GET() {
 
 // POST /api/radar/favorites { symbol } — إضافة رمز للمفضّلة
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -36,7 +36,7 @@ export async function POST(request) {
 
 // DELETE /api/radar/favorites { symbol } — إزالة رمز من المفضّلة
 export async function DELETE(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

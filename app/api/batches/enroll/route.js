@@ -9,7 +9,7 @@ import { logActivity } from "@/lib/activity-log";
 // batch_courses. أي نقل لاحق بين الدفعات قرار إداري بس (شوف
 // /api/admin/batches/transfer)، الطالب ما فيه صلاحية يبدّل حاله بنفسه.
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -4,7 +4,7 @@ import { assertLiveSessionAccess } from "@/lib/live-access";
 
 // GET /api/live/qna?sessionId=...
 export async function GET(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 
@@ -29,7 +29,7 @@ export async function GET(request) {
 
 // POST /api/live/qna { sessionId, question }
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 
@@ -53,7 +53,7 @@ export async function POST(request) {
 
 // PATCH /api/live/qna { id, sessionId, action } — action: 'upvote' | 'answer' (answer بس للمدرب/المشرف)
 export async function PATCH(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 

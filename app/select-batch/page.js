@@ -9,8 +9,8 @@ import SelectBatchClient from "./SelectBatchClient";
 // لسا ما اختار دفعته. بمجرد ما يختار، هاد الاختيار بيصير هو المرجع لكل
 // شي بالمنصة (البث، الدورات، الإعلانات...) — تسجيل بمستوى الدفعة الكاملة.
 export default async function SelectBatchPage() {
-  const supabase = await createClient();
-  /* الهوية من ترويسة الـproxy المتحقَّقة — بلا رحلة شبكية تانية. */
+  const supabase = createClient();
+  /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية تانية. */
   const userId = await getVerifiedUserId();
   if (!userId) redirect("/login");
 

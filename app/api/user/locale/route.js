@@ -5,7 +5,7 @@ import { LOCALE_COOKIE, isSupportedLocale } from "@/lib/i18n/config";
 // GET /api/user/locale — يجيب اللغة المحفوظة بحساب المستخدم (تُستخدم لما
 // يفتح المنصة من جهاز/متصفح جديد ما فيه لغة محفوظة محلياً بعد)
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -26,7 +26,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "لغة غير مدعومة" }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

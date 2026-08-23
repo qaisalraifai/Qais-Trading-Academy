@@ -11,7 +11,7 @@ import { getShellProfile } from "@/lib/shell-profile";
 
    كل صفحة كانت تعمل نفس الشي بالحرف:
 
-       const supabase = await createClient();
+       const supabase = createClient();
        const { data: { user } } = await supabase.auth.getUser();
        if (!user) redirect("/login");
        const shellProfile = await getShellProfile(supabase, user);
@@ -38,12 +38,12 @@ import { getShellProfile } from "@/lib/shell-profile";
    `skipBatchGate`، ولو دخلت هون كانت بوابة الدفعة تحوّلها لنفسها = حلقة
    تحويل لا نهائية. بتضل حاملة غلافها الخاص.
 
-   ⚠️ الأمان ما ضعف: الـproxy لسا بيفحص كل مسار محمي، وكل صفحة لسا
+   ⚠️ الأمان ما ضعف: الـmiddleware لسا بيفحص كل مسار محمي، وكل صفحة لسا
    بتجيب `user` لاستعلاماتها الخاصة. هاد الفحص **إضافي** مش بديل.
    ============================================================================ */
 export default async function ShellLayout({ children }) {
-  const supabase = await createClient();
-  /* الهوية من ترويسة الـproxy المتحقَّقة — الفحص انعمل هناك أصلاً،
+  const supabase = createClient();
+  /* الهوية من ترويسة الـmiddleware المتحقَّقة — الفحص انعمل هناك أصلاً،
      وإعادته هون رحلة شبكية تانية لنفس الشي. بترجع لـ`auth.getUser()`
      لو الترويسة غابت (شوفي `lib/auth-context.js`). */
   const userId = await getVerifiedUserId();

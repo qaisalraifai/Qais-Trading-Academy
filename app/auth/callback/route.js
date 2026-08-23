@@ -20,7 +20,7 @@ export async function GET(request) {
     return NextResponse.redirect(`${origin}/login?error=رابط_غير_صالح`);
   }
 
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error || !data?.user) {

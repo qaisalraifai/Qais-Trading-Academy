@@ -5,7 +5,7 @@ import { createClient, createAdminClient } from "@/lib/supabase-server";
 // ينضم فعليًا لغرفة البث (Jitsi)، وممكن يرسل event:"leave" لما يغادر عشان نحدّث آخر وقت شفناه فيه.
 // المرحلة 8: هاد السجل هو اللي بلوحة التحكم بتبني عليه شاشة "الحضور" لكل دفعة ولكل بث.
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

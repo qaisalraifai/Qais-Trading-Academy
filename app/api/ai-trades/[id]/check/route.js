@@ -14,7 +14,7 @@ const STATUS_ORDER = ["Open", "Running", "TP1 Hit", "TP2 Hit", "TP3 Hit", "TP4 H
 // lib/yahoo-candles.js، بدون أي تغيير على منطق الجلب نفسه) ويمشي عليها زمنياً
 // من آخر نقطة فحص لتحديث حالة الصفقة تلقائياً — بدون كرون دوري.
 export async function POST(request, { params }) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

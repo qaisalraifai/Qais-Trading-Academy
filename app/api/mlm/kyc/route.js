@@ -12,7 +12,7 @@ async function ensureBucket(supabaseAdmin) {
 }
 
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 
@@ -27,7 +27,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase-server";
 import { createSingleUseInvite } from "@/lib/discord";
 
 export async function POST() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

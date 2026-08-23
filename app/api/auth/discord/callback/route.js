@@ -13,7 +13,7 @@ export async function GET(request) {
     return NextResponse.redirect(new URL("/dashboard?discord=error", request.url));
   }
 
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -5,7 +5,7 @@ import { getAccessibleActiveSessions } from "@/lib/live-access";
 // GET /api/live — كل البثوث النشطة هلأ اللي المستخدم مسموحله ينضم إلها
 // (طالب: بس بثوث دفعاته — أدمن/مدرب دفعة: بثوث دفعته أو كل البثوث لو أدمن عام)
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

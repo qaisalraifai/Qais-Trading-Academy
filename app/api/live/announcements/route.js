@@ -5,7 +5,7 @@ import { assertLiveSessionAccess } from "@/lib/live-access";
 // POST /api/live/announcements { sessionId, message } — يحفظ إعلان للأرشيف
 // (البث الحي للتنبيه بيصير عبر data channel من الفرونت مباشرة لكل المتصلين)
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
 

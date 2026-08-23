@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // لم يتغيّر إطلاقاً، فقط أضفنا حماية مستوى الصفحة (نفس شرط isAdmin المستخدم
 // سابقاً بالداشبورد) عشان ما يوصلها إلا الأدمن حتى لو دخل الرابط مباشرة.
 export default async function AccountsPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
   /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
      تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
   const userId = await getVerifiedUserId();

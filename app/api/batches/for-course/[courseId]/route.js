@@ -8,7 +8,7 @@ import { getStudentBatchId } from "@/lib/student-batch";
 // هاي نقطة الدخول الحقيقية لبوابة اختيار الدفعة — مستخدمة من app/courses/CoursesClient.js
 // (الواجهة الفعلية اللي الطالب بيتصفح فيها المحاضرات).
 export async function GET(_request, { params }) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "لازم تسجّلي دخول" }, { status: 401 });
 

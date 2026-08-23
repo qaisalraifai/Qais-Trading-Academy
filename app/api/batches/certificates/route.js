@@ -7,7 +7,7 @@ import { computeBatchProgress, ensureAutoCertificate } from "@/lib/certificates"
 // ونسبة إكماله الحالية. لو وصل 100% ولسا ما عنده شهادة، بتصدرله وحدة تلقائيًا هون
 // (أول مرة يفتح فيها هاي الصفحة بعد ما يخلّص).
 export async function GET(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

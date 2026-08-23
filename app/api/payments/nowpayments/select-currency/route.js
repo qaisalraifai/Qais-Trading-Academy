@@ -5,7 +5,7 @@ import { selectCryptoCurrency } from "@/lib/payments/billing-service";
 // POST /api/payments/nowpayments/select-currency  { transactionId, payCurrency }
 // بيرجع عنوان محفظة + مبلغ محدد نعرضهم مباشرة بواجهتنا (بدون أي تحويل خارجي)
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

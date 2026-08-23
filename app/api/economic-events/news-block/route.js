@@ -9,7 +9,7 @@ import { getSymbolCurrencies, NEWS_BLOCK_WINDOW_MINUTES } from "@/lib/qais/confi
 // دقيقة حول الوقت الحالي — تستخدمها الواجهة (QaisEngineView/MarketIntelligenceView)
 // قبل تمرير النتيجة لـ analyzeSymbol() كـ newsBlocked.
 export async function GET(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

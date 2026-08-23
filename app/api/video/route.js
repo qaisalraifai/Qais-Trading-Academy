@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase-server";
 import { google } from "googleapis";
 
 export async function GET(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new NextResponse("Unauthorized", { status: 401 });
 

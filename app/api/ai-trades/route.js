@@ -6,7 +6,7 @@ const OPEN_STATUSES = ["Open", "Running", "TP1 Hit", "TP2 Hit", "TP3 Hit", "TP4 
 // GET /api/ai-trades?symbol=XAUUSD — هل فيه صفقة QAIS AI مفتوحة حالياً على هاد الرمز
 // للطالب الحالي؟ (تستخدمها Chart Synchronization لاحقاً بدل ما تنشئ صفقة مكرّرة)
 export async function GET(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -33,7 +33,7 @@ export async function GET(request) {
 // وقت الضغط على "Execute AI Trade". هاد Endpoint ما بيلمس منطق التحليل إطلاقاً —
 // بس بياخد نتيجة analyzeSymbol() الجاهزة من الواجهة ويخزّنها.
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

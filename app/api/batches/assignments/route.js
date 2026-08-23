@@ -6,7 +6,7 @@ import { getStudentBatchId } from "@/lib/student-batch";
 // الدورة بس، مع حالة تسليمه (لو سلّم) ودرجته (لو انقيّم)
 // (نفس منطق فلترة المحتوى بالمرحلة 6: كل طالب يشوف بس واجبات دفعته)
 export async function GET(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

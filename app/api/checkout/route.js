@@ -8,7 +8,7 @@ import { getWhop } from "@/lib/whop";
 // هاي الطريقة أأمن من إرسال مفتاح الـ API للمتصفح متل ما كان صاير مع بعض
 // إعدادات Paddle — كل شي هون بيصير سيرفر-لسيرفر.
 export async function POST() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

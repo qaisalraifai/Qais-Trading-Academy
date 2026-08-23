@@ -10,7 +10,7 @@ export const maxDuration = 60;
 // أول مشترك يفتح الخبر بيشغّل التحليل، وبعدها التحليل يصير محفوظ بقاعدة البيانات
 // وبيطلع فوراً لباقي المشتركين بدون ما يتكرر استدعاء الذكاء الاصطناعي.
 export async function POST(request, { params }) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -4,7 +4,7 @@ import { createNotification } from "@/lib/notifications";
 import { WHEEL_PRIZES, REFERRALS_PER_SPIN, currentPeriod, spinWheel } from "@/lib/bonus-wheel";
 
 async function getAuthedApprovedAffiliate() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

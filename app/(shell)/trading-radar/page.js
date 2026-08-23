@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 // المكوّن نفسه (RadarView / MarketIntelligenceView) وكل منطقه لم يتغيّر إطلاقاً،
 // فقط أصبح صفحة كاملة بمساحتها الخاصة بدل ما يكون Card داخل الداشبورد.
 export default async function TradingRadarPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
   /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
      تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
   const userId = await getVerifiedUserId();

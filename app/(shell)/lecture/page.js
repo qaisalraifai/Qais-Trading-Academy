@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 export default async function LecturesPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
   /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
      تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
   const userId = await getVerifiedUserId();

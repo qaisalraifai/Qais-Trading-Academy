@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // Workspace مستقلة لـ "بصمتك كمتداول". المكوّن (TraderDnaView) لم يتغيّر إطلاقاً.
 export default async function TraderDnaPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
   /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
      تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
   const userId = await getVerifiedUserId();

@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from "@/lib/supabase-server";
 
 // GET /api/ai-trades/[id] — تفاصيل صفقة QAIS AI واحدة (لصفحة Trade Details)
 export async function GET(request, { params }) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

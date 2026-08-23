@@ -5,7 +5,7 @@ import { getActiveClientsCount, getCancelledClientsCount } from "@/lib/tiers";
 // GET /api/affiliate/growth-stats — عدد العملاء النشطين بمرور الوقت (آخر 30 يوم من
 // اللقطات اليومية) + معدل الاحتفاظ/الإلغاء الحالي.
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

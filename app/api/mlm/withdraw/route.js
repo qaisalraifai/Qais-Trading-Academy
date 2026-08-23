@@ -6,7 +6,7 @@ import { logActivity } from "@/lib/activity-log";
 const MIN_WITHDRAWAL = 50; // دينار، الفصل 18
 
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -23,7 +23,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

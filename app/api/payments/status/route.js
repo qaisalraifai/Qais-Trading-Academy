@@ -5,7 +5,7 @@ import { createClient, createAdminClient } from "@/lib/supabase-server";
 // بيرجع حالة عملية دفع معيّنة تخص المستخدم الحالي فقط — تستخدمه صفحة
 // "بانتظار المراجعة" بالدفع اليدوي حتى تعرف لما الأدمن يوافق أو يرفض.
 export async function GET(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

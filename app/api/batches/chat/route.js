@@ -27,7 +27,7 @@ async function attachSenders(admin, messages) {
 // GET /api/batches/chat?course_id=... — آخر رسائل دردشة دفعة الطالب لهاي الدورة
 // (نفس منطق فلترة المحتوى بالمرحلة 6: كل طالب يشوف بس دردشة دفعته)
 export async function GET(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -57,7 +57,7 @@ export async function GET(request) {
 
 // POST /api/batches/chat { course_id, message } — إرسال رسالة بدردشة دفعة الطالب
 export async function POST(request) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

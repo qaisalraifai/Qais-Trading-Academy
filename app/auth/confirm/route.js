@@ -16,7 +16,7 @@ export async function GET(request) {
   const next = searchParams.get("next") ?? "/payment";
 
   if (token_hash && type) {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase.auth.verifyOtp({ type, token_hash });
 
     if (!error && data?.user) {

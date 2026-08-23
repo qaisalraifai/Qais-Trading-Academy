@@ -5,7 +5,7 @@ import Link from "next/link";
 import LectureCompleteButton from "./LectureCompleteButton";
 
 export default async function LecturePage({ params }) {
-  const supabase = await createClient();
+  const supabase = createClient();
   /* الهوية من ترويسة الـmiddleware المتحقَّقة — بلا رحلة شبكية
      تانية لنفس الفحص. بترجع لـauth.getUser() لو الترويسة غابت. */
   const userId = await getVerifiedUserId();
