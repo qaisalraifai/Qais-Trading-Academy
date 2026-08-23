@@ -5315,11 +5315,13 @@ export default function ReplayClient({ userId }) {
         /* بقراره: نسخّن باقي الفريمات **بمرساة القص** كمان، مش بالمباشر
            وحده — عشان تبديل الفريم أثناء التمرين يصير فوري زي المباشر. */
         if (anchorParam) {
+          lastWarmCtxRef.current = { cacheSymbol, assetInfo, tdParam, dukParam, anchorSuffix: anchorParam };
           warmOtherTimeframes(cacheSymbol, assetInfo, tdParam, dukParam, anchorParam);
         }
       } else {
         setRevealCount(candles.length);
         startLivePoll(candles);
+        lastWarmCtxRef.current = { cacheSymbol, assetInfo, tdParam, dukParam, anchorSuffix: "" };
         warmOtherTimeframes(cacheSymbol, assetInfo, tdParam, dukParam);
       }
     } catch (e) {
@@ -5354,6 +5356,14 @@ export default function ReplayClient({ userId }) {
 
      ⚠️ نافذة القص **بتنحفظ بمفتاح تاني** (`cutCacheKey`) — نافذة المرساة
      ما فيها «الآن»، فخلطها بمفتاح المباشر بيعمل ثقب بالبيانات. */
+  /* بيتنادى لما يفتح المستخدم قائمة الفريمات — نيّة تبديل صريحة.
+     بيحفظ آخر سياق تحميل عشان يبني نفس نداء التسخين بلا تكرار منطق. */
+  const lastWarmCtxRef = useRef(null);
+  function prefetchTimeframesNow() {
+    const c = lastWarmCtxRef.current;
+    if (!c) return;
+    warmOtherTimeframes(c.cacheSymbol, c.assetInfo, c.tdParam, c.dukParam, c.anchorSuffix, true);
+  }
   const warmAbortRef = useRef(0);
   /* آخر لحظة تفاعَل فيها المستخدم — التسخين ما بيشتغل إلا لما يسكت.
 
@@ -5369,7 +5379,7 @@ export default function ReplayClient({ userId }) {
     return () => { for (const e of evs) window.removeEventListener(e, touch); };
   }, []);
 
-  async function warmOtherTimeframes(cacheSymbol, assetInfo, tdParam, dukParam, anchorSuffix = "") {
+  async function warmOtherTimeframes(cacheSymbol, assetInfo, tdParam, dukParam, anchorSuffix = "", onIntent = false) {
     const runId = ++warmAbortRef.current;
     const key = anchorSuffix ? cutCacheKey(cacheSymbol) : cacheSymbol;
 
@@ -5401,7 +5411,10 @@ export default function ReplayClient({ userId }) {
       }
     };
 
-    if (!(await waitForIdle())) return;
+    /* ⚠️ `onIntent` = المستخدم فتح قائمة الفريمات. وقتها **ما منستنى سكوتاً**
+       — هو بذاته التفاعل، والانتظار بيلغي كل الفايدة. والفاصل بين الطلبات
+       بيصير أقصر لأنه ناوي يبدّل خلال ثانية مش خلال دقيقة. */
+    if (!onIntent && !(await waitForIdle())) return;
     for (const it of INTERVALS) {
       if (runId !== warmAbortRef.current) return;      // المستخدم بدّل — بنوقف
       if (it.value === intervalRef.current) continue;
@@ -5431,8 +5444,8 @@ export default function ReplayClient({ userId }) {
       /* فاصل بين الطلبات (حد TwelveData ٨ طلبات/دقيقة)، **ثم** ننتظر سكوتاً
          من جديد: لو رجع يشتغل بالشارت بين فريم وفريم، بنوقف بدل ما نكمّل
          ونزاحمه. */
-      await new Promise((r) => setTimeout(r, 8000));
-      if (!(await waitForIdle())) return;
+      await new Promise((r) => setTimeout(r, onIntent ? 1200 : 8000));
+      if (!onIntent && !(await waitForIdle())) return;
     }
   }
   /* أي تبديل أصل/فريم/وضع بيلغي تسخيناً شغّالاً — طلب المستخدم أولى. */
@@ -6588,7 +6601,18 @@ export default function ReplayClient({ userId }) {
           </select>
         )}
 
+        {/* ⚠️ فتح القائمة = نيّة تبديل → منبلّش الجلب **فوراً**.
+            ------------------------------------------------------------------
+            التسخين الخلفي صار محكوماً بالسكوت (عشان ما يهنّق)، وثمنها إنه لما
+            يكون المستخدم شغّال ما بيتسخّن ولا فريم — فأول تبديل بيصير بارد
+            (جلبة كاملة). وهاد بلاغه: «التنقل بين الفريمات بطيء».
+
+            الحل مش إرجاع التسخين العدواني — هو ربطه بالنيّة. لحظة ما يفتح
+            القائمة، بيصير عنده تقريباً ثانية لحد ما يختار؛ منستغلها. ولو ما
+            فتحها، ما بيصير ولا طلب. */}
         <select value={interval} onChange={(e) => setIntervalValue(e.target.value)} title="الفريم"
+          onMouseDown={prefetchTimeframesNow}
+          onFocus={prefetchTimeframesNow}
           style={{ ...selectStyle, minWidth: 70, padding: "0.35rem 0.5rem", fontSize: 12.5 }}>
           {INTERVALS.map((o) => {
             // لو في نقطة قص Replay فعّالة، منحسب عمرها بالأيام ومنعطّل أي فريم
