@@ -1,20 +1,15 @@
 import { NextResponse } from "next/server";
 import { jsonHandler } from "@/lib/api-guard";
-import { createClient } from "@/lib/supabase-server";
+import { requireUser } from "@/lib/api-auth";
 import { startCheckout } from "@/lib/payments/billing-service";
 
 // POST /api/payments/checkout  { providerCode: "whop" | "manual_usdt" | ... }
 // نقطة الدخول الموحّدة لبدء أي عملية دفع، بغض النظر عن المزوّد. بتحل محل
 // app/api/checkout القديم (اللي ضل شغال لأجل التوافق ومربوط بنفس المنطق).
 async function POSTImpl(request) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
-  }
+  const auth = await requireUser();
+  if (auth.response) return auth.response;
+  const { user } = auth;
 
   let providerCode;
   try {

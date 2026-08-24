@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
 import { jsonHandler } from "@/lib/api-guard";
-import { createClient } from "@/lib/supabase-server";
+import { requireUser } from "@/lib/api-auth";
 import { selectCryptoCurrency } from "@/lib/payments/billing-service";
 
 // POST /api/payments/nowpayments/select-currency  { transactionId, payCurrency }
 // بيرجع عنوان محفظة + مبلغ محدد نعرضهم مباشرة بواجهتنا (بدون أي تحويل خارجي)
 async function POSTImpl(request) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
+  const auth = await requireUser();
+  if (auth.response) return auth.response;
+  const { user } = auth;
 
   const body = await request.json().catch(() => ({}));
   const { transactionId, payCurrency } = body || {};

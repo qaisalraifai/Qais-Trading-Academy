@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
+import { SESSION_PATHS, SUBSCRIPTION_PATHS, matchesPath } from "@/lib/route-access";
 
 const OLD_HOST = "qais-trading-academy.vercel.app";
 const CANONICAL_ORIGIN = "https://www.qta-academy.store";
@@ -22,9 +23,8 @@ const CANONICAL_ORIGIN = "https://www.qta-academy.store";
    ═══════════════════════════════════════════════════════════════════════════ */
 export const AUTH_HEADER = "x-qta-uid";
 
-/** المسارات اللي بتتطلب جلسة + اشتراك فعّال. على مستوى الوحدة عشان الحارس
-    تحت يقدر يوصلها كمان — لازم يعرف مين محمي ليفشل **مقفولاً**. */
-const PROTECTED_PATHS = ["/dashboard", "/lecture", "/course", "/quiz", "/backtest", "/replay", "/discord", "/affiliate"];
+/* طبقتا الحماية معرَّفتان بـ`lib/route-access.js` — وحدة نقيّة مفحوصة.
+   الـmiddleware ما بيعرّف ولا مسار عنده، فما بيقدروا يتناقضوا. */
 
 async function middlewareImpl(request) {
   // 1) لو الطلب جاي من الدومين القديم (vercel.app)، منحوّله بشكل دائم (308)
@@ -71,7 +71,9 @@ async function middlewareImpl(request) {
      */
   const isApi = request.nextUrl.pathname.startsWith("/api");
 
-  const isProtected = !isApi && PROTECTED_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
+  const pathname = request.nextUrl.pathname;
+  const needsSubscription = !isApi && matchesPath(pathname, SUBSCRIPTION_PATHS);
+  const needsSession = needsSubscription || (!isApi && matchesPath(pathname, SESSION_PATHS));
 
   if (isApi) return NextResponse.next({ request: { headers: cleanHeaders } });
 
@@ -110,13 +112,14 @@ async function middlewareImpl(request) {
   // إلا اللي تحقّقنا منه هون.
   if (user) cleanHeaders.set(AUTH_HEADER, user.id);
 
-  // لو مش مسجل دخول
-  if (isProtected && !user) {
+  // لو مش مسجل دخول — بينطبق على الطبقتين
+  if (needsSession && !user) {
     return withCookies(NextResponse.redirect(new URL("/login", request.url)));
   }
 
-  // لو مسجل دخول، تحقق من الاشتراك
-  if (isProtected && user) {
+  /* تحقّق الاشتراك — **ما تغيّر منه ولا سطر**: نفس الاستعلام، نفس تجاوز
+     الأدمن، نفس المقارنة `!== "active"`. اللي تغيّر بس **مين بيوصله**. */
+  if (needsSubscription && user) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("subscription_status, role")
@@ -169,7 +172,8 @@ export async function middleware(request) {
     const clean = new Headers(request.headers);
     clean.delete(AUTH_HEADER);
 
-    if (!path.startsWith("/api") && PROTECTED_PATHS.some((p) => path.startsWith(p))) {
+    // الفشل مقفول على **الطبقتين** — أي مسار بيتطلب جلسة ما بيمرق بلا فحص.
+    if (!path.startsWith("/api") && (matchesPath(path, SUBSCRIPTION_PATHS) || matchesPath(path, SESSION_PATHS))) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
     return NextResponse.next({ request: { headers: clean } });

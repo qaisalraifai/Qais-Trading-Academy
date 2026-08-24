@@ -1,0 +1,4 @@
+{
+  "//": "ESM صريح — كل الـ٥١ ملف بجذر lib/ بيستعملوا import/export، صفر CommonJS (مفحوص). بدونه node --test ما بيقدر يشغّل اختبارات هالمجلد لأنه بيرث \"commonjs\" من package.json الجذر. نفس النمط المستعمل بـqais/ وmarket-data/.",
+  "type": "module"
+}

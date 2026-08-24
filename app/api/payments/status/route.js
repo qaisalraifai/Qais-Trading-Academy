@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
 import { jsonHandler } from "@/lib/api-guard";
-import { createClient, createAdminClient } from "@/lib/supabase-server";
+import { requireUser } from "@/lib/api-auth";
+import { createAdminClient } from "@/lib/supabase-server";
 
 // GET /api/payments/status?transactionId=...
 // بيرجع حالة عملية دفع معيّنة تخص المستخدم الحالي فقط — تستخدمه صفحة
 // "بانتظار المراجعة" بالدفع اليدوي حتى تعرف لما الأدمن يوافق أو يرفض.
 async function GETImpl(request) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
+  const auth = await requireUser();
+  if (auth.response) return auth.response;
+  const { user } = auth;
 
   const { searchParams } = new URL(request.url);
   const transactionId = searchParams.get("transactionId");

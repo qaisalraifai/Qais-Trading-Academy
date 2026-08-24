@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jsonHandler } from "@/lib/api-guard";
-import { createClient, createAdminClient } from "@/lib/supabase-server";
+import { requireUser } from "@/lib/api-auth";
+import { createAdminClient } from "@/lib/supabase-server";
 import { submitManualPayment } from "@/lib/payments/billing-service";
 
 const BUCKET = "payment-proofs";
@@ -15,11 +16,9 @@ async function ensureBucket(admin) {
 // POST /api/payments/manual/submit
 // FormData: transactionId, walletId, network, txid, file (صورة/PDF إثبات التحويل)
 async function POSTImpl(request) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
+  const auth = await requireUser();
+  if (auth.response) return auth.response;
+  const { user } = auth;
 
   const formData = await request.formData();
   const transactionId = formData.get("transactionId");
