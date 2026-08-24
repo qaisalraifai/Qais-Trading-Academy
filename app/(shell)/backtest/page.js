@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getVerifiedUserId } from "@/lib/auth-context";
+import { getProfileRow } from "@/lib/profile-cache";
 import { redirect } from "next/navigation";
 import BacktestClient from "./BacktestClient";
 
@@ -32,11 +33,8 @@ export default async function BacktestPage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username, backtest_balance")
-    .eq("id", userId)
-    .single();
+  /* ⚠️ نفس صف اللياوت — موحَّد بـ`lib/profile-cache.js` لكل الطلب. */
+  const profile = await getProfileRow(userId);
 
   const username = profile?.username || "ضيف";
   const initialBalance = profile?.backtest_balance ?? 3000;

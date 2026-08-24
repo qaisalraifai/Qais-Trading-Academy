@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { getVerifiedUserId } from "@/lib/auth-context";
 import { getProfileBasics } from "@/lib/shell-profile";
+import { getProfileRow } from "@/lib/profile-cache";
 import CoursesClient from "./CoursesClient";
 
 export const dynamic = "force-dynamic";
@@ -20,11 +21,8 @@ export default async function CoursesPage() {
   const shellProfile = await getProfileBasics(supabase, userId);
 
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("current_streak")
-    .eq("id", userId)
-    .maybeSingle();
+  /* ⚠️ نفس صف اللياوت — موحَّد بـ`lib/profile-cache.js` لكل الطلب. */
+  const profile = await getProfileRow(userId);
 
   return (
     <CoursesClient username={shellProfile.username} currentStreak={profile?.current_streak || 0} />

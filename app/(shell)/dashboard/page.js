@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { getVerifiedUserId } from "@/lib/auth-context";
+import { getProfileRow } from "@/lib/profile-cache";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import DashboardClient from "./DashboardClient";
@@ -24,11 +25,9 @@ export default async function DashboardPage() {
      اللي فوق كل صفحات المنصّة. كانت مكرَّرة هون لأن الداشبورد ما كان
      يستعمل `getShellProfile`، وتكرارها هلق بيعني رحلة شبكية زايدة بكل فتحة
      على فحص انعمل أصلاً باللياوت. نفس السلوك بالضبط، مرة وحدة. */
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username, role, subscription_end, current_streak, longest_streak")
-    .eq("id", userId)
-    .single();
+  /* ⚠️ نفس الصف اللي جابه اللياوت قبل شوي بنفس الطلب — موحَّد بـ
+     `lib/profile-cache.js` فما بينجاب مرتين. مقيس بخط الأساس ٢٠٢٦-٠٨-٢٤. */
+  const profile = await getProfileRow(userId);
 
   /* ⚠️ الإيميل بديل **كسول** للاسم — نفس نمط `lib/shell-profile.js`.
      `profiles.email` مش مضمونة التعبئة (`create-profile` ما بتكتبها)، فما
