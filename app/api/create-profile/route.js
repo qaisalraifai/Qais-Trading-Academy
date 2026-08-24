@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import { optionalUserId } from "@/lib/api-auth";
+import { signupOwnershipVerdict, SIGNUP_VERDICT } from "@/lib/signup-guard";
 import { createNotification } from "@/lib/notifications";
 import { checkFraudBeforeSignup, recordSignupFingerprint } from "@/lib/fraud-checks";
 
@@ -29,7 +31,6 @@ export async function POST(request) {
   }
 
   // نتأكد إنه المستخدم فعلاً موجود بجدول auth.users بهاد الـ id
-  // (حماية بسيطة من إساءة استخدام هاد الـ endpoint)
   const { data: authUser, error: authError } =
     await supabase.auth.admin.getUserById(userId);
 
@@ -37,6 +38,53 @@ export async function POST(request) {
     return NextResponse.json(
       { error: "مستخدم غير صالح" },
       { status: 400 }
+    );
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     🔴 **إثبات إنّ المنادي صاحب الـ`userId` — بلا ما نشترط جلسة.**
+     ---------------------------------------------------------------------
+     المسار بياخد `userId` من **جسم الطلب** ويشتغل بمفتاح الخدمة. وما بيقدر
+     يشترط جلسة، لأنه بينندى بعد `signUp()` مباشرة — ولما تفعيل الإيميل
+     مطلوب، `signUp` بترجّع مستخدماً **بلا جلسة**. (المسار الحيّ:
+     `app/signup/page.js` → signUp → هون → signInWithPassword → /payment.)
+
+     و`getUserById` لحاله **ما بيثبت الملكية** — بيثبت إنّ المعرّف موجود وبس.
+     فأي حدا بيعرف معرّف مستخدم ما إله بروفايل كان يقدر يحجزله اسماً ويربطه
+     بكود إحالته (سرقة عمولة). مقيس فعلياً بالجولة الماضية.
+
+     بوابتان، والأقوى بتسبق:
+
+     ١) **جلسة موجودة → لازم تطابق.** لما تفعيل الإيميل مطفي، `signUp` بتعطي
+        جلسة فوراً — فهاد إثبات كامل، ومجاني.
+
+     ٢) **ما في جلسة → الحساب لازم يكون **جديد جداً**.** المعرّف UUIDv4
+        عشوائي، فما بينعرف إلا لمين أنشأه. ربطه بنافذة دقائق معناها إنّ
+        المهاجم لازم **يخمّن UUID عشوائياً أُنشئ قبل دقائق** — وهاد مش قابل
+        للتنفيذ عملياً. أما معرّف حساب قديم (اللي كان الخطر الحقيقي) فبينرفض.
+
+     ⚠️ `null` من `optionalUserId` معناها «ما قدرنا نتأكد» مش «مش صاحبه» —
+     كوكي مكسور أو خادم ما ردّ بينزلوا لبوابة الحداثة، ما بينرفضوا مباشرة.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const verdict = signupOwnershipVerdict({
+    sessionUserId: await optionalUserId(),
+    requestedUserId: userId,
+    createdAt: authUser.user.created_at,
+  });
+
+  if (verdict === SIGNUP_VERDICT.SESSION_MISMATCH) {
+    console.error("create-profile: جلسة بتخالف userId المطلوب");
+    return NextResponse.json(
+      { error: "الطلب ما بيطابق الجلسة", code: "SESSION_MISMATCH" },
+      { status: 403 }
+    );
+  }
+
+  if (verdict === SIGNUP_VERDICT.WINDOW_EXPIRED) {
+    console.error("create-profile: حساب مش جديد وبلا جلسة — مرفوض");
+    return NextResponse.json(
+      { error: "انتهت مهلة إعداد الحساب — سجّل دخول وحاول من جديد", code: "SIGNUP_WINDOW_EXPIRED" },
+      { status: 403 }
     );
   }
 
