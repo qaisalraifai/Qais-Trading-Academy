@@ -67,25 +67,58 @@ export async function POST(request) {
   } else {
     // لو فعلاً ما في ولا صف بجدول profiles إطلاقاً، هاد المستخدم بيصير
     // تلقائياً هو الأدمن الجذر (تنصيب جديد كامل للمنصة).
-    const { count: totalProfiles } = await supabase
+    const { count: totalProfiles, error: countError } = await supabase
       .from("profiles")
       .select("id", { count: "exact", head: true });
 
-    if (!totalProfiles || totalProfiles === 0) {
-      const { error: rootProfileError } = await supabase.from("profiles").upsert(
-        {
-          id: userId,
-          username: username.trim(),
-          role: "admin",
-          subscription_status: "inactive",
-          referred_by: null,
-        },
-        { onConflict: "id", ignoreDuplicates: false }
-      );
+    /* 🔴 **رفع صلاحية بلا مصادقة — كان مفتوحاً من بابين.**
+       -------------------------------------------------------------------
+       هالفرع بيكتب `role: "admin"` وهو على مسار **بلا مصادقة**. كان:
 
-      if (rootProfileError) {
-        console.error("create-profile root admin upsert failed:", rootProfileError);
-        return NextResponse.json({ error: rootProfileError.message }, { status: 400 });
+           if (!totalProfiles || totalProfiles === 0) {
+             await supabase.from("profiles").upsert({ …role:"admin" },
+                                     { onConflict:"id", ignoreDuplicates:false })
+
+       ١) `!totalProfiles` بتتحقق على **`null`** كمان — و`null` معناها
+          **الاستعلام فشل**، مش «الجدول فاضي». يعني عطل لحظي بالعدّ = الفرع
+          بينفتح على منصّة فيها مستخدمين.
+       ٢) `upsert` بـ`ignoreDuplicates:false` **بتكتب فوق صف موجود**. وهاد
+          بالضبط النمط اللي انشال من الـinsert الرئيسي تحت لنفس السبب.
+
+       الاتنين مع بعض: أي حدا بيعرف معرّف مستخدم حقيقي، بلحظة يفشل فيها
+       العدّ، بيكتب `role:"admin"` على أي صف.
+
+       الإصلاح — **الفشل مقفول** بالاتجاهين:
+       · العدّ لازم ينجح ويطلع **صفر بالضبط**. ما تأكدنا؟ ما منكمّل.
+       · `insert` بدل `upsert`: الصف الموجود ما بينلمس مهما صار. */
+    if (countError) {
+      console.error("create-profile: فشل عدّ profiles — ما منفتح فرع الأدمن الجذر:", countError);
+      return NextResponse.json(
+        { error: "تعذّر إكمال التسجيل، جرّب بعد شوي", code: "PROFILE_COUNT_FAILED" },
+        { status: 503 }
+      );
+    }
+
+    if (totalProfiles === 0) {
+      const { error: rootProfileError } = await supabase.from("profiles").insert({
+        id: userId,
+        username: username.trim(),
+        role: "admin",
+        subscription_status: "inactive",
+        referred_by: null,
+      });
+
+      /* 23505 = صار في صف بين العدّ والكتابة (سباق) → ما عاد تنصيباً جديداً.
+         منكمّل للمسار العادي تحت بدل ما نمنح أدمن. */
+      if (rootProfileError && rootProfileError.code !== "23505") {
+        console.error("create-profile root admin insert failed:", rootProfileError);
+        return NextResponse.json(
+          { error: "تعذّر إنشاء الحساب", code: "PROFILE_CREATE_FAILED" },
+          { status: 400 }
+        );
+      }
+      if (rootProfileError?.code === "23505") {
+        return NextResponse.json({ success: true });
       }
 
       await recordSignupFingerprint(supabase, userId, {
@@ -132,9 +165,12 @@ export async function POST(request) {
   /* 23505 = انتهاك قيد التفرّد = البروفايل موجود من قبل. */
   const alreadyExists = profileError?.code === "23505";
   if (profileError && !alreadyExists) {
+    /* ⚠️ رسالة قاعدة البيانات الخام ما بتطلع للمنادي — كانت `profileError.message`
+       فبتكشف أسماء قيود وأعمدة (`profiles_pkey`…) على مسار **بلا مصادقة**.
+       التفصيل بينكتب بسجلّ الخادم، والمنادي بياخد رمزاً يقدر يشتكي فيه. */
     console.error("create-profile insert failed:", profileError);
     return NextResponse.json(
-      { error: profileError.message },
+      { error: "تعذّر إنشاء الحساب", code: "PROFILE_CREATE_FAILED" },
       { status: 400 }
     );
   }

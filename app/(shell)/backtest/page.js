@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { getVerifiedUserId } from "@/lib/auth-context";
 import { redirect } from "next/navigation";
 import BacktestClient from "./BacktestClient";
 
@@ -21,18 +22,20 @@ export default async function BacktestPage() {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  /* ⚠️ الهوية من ترويسة الـmiddleware المتحقَّقة — نفس سبب `dashboard/page.js`:
+     الفحص انعمل قبل شوي بنفس الطلب، وإعادته رحلة شبكية لنتيجة موجودة.
+     `getVerifiedUserId` بترجع لـ`auth.getUser()` كامل لو الترويسة غابت، فنموذج
+     الثقة ما تغيّر. */
+  const userId = await getVerifiedUserId();
 
-  if (!user) {
+  if (!userId) {
     redirect("/login");
   }
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("username, backtest_balance")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
   const username = profile?.username || "ضيف";
@@ -41,12 +44,12 @@ export default async function BacktestPage() {
   const { data: tradesRows } = await supabase
     .from("trades")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
   return (
     <BacktestClient
-      userId={user.id}
+      userId={userId}
       username={username}
       initialBalance={Number(initialBalance)}
       initialTrades={tradesRows || []}

@@ -51,7 +51,12 @@ export async function POST(request) {
     });
 
   if (authError) {
-    return NextResponse.json({ error: authError.message }, { status: 400 });
+    // رسالة المصادقة الخام ما بتطلع لمنادي غير مصادَق — التفصيل بالسجلّ.
+    console.error("signup createUser failed:", authError);
+    return NextResponse.json(
+      { error: "تعذّر إنشاء الحساب", code: "SIGNUP_FAILED" },
+      { status: 400 }
+    );
   }
 
   const { error: profileError } = await supabase.from("profiles").insert({
