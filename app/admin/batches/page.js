@@ -59,11 +59,6 @@ export default function AdminBatchesPage() {
   const [fileError, setFileError] = useState("");
   const [fileDeletingId, setFileDeletingId] = useState(null);
 
-  const [certBatch, setCertBatch] = useState(null); // الدفعة اللي فاتحين شاشة شهاداتها
-  const [certStudents, setCertStudents] = useState([]);
-  const [certLoading, setCertLoading] = useState(false);
-  const [certBusyId, setCertBusyId] = useState(null); // معرّف الطالب اللي جاري إصدار/سحب شهادته هلأ
-  const [certError, setCertError] = useState("");
 
   const [transferBatch, setTransferBatch] = useState(null); // الدفعة المصدر
   const [transferStudents, setTransferStudents] = useState([]);
@@ -446,58 +441,6 @@ export default function AdminBatchesPage() {
   }
   // ---------------------------------------------------------------------
 
-  // -------------------- المرحلة 13: الشهادات --------------------
-  async function openCertificates(batch) {
-    setCertBatch(batch);
-    setCertError("");
-    setCertLoading(true);
-    const res = await fetch(`/api/admin/batches/${batch.id}/certificates`);
-    const data = await res.json();
-    setCertStudents(res.ok ? data.students || [] : []);
-    setCertLoading(false);
-  }
-
-  function closeCertificates() {
-    setCertBatch(null);
-    setCertStudents([]);
-  }
-
-  async function handleIssueCertificate(student) {
-    setCertError("");
-    setCertBusyId(student.user_id);
-    const res = await fetch(`/api/admin/batches/${certBatch.id}/certificates`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: student.user_id }),
-    });
-    const data = await res.json();
-    setCertBusyId(null);
-    if (!res.ok) {
-      setCertError(data.error || "صار خطأ بالإصدار");
-      return;
-    }
-    setCertStudents((prev) =>
-      prev.map((s) => (s.user_id === student.user_id ? { ...s, certificate: data.certificate } : s))
-    );
-  }
-
-  async function handleRevokeCertificate(student) {
-    if (!confirm(`متأكدة إنك بدك تسحبي شهادة "${student.username}"؟`)) return;
-    setCertBusyId(student.user_id);
-    const res = await fetch(`/api/admin/batches/${certBatch.id}/certificates/${student.certificate.id}`, {
-      method: "DELETE",
-    });
-    const data = await res.json();
-    setCertBusyId(null);
-    if (!res.ok) {
-      alert(data.error || "صار خطأ بالسحب");
-      return;
-    }
-    setCertStudents((prev) =>
-      prev.map((s) => (s.user_id === student.user_id ? { ...s, certificate: null } : s))
-    );
-  }
-  // ---------------------------------------------------------------------
 
   async function openTransfer(batch) {
     setTransferBatch(batch);
@@ -1015,61 +958,6 @@ export default function AdminBatchesPage() {
         </div>
       )}
 
-      {/* -------------------- المرحلة 13: الشهادات -------------------- */}
-      {certBatch && (
-        <div style={s.overlay} onClick={closeCertificates}>
-          <div style={{ ...s.formCard, maxWidth: "640px" }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.formTitle}>شهادات دفعة "{certBatch.name}"</h2>
-            <p style={s.hint}>
-              الشهادة بتصدر تلقائيًا للطالب لما يخلّص 100% من محاضرات دفعته، أو تقدري تصدريها يدويًا بغض النظر عن نسبته.
-            </p>
-
-            {certError && <p style={s.errorText}>{certError}</p>}
-
-            <hr style={{ border: "none", borderTop: "1px solid #1E1836", margin: "0.75rem 0" }} />
-
-            {certLoading ? (
-              <p style={s.loading}>جاري التحميل...</p>
-            ) : certStudents.length === 0 ? (
-              <p style={s.hint}>ما في طلاب مسجّلين بهاي الدفعة لسا.</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "50vh", overflowY: "auto" }}>
-                {certStudents.map((st) => (
-                  <div key={st.user_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#141024", border: "1px solid #1E1836", borderRadius: "3px", padding: "0.65rem 0.9rem", gap: "0.5rem" }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, color: "#F5F3FF" }}>{st.username}</p>
-                      <p style={{ ...s.mono, margin: "0.25rem 0 0" }}>
-                        {st.progress.completed}/{st.progress.total} محاضرة ({st.progress.percent}%)
-                        {st.certificate && (
-                          <> — {st.certificate.is_automatic ? "صادرة تلقائيًا" : "صادرة يدويًا"} بتاريخ {fmtDateTime(st.certificate.issued_at)}</>
-                        )}
-                      </p>
-                    </div>
-                    {st.certificate ? (
-                      <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0 }}>
-                        <a href={`/certificate/${st.certificate.certificate_code}`} target="_blank" rel="noopener noreferrer" style={s.btnEdit}>
-                          عرض
-                        </a>
-                        <button onClick={() => handleRevokeCertificate(st)} disabled={certBusyId === st.user_id} style={s.btnDanger}>
-                          {certBusyId === st.user_id ? "..." : "سحب"}
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => handleIssueCertificate(st)} disabled={certBusyId === st.user_id} style={s.saveBtn}>
-                        {certBusyId === st.user_id ? "..." : "إصدار"}
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={s.formActions}>
-              <button type="button" onClick={closeCertificates} style={s.cancelBtn}>إغلاق</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* -------------------- جدول الدفعات -------------------- */}
       <div style={s.cardsWrap}>
@@ -1174,7 +1062,6 @@ export default function AdminBatchesPage() {
                     <Link href={`/admin/batches/${batch.id}?tab=live`} style={{ ...s.btnEdit, textDecoration: "none" }}>الحضور</Link>
                     <Link href={`/admin/batches/${batch.id}?tab=announcements`} style={{ ...s.btnEdit, textDecoration: "none" }}>إعلانات</Link>
                     <Link href={`/admin/batches/${batch.id}?tab=files`} style={{ ...s.btnEdit, textDecoration: "none" }}>الملفات</Link>
-                    <Link href={`/admin/batches/${batch.id}?tab=certificates`} style={{ ...s.btnEdit, textDecoration: "none" }}>الشهادات</Link>
                     <Link href={`/admin/batches/${batch.id}?tab=students`} style={{ ...s.btnEdit, textDecoration: "none" }}>نقل طالب</Link>
                     <button onClick={() => runAction(batch.id, "duplicate")} style={s.btnEdit}>نسخ</button>
                     {!batch.is_archived && (

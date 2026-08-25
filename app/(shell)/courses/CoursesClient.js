@@ -633,7 +633,6 @@ function LecturesView({
       {/* شريط الميزات */}
       <div style={{ ...cardStyle, padding: "1.2rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem" }}>
         {[
-          { icon: GraduationCap, label: t("courses.featureCertTitle"), sub: t("courses.featureCertSub") },
           { icon: ClipboardCheck, label: t("courses.featureQuizTitle"), sub: t("courses.featureQuizSub") },
           { icon: TrendingUp, label: t("courses.featurePracticeTitle"), sub: t("courses.featurePracticeSub") },
           { icon: Award, label: t("courses.featureRewardsTitle"), sub: t("courses.featureRewardsSub") },

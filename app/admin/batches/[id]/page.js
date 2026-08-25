@@ -5,7 +5,7 @@
 //
 // هاي المرحلة بس نقل واجهة — صفر تغيير Backend. التبويبات المنقولة كاملة:
 // نظرة عامة، الطلاب (+ نقل بين دفعات)، البث والحضور (مدموجين لأنهم مرتبطين
-// فعليًا بالكود)، الملفات، الإعلانات، الشهادات، الإعدادات.
+// فعليًا بالكود)، الملفات، الإعلانات، الإعدادات.
 //
 // التبويبات: المحاضرات (6د)، الاختبارات (6هـ)، الواجبات (6ب)، التقويم (6ج) —
 // كل وحدة رح تُبنى بمرحلتها الخاصة حسب خطة "تصميم-معماري-صفحة-الدفعة"، فهي
@@ -27,7 +27,6 @@ const TABS = [
   { id: "assignments", label: "الواجبات", ready: true },
   { id: "files", label: "الملفات", ready: true },
   { id: "announcements", label: "الإعلانات", ready: true },
-  { id: "certificates", label: "الشهادات", ready: true },
   { id: "calendar", label: "التقويم", ready: true },
   { id: "settings", label: "الإعدادات", ready: true },
 ];
@@ -222,7 +221,6 @@ export default function BatchDetailPage() {
         {tab === "assignments" && <AssignmentsTab batchId={batchId} />}
         {tab === "files" && <FilesTab batchId={batchId} />}
         {tab === "announcements" && <AnnouncementsTab batchId={batchId} />}
-        {tab === "certificates" && <CertificatesTab batchId={batchId} />}
         {tab === "calendar" && <CalendarTab batchId={batchId} batch={batch} />}
         {tab === "settings" && (
           <SettingsTab batch={batch} instructors={instructors} onSaved={fetchBatch} onAction={runAction} router={router} />
@@ -1593,87 +1591,6 @@ function AnnouncementsTab({ batchId }) {
   );
 }
 
-/* -------------------- الشهادات -------------------- */
-function CertificatesTab({ batchId }) {
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState(null);
-  const [error, setError] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch(`/api/admin/batches/${batchId}/certificates`);
-    const data = await res.json();
-    setStudents(res.ok ? data.students || [] : []);
-    setLoading(false);
-  }, [batchId]);
-
-  useEffect(() => { load(); }, [load]);
-
-  async function handleIssue(student) {
-    setError("");
-    setBusyId(student.user_id);
-    const res = await fetch(`/api/admin/batches/${batchId}/certificates`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: student.user_id }),
-    });
-    const data = await res.json();
-    setBusyId(null);
-    if (!res.ok) { setError(data.error || "صار خطأ بالإصدار"); return; }
-    setStudents((prev) => prev.map((s2) => (s2.user_id === student.user_id ? { ...s2, certificate: data.certificate } : s2)));
-  }
-
-  async function handleRevoke(student) {
-    if (!confirm(`متأكدة إنك بدك تسحبي شهادة "${student.username}"؟`)) return;
-    setBusyId(student.user_id);
-    const res = await fetch(`/api/admin/batches/${batchId}/certificates/${student.certificate.id}`, { method: "DELETE" });
-    const data = await res.json();
-    setBusyId(null);
-    if (!res.ok) { alert(data.error || "صار خطأ بالسحب"); return; }
-    setStudents((prev) => prev.map((s2) => (s2.user_id === student.user_id ? { ...s2, certificate: null } : s2)));
-  }
-
-  return (
-    <div style={s.card}>
-      <h3 style={s.cardTitle}>شهادات الدفعة</h3>
-      <p style={s.hint}>الشهادة بتصدر تلقائيًا للطالب لما يخلّص 100% من محاضرات دفعته، أو تقدري تصدريها يدويًا بغض النظر عن نسبته.</p>
-      {error && <p style={s.errorText}>{error}</p>}
-      <hr style={s.hr} />
-      {loading ? (
-        <p style={s.loading}>جاري التحميل...</p>
-      ) : students.length === 0 ? (
-        <p style={s.hint}>ما في طلاب مسجّلين بهاي الدفعة لسا.</p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {students.map((st) => (
-            <div key={st.user_id} style={s.rowItem}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, color: "#F5F3FF" }}>{st.username}</p>
-                <p style={{ ...s.mono, margin: "0.25rem 0 0" }}>
-                  {st.progress.completed}/{st.progress.total} محاضرة ({st.progress.percent}%)
-                  {st.certificate && <> — {st.certificate.is_automatic ? "صادرة تلقائيًا" : "صادرة يدويًا"} بتاريخ {fmtDateTime(st.certificate.issued_at)}</>}
-                </p>
-              </div>
-              {st.certificate ? (
-                <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0 }}>
-                  <a href={`/certificate/${st.certificate.certificate_code}`} target="_blank" rel="noopener noreferrer" style={s.btnEdit}>عرض</a>
-                  <button onClick={() => handleRevoke(st)} disabled={busyId === st.user_id} style={s.btnDanger}>
-                    {busyId === st.user_id ? "..." : "سحب"}
-                  </button>
-                </div>
-              ) : (
-                <button onClick={() => handleIssue(st)} disabled={busyId === st.user_id} style={s.saveBtn}>
-                  {busyId === st.user_id ? "..." : "إصدار"}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* -------------------- الإعدادات -------------------- */
 function SettingsTab({ batch, instructors, onSaved, onAction, router }) {
