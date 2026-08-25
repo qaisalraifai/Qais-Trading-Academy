@@ -19,16 +19,21 @@ export default async function QuizPage({ params }) {
 
   if (!quiz) redirect("/dashboard");
 
+  /* 🔴 **أعمدة محدَّدة مش `select("*")`.**
+     كان `*` بيجيب `correct_option_index` كمان، والصفوف بتنمرّر لـ`QuizForm`
+     وهو **مكوّن عميل** — يعني الإجابات الصحيحة بتوصل المتصفّح مع كل اختبار،
+     وبتنقرا من أدوات المطوّر قبل ما يجاوب الطالب.
+     التصحيح صار على الخادم (`/api/quiz/[id]/submit`)، فالمفتاح ما عاد يطلع. */
   const { data: questions } = await supabase
     .from("quiz_questions")
-    .select("*")
+    .select("id, question_text, options, order_index")
     .eq("quiz_id", quiz.id)
     .order("order_index", { ascending: true });
 
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>{quiz.title}</h1>
-      <QuizForm quizId={quiz.id} questions={questions || []} studentId={userId} />
+      <QuizForm quizId={quiz.id} questions={questions || []} />
     </div>
   );
 }

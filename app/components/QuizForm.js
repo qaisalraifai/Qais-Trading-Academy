@@ -1,38 +1,44 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase-client";
+import { readJson } from "@/lib/http-json";
 
-export default function QuizForm({ quizId, questions, studentId }) {
+/* ⚠️ `studentId` ما عاد ينستعمل: الهوية بتنقرا من الجلسة بالخادم
+   (`/api/quiz/[id]/submit`) بدل ما تنبعت من المتصفّح. */
+export default function QuizForm({ quizId, questions }) {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   function selectAnswer(questionId, optionIndex) {
     setAnswers((prev) => ({ ...prev, [questionId]: optionIndex }));
   }
 
+  /* ⚠️ التصحيح **على الخادم**. كان بينحسب هون بمقارنة `q.correct_option_index`
+     — وهاد بيعني إنّ الإجابات الصحيحة كانت تنشحن للمتصفّح مع كل اختبار.
+     صار المكوّن يبعت الإجابات وبس، والخادم بيرجّع الدرجة. */
   async function handleSubmit() {
     setLoading(true);
-    let correctCount = 0;
+    setError("");
 
-    questions.forEach((q) => {
-      if (answers[q.id] === q.correct_option_index) correctCount++;
-    });
+    try {
+      const res = await fetch(`/api/quiz/${quizId}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers }),
+      });
+      const data = await readJson(res);
+      if (!res.ok) throw new Error(data.error || "تعذّر تسليم الاختبار");
 
-    setScore(correctCount);
-
-    const supabase = createClient();
-    await supabase.from("quiz_attempts").insert({
-      student_id: studentId,
-      quiz_id: quizId,
-      score: correctCount,
-      total_questions: questions.length,
-    });
-
-    setSubmitted(true);
-    setLoading(false);
+      setScore(data.score);
+      setSubmitted(true);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (submitted) {
@@ -75,6 +81,10 @@ export default function QuizForm({ quizId, questions, studentId }) {
           </div>
         </div>
       ))}
+
+      {error && (
+        <p style={{ color: "#FF6B6B", textAlign: "center", marginBottom: "0.8rem" }}>{error}</p>
+      )}
 
       <button
         onClick={handleSubmit}
