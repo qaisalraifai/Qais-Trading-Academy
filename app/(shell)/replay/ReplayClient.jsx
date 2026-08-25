@@ -4854,6 +4854,40 @@ export default function ReplayClient({ userId }) {
       compareChartRef.current = chart;
       compareSeriesRef.current = series;
 
+      /* ═══════════════════════════════════════════════════════════════════
+         أداة قياس — **قراءة فقط**، ما بتغيّر ولا شي وما بتشتغل لحالها.
+         -----------------------------------------------------------------
+         سبب وجودها: انزياح بصري بين اللوحتين ما بينحلّ بالتخمين من صورة.
+         بيئة التطوير هون ما بتركّب الشارت (المفاتيح والشبكة محجوبتان)، فهاي
+         الطريقة الوحيدة نوصل لأرقام حقيقية بدل افتراضات.
+
+         بالكونسول:  __qtaPaneInfo()
+
+         الفرق بين `compare.logical` و`mapped` هو الجواب: لو اتنينهن نفس
+         الشي فالمزامنة بتشتغل والخلل بمكان تاني؛ ولو مختلفين فالشارت بيقصّ
+         المدى المطلوب أو المزامنة ما بتوصل أصلاً.
+         ═══════════════════════════════════════════════════════════════════ */
+      if (typeof window !== "undefined") {
+        window.__qtaPaneInfo = () => {
+          const at = (t) => (t ? new Date(t * 1000).toISOString().slice(0, 16) : null);
+          const side = (times, ts) => ({
+            bars: times.length,
+            first: at(times[0]),
+            last: at(times[times.length - 1]),
+            logical: ts?.getVisibleLogicalRange() || null,
+          });
+          const mt = mainTimesRef.current || [];
+          const ct = compareTimesRef.current || [];
+          const mainTs = chartRef.current?.timeScale();
+          return {
+            main: side(mt, mainTs),
+            compare: side(ct, chart.timeScale()),
+            mapped: mapLogicalRange(mt, ct, mainTs?.getVisibleLogicalRange()),
+            breakerTripped: paneSyncBreakerRef.current.isTripped,
+          };
+        };
+      }
+
       // مزامنة السكرول/الزوم بين الشارت الرئيسي ولوحة المقارنة بالاتجاهين -
       // أي وحدة فيهم ممكن تقود التانية هلأ (قبل هيك كانت لوحة المقارنة "مرآة"
       // بس، ما فيها تحكم مباشر). rangeSyncingRef هو الحارس يلي بيمنع
