@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/api-rate-limit";
 import { safeContentType } from "@/lib/upload-safety";
 import { createClient, createAdminClient } from "@/lib/supabase-server";
 
@@ -16,6 +17,9 @@ async function ensureBucket(supabaseAdmin) {
 // multipart/form-data: file? (اختياري), note? (اختياري) — لازم واحد منهم عالأقل
 // إعادة التسليم بتصفّر الدرجة والتقييم القديم لأنه صار تسليم جديد يحتاج تقييم من جديد
 export async function POST(request, { params }) {
+  const limited = checkRateLimit(request, "upload");
+  if (limited) return limited;
+
   const supabase = createClient();
   const {
     data: { user },

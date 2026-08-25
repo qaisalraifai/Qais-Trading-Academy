@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase-server";
+import { checkRateLimit } from "@/lib/api-rate-limit";
 import { NextResponse } from "next/server";
 import { optionalUserId } from "@/lib/api-auth";
 import { signupOwnershipVerdict, SIGNUP_VERDICT } from "@/lib/signup-guard";
@@ -10,6 +11,9 @@ import { checkFraudBeforeSignup, recordSignupFingerprint } from "@/lib/fraud-che
 // session نشطة (لو تفعيل الإيميل مطلوب)، وبالتالي أي insert/upsert من
 // المتصفح (anon/authenticated الوهمي) ممكن يفشل بصمت بسبب RLS.
 export async function POST(request) {
+  const limited = checkRateLimit(request, "createProfile");
+  if (limited) return limited;
+
   const { userId, username, ref, deviceFingerprint } = await request.json();
 
   if (!userId || !username) {

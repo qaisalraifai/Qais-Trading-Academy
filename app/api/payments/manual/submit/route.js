@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/api-rate-limit";
 import { jsonHandler } from "@/lib/api-guard";
 import { requireUser } from "@/lib/api-auth";
 import { isAllowedDocument, safeContentType, safeExtension, ALLOWED_DOCUMENT_LABEL } from "@/lib/upload-safety";
@@ -17,6 +18,9 @@ async function ensureBucket(admin) {
 // POST /api/payments/manual/submit
 // FormData: transactionId, walletId, network, txid, file (صورة/PDF إثبات التحويل)
 async function POSTImpl(request) {
+  const limited = checkRateLimit(request, "upload");
+  if (limited) return limited;
+
   const auth = await requireUser();
   if (auth.response) return auth.response;
   const { user } = auth;

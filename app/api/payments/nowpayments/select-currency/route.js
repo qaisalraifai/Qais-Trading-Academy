@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/api-rate-limit";
 import { jsonHandler } from "@/lib/api-guard";
 import { requireUser } from "@/lib/api-auth";
 import { selectCryptoCurrency } from "@/lib/payments/billing-service";
@@ -6,6 +7,9 @@ import { selectCryptoCurrency } from "@/lib/payments/billing-service";
 // POST /api/payments/nowpayments/select-currency  { transactionId, payCurrency }
 // بيرجع عنوان محفظة + مبلغ محدد نعرضهم مباشرة بواجهتنا (بدون أي تحويل خارجي)
 async function POSTImpl(request) {
+  const limited = checkRateLimit(request, "payment");
+  if (limited) return limited;
+
   const auth = await requireUser();
   if (auth.response) return auth.response;
   const { user } = auth;

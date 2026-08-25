@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/api-rate-limit";
 import { safeContentType } from "@/lib/upload-safety";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
@@ -53,6 +54,9 @@ export async function GET(_request, { params }) {
 
 // POST /api/admin/batches/[id]/files — رفع ملف جديد لمكتبة هاي الدفعة (multipart/form-data: file)
 export async function POST(request, { params }) {
+  const limited = checkRateLimit(request, "upload");
+  if (limited) return limited;
+
   const auth = await requireAdmin();
   if (auth.error) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });

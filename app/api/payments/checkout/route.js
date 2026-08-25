@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/api-rate-limit";
 import { jsonHandler } from "@/lib/api-guard";
 import { requireUser } from "@/lib/api-auth";
 import { startCheckout } from "@/lib/payments/billing-service";
@@ -7,6 +8,9 @@ import { startCheckout } from "@/lib/payments/billing-service";
 // نقطة الدخول الموحّدة لبدء أي عملية دفع، بغض النظر عن المزوّد. بتحل محل
 // app/api/checkout القديم (اللي ضل شغال لأجل التوافق ومربوط بنفس المنطق).
 async function POSTImpl(request) {
+  const limited = checkRateLimit(request, "payment");
+  if (limited) return limited;
+
   const auth = await requireUser();
   if (auth.response) return auth.response;
   const { user } = auth;

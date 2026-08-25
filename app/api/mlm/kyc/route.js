@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/api-rate-limit";
 import { createClient, createAdminClient } from "@/lib/supabase-server";
 import { isAllowedDocument, safeContentType, safeExtension, ALLOWED_DOCUMENT_LABEL } from "@/lib/upload-safety";
 import { logActivity } from "@/lib/activity-log";
@@ -28,6 +29,9 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  const limited = checkRateLimit(request, "upload");
+  if (limited) return limited;
+
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجل دخول" }, { status: 401 });
