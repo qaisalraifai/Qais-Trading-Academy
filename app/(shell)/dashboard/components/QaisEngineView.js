@@ -159,7 +159,8 @@ export default function QaisEngineView() {
   useEffect(() => {
     let cancelled = false;
     async function setup() {
-      const { createChart, CrosshairMode, LineStyle } = await import("lightweight-charts");
+      // v5: `addSeries(النوع, خيارات)` — النوع قيمة مستورَدة
+      const { createChart, CrosshairMode, LineStyle, CandlestickSeries } = await import("lightweight-charts");
       if (cancelled || !containerRef.current) return;
 
       const chart = createChart(containerRef.current, {
@@ -177,7 +178,7 @@ export default function QaisEngineView() {
         crosshair: { mode: CrosshairMode.Normal },
       });
 
-      const series = chart.addCandlestickSeries({
+      const series = chart.addSeries(CandlestickSeries, {
         upColor: GREEN,
         downColor: RED,
         borderVisible: false,

@@ -10,6 +10,22 @@ import { readSeries, writeSeries, mergeCandles, canExtendFrom, cutCacheKey } fro
 import { alignToMainAxis } from "@/lib/compare-align";
 import WatchlistPanel from "./WatchlistPanel";
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   وحدة lightweight-charts بعد تحميلها كسولاً.
+   ---------------------------------------------------------------------------
+   ⚠️ **ليش حافظ على مستوى الوحدة**: بـv5 صار إنشاء السلسلة
+   `chart.addSeries(النوع, خيارات)` — والنوع (`LineSeries` · `AreaSeries` …)
+   **قيمة لازم تنستورد**، مش اسم دالة على الشارت.
+
+   والمكتبة بتنحمّل ديناميكياً (`await import`) عشان تضل برّا الحزمة الأولى.
+   بس كم دالة بتنشئ سلاسل وهي **برّا نطاق** ذاك الاستيراد
+   (`buildCompareSeries` · بناء سلاسل المؤشرات). فبدل ما نمرّر الأنواع
+   بالمعاملات عبر كل مسار، منخزّن الوحدة هون أول ما تتحمّل.
+
+   ⚠️ آمن: كل مستهلك بيشتغل **بعد** إنشاء الشارت، والشارت ما بينعمل إلا بعد
+   ما ينتعبّى هالحافظ. */
+let LWC = null;
+
 const GOLD = "#DCD4F7";
 const GOLD_LIGHT = "#F5F3FF";
 const GREEN = "#10E5A0";
@@ -616,7 +632,7 @@ const PAUSED_SESSION_KEY = "qta_paused_replay_session_v1";
    (تحويل اللون لـ rgba بيصير عن طريق hexToRgba المعرّفة تحت بنفس الملف) */
 function buildCompareSeries(chart, settings) {
   if (settings.type === "line") {
-    return chart.addLineSeries({
+    return chart.addSeries(LWC.LineSeries, {
       color: settings.lineColor,
       lineWidth: settings.lineWidth,
       priceLineVisible: false,
@@ -624,13 +640,13 @@ function buildCompareSeries(chart, settings) {
     });
   }
   if (settings.type === "candles") {
-    return chart.addCandlestickSeries({
+    return chart.addSeries(LWC.CandlestickSeries, {
       upColor: settings.up, downColor: settings.down, borderVisible: false,
       wickUpColor: settings.up, wickDownColor: settings.down,
       priceLineVisible: false, lastValueVisible: true,
     });
   }
-  return chart.addAreaSeries({
+  return chart.addSeries(LWC.AreaSeries, {
     lineColor: settings.lineColor,
     topColor: hexToRgba(settings.fillColor, 0.28),
     bottomColor: hexToRgba(settings.fillColor, 0.02),
@@ -1667,11 +1683,11 @@ export default function ReplayClient({ userId }) {
       def.lines.forEach((line) => {
         try {
           series[line.key] = line.isHistogram
-            ? chart.addHistogramSeries({
+            ? chart.addSeries(LWC.HistogramSeries, {
                 color: effectiveLineColor(it, line), priceScaleId: scaleId,
                 priceLineVisible: false, lastValueVisible: false, base: 0, visible: isVisible,
               })
-            : chart.addLineSeries({
+            : chart.addSeries(LWC.LineSeries, {
                 color: effectiveLineColor(it, line), lineWidth: effectiveLineWidth(it, line), priceScaleId: scaleId,
                 priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: isVisible,
               });
@@ -3959,7 +3975,8 @@ export default function ReplayClient({ userId }) {
   useEffect(() => {
     let cancelled = false;
     async function setup() {
-      const { createChart, CrosshairMode } = await import("lightweight-charts");
+      LWC = await import("lightweight-charts");
+      const { createChart, CrosshairMode } = LWC;
       if (cancelled || !chartContainerRef.current) return;
 
       const savedSettings = loadChartSettings();
@@ -4015,7 +4032,7 @@ export default function ReplayClient({ userId }) {
         },
       });
 
-      const series = chart.addCandlestickSeries({
+      const series = chart.addSeries(LWC.CandlestickSeries, {
         upColor: savedSettings.up, downColor: savedSettings.down, borderVisible: true,
         borderUpColor: savedSettings.up, borderDownColor: savedSettings.down,
         wickUpColor: savedSettings.up, wickDownColor: savedSettings.down,
@@ -4774,7 +4791,8 @@ export default function ReplayClient({ userId }) {
     }
     let cancelled = false;
     async function setupCompareChart() {
-      const { createChart, CrosshairMode } = await import("lightweight-charts");
+      LWC = await import("lightweight-charts");
+      const { createChart, CrosshairMode } = LWC;
       if (cancelled || !compareContainerRef.current) return;
       const savedSettings = loadChartSettings();
       const chart = createChart(compareContainerRef.current, {
@@ -5992,7 +6010,11 @@ export default function ReplayClient({ userId }) {
         tdParam = "";
       }
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(pollSymbol)}&interval=${tdInterval}&count=3${tdParam}${dukParam}`
+        /* ⚠️ **بلا `duk` عن قصد** — الاستطلاع اللحظي ما بيمرّ على Dukascopy
+           إطلاقاً (أرشيف تاريخي مش بثاً)، زي ما بيشرح التعليق فوق. سكربت
+           ترحيل داس على هالقرار مرة وانكشف بفحص كونسول المتصفّح
+           (`ReferenceError: dukParam is not defined`) — البناء ما مسكه. */
+        `/api/replay-candles?symbol=${encodeURIComponent(pollSymbol)}&interval=${tdInterval}&count=3${tdParam}`
       );
       const data = await res.json();
       if (data.error || !data.candles?.length) {

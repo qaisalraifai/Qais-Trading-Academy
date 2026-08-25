@@ -651,7 +651,9 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   useEffect(() => {
     let cancelled = false;
     async function setup() {
-      const { createChart, CrosshairMode, LineStyle } = await import("lightweight-charts");
+      /* ⚠️ v5: إنشاء السلاسل صار `addSeries(النوع, خيارات)` بدل
+         `addCandlestickSeries(خيارات)` — فالنوع لازم ينستورد كقيمة. */
+      const { createChart, CrosshairMode, LineStyle, CandlestickSeries } = await import("lightweight-charts");
       if (cancelled || !containerRef.current) return;
 
       const chart = createChart(containerRef.current, {
@@ -667,7 +669,7 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         crosshair: { mode: CrosshairMode.Normal },
       });
 
-      const series = chart.addCandlestickSeries({
+      const series = chart.addSeries(CandlestickSeries, {
         upColor: GREEN, downColor: RED, borderVisible: false, wickUpColor: GREEN, wickDownColor: RED,
       });
 
