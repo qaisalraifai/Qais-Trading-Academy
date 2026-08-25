@@ -106,6 +106,71 @@ async function middlewareImpl(request) {
     return res;
   };
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     استعلام الاشتراك بينبلّش **بالتوازي** مع التحقّق، مش بعده.
+     ---------------------------------------------------------------------
+     ⚠️ المشكلة المقيسة: `getUser()` رحلة شبكية، واستعلام `profiles` رحلة
+     تانية **متسلسلة بعدها** لأنه بيحتاج `user.id`. والصفحة ما بتبلّش قبل ما
+     يخلصوا الاتنين.
+
+     الكلفة مقيسة (بناء إنتاج · زمن استجابة 50ms):
+         /settings       (جلسة · getUser بس)         183ms
+         /trading-radar  (اشتراك · getUser+profiles) 251ms
+                                            الفرق ≈ 68ms
+
+     الحل: معرّف المستخدم موجود **بالجلسة المحلية** أصلاً (`getSession` بتقرا
+     من الكوكي بلا شبكة). فمنبلّش الاستعلام على المعرّف المخمَّن، ومنشغّل
+     `getUser()` بالتوازي. لما يخلصوا: لو المعرّف المتحقَّق طابق المخمَّن،
+     منستعمل النتيجة الجاهزة؛ وإلا منرمي التخمين ومنستعلم من جديد.
+
+     🔴 **التحقّق ما ضعف ولا ذرّة.** `getUser()` بتضل هي المرجع الوحيد
+     للهوية — التخمين بيحدّد **أي صف نجيب مسبقاً** وبس، وما بينبنى عليه ولا
+     قرار. توكن مزوَّر بمعرّف تاني بيجيب صفاً غلط، وهاد الصف **بينرمى**
+     لأنه ما بيطابق `user.id` المتحقَّق. الأثر الوحيد استعلام ضايع.
+
+     ⚠️ الوعد ملفوف بـ`.then(ok, err)` فما بيرمي أبداً: بمسار «مش مسجّل دخول»
+     منحوّل بلا ما ننتظره، ووعد مرفوض بلا مستمع بيوقّع العملية بالإنتاج.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const selectProfile = (client, id) =>
+    client.from("profiles").select("subscription_status, role").eq("id", id).single();
+
+  let speculativeProfile = null;
+  if (needsSubscription) {
+    const { data: { session } } = await supabase.auth.getSession(); // قراءة محلية
+    const guessedId = session?.user?.id;
+    const accessToken = session?.access_token;
+
+    if (guessedId && accessToken) {
+      /* ⚠️ **عميل منفصل بتوكن صريح — مش العميل الأساسي.**
+         -----------------------------------------------------------------
+         أول محاولة استعملت `supabase` نفسه، وطلع **ما توازت**: مقيس إنّ
+         `profiles` بتنبعت بعد `getUser` بـ٦٠ms (زمن استجابة ٥٠ms)، يعني
+         متسلسلة تماماً.
+
+         السبب: عميل postgrest بيحلّ توكن الوصول عبر `auth.getSession()`،
+         وهاي بتاخد **نفس قفل المصادقة** اللي `getUser()` ماسكه — فالاستعلام
+         بيستنى ورا القفل بدل ما يمشي معه.
+
+         العميل هون بياخد التوكن **جاهزاً بالترويسة**، فما بيلمس المصادقة
+         ولا قفلها. نفس التوكن ونفس صلاحيات RLS بالضبط — الفرق إنه ما
+         بينحبس. */
+      const speculativeClient = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        {
+          cookies: { get() { return undefined; }, set() {}, remove() {} },
+          auth: { persistSession: false, autoRefreshToken: false },
+          global: { headers: { Authorization: `Bearer ${accessToken}` } },
+        }
+      );
+
+      speculativeProfile = selectProfile(speculativeClient, guessedId).then(
+        (r) => ({ id: guessedId, data: r.data }),
+        () => ({ id: guessedId, data: null })
+      );
+    }
+  }
+
   const { data: { user } } = await supabase.auth.getUser();
 
   // الهوية المتحقَّقة بتنمرّر للصفحة — الترويسة انمسحت فوق، فما بينكتب فيها
@@ -120,11 +185,14 @@ async function middlewareImpl(request) {
   /* تحقّق الاشتراك — **ما تغيّر منه ولا سطر**: نفس الاستعلام، نفس تجاوز
      الأدمن، نفس المقارنة `!== "active"`. اللي تغيّر بس **مين بيوصله**. */
   if (needsSubscription && user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("subscription_status, role")
-      .eq("id", user.id)
-      .single();
+    /* التخمين بينقبل **بس** لما يطابق الهوية المتحقَّقة. وإلا بينرمى ومنستعلم
+       من جديد بالمعرّف الصح — نفس النتيجة بالضبط، بكلفة رحلة زيادة بحالة
+       نادرة (توكن مزوَّر، أو جلسة تبدّلت بين القراءتين). */
+    const guess = speculativeProfile ? await speculativeProfile : null;
+    const profile =
+      guess && guess.id === user.id
+        ? guess.data
+        : (await selectProfile(supabase, user.id)).data;
 
     // الأدمن يمر بدون فحص
     if (profile?.role === "admin") {
