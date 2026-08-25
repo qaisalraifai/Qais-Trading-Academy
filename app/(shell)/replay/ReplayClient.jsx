@@ -1441,6 +1441,31 @@ export default function ReplayClient({ userId }) {
 
   /* ===== مقارنة الرموز (شارت مقسوم) + تكبير أي جزء بضغطتين ماوس ===== */
   const [compareOpen, setCompareOpen] = useState(false);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     🔴 **توحيد المزوّد بين اللوحتين — بلاغ «فراغات بالشموع».**
+     ---------------------------------------------------------------------
+     كل لوحة كانت تطلب أفضل مزوّد متاح **لحالها**. والنتيجة مقيسة على الإنتاج:
+
+         NAS100 يومي + duk  →  dukascopy  ✓
+         SPX500 يومي + duk  →  429 دايماً →  يوهو
+
+     مزوّدان = تقويمان مختلفان للعُطل. فبتظهر ٥١٣ شمعة ناقصة داخل المدى
+     المشترك — عيّنة: 2016-09-05 · 2016-11-24 · 2017-01-16، **كلها عُطل
+     أسواق أمريكية**.
+
+     ⚠️ ولاحظ المستخدم بدقة: «SPX فوق و SPX تحت = صح، ناسداك فوق و SPX تحت
+     = غلط» — لأن نفس الرمز بيطلع من نفس المزوّد.
+
+     ⚠️ الرفض **مش مسألة حجم**: جرّبت count من ٢٠٠٠ لـ٢٠٠٠٠ وكلها ٤٢٩،
+     والمكتبة عندها أصلاً تقليص تلقائي للمدى (1 → 0.5 → 0.25) وفشل الثلاثة.
+     يعني Dukascopy ما بيخدم الفريم اليومي لهالرمز — حدّ خارجي.
+
+     الحل: لما يطلع المزوّدان مختلفين، **الاتنان بينزلوا لنفس المصدر**.
+     ⚠️ الثمن معلن: الشارت الأساسي بيخسر عمقاً (٣٥١٩ → ٢٥١٢ شمعة يومية) —
+     بس **بس لما تكون لوحة المقارنة مفتوحة**. تعبئة الفراغات بقيم مخترعة
+     كانت الخيار التاني، ومرفوضة بقاعدة المشروع. */
+  const [forceSameProvider, setForceSameProvider] = useState(false);
   const [compareSymbol, setCompareSymbol] = useState("SPX500");
   const [compareCandles, setCompareCandles] = useState([]);
   const [compareLoading, setCompareLoading] = useState(false);
@@ -1828,6 +1853,15 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
   useEffect(() => { setDrawingTemplatesMenuOpen(false); setTextPopoverOpen(false); }, [selectedDrawingId]);
   useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
+
+  /* ⚠️ تصفير توحيد المزوّد: بيرجع العمق للشارت الأساسي لما ما يعود في
+     مقارنة، أو لما يتبدّل الرمز/الفريم (المزوّد ممكن ينجح هالمرة). */
+  useEffect(() => {
+    if (!compareOpen) setForceSameProvider(false);
+  }, [compareOpen]);
+  useEffect(() => {
+    setForceSameProvider(false);
+  }, [assetValue, interval, compareSymbol]);
   useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
   useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
   useEffect(() => { compareCandlesRef.current = compareCandles; }, [compareCandles]);
@@ -4971,7 +5005,7 @@ export default function ReplayClient({ userId }) {
            ليوهو بينما الأساسي من Dukascopy — جلستان وعُطل مختلفة، فتظهر
            فراغات بالشموع. مقيس على ٤ ساعات: ١٩٤ فراغ بيوهو، **صفر** بنفس
            المزوّد. */
-        const dukParam = info.dukascopy ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
+        const dukParam = (info.dukascopy && !forceSameProvider) ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
         const res = await fetch(
           `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${tdParam}${dukParam}`
         );
@@ -4979,6 +5013,22 @@ export default function ReplayClient({ userId }) {
         if (data.error) throw new Error(data.error);
         const candles = sanitizeCandles(data.candles || []);
         if (cancelled) return;
+
+        /* 🔴 **كشف تراجع المزوّد — إشارة مكتفية بذاتها، بلا سباق.**
+           -----------------------------------------------------------------
+           ⚠️ أول نسخة قارنت `data.provider` مع `dataSourceRef.current.provider`
+           (مزوّد الأساسي). واللوحتان بتحمّلوا **بالتوازي**، فلو خلصت المقارنة
+           أول بتقارن مع قيمة قديمة وما بينطبق الشرط — سباق مثبت بالتشغيل:
+           الطلبات ضلّت تبعت `duk` والفراغات ما راحت.
+
+           `usedFallback` بيجي من نفس الرد: «طلبت Dukascopy وما وصلني». هاي
+           لحالها كافية — لو المقارنة تراجعت، أكيد ما رح تطابق أساسياً نجح.
+           بلا حالة مشتركة وبلا ترتيب. */
+        if (!forceSameProvider && dukParam && data.usedFallback) {
+          console.info(`مقارنة: تراجع عن Dukascopy (${data.provider}) — توحيد المصدر مع الأساسي`);
+          setForceSameProvider(true);
+        }
+
         setCompareCandles(candles);
       } catch (e) {
         if (!cancelled) { setCompareError(e.message || "تعذّر تحميل بيانات المقارنة"); setCompareCandles([]); }
@@ -5001,7 +5051,7 @@ export default function ReplayClient({ userId }) {
            ليوهو بينما الأساسي من Dukascopy — جلستان وعُطل مختلفة، فتظهر
            فراغات بالشموع. مقيس على ٤ ساعات: ١٩٤ فراغ بيوهو، **صفر** بنفس
            المزوّد. */
-        const dukParam = info.dukascopy ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
+        const dukParam = (info.dukascopy && !forceSameProvider) ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
         const res = await fetch(
           `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${tdParam}${dukParam}`
         );
@@ -5041,7 +5091,7 @@ export default function ReplayClient({ userId }) {
       comparePollTimer = setInterval(pollCompareOnce, compareMs);
     }
     return () => { cancelled = true; if (comparePollTimer) clearInterval(comparePollTimer); };
-  }, [compareOpen, compareSymbol, interval, maxBars, mode]);
+  }, [compareOpen, compareSymbol, interval, maxBars, mode, forceSameProvider]);
 
   function toggleCompare() {
     setCompareOpen((v) => {
@@ -5217,7 +5267,8 @@ export default function ReplayClient({ userId }) {
           ? `&anchor=${replayStateRef.current.currentTimestamp}`
           : "";
       const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
-      const dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
+      // بلا duk لما نكون موحّدين المزوّد مع لوحة المقارنة (شوفي forceSameProvider)
+      const dukParam = (assetInfo.dukascopy && !forceSameProvider) ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
       /* ===== التخزين المحلي: نرسم فوراً، وبعدين نجيب الذيل بس =====
          ⚠️ المشكلة اللي بيحلّها مقيسة: فتح الشارت كان ينتظر **٢.٧ لـ٦.٣
          ثانية** قبل أول بايت، ونقل البيانات نفسه ٧–١٤ ملّي ثانية. يعني
@@ -5428,6 +5479,14 @@ export default function ReplayClient({ userId }) {
         usedFallback: false,
         provider: data.provider || "yahoo",
       };
+
+      /* نفس منطق لوحة المقارنة بالاتجاه المعاكس: لو **الأساسي** هو اللي
+         تراجع عن Dukascopy ولوحة المقارنة مفتوحة، منوحّد المصدر كمان — وإلا
+         بتصير المقارنة على Dukascopy والأساسي على يوهو، ونفس فجوة التقويم. */
+      if (compareOpenRef.current && !forceSameProvider && dukParam && data.usedFallback) {
+        console.info(`الأساسي: تراجع عن Dukascopy (${data.provider}) — توحيد المصدر مع المقارنة`);
+        setForceSameProvider(true);
+      }
       // ما في عقود آجلة نهائياً بعد اليوم (Yahoo سبوت أو Twelve Data بس) -
       // فهاي العلامة صارت دايماً false، تركناها بالكود بدل حذفها بالكامل
       // عشان لو حابين نرجّعها اختيارياً بالمستقبل ما نعيد بناء المنطق من الصفر.
@@ -5466,7 +5525,7 @@ export default function ReplayClient({ userId }) {
       if (myRequestId === loadRequestIdRef.current) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assetValue, interval, mode, maxBars, randomChart]);
+  }, [assetValue, interval, mode, maxBars, randomChart, forceSameProvider]);
 
   /* ===== تسخين هادي لباقي الفريمات =====
      ⚠️ المشكلة المبلَّغة: «في بطء بالتنقل بالفريمات». مقيسة على SPX500:
