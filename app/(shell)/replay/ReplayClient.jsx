@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase-client";
 import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
 import { readSeries, writeSeries, mergeCandles, canExtendFrom, cutCacheKey } from "@/lib/candle-cache";
-import { shouldApplyRange, createSyncBreaker } from "@/lib/pane-sync";
+import { shouldApplyRange, createSyncBreaker, mapLogicalRange } from "@/lib/pane-sync";
 import WatchlistPanel from "./WatchlistPanel";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1466,7 +1466,11 @@ export default function ReplayClient({ userId }) {
   /* قاطع دورة المزامنة + نسخة من الشموع لحساب تسامح المطابقة.
      شوفي `lib/pane-sync.js` — الحراس التلاتة ضد انفلات التكبير. */
   const paneSyncBreakerRef = useRef(createSyncBreaker());
-  const allCandlesRef = useRef([]);
+  /* أوقات الشموع **المرسومة فعلاً** بكل لوحة — عليها بتتبنى ترجمة الفهرس.
+     ⚠️ لازم تكون مقصوصة بنقطة الكشف زي ما انضبطت بالسيريز بالضبط، وإلا
+     الترجمة بتتبنى على شموع لسا ما انكشفت = نظر للمستقبل. */
+  const mainTimesRef = useRef([]);
+  const compareTimesRef = useRef([]);
   const maximizedPaneRef = useRef(null);
   const [compareHeightPx, setCompareHeightPx] = useState(DEFAULT_COMPARE_HEIGHT);
   const compareHeightPxRef = useRef(DEFAULT_COMPARE_HEIGHT);
@@ -1837,7 +1841,11 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
   useEffect(() => { setDrawingTemplatesMenuOpen(false); setTextPopoverOpen(false); }, [selectedDrawingId]);
   useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
-  useEffect(() => { allCandlesRef.current = allCandles; }, [allCandles]);
+  useEffect(() => {
+    mainTimesRef.current = allCandles.slice(0, revealCount).map((c) => c.time);
+    compareTimesRef.current = compareCandlesUpToReveal().map((c) => c.time);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCandles, revealCount, compareCandles, mode]);
   useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
   useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
   useEffect(() => { compareCandlesRef.current = compareCandles; }, [compareCandles]);
@@ -4852,77 +4860,79 @@ export default function ReplayClient({ userId }) {
       // "بينغ-بونغ" (كل شارت يرجع يصحح التاني بلا نهاية): لما وحدة تحدّث
       // التانية، منرفع الحارس قبل ما نغيّر مدى الشارت التاني، وأي حدث تغيير
       // ثاني ناتج عن هالتحديث بنفس اللحظة بيتجاهل نفسه لأنه الحارس مرفوع.
-      //
-      // مهم: نستخدم مزامنة "منطقية" (logical range = رقم موضع الشمعة) مش
-      // مزامنة بالتوقيت المطلق (setVisibleRange). المزامنة بالتوقيت كانت هي
-      // سبب مشكلة "الخط العمودي (نقطة الوقت الحالية) مش بنفس المكان بين
-      // الشارتين": أي رمزين مختلفين (زي NAS100 وSPX500) ممكن يكون عندهم
-      // فجوات/شموع ناقصة بأوقات مختلفة شوي عن بعض، فنفس الفترة الزمنية
-      // بالضبط ممكن تترجم لعدد شموع مختلف بكل لوحة، فينزاح كل شي بصرياً حتى
-      // لو الفترة "نفسها" بالتوقيت. المزامنة المنطقية بتحاذي برقم موضع
-      // الشمعة مباشرة، فعمود رقم N بيضل بنفس البكسل بين اللوحتين دايماً -
-      // وهاد هو الأسلوب الموصى فيه رسمياً من مكتبة lightweight-charts
-      // لمزامنة عدة شارتات مع بعض.
       const mainChart = chartRef.current;
       /* ═══════════════════════════════════════════════════════════════════
-         المزامنة على **النافذة الزمنية** — عشان ما نحتاج نحشو فراغات.
+         المزامنة: **فهرس مترجَم عبر الوقت**.
          -----------------------------------------------------------------
-         المحاذاة بفهرس الشمعة بتفترض إنّ العمود N بنفس اللحظة باللوحتين،
-         وهاد مش مضمون مع مزوّدين مختلفين. تصحيحها كان بحشو الفراغات — وهاد
-         بالضبط اللي عمل **ثقوباً بالشموع** على اليومي (٥١٣ يوم عطلة).
-         بالمزامنة الزمنية كل سلسلة بترسم شمعها المتصل، والوقت بيحاذيهن.
+         مرّينا بتلات محاولات، وكل وحدة كشفت اللي بعدها:
 
-         🔴 **وهون كان العطل**: محاولة سابقة عملت نفس الشي فطلع تكبير متسارع.
-         السبب: الاشتراك على المدى **المنطقي** والضبط على **الزمني**، فكل
-         ضبط بيشغّل الطرف التاني، والحارس بينمسح فوراً بينما النداء بيرجع
-         بالإطار اللي بعده.
+         ١) **فهرس خام** — بيفترض إنّ العمود N بنفس اللحظة باللوحتين، وهاد
+            مش مضمون مع مزوّدين مختلفي العمق. صار انزياح بصري.
+
+         ٢) **فهرس خام + حشو فراغات** — صلّح الانزياح بمساواة الطول، بس على
+            اليومي المزوّدان بيختلفوا بالعطل فكل يوم ناقص صار **عمود فاضي
+            مرسوم**. هاي كانت ثقوب الشموع.
+
+         ٣) **وقت خام** — شال الحشو والثقوب، بس طلع خلل تاني: الشارت الأساسي
+            عنده `rightOffset: 6` ولوحة المقارنة صفر، و`getVisibleRange()`
+            بترجّع المدى **مقصوصاً على البيانات** (بتنتهي عند آخر شمعة مش
+            عند حافة الرسم). فالأساسي بيعرض الفترة على العرض ناقص ٦ شموع
+            والمقارنة على كامل العرض → مقياسان، وخط التقاطع بمكانين.
+
+         الحل: الضبط بالفهرس (هو اللي بيحكم البكسل وبيغطّي منطقة الإزاحة)،
+         بس بعد **ترجمة الموضع عبر الوقت**: فهرس الأساسي → لحظة → فهرس
+         المقارنة. هيك المحاذاة بالبكسل مضبوطة **والموضع بيعني نفس اللحظة**،
+         والإزاحة بتنترجم بدل ما تنقصّ.
+
+         🔴 وقبل هيك محاولة زمنية عملت **تكبيراً متسارعاً** بالإنتاج: الاشتراك
+         على المدى المنطقي والضبط على الزمني، فكل ضبط بيشغّل الطرف التاني،
+         والحارس بينمسح فوراً بينما النداء بيرجع بالإطار اللي بعده.
 
          تلات حراس، وكل واحد بيكفي لحاله:
-           ١) `shouldApplyRange` — ما بنضبط إذا المدى مطابق ضمن نص شمعة.
-              (مفحوص بمحاكاة الحلقة — `lib/pane-sync.test.js`)
+           ١) `shouldApplyRange` — ما بنضبط إذا المدى مطابق ضمن ربع شمعة.
            ٢) الحارس بينمسح بعد إطار، مش فوراً.
            ٣) قاطع دورة — أسوأ حالة «ما بتتزامن»، مش «تكبير جنوني».
+
+         الترجمة والحراس بـ`lib/pane-sync.js`، مفحوصين بمحاكاة الحلقة على
+         سلسلتين مختلفتي العمق والعطل — بلا متصفّح.
          ═══════════════════════════════════════════════════════════════════ */
-      const syncTolerance = () => {
-        const c = allCandlesRef.current;
-        if (!c || c.length < 3) return 60;
-        const gaps = [];
-        for (let i = 1; i < Math.min(c.length, 200); i++) {
-          const g = c[i].time - c[i - 1].time;
-          if (g > 0) gaps.push(g);
-        }
-        if (!gaps.length) return 60;
-        gaps.sort((a, b) => a - b);
-        return gaps[gaps.length >> 1] / 2;
-      };
+      /* بربع شمعة. أكبر من انزياح الاستيفاء، وأصغر من إنه يبان بالعين. */
+      const LOGICAL_TOL = 0.25;
 
       const releaseGuard = () => {
         if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => { rangeSyncingRef.current = false; });
         else setTimeout(() => { rangeSyncingRef.current = false; }, 0);
       };
 
-      const syncFrom = (src, dst) => {
+      const syncFrom = (src, dst, srcTimes, dstTimes) => {
         if (!src || !dst || rangeSyncingRef.current) return;
         if (!paneSyncBreakerRef.current.allow()) return;
-        let target = null, current = null;
-        try { target = src.timeScale().getVisibleRange(); } catch {}
-        try { current = dst.timeScale().getVisibleRange(); } catch {}
-        if (!shouldApplyRange(current, target, syncTolerance())) return;
+        let srcRange = null, current = null;
+        try { srcRange = src.timeScale().getVisibleLogicalRange(); } catch {}
+        try { current = dst.timeScale().getVisibleLogicalRange(); } catch {}
+        const target = mapLogicalRange(srcTimes, dstTimes, srcRange);
+        if (!shouldApplyRange(current, target, LOGICAL_TOL)) return;
         rangeSyncingRef.current = true;
-        try { dst.timeScale().setVisibleRange(target); } catch {}
+        try { dst.timeScale().setVisibleLogicalRange(target); } catch {}
         releaseGuard();
       };
 
-      const onMainRangeChange = () => syncFrom(chartRef.current, compareChartRef.current);
-      const onCompareRangeChange = () => syncFrom(chart, chartRef.current);
+      const onMainRangeChange = () =>
+        syncFrom(chartRef.current, compareChartRef.current, mainTimesRef.current, compareTimesRef.current);
+      const onCompareRangeChange = () =>
+        syncFrom(chart, chartRef.current, compareTimesRef.current, mainTimesRef.current);
       mainChart?.timeScale().subscribeVisibleLogicalRangeChange(onMainRangeChange);
       chart.timeScale().subscribeVisibleLogicalRangeChange(onCompareRangeChange);
 
-      // نحاذي لوحة المقارنة فوراً مع نفس الموضع المنطقي للشارت الرئيسي وقت الفتح
-      // (بدل ما تضل بفترتها الافتراضية العريضة لحد أول سحب/زوم من المستخدم)
+      // نحاذي لوحة المقارنة فوراً مع نفس موضع الشارت الرئيسي وقت الفتح (بدل ما
+      // تضل بفترتها الافتراضية العريضة لحد أول سحب/زوم من المستخدم)
       try {
-        const mainRange = mainChart?.timeScale().getVisibleRange();
-        if (mainRange) chart.timeScale().setVisibleRange(mainRange);
+        const target = mapLogicalRange(
+          mainTimesRef.current,
+          compareTimesRef.current,
+          mainChart?.timeScale().getVisibleLogicalRange()
+        );
+        if (target) chart.timeScale().setVisibleLogicalRange(target);
       } catch {}
 
       /* مزامنة مؤشر تقاطع الوقت/السعر بالاتجاهين (تحريك الماوس فوق أي وحدة من
@@ -4993,10 +5003,14 @@ export default function ReplayClient({ userId }) {
       const data = compareSeriesData(compareSettings.type, compareCandlesUpToReveal());
       try {
         compareSeriesRef.current.setData(data);
-        // نحاذي بالموضع المنطقي (logical range) مش بالتوقيت المطلق - نفس السبب
-        // المشروح فوق بـ setupCompareChart (تفادي انزياح الخط العمودي بين اللوحتين)
-        const mainRange = chartRef.current?.timeScale().getVisibleRange();
-        if (mainRange) compareChartRef.current?.timeScale().setVisibleRange(mainRange);
+        // نحاذي بالفهرس المترجَم عبر الوقت — نفس السبب المشروح فوق بـ
+        // setupCompareChart (محاذاة بالبكسل + الموضع بيعني نفس اللحظة)
+        const target = mapLogicalRange(
+          mainTimesRef.current,
+          data.map((d) => d.time),
+          chartRef.current?.timeScale().getVisibleLogicalRange()
+        );
+        if (target) compareChartRef.current?.timeScale().setVisibleLogicalRange(target);
       } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
