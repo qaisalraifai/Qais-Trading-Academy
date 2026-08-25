@@ -4949,8 +4949,13 @@ export default function ReplayClient({ userId }) {
         if (!info?.yahoo) throw new Error("هذا الرمز غير مدعوم للمقارنة حالياً");
         const tdInterval = INTERVAL_MAP[interval];
         const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
+        /* ⚠️ **نفس مزوّد الشارت الأساسي.** بلا هالسطر كانت المقارنة تنزل
+           ليوهو بينما الأساسي من Dukascopy — جلستان وعُطل مختلفة، فتظهر
+           فراغات بالشموع. مقيس على ٤ ساعات: ١٩٤ فراغ بيوهو، **صفر** بنفس
+           المزوّد. */
+        const dukParam = info.dukascopy ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${tdParam}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${tdParam}${dukParam}`
         );
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -4974,8 +4979,13 @@ export default function ReplayClient({ userId }) {
         if (!info?.yahoo) return;
         const tdInterval = INTERVAL_MAP[interval];
         const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
+        /* ⚠️ **نفس مزوّد الشارت الأساسي.** بلا هالسطر كانت المقارنة تنزل
+           ليوهو بينما الأساسي من Dukascopy — جلستان وعُطل مختلفة، فتظهر
+           فراغات بالشموع. مقيس على ٤ ساعات: ١٩٤ فراغ بيوهو، **صفر** بنفس
+           المزوّد. */
+        const dukParam = info.dukascopy ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${tdParam}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${tdParam}${dukParam}`
         );
         const data = await res.json();
         if (data.error || !data.candles?.length) return;
@@ -5982,7 +5992,7 @@ export default function ReplayClient({ userId }) {
         tdParam = "";
       }
       const res = await fetch(
-        `/api/replay-candles?symbol=${encodeURIComponent(pollSymbol)}&interval=${tdInterval}&count=3${tdParam}`
+        `/api/replay-candles?symbol=${encodeURIComponent(pollSymbol)}&interval=${tdInterval}&count=3${tdParam}${dukParam}`
       );
       const data = await res.json();
       if (data.error || !data.candles?.length) {
