@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeContentType } from "@/lib/upload-safety";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase-server";
 
@@ -84,7 +85,14 @@ export async function POST(request, { params }) {
   const arrayBuffer = await file.arrayBuffer();
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(path, Buffer.from(arrayBuffer), { contentType: file.type, upsert: false });
+    /* ⚠️ نوع المحتوى ما بينؤخذ من العميل — `file.type` قيمة بيبعتها هو.
+       `safeContentType` بترجّع النوع بس لو كان آمناً للعرض، وإلا
+       `application/octet-stream` فبينزّل بدل ما ينفّذ. ولا تضييق على الصيغ
+       هون: الواجهة بلا `accept` يعني مفتوحة بالتصميم. */
+    .upload(path, Buffer.from(arrayBuffer), {
+      contentType: safeContentType(file.type),
+      upsert: false,
+    });
 
   if (uploadError) {
     return NextResponse.json({ error: `فشل رفع الملف: ${uploadError.message}` }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jsonHandler } from "@/lib/api-guard";
 import { requireUser } from "@/lib/api-auth";
+import { isAllowedDocument, safeContentType, safeExtension, ALLOWED_DOCUMENT_LABEL } from "@/lib/upload-safety";
 import { createAdminClient } from "@/lib/supabase-server";
 import { submitManualPayment } from "@/lib/payments/billing-service";
 
@@ -41,13 +42,24 @@ async function POSTImpl(request) {
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: "حجم الملف أكبر من 10MB" }, { status: 400 });
     }
+    /* ⚠️ الواجهة بتعلن `accept="image/*,.pdf"` (`app/payment/crypto/page.js`)
+       والخادم ما كان يفرضها — فرض خادمي لعقد قائم. */
+    if (!isAllowedDocument(file.type)) {
+      return NextResponse.json(
+        { error: `صيغة غير مدعومة — لازم ${ALLOWED_DOCUMENT_LABEL}`, code: "UNSUPPORTED_FILE_TYPE" },
+        { status: 400 }
+      );
+    }
     await ensureBucket(admin);
-    const ext = file.name?.split(".").pop() || "jpg";
-    const path = `${user.id}/${transactionId}-${Date.now()}.${ext}`;
+    // الامتداد من النوع المتحقَّق مش من اسم الملف اللي بيبعته العميل
+    const path = `${user.id}/${transactionId}-${Date.now()}.${safeExtension(file.type, "jpg")}`;
     const arrayBuffer = await file.arrayBuffer();
     const { error: uploadError } = await admin.storage
       .from(BUCKET)
-      .upload(path, Buffer.from(arrayBuffer), { contentType: file.type, upsert: false });
+      .upload(path, Buffer.from(arrayBuffer), {
+        contentType: safeContentType(file.type),
+        upsert: false,
+      });
     if (uploadError) {
       return NextResponse.json({ error: `فشل رفع الصورة: ${uploadError.message}` }, { status: 500 });
     }

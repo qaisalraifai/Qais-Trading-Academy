@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase-server";
+import { isAllowedDocument, safeContentType, safeExtension, ALLOWED_DOCUMENT_LABEL } from "@/lib/upload-safety";
 import { logActivity } from "@/lib/activity-log";
 
 const BUCKET = "kyc-documents";
@@ -39,17 +40,30 @@ export async function POST(request) {
   if (file.size > 10 * 1024 * 1024) {
     return NextResponse.json({ error: "حجم الملف أكبر من 10MB" }, { status: 400 });
   }
+  /* ⚠️ الواجهة بتعلن `accept="image/*,.pdf"` (`MlmClient.js`) بس الخادم ما كان
+     يفرضها — فطلب مباشر بأي صيغة كان بيمرق. هاد فرض خادمي لعقد قائم، مش
+     تضييق جديد. */
+  if (!isAllowedDocument(file.type)) {
+    return NextResponse.json(
+      { error: `صيغة غير مدعومة — لازم ${ALLOWED_DOCUMENT_LABEL}`, code: "UNSUPPORTED_FILE_TYPE" },
+      { status: 400 }
+    );
+  }
 
   const supabaseAdmin = createAdminClient();
   await ensureBucket(supabaseAdmin);
 
-  const ext = file.name?.split(".").pop() || "jpg";
-  const path = `${user.id}/${Date.now()}.${ext}`;
+  /* ⚠️ الامتداد بينشتق من النوع المتحقَّق مش من اسم الملف. كان
+     `file.name.split(".").pop()` — اسم زي `x.html` بيتخزّن بامتداد `.html`. */
+  const path = `${user.id}/${Date.now()}.${safeExtension(file.type, "jpg")}`;
 
   const arrayBuffer = await file.arrayBuffer();
   const { error: uploadError } = await supabaseAdmin.storage
     .from(BUCKET)
-    .upload(path, Buffer.from(arrayBuffer), { contentType: file.type, upsert: false });
+    .upload(path, Buffer.from(arrayBuffer), {
+      contentType: safeContentType(file.type),
+      upsert: false,
+    });
 
   if (uploadError) {
     return NextResponse.json({ error: `فشل الرفع: ${uploadError.message}` }, { status: 500 });
