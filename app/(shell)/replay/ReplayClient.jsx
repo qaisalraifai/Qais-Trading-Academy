@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase-client";
 import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
 import { readSeries, writeSeries, mergeCandles, canExtendFrom, cutCacheKey } from "@/lib/candle-cache";
+import { alignToMainAxis } from "@/lib/compare-align";
 import WatchlistPanel from "./WatchlistPanel";
 
 const GOLD = "#DCD4F7";
@@ -638,12 +639,40 @@ function buildCompareSeries(chart, settings) {
     lastValueVisible: true,
   });
 }
-/* تجهيز بيانات لوحة المقارنة حسب نوع الشارت المختار (شموع كاملة أو قيمة إغلاق فقط) */
-function compareSeriesData(type, candles) {
-  if (type === "candles") {
-    return candles.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }));
-  }
-  return candles.map((c) => ({ time: c.time, value: c.close }));
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔴 **بيانات المقارنة بتنبنى على محور أوقات الشارت الأساسي.**
+   ---------------------------------------------------------------------------
+   اللوحتان متزامنتان **بفهرس الشمعة** (`setVisibleLogicalRange`) — وهاد
+   الأسلوب اللي بتوصي فيه lightweight-charts، وبيحاذي عمود N بعمود N بالبكسل.
+
+   ⚠️ بس بيفترض إنّ الفهرس N يعني **نفس اللحظة** باللوحتين. وهاد مش مضمون:
+   الرمزان بيجوا من مزوّدين مختلفين بأعماق مختلفة. مقيس (٢٠٢٦-٠٨-٢٥):
+
+       ناسداك (مع duk)   4551 شمعة · تبلّش 2023-10-19
+       SPX    (بلا duk)  2973 شمعة · تبلّش 2024-08-30
+
+   الاتنين بينتهوا بنفس اللحظة، بس المقارنة أقصر بـ**١٥٧٨ شمعة**. فلما
+   الأساسي يعرض الفهارس ٣٠٠٠→٤٥٥٠، المقارنة ما عندها شي هناك → **فراغ على
+   اليمين**، ومستخدم شافها وبلّغ.
+
+   ⚠️ وتمرير `duk` للمقارنة **ما بيحلّها**: SPX مع duk بيعطي ٩١١٣ شمعة —
+   الخلل بينقلب للاتجاه التاني. أي مزوّدَين بيعطوا أعماقاً مختلفة.
+
+   الحل: لكل شمعة بالأساسي، ناخد شمعة المقارنة **بنفس اللحظة**؛ وإذا ما في،
+   منحطّ فراغاً (`{ time }` — whitespace بلغة المكتبة). هيك الفهرس N بيصير
+   نفس اللحظة **بحكم البناء**، مش بحكم الصدفة.
+
+   ⚠️ الأثر: المقارنة بتعرض بس الفترة اللي الأساسي بيغطّيها، وبتبان فجوات لو
+   الجلسات مختلفة (كريبتو مقابل مؤشر). وهاد **صح** — بيقول الحقيقة بدل ما
+   يزحزح البيانات بصرياً.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function compareSeriesData(type, candles, mainCandles) {
+  const toPoint = (c) =>
+    type === "candles"
+      ? { time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }
+      : { time: c.time, value: c.close };
+
+  return alignToMainAxis(candles, mainCandles, toPoint);
 }
 
 /* تحويل صفقة الاستعراض التاريخي لصف جدول trades (نفس شكل أداة الباك تيست بالظبط عشان تظهر فيها وبلوحة التحكم) */
@@ -1730,6 +1759,14 @@ export default function ReplayClient({ userId }) {
     return compareCandles.filter((c) => c.time <= cutTime);
   }
 
+  /* شموع الشارت **الأساسي** المعروضة الآن — محور الوقت اللي بتنبنى عليه
+     لوحة المقارنة (شوفي `compareSeriesData`). لازم تنقصّ بنفس نقطة الكشف،
+     وإلا المحاذاة بتنبني على شموع لسا ما انكشفت. */
+  function mainCandlesUpToReveal() {
+    if (mode !== "training") return allCandles;
+    return allCandles.slice(0, Math.min(revealCount, allCandles.length));
+  }
+
   /* أي تغيير بإعدادات لوحة المقارنة (نوع الشارت أو ألوانه): نعيد بناء السيريز فوراً ونحفظ بالمتصفح.
      منقّاة بنفس بيانات الشمعة الحالية عشان يبان التغيير مباشرة بدون قفل/إعادة تحميل. */
   useEffect(() => {
@@ -1754,7 +1791,7 @@ export default function ReplayClient({ userId }) {
          فيرجع التأثير التاني يقصّها.
 
          بأداة تدريب، تسريب المستقبل مش خلل عرض — هو بيبطّل التمرين نفسه. */
-      series.setData(compareSeriesData(compareSettings.type, compareCandlesUpToReveal()));
+      series.setData(compareSeriesData(compareSettings.type, compareCandlesUpToReveal(), mainCandlesUpToReveal()));
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareSettings]);
@@ -4878,7 +4915,7 @@ export default function ReplayClient({ userId }) {
     if (compareSeriesRef.current) {
       /* ⚠️ القص انتقل لـ`compareCandlesUpToReveal` (فوق) — كان مكرَّراً هون
          وناقص بمسار إعدادات المقارنة، فتبديل نوع الشارت كان بيسرّب المستقبل. */
-      const data = compareSeriesData(compareSettings.type, compareCandlesUpToReveal());
+      const data = compareSeriesData(compareSettings.type, compareCandlesUpToReveal(), mainCandlesUpToReveal());
       try {
         compareSeriesRef.current.setData(data);
         // نحاذي بالموضع المنطقي (logical range) مش بالتوقيت المطلق - نفس السبب
