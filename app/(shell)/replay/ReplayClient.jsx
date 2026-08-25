@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase-client";
 import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
 import { readSeries, writeSeries, mergeCandles, canExtendFrom, cutCacheKey } from "@/lib/candle-cache";
-import { alignToMainAxis } from "@/lib/compare-align";
+import { shouldApplyRange, createSyncBreaker } from "@/lib/pane-sync";
 import WatchlistPanel from "./WatchlistPanel";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -674,21 +674,34 @@ function buildCompareSeries(chart, settings) {
    ⚠️ وتمرير `duk` للمقارنة **ما بيحلّها**: SPX مع duk بيعطي ٩١١٣ شمعة —
    الخلل بينقلب للاتجاه التاني. أي مزوّدَين بيعطوا أعماقاً مختلفة.
 
-   الحل: لكل شمعة بالأساسي، ناخد شمعة المقارنة **بنفس اللحظة**؛ وإذا ما في،
-   منحطّ فراغاً (`{ time }` — whitespace بلغة المكتبة). هيك الفهرس N بيصير
-   نفس اللحظة **بحكم البناء**، مش بحكم الصدفة.
+   ---------------------------------------------------------------------------
+   🔴 **الحل الأول كان حشو، والحشو هو اللي عمل الفراغات على اليومي.**
 
-   ⚠️ الأثر: المقارنة بتعرض بس الفترة اللي الأساسي بيغطّيها، وبتبان فجوات لو
-   الجلسات مختلفة (كريبتو مقابل مؤشر). وهاد **صح** — بيقول الحقيقة بدل ما
-   يزحزح البيانات بصرياً.
+   `alignToMainAxis` كانت تبني سلسلة بطول الأساسي بالضبط، وتحطّ `{ time }`
+   فاضية (whitespace) بكل لحظة ما عند المقارنة شمعة فيها. هاد **كان لازم**
+   لأنّ المزامنة كانت **بفهرس الشمعة** — العمود N لازم يكون نفس اللحظة
+   باللوحتين، وما بينضبط إلا بمساواة الطول.
+
+   بس على اليومي المزوّدان بيختلفوا بالعطل والجلسات، فكل يوم ناقص عند المقارنة
+   بيصير **عمود فاضي مرسوم** — وهاي هي الفراغات اللي بلّغ عنها.
+
+   الحل: **المزامنة صارت بالوقت مش بالفهرس** (`setVisibleRange`)، فقيد تساوي
+   الطول زال من أساسه. كل لوحة بترسم شموعها **الطبيعية** كاملة ومتراصّة،
+   والمكتبة بتحاذيهن بالطابع الزمني. بلا حشو → بلا فراغات.
+
+   ✅ وهاد بيحقّق شرطه الصريح: بلا خسارة عمق، وبلا تبديل مزوّدات. المقارنة
+   حتى بتستفيد من عمقها الزائد بدل ما ينقصّ على طول الأساسي.
+
+   ⚠️ الثمن المعروف: لو الفترة المعروضة بالأساسي بتسبق أول شمعة عند المقارنة،
+   لوحة المقارنة بتثبّت عند أول ما عندها — فبتعرض نافذة أقصر بدل أعمدة فاضية.
+   ⚠️ ومنطق كسر حلقة المزامنة معزول ومفحوص بـ`lib/pane-sync.js`.
    ═══════════════════════════════════════════════════════════════════════════ */
-function compareSeriesData(type, candles, mainCandles) {
-  const toPoint = (c) =>
+function compareSeriesData(type, candles) {
+  return (candles || []).map((c) =>
     type === "candles"
       ? { time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }
-      : { time: c.time, value: c.close };
-
-  return alignToMainAxis(candles, mainCandles, toPoint);
+      : { time: c.time, value: c.close }
+  );
 }
 
 /* تحويل صفقة الاستعراض التاريخي لصف جدول trades (نفس شكل أداة الباك تيست بالظبط عشان تظهر فيها وبلوحة التحكم) */
@@ -1450,6 +1463,10 @@ export default function ReplayClient({ userId }) {
   const compareChartRef = useRef(null);
   const compareSeriesRef = useRef(null);
   const compareOpenRef = useRef(false);
+  /* قاطع دورة المزامنة + نسخة من الشموع لحساب تسامح المطابقة.
+     شوفي `lib/pane-sync.js` — الحراس التلاتة ضد انفلات التكبير. */
+  const paneSyncBreakerRef = useRef(createSyncBreaker());
+  const allCandlesRef = useRef([]);
   const maximizedPaneRef = useRef(null);
   const [compareHeightPx, setCompareHeightPx] = useState(DEFAULT_COMPARE_HEIGHT);
   const compareHeightPxRef = useRef(DEFAULT_COMPARE_HEIGHT);
@@ -1775,14 +1792,6 @@ export default function ReplayClient({ userId }) {
     return compareCandles.filter((c) => c.time <= cutTime);
   }
 
-  /* شموع الشارت **الأساسي** المعروضة الآن — محور الوقت اللي بتنبنى عليه
-     لوحة المقارنة (شوفي `compareSeriesData`). لازم تنقصّ بنفس نقطة الكشف،
-     وإلا المحاذاة بتنبني على شموع لسا ما انكشفت. */
-  function mainCandlesUpToReveal() {
-    if (mode !== "training") return allCandles;
-    return allCandles.slice(0, Math.min(revealCount, allCandles.length));
-  }
-
   /* أي تغيير بإعدادات لوحة المقارنة (نوع الشارت أو ألوانه): نعيد بناء السيريز فوراً ونحفظ بالمتصفح.
      منقّاة بنفس بيانات الشمعة الحالية عشان يبان التغيير مباشرة بدون قفل/إعادة تحميل. */
   useEffect(() => {
@@ -1807,7 +1816,7 @@ export default function ReplayClient({ userId }) {
          فيرجع التأثير التاني يقصّها.
 
          بأداة تدريب، تسريب المستقبل مش خلل عرض — هو بيبطّل التمرين نفسه. */
-      series.setData(compareSeriesData(compareSettings.type, compareCandlesUpToReveal(), mainCandlesUpToReveal()));
+      series.setData(compareSeriesData(compareSettings.type, compareCandlesUpToReveal()));
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareSettings]);
@@ -1828,6 +1837,7 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
   useEffect(() => { setDrawingTemplatesMenuOpen(false); setTextPopoverOpen(false); }, [selectedDrawingId]);
   useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
+  useEffect(() => { allCandlesRef.current = allCandles; }, [allCandles]);
   useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
   useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
   useEffect(() => { compareCandlesRef.current = compareCandles; }, [compareCandles]);
@@ -4854,26 +4864,65 @@ export default function ReplayClient({ userId }) {
       // وهاد هو الأسلوب الموصى فيه رسمياً من مكتبة lightweight-charts
       // لمزامنة عدة شارتات مع بعض.
       const mainChart = chartRef.current;
-      const onMainRangeChange = (range) => {
-        if (!range || !compareChartRef.current || rangeSyncingRef.current) return;
-        rangeSyncingRef.current = true;
-        try { compareChartRef.current.timeScale().setVisibleLogicalRange(range); } catch {}
-        rangeSyncingRef.current = false;
+      /* ═══════════════════════════════════════════════════════════════════
+         المزامنة على **النافذة الزمنية** — عشان ما نحتاج نحشو فراغات.
+         -----------------------------------------------------------------
+         المحاذاة بفهرس الشمعة بتفترض إنّ العمود N بنفس اللحظة باللوحتين،
+         وهاد مش مضمون مع مزوّدين مختلفين. تصحيحها كان بحشو الفراغات — وهاد
+         بالضبط اللي عمل **ثقوباً بالشموع** على اليومي (٥١٣ يوم عطلة).
+         بالمزامنة الزمنية كل سلسلة بترسم شمعها المتصل، والوقت بيحاذيهن.
+
+         🔴 **وهون كان العطل**: محاولة سابقة عملت نفس الشي فطلع تكبير متسارع.
+         السبب: الاشتراك على المدى **المنطقي** والضبط على **الزمني**، فكل
+         ضبط بيشغّل الطرف التاني، والحارس بينمسح فوراً بينما النداء بيرجع
+         بالإطار اللي بعده.
+
+         تلات حراس، وكل واحد بيكفي لحاله:
+           ١) `shouldApplyRange` — ما بنضبط إذا المدى مطابق ضمن نص شمعة.
+              (مفحوص بمحاكاة الحلقة — `lib/pane-sync.test.js`)
+           ٢) الحارس بينمسح بعد إطار، مش فوراً.
+           ٣) قاطع دورة — أسوأ حالة «ما بتتزامن»، مش «تكبير جنوني».
+         ═══════════════════════════════════════════════════════════════════ */
+      const syncTolerance = () => {
+        const c = allCandlesRef.current;
+        if (!c || c.length < 3) return 60;
+        const gaps = [];
+        for (let i = 1; i < Math.min(c.length, 200); i++) {
+          const g = c[i].time - c[i - 1].time;
+          if (g > 0) gaps.push(g);
+        }
+        if (!gaps.length) return 60;
+        gaps.sort((a, b) => a - b);
+        return gaps[gaps.length >> 1] / 2;
       };
-      const onCompareRangeChange = (range) => {
-        if (!range || !chartRef.current || rangeSyncingRef.current) return;
-        rangeSyncingRef.current = true;
-        try { chartRef.current.timeScale().setVisibleLogicalRange(range); } catch {}
-        rangeSyncingRef.current = false;
+
+      const releaseGuard = () => {
+        if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => { rangeSyncingRef.current = false; });
+        else setTimeout(() => { rangeSyncingRef.current = false; }, 0);
       };
+
+      const syncFrom = (src, dst) => {
+        if (!src || !dst || rangeSyncingRef.current) return;
+        if (!paneSyncBreakerRef.current.allow()) return;
+        let target = null, current = null;
+        try { target = src.timeScale().getVisibleRange(); } catch {}
+        try { current = dst.timeScale().getVisibleRange(); } catch {}
+        if (!shouldApplyRange(current, target, syncTolerance())) return;
+        rangeSyncingRef.current = true;
+        try { dst.timeScale().setVisibleRange(target); } catch {}
+        releaseGuard();
+      };
+
+      const onMainRangeChange = () => syncFrom(chartRef.current, compareChartRef.current);
+      const onCompareRangeChange = () => syncFrom(chart, chartRef.current);
       mainChart?.timeScale().subscribeVisibleLogicalRangeChange(onMainRangeChange);
       chart.timeScale().subscribeVisibleLogicalRangeChange(onCompareRangeChange);
 
       // نحاذي لوحة المقارنة فوراً مع نفس الموضع المنطقي للشارت الرئيسي وقت الفتح
       // (بدل ما تضل بفترتها الافتراضية العريضة لحد أول سحب/زوم من المستخدم)
       try {
-        const mainRange = mainChart?.timeScale().getVisibleLogicalRange();
-        if (mainRange) chart.timeScale().setVisibleLogicalRange(mainRange);
+        const mainRange = mainChart?.timeScale().getVisibleRange();
+        if (mainRange) chart.timeScale().setVisibleRange(mainRange);
       } catch {}
 
       /* مزامنة مؤشر تقاطع الوقت/السعر بالاتجاهين (تحريك الماوس فوق أي وحدة من
@@ -4941,13 +4990,13 @@ export default function ReplayClient({ userId }) {
     if (compareSeriesRef.current) {
       /* ⚠️ القص انتقل لـ`compareCandlesUpToReveal` (فوق) — كان مكرَّراً هون
          وناقص بمسار إعدادات المقارنة، فتبديل نوع الشارت كان بيسرّب المستقبل. */
-      const data = compareSeriesData(compareSettings.type, compareCandlesUpToReveal(), mainCandlesUpToReveal());
+      const data = compareSeriesData(compareSettings.type, compareCandlesUpToReveal());
       try {
         compareSeriesRef.current.setData(data);
         // نحاذي بالموضع المنطقي (logical range) مش بالتوقيت المطلق - نفس السبب
         // المشروح فوق بـ setupCompareChart (تفادي انزياح الخط العمودي بين اللوحتين)
-        const mainRange = chartRef.current?.timeScale().getVisibleLogicalRange();
-        if (mainRange) compareChartRef.current?.timeScale().setVisibleLogicalRange(mainRange);
+        const mainRange = chartRef.current?.timeScale().getVisibleRange();
+        if (mainRange) compareChartRef.current?.timeScale().setVisibleRange(mainRange);
       } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
