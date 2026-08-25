@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase-client";
 import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
 import { readSeries, writeSeries, mergeCandles, canExtendFrom, cutCacheKey } from "@/lib/candle-cache";
+import { alignToMainAxis } from "@/lib/compare-align";
 import WatchlistPanel from "./WatchlistPanel";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -681,18 +682,13 @@ function buildCompareSeries(chart, settings) {
    الجلسات مختلفة (كريبتو مقابل مؤشر). وهاد **صح** — بيقول الحقيقة بدل ما
    يزحزح البيانات بصرياً.
    ═══════════════════════════════════════════════════════════════════════════ */
-/* ⚠️ **بلا حشو.** كانت هون محاذاة على محور الشارت الأساسي (`alignToMainAxis`)
-   بتحطّ فراغاً بكل لحظة ما إلها نظير — وهاي اللي طلّعت ثقوباً بالشموع على
-   الفريم اليومي (٥١٣ يوم عطلة، لأن كل لوحة من مزوّد بتقويم مختلف).
+function compareSeriesData(type, candles, mainCandles) {
+  const toPoint = (c) =>
+    type === "candles"
+      ? { time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }
+      : { time: c.time, value: c.close };
 
-   بعد ما صارت المزامنة **بالوقت** (شوفي `setVisibleRange` بإعداد لوحة
-   المقارنة)، ما عاد للحشو داعٍ: كل سلسلة بترسم شمعها المتصل، والنافذة
-   الزمنية هي اللي بتحاذي اللوحتين. */
-function compareSeriesData(type, candles) {
-  if (type === "candles") {
-    return candles.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }));
-  }
-  return candles.map((c) => ({ time: c.time, value: c.close }));
+  return alignToMainAxis(candles, mainCandles, toPoint);
 }
 
 /* تحويل صفقة الاستعراض التاريخي لصف جدول trades (نفس شكل أداة الباك تيست بالظبط عشان تظهر فيها وبلوحة التحكم) */
@@ -1779,6 +1775,14 @@ export default function ReplayClient({ userId }) {
     return compareCandles.filter((c) => c.time <= cutTime);
   }
 
+  /* شموع الشارت **الأساسي** المعروضة الآن — محور الوقت اللي بتنبنى عليه
+     لوحة المقارنة (شوفي `compareSeriesData`). لازم تنقصّ بنفس نقطة الكشف،
+     وإلا المحاذاة بتنبني على شموع لسا ما انكشفت. */
+  function mainCandlesUpToReveal() {
+    if (mode !== "training") return allCandles;
+    return allCandles.slice(0, Math.min(revealCount, allCandles.length));
+  }
+
   /* أي تغيير بإعدادات لوحة المقارنة (نوع الشارت أو ألوانه): نعيد بناء السيريز فوراً ونحفظ بالمتصفح.
      منقّاة بنفس بيانات الشمعة الحالية عشان يبان التغيير مباشرة بدون قفل/إعادة تحميل. */
   useEffect(() => {
@@ -1803,7 +1807,7 @@ export default function ReplayClient({ userId }) {
          فيرجع التأثير التاني يقصّها.
 
          بأداة تدريب، تسريب المستقبل مش خلل عرض — هو بيبطّل التمرين نفسه. */
-      series.setData(compareSeriesData(compareSettings.type, compareCandlesUpToReveal()));
+      series.setData(compareSeriesData(compareSettings.type, compareCandlesUpToReveal(), mainCandlesUpToReveal()));
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareSettings]);
@@ -4849,53 +4853,27 @@ export default function ReplayClient({ userId }) {
       // الشمعة مباشرة، فعمود رقم N بيضل بنفس البكسل بين اللوحتين دايماً -
       // وهاد هو الأسلوب الموصى فيه رسمياً من مكتبة lightweight-charts
       // لمزامنة عدة شارتات مع بعض.
-      /* ═══════════════════════════════════════════════════════════════════
-         🔴 **المزامنة بالوقت، مش بفهرس الشمعة.**
-         -----------------------------------------------------------------
-         كانت `setVisibleLogicalRange` — محاذاة برقم العمود. وهي بتفترض إنّ
-         العمود N بنفس اللحظة باللوحتين، وهاد **مش مضمون**: الرمزان بيجوا من
-         مزوّدين بأعماق وتقاويم مختلفة (مقيس: ناسداك ٤٥٥١ شمعة من ٢٠٢٣ · SPX
-         ٢٩٧٣ من ٢٠٢٤). فالمقارنة كانت تخلص قبل حافة الشارت وتترك فراغاً.
-
-         حاولت أصلّحها بحشو محور الأساسي بفراغات لكل يوم ناقص — فصارت **ثقوب
-         بالشموع** (٥١٣ يوم عطلة على اليومي)، وبلّغ عنها.
-         وحاولت أوحّد المزوّد — فخسّرت الشارت الأساسي عمقه، ورفضها.
-
-         الحل اللي ما بيكلّف شي: **كل لوحة ترسم بياناتها كما هي**، والمزامنة
-         على **النافذة الزمنية**. ما في حشو، ما في فراغات، وما في لمس لمصادر
-         البيانات — الشارت الأساسي بيضل على Dukascopy بعمقه الكامل.
-
-         ⚠️ الثمن الوحيد: لو اختلف عدد الشموع بالنافذة، الأعمدة ممكن تنزاح
-         **كسر شمعة** بصرياً. والتواريخ بتتحاذى بالضبط — وهي المهمّة بالمقارنة.
-         (التعليق القديم كان بيفضّل الفهرس لهالسبب؛ بس انزياح كسر عمود أهون
-         من ثقوب بالبيانات.)
-         ═══════════════════════════════════════════════════════════════════ */
       const mainChart = chartRef.current;
-      const onMainRangeChange = () => {
-        if (!compareChartRef.current || rangeSyncingRef.current) return;
+      const onMainRangeChange = (range) => {
+        if (!range || !compareChartRef.current || rangeSyncingRef.current) return;
         rangeSyncingRef.current = true;
-        try {
-          const r = mainChart?.timeScale().getVisibleRange();
-          if (r) compareChartRef.current.timeScale().setVisibleRange(r);
-        } catch {}
+        try { compareChartRef.current.timeScale().setVisibleLogicalRange(range); } catch {}
         rangeSyncingRef.current = false;
       };
-      const onCompareRangeChange = () => {
-        if (!chartRef.current || rangeSyncingRef.current) return;
+      const onCompareRangeChange = (range) => {
+        if (!range || !chartRef.current || rangeSyncingRef.current) return;
         rangeSyncingRef.current = true;
-        try {
-          const r = chart.timeScale().getVisibleRange();
-          if (r) chartRef.current.timeScale().setVisibleRange(r);
-        } catch {}
+        try { chartRef.current.timeScale().setVisibleLogicalRange(range); } catch {}
         rangeSyncingRef.current = false;
       };
       mainChart?.timeScale().subscribeVisibleLogicalRangeChange(onMainRangeChange);
       chart.timeScale().subscribeVisibleLogicalRangeChange(onCompareRangeChange);
 
-      // محاذاة فورية وقت الفتح بدل ما تضل اللوحة بفترتها الافتراضية العريضة
+      // نحاذي لوحة المقارنة فوراً مع نفس الموضع المنطقي للشارت الرئيسي وقت الفتح
+      // (بدل ما تضل بفترتها الافتراضية العريضة لحد أول سحب/زوم من المستخدم)
       try {
-        const r = mainChart?.timeScale().getVisibleRange();
-        if (r) chart.timeScale().setVisibleRange(r);
+        const mainRange = mainChart?.timeScale().getVisibleLogicalRange();
+        if (mainRange) chart.timeScale().setVisibleLogicalRange(mainRange);
       } catch {}
 
       /* مزامنة مؤشر تقاطع الوقت/السعر بالاتجاهين (تحريك الماوس فوق أي وحدة من
@@ -4963,7 +4941,7 @@ export default function ReplayClient({ userId }) {
     if (compareSeriesRef.current) {
       /* ⚠️ القص انتقل لـ`compareCandlesUpToReveal` (فوق) — كان مكرَّراً هون
          وناقص بمسار إعدادات المقارنة، فتبديل نوع الشارت كان بيسرّب المستقبل. */
-      const data = compareSeriesData(compareSettings.type, compareCandlesUpToReveal());
+      const data = compareSeriesData(compareSettings.type, compareCandlesUpToReveal(), mainCandlesUpToReveal());
       try {
         compareSeriesRef.current.setData(data);
         // نحاذي بالموضع المنطقي (logical range) مش بالتوقيت المطلق - نفس السبب
