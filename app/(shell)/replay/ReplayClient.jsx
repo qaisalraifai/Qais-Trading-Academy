@@ -4418,7 +4418,15 @@ export default function ReplayClient({ userId }) {
         const { x, y } = getLogicalPrice(e.clientX, e.clientY);
         if (x == null || y == null) return;
         const hit = findDrawingAt(x, y);
-        if (!hit || hit.tradeTag) return;
+        /* ⚠️ دبل-كليك على **مساحة فاضية** = تكبير/استعادة اللوحة (زي تريدنغ فيو).
+           انحطّ هون بالذات عشان ما يمسّ الرسم: الفرع فوق بيمسك الحالات اللي
+           فيها رسمة تحت المؤشّر، وهاد بينفّذ بس لما ما يكون في ولا وحدة.
+           وبتوقف كمان لما تكون أداة رسم شغّالة (الشرط بأول الدالة). */
+        if (!hit) {
+          if (compareOpenRef.current) toggleMaximizePane("main");
+          return;
+        }
+        if (hit.tradeTag) return;
         if (hit.type === "text") {
           const p = logicalPriceToXY(hit.p1);
           if (p.x == null || p.y == null) return;
@@ -8698,9 +8706,14 @@ export default function ReplayClient({ userId }) {
       { value: "candles", label: "شموع (Candlestick)" },
     ];
     return (
+      /* ⚠️ `fixed` مش `absolute`: كانت النافذة مرسومة جوّا لوحة المقارنة، واللوحة
+         عندها `overflow: hidden` بارتفاع ٢٠٠ بكسل افتراضياً — فالنافذة كانت
+         **تنقصّ** وأزرارها ما بتبان إلا لما يرفع القاسم لفوق. بلّغ عنها.
+         بالتثبيت على إطار العرض بتبان كاملة مهما كان ارتفاع اللوحة. */
       <div style={{
-        position: "absolute", inset: 0, zIndex: 30, background: "#0A0614aa",
+        position: "fixed", inset: 0, zIndex: 3000, background: "#0A0614cc",
         display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "1rem", overflowY: "auto",
       }} onClick={() => setCompareSettingsOpen(false)}>
         <div
           onClick={(e) => e.stopPropagation()}
