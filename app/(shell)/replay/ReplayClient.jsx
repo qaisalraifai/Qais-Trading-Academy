@@ -5065,27 +5065,6 @@ export default function ReplayClient({ userId }) {
   /* جلب بيانات رمز المقارنة (نفس مصدر البيانات اللي بتستخدمه أداة الريبلاي - Yahoo Finance) */
   useEffect(() => {
     if (!compareOpen) return;
-    /* 🔴 **ننتظر الشارت الأساسي يخلص قبل ما نطلب بيانات المقارنة.**
-       -------------------------------------------------------------------
-       اللوحتان بتطلبا **نفس الشي بالضبط**: نفس المسار، نفس `count=20000`،
-       نفس المزوّد. ومع هيك القياس على الإنتاج (٢٠٢٦-٠٨-٢٧) طلّع:
-
-           الأساسي   عامل 0.5  → 3521 شمعة من 2014-10-29
-           المقارنة  عامل 0.25 → 1839 شمعة من 2020-09-28
-
-       نفس الطلب بنتيجتين. والفرق الوحيد الممكن **التوقيت**: تبعيات هالتأثير
-       ما كان فيها `loading`، فطلب المقارنة كان بينطلق **متزامناً** مع تحميل
-       الأساسي ويزاحمه على ميزانية أرشيف Dukascopy — والحد مربوط بعدد ملفات
-       الأرشيف (موثّق بـ`dukascopy-candles.js`)، فطلبان تقال بنفس اللحظة
-       بيدفعا التقليص لعامل أصغر.
-
-       ⚠️ وهاد بيفسّر تذبذباً لاحظناه: أحياناً المقارنة بتاخد عامل أعلى — وهاد
-       بيصير لما الأساسي بيقرا من التخزين المحلي فما بيزاحم على الشبكة.
-
-       بالتسلسل، المقارنة بتاخد الميزانية كاملة زي ما بياخدها الأساسي.
-       ⚠️ وأي إعادة تحميل للأساسي بتلغي طلب المقارنة الجاري وبتعيده بعده —
-       وهاد مقصود، عشان ما يرجع التزاحم. */
-    if (loading) return;
     let cancelled = false;
     let comparePollTimer = null;
     async function loadCompare() {
@@ -5281,7 +5260,7 @@ export default function ReplayClient({ userId }) {
       comparePollTimer = setInterval(pollCompareOnce, compareMs);
     }
     return () => { cancelled = true; if (comparePollTimer) clearInterval(comparePollTimer); };
-  }, [compareOpen, compareSymbol, interval, maxBars, mode, replayAnchorTs, loading]);
+  }, [compareOpen, compareSymbol, interval, maxBars, mode, replayAnchorTs]);
 
   function toggleCompare() {
     setCompareOpen((v) => {
