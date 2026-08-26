@@ -471,10 +471,25 @@ function saveChartSettings(settings) {
 
 /* ===================== المؤشرات الفنية المفعّلة (تنحفظ محلياً بالمتصفح) ===================== */
 const INDICATORS_KEY = "qta_active_indicators_v1";
-function loadActiveIndicators() {
+/* ═══════════════════════════════════════════════════════════════════════════
+   مساحة اسم لمفاتيح التخزين — لازمة عشان الكومبوننت ينتركّب **مرتين**.
+
+   ⚠️ **مش كل المفاتيح بتنفصل.** الفصل الغلط بيكسر تفضيلات المستخدم:
+
+     تنفصل  · المؤشرات المفعّلة · جلسة القص المتوقفة   (حالة الشارت نفسه)
+     تنشارك · ألوان الشارت · قوالب الرسم والمؤشرات ·
+              آخر نمط مستعمل · الأدوات المفضّلة        (تفضيلات المستخدم)
+
+   واللوحة الأساسية بتحتفظ **بالمفتاح الأصلي بلا لاحقة** — عشان أي مستخدم
+   حالي ما يخسر مؤشراته وجلسته المحفوظة عند أول فتح بعد التحديث.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function paneKey(base, paneId) {
+  return !paneId || paneId === "main" ? base : `${base}__${paneId}`;
+}
+function loadActiveIndicators(paneId) {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(INDICATORS_KEY);
+    const raw = window.localStorage.getItem(paneKey(INDICATORS_KEY, paneId));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -484,10 +499,10 @@ function loadActiveIndicators() {
     return [];
   }
 }
-function saveActiveIndicators(list) {
+function saveActiveIndicators(list, paneId) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(INDICATORS_KEY, JSON.stringify(list));
+    window.localStorage.setItem(paneKey(INDICATORS_KEY, paneId), JSON.stringify(list));
   } catch {}
 }
 
@@ -1027,7 +1042,20 @@ function pointOnLinePx(px, py, x1, y1, x2, y2, clamp) {
   return { x: x1 + t * dx, y: y1 + t * dy };
 }
 
-export default function ReplayClient({ userId }) {
+/**
+ * شارت الاستعراض. **قابل للتركيب أكتر من مرة** بنفس الصفحة.
+ *
+ * @param paneId       هويّة اللوحة — بتفصل مفاتيح التخزين اللي لازم تنفصل.
+ *                     `"main"` (الافتراضي) بيحتفظ بالمفاتيح الأصلية بلا
+ *                     لاحقة، فالمستخدم الحالي ما يخسر مؤشراته وجلسته.
+ * @param isPrimary    اللوحة اللي بتتفاعل مع محيط الصفحة: بتقرا رمز الـURL
+ *                     (`?asset=`). لوحة تانية بتقراه كمان معناها الاتنين
+ *                     بيقفزوا لنفس الرمز — فما إله معنى.
+ * @param initialAsset رمز البداية لما ما يكون في `?asset=`.
+ * @param fillContainer بتقيس الارتفاع من الحاوية بدل النافذة — لازم بالتخطيط
+ *                      المقسوم، وإلا كل شارت بيتمدّد لآخر الشاشة ويتراكبوا.
+ */
+export default function ReplayClient({ userId, paneId = "main", isPrimary = true, initialAsset = null, fillContainer = false }) {
 
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
@@ -1070,7 +1098,7 @@ export default function ReplayClient({ userId }) {
   const [mode, setMode] = useState("live"); // "live" | "training"
   const [randomChart, setRandomChart] = useState(false);
 
-  const [assetValue, setAssetValue] = useState("XAUUSD");
+  const [assetValue, setAssetValue] = useState(initialAsset || "XAUUSD");
   // بتتحدث كل ما نجيب شموع جديدة: بتقول فعلياً أي رمز يوهو استُخدم (سبوت أو
   // عقد آجل احتياطي) - شوفي التعليق بأول lib/assets.js لسبب وجود هالمنطق.
   const dataSourceRef = useRef({ symbol: null, usedFallback: false, provider: "yahoo" });
@@ -1085,6 +1113,9 @@ export default function ReplayClient({ userId }) {
   // فتح الشارت مباشرة على رمز معيّن جاي من صفحة تانية (زر "افتح الشارت" برادار QAIS مثلاً)
   const radarSearchParams = useSearchParams();
   useEffect(() => {
+    /* ⚠️ اللوحة الأساسية وحدها بتقرا رمز الـURL. لو قرأته الاتنين، الاتنين
+       بيقفزوا لنفس الرمز — يعني المقارنة بتفضى من معناها أول ما تنفتح. */
+    if (!isPrimary) return;
     const wanted = radarSearchParams.get("asset");
     if (wanted && getAssetByValue(wanted)?.yahoo) {
       setAssetValue(wanted);
@@ -1160,7 +1191,7 @@ export default function ReplayClient({ userId }) {
   // وعمل reload لاحقاً، رح ينقرا صح بعد إعادة التحميل هاد).
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(PAUSED_SESSION_KEY);
+      const raw = localStorage.getItem(paneKey(PAUSED_SESSION_KEY, paneId));
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.replayState) {
@@ -1426,13 +1457,12 @@ export default function ReplayClient({ userId }) {
   /* تحميل إعدادات الألوان المحفوظة بعد أول رندر عالمتصفح (تفادي مشاكل الـ SSR) */
   useEffect(() => {
     setChartSettings(loadChartSettings());
-    setCompareSettings(loadCompareSettings());
-    setActiveIndicators(loadActiveIndicators());
+    setActiveIndicators(loadActiveIndicators(paneId));
   }, []);
 
   /* أي تغيير بلائحة المؤشرات المفعّلة: نحفظها بالمتصفح فوراً */
   useEffect(() => {
-    saveActiveIndicators(activeIndicators);
+    saveActiveIndicators(activeIndicators, paneId);
   }, [activeIndicators]);
 
   /* أي تغيير بالإعدادات: تطبيق فوري على الشارت + حفظ بالمتصفح (وتطبيق نفس لون الخلفية على لوحة المقارنة لو مفتوحة) */
@@ -3883,6 +3913,19 @@ export default function ReplayClient({ userId }) {
             padBottom = parseFloat(cs.paddingBottom) || 0;
           }
           totalHeight = Math.max(320, window.innerHeight - headerH - headerMarginBottom - padTop - padBottom - 4);
+        } else if (fillContainer && chartWrapperRef.current) {
+          /* 🔴 **بالتخطيط المقسوم الارتفاع بينقاس من الحاوية مش من النافذة.**
+             -----------------------------------------------------------------
+             الحساب تحت بيطرح من `window.innerHeight` — يعني كل شارت بيتمدّد
+             لآخر الشاشة. بشارت واحد هاد صح تماماً. بشارتين فوق بعض، اللي فوق
+             بياخد الشاشة كلها وبيتراكب على اللي تحت.
+
+             فلما تكون اللوحة جوّا تخطيط بيحدّد ارتفاعها (المساحة الشغّالة)،
+             بتقرا ارتفاع حاويتها الفعلي وبس. */
+          const cs = window.getComputedStyle(chartWrapperRef.current);
+          const padTop = parseFloat(cs.paddingTop) || 0;
+          const padBottom = parseFloat(cs.paddingBottom) || 0;
+          totalHeight = Math.max(240, chartWrapperRef.current.clientHeight - padTop - padBottom);
         } else if (chartWrapperRef.current) {
           // نفس فكرة الشاشة الكاملة، بس هون منحسب المساحة المتاحة لغاية آخر الصفحة
           // (مش رقم ثابت 480px) عشان الشارت ياخد كل المساحة المتبقية بالشاشة
@@ -3917,7 +3960,9 @@ export default function ReplayClient({ userId }) {
       };
       window.addEventListener("resize", handleResize);
       const handleFsChange = () => {
-        setIsFullscreen(!!document.fullscreenElement);
+        /* ⚠️ لازم نقارن بحاوية **هاي** اللوحة. `document.fullscreenElement`
+           عام، فلو قرأناه خام بتظن اللوحة التانية حالها بالشاشة الكاملة كمان. */
+        setIsFullscreen(document.fullscreenElement === chartWrapperRef.current);
         setTimeout(handleResize, 50);
       };
       document.addEventListener("fullscreenchange", handleFsChange);
@@ -5690,7 +5735,7 @@ export default function ReplayClient({ userId }) {
     if (mode !== "training" || !replayStateRef.current.isActive) return;
     const snapshot = buildPausedSnapshot();
     savedSessionRef.current = snapshot;
-    try { localStorage.setItem(PAUSED_SESSION_KEY, JSON.stringify(snapshot)); } catch {}
+    try { localStorage.setItem(paneKey(PAUSED_SESSION_KEY, paneId), JSON.stringify(snapshot)); } catch {}
   }
   /* مرجع حيّ للدالة: مستمعو الأحداث تحت بينتسجّلوا مرة وحدة، وبدون هاد
      بيمسكوا قيم أول رندر (نقطة قص قديمة ورسومات قديمة). */
@@ -5733,7 +5778,7 @@ export default function ReplayClient({ userId }) {
     savedSessionRef.current = null;
     setHasSavedSession(false);
     suppressPersistRef.current = true; // بينفتح بـfinalizeCut للقص الجديد
-    try { localStorage.removeItem(PAUSED_SESSION_KEY); } catch {}
+    try { localStorage.removeItem(paneKey(PAUSED_SESSION_KEY, paneId)); } catch {}
     setCutChoiceOpen(false);
     openCutModeFresh();
   }
