@@ -696,6 +696,22 @@ function buildCompareSeries(chart, settings) {
    لوحة المقارنة بتثبّت عند أول ما عندها — فبتعرض نافذة أقصر بدل أعمدة فاضية.
    ⚠️ ومنطق كسر حلقة المزامنة معزول ومفحوص بـ`lib/pane-sync.js`.
    ═══════════════════════════════════════════════════════════════════════════ */
+/* أقرب شمعة **بالوقت**. مستعملة بمزامنة خط التقاطع بالاتجاهين.
+   ⚠️ كانت مصرَّحة جوّا إعداد لوحة المقارنة وبس، فاستعمالها من تأثير الشارت
+   الأساسي بيرمي ReferenceError **وقت التشغيل** — والبناء ما بيمسكها. */
+function findNearestBar(candles, time) {
+  if (!candles?.length) return null;
+  const exact = candles.find((c) => c.time === time);
+  if (exact) return exact;
+  let bar = null;
+  let bestDiff = Infinity;
+  for (const c of candles) {
+    const diff = Math.abs(c.time - time);
+    if (diff < bestDiff) { bestDiff = diff; bar = c; }
+  }
+  return bar;
+}
+
 function compareSeriesData(type, candles) {
   return (candles || []).map((c) =>
     type === "candles"
@@ -4687,25 +4703,21 @@ export default function ReplayClient({ userId }) {
           if (time == null) {
             cChart.clearCrosshairPosition();
           } else {
-            const mainList = visibleCandlesRef.current || [];
-            const candles = compareCandlesRef.current || [];
-            // مهم: منحاذي بـ"رقم الموضع" (index) مش بأقرب توقيت مطلق. الرمزين
-            // (مثلاً NAS100 وSPX500) ممكن يكون عندهم شموع بأوقات مختلفة شوي عن
-            // بعض (فجوات/إغلاقات مختلفة)، فمطابقة "أقرب توقيت" كانت بترجّع أحياناً
-            // شمعة بموضع مختلف عن يلي تحت الماوس بالضبط بالشارت الرئيسي، فيطلع
-            // الخط العمودي بلوحة المقارنة منزاح شوي عن نفس عمود الوقت فوق - وهاد
-            // هو سبب مشكلة "تزامن الوقت" يلي كانت بتبان بالمقارنة. رقم الموضع
-            // (idx) هو نفسه المستخدم لمزامنة السكرول/الزوم (logical range) بين
-            // اللوحتين، فمطابقته هون بتضمن نفس العمود بالبكسل تماماً بكل الحالات.
-            let idx = findCandleIndexByTime(mainList, time);
-            let bar = idx !== -1 ? candles[idx] : undefined;
-            if (!bar && candles.length) {
-              let bestDiff = Infinity;
-              for (const c of candles) {
-                const diff = Math.abs(c.time - time);
-                if (diff < bestDiff) { bestDiff = diff; bar = c; }
-              }
-            }
+            /* 🔴 **المطابقة بالوقت، مش برقم الموضع.**
+               -------------------------------------------------------------
+               كانت: `idx = findCandleIndexByTime(main, time)` وبعدها
+               `compare[idx]` — يعني بتفترض إنّ الرقم N بنفس اللحظة
+               باللوحتين. وهاد **نفس الافتراض** اللي انكسر بمزامنة المدى.
+
+               مقيس: ناسداك ~٢٩٨ شمعة يومية بالسنة (فيها شمعة الأحد من
+               Dukascopy) وSP500 ~٢٥١ — فالرقم N بيبعد أكتر كل ما رحنا للورا،
+               والخط بينزاح ويرجع يتصحّح مع أول حدث تاني. وهاد اللي بلّغ عنه:
+               «بيفلت وبيرجع يعدل».
+
+               الاختيار الأصلي كان **مقصوداً** لأن مزامنة المدى كانت بالفهرس
+               وقتها. المدى صار بالوقت (`mapLogicalRange`)، فهاي لازم تتبعه —
+               وإلا الاتنان بيتناقضوا. */
+            const bar = findNearestBar(compareCandlesRef.current || [], time);
             if (bar) cChart.setCrosshairPosition(bar.close, bar.time, cSeries);
             else cChart.clearCrosshairPosition();
           }
@@ -4979,17 +4991,6 @@ export default function ReplayClient({ userId }) {
          اللوحتين بيحرك نفس عمود الوقت بالتانية) - قبل هيك كانت المزامنة
          باتجاه واحد بس (الشارت الرئيسي بيقود)، فلما تكوني تحت (لوحة المقارنة)
          ما كان المؤشر عم يطلع فوق (الشارت الرئيسي). */
-      function findNearestBar(candles, time) {
-        if (!candles?.length) return null;
-        let bar = candles.find((c) => c.time === time);
-        if (bar) return bar;
-        let bestDiff = Infinity;
-        for (const c of candles) {
-          const diff = Math.abs(c.time - time);
-          if (diff < bestDiff) { bestDiff = diff; bar = c; }
-        }
-        return bar || null;
-      }
       function syncCrosshairToMain(time) {
         if (crosshairSyncingRef.current) return;
         const mChart = chartRef.current;
@@ -5000,12 +5001,9 @@ export default function ReplayClient({ userId }) {
           if (time == null) {
             mChart.clearCrosshairPosition();
           } else {
-            // نفس المبدأ بالاتجاه المعاكس: نلاقي رقم موضع الشمعة تحت الماوس
-            // بلوحة المقارنة، ونستخدم نفس الرقم بالشارت الرئيسي (مش أقرب توقيت)
-            // عشان الخط العمودي يضل بنفس العمود بالبكسل بين اللوحتين تماماً.
-            const compareList = compareCandlesRef.current || [];
-            const idx = compareList.findIndex((c) => c.time === time);
-            const bar = idx !== -1 ? visibleCandlesRef.current[idx] : findNearestBar(visibleCandlesRef.current, time);
+            // نفس المبدأ بالاتجاه المعاكس — مطابقة بالوقت مش برقم الموضع.
+            // (الشرح الكامل عند `syncCrosshairToCompare` فوق.)
+            const bar = findNearestBar(visibleCandlesRef.current || [], time);
             if (bar) mChart.setCrosshairPosition(bar.close, bar.time, mSeries);
             else mChart.clearCrosshairPosition();
           }
