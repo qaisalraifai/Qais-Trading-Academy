@@ -1222,6 +1222,11 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   const cutDimOutsideRef = useRef(true);
   useEffect(() => { cutDimOutsideRef.current = cutDimOutside; }, [cutDimOutside]);
   const [cutAutoSave, setCutAutoSave] = useState(false);
+  const [cutPrecision, setCutPrecision] = useState("pixel"); // "pixel" (محاذاة لكامل الشمعة) | "free" (موضع حر)
+  // نسخة State من نقطة قص الـ Replay الحالية (currentTimestamp بالـ ref تحت) —
+  // بس عشان نقدر نستخدمها بالـ render (تعطيل خيارات الفريم بالـ select)،
+  // لأن الـ ref لحاله ما بيعمل re-render.
+  const [replayCutTs, setReplayCutTs] = useState(null);
   /* ===== حالة الـ Replay (ReplayState) - مستقلة تماماً عن الفريم الحالي =====
      isActive: هل في Replay/تدريب شغال فعلياً (نقطة قص أو بداية عشوائية).
      anchorTimestamp: الوقت الحقيقي لنقطة "القص" الأصلية (تنعيّن مرة وحدة، وما
