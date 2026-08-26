@@ -5079,27 +5079,7 @@ export default function ReplayClient({ userId }) {
            ليوهو بينما الأساسي من Dukascopy — جلستان وعُطل مختلفة، فتظهر
            فراغات بالشموع. مقيس على ٤ ساعات: ١٩٤ فراغ بيوهو، **صفر** بنفس
            المزوّد. */
-        /* ═══════════════════════════════════════════════════════════════
-           🔴 **على اليومي: مؤشر نقدي عميق، وبلا Dukascopy.**
-           -------------------------------------------------------------
-           التعليق فوق («نفس مزوّد الشارت الأساسي») سببه فجوات الشموع —
-           وهي علّة حقيقية **على الفريمات اللحظية** حيث الجلسات بتختلف.
-           على اليومي ما إلها أثر: الشمعة اليومية وحدة بأي حال، والحشو
-           اللي كان يخلّي الفجوات ثقوباً **انشال** أصلاً.
-
-           والقياس بيقول إنّ Dukascopy على اليومي هي القيد نفسها:
-
-               spanFactor 0.25 — بتعطي SPX500 ربع المدى وبس
-               وبترفض أي طلب أرشيف تاني بنفس الاستدعاء (تلات قياسات)
-
-           والعقد الآجل عند يوهو تاريخه اليومي قصير: طلب تعميق على `ES=F`
-           رجّع **٢٢٣ شمعة بس**. `^GSPC` عنده عقود.
-
-           فعلى اليومي وحده: رمز نقدي بلا `duk`. الشارت الأساسي ما بينمسّ.
-           ═══════════════════════════════════════════════════════════════ */
-        const deepDaily = interval === "1d" && info.compareDaily;
-        const cmpSymbol = deepDaily ? info.compareDaily : (info.yahooSpot || info.yahoo);
-        const dukParam = deepDaily || !info.dukascopy ? "" : `&duk=${encodeURIComponent(info.dukascopy)}`;
+        const dukParam = info.dukascopy ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
         /* ⚠️ **نفس مرساة الشارت الأساسي.** بلا هالسطر كانت المقارنة تجيب
            دايماً نافذة منتهية **الآن** حتى لما يكون في قص على الماضي.
            مقيس على الإنتاج (٢٠٢٦-٠٨-٢٦) بقص على ٢٠١٦-٠١-٢٧:
@@ -5111,7 +5091,7 @@ export default function ReplayClient({ userId }) {
            القص كلها. فالقصّ بالوقت بيرجّع مصفوفة فاضية واللوحة بتضل بيضا. */
         const cutAnchor = replayAnchorTs != null ? `&anchor=${replayAnchorTs}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(cmpSymbol)}&interval=${tdInterval}&count=${maxBars}${cutAnchor}${tdParam}${dukParam}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${cutAnchor}${tdParam}${dukParam}`
         );
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -5127,7 +5107,7 @@ export default function ReplayClient({ userId }) {
           duk: data.duk || null, // تتبّع تقليص المدى واستكمال العمق
         };
         setCompareCandles(candles);
-        deepenCompare(candles, cmpSymbol, tdInterval, tdParam, dukParam);
+        deepenCompare(candles, info, tdInterval, tdParam, dukParam);
       } catch (e) {
         if (!cancelled) { setCompareError(e.message || "تعذّر تحميل بيانات المقارنة"); setCompareCandles([]); }
       } finally {
@@ -5186,7 +5166,7 @@ export default function ReplayClient({ userId }) {
     const DEEPEN_ROUNDS = 3;
     const DEEPEN_MIN_GAIN = 30;     // ربح أقل من هيك = المصدر نفد، بلا إلحاح
 
-    async function deepenCompare(seed, cmpSymbol, tdInterval, tdParam, dukParam) {
+    async function deepenCompare(seed, info, tdInterval, tdParam, dukParam) {
       let oldest = seed?.[0]?.time;
       if (!oldest) return;
       const barSec = (INTERVAL_MS[interval] || 86400000) / 1000;
@@ -5201,7 +5181,7 @@ export default function ReplayClient({ userId }) {
         const anchor = oldest - DEEPEN_BUFFER_BARS * barSec; // تعويض هامش الخادم
         try {
           const res = await fetch(
-            `/api/replay-candles?symbol=${encodeURIComponent(cmpSymbol)}` +
+            `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}` +
               `&interval=${tdInterval}&count=${DEEPEN_COUNT}&anchor=${anchor}${tdParam}${dukParam}`
           );
           if (!res.ok) { log.push(`ج${round}: HTTP ${res.status}`); mark({ state: "وقف" }); return; }
@@ -5238,13 +5218,9 @@ export default function ReplayClient({ userId }) {
            ليوهو بينما الأساسي من Dukascopy — جلستان وعُطل مختلفة، فتظهر
            فراغات بالشموع. مقيس على ٤ ساعات: ١٩٤ فراغ بيوهو، **صفر** بنفس
            المزوّد. */
-        /* لازم **نفس رمز ومزوّد التحميل** فوق، وإلا الشمعة الحية بتيجي من
-           مصدر تاني وبتنلزق على سلسلة مش تبعها. */
-        const deepDaily = interval === "1d" && info.compareDaily;
-        const cmpSymbol = deepDaily ? info.compareDaily : (info.yahooSpot || info.yahoo);
-        const dukParam = deepDaily || !info.dukascopy ? "" : `&duk=${encodeURIComponent(info.dukascopy)}`;
+        const dukParam = info.dukascopy ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(cmpSymbol)}&interval=${tdInterval}&count=3${tdParam}${dukParam}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${tdParam}${dukParam}`
         );
         const data = await res.json();
         if (data.error || !data.candles?.length) return;
