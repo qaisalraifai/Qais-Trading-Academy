@@ -5104,6 +5104,7 @@ export default function ReplayClient({ userId }) {
           usedFallback: !!data.usedFallback,
           symbol: data.sourceSymbol || null,
           errors: data.providerErrors || null,
+          duk: data.duk || null, // تتبّع تقليص المدى واستكمال العمق
         };
         setCompareCandles(candles);
       } catch (e) {

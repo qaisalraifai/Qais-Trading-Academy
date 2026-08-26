@@ -178,6 +178,9 @@ export async function GET(req) {
         provider: "dukascopy",
         usedFallback: false,
         providerErrors: null,
+        /* ⚠️ تقليص المدى كان **صامتاً**: `usedFallback:false` و
+           `providerErrors:null` وهو بيسلّم ربع العمق. صار يقول عن حاله. */
+        duk: dukResult.duk || null,
       });
     }
     dukError = dukResult.error || "استجابة فارغة من Dukascopy";
