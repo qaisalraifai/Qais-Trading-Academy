@@ -59,7 +59,6 @@ const RED = "#FF453A";
 const LINE_TEXT_TYPES = new Set(["trendline", "ray", "extendedline", "arrow", "hline", "hray", "vline", "crossline"]);
 const AREA_TEXT_TYPES = new Set(["circle", "triangle", "path", "parallelchannel"]);
 const TEXT_CAPABLE_TYPES = new Set([...LINE_TEXT_TYPES, ...AREA_TEXT_TYPES, "rectangle"]);
-const DEFAULT_COMPARE_HEIGHT = 200; // ارتفاع لوحة المقارنة الافتراضي بالبكسل (قابل للسحب من المستخدم)
 // عرض ثابت (بالبكسل) لعمود الأسعار باليمين - لازم يكون نفس القيمة بالشارت الرئيسي
 // وشارت المقارنة معاً، وإلا كل شارت (نسخة lightweight-charts منفصلة) بيحسب عرض
 // عمود الأسعار تلقائياً حسب عدد خانات السعر تبعه، فمنطقة رسم الشموع ما بتضل
@@ -1192,17 +1191,6 @@ export default function ReplayClient({ userId }) {
   const cutDimOutsideRef = useRef(true);
   useEffect(() => { cutDimOutsideRef.current = cutDimOutside; }, [cutDimOutside]);
   const [cutAutoSave, setCutAutoSave] = useState(false);
-  const [cutPrecision, setCutPrecision] = useState("pixel"); // "pixel" (محاذاة لكامل الشمعة) | "free" (موضع حر)
-  // نسخة State من نقطة قص الـ Replay الحالية (currentTimestamp بالـ ref تحت) —
-  // بس عشان نقدر نستخدمها بالـ render (تعطيل خيارات الفريم بالـ select)،
-  // لأن الـ ref لحاله ما بيعمل re-render.
-  const [replayCutTs, setReplayCutTs] = useState(null);
-  /* مرساة **ثابتة لكل قصّة** — بتستعملها لوحة المقارنة لتجيب نفس النافذة
-     التاريخية اللي جابها الشارت الأساسي.
-     ⚠️ `replayCutTs` فوق بيتحرّك مع **كل خطوة** تدريب، فما بينفع كمُشغِّل
-     جلب: بيعيد تحميل المقارنة كل ضغطة. هاي بتتثبّت مرة عند بداية القص
-     وبتنمسح لما ينتهي. */
-  const [replayAnchorTs, setReplayAnchorTs] = useState(null);
   /* ===== حالة الـ Replay (ReplayState) - مستقلة تماماً عن الفريم الحالي =====
      isActive: هل في Replay/تدريب شغال فعلياً (نقطة قص أو بداية عشوائية).
      anchorTimestamp: الوقت الحقيقي لنقطة "القص" الأصلية (تنعيّن مرة وحدة، وما
@@ -1483,19 +1471,6 @@ export default function ReplayClient({ userId }) {
       // أبداً بأي حالة (حتى لو في إعدادات قديمة محفوظة بالمتصفح).
       priceLineVisible: false,
     });
-    if (compareChartRef.current) {
-      compareChartRef.current.applyOptions({
-        layout: { background: { color: chartSettings.bg }, textColor: chartSettings.textColor || "#A79FC4" },
-        grid: {
-          vertLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
-          horzLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
-        },
-        crosshair: {
-          vertLine: { color: chartSettings.crosshairColor },
-          horzLine: { color: chartSettings.crosshairColor },
-        },
-      });
-    }
     saveChartSettings(chartSettings);
     applyIndicatorPaneMargins();
     scheduleDraw();
@@ -1657,18 +1632,6 @@ export default function ReplayClient({ userId }) {
   function effectiveLineWidth(it, line) { return it?.style?.widths?.[line.key] || line.lineWidth || 1.4; }
 
   /* ===== شموع المقارنة المسموح عرضها الآن — المصدر الوحيد للقص =====
-     ⚠️ انبنت لأن القص كان مكرَّراً بمكان واحد وناقص بالتاني، فأي مسار
-     بينسى يقصّ بيسرّب مستقبل الرمز المترابط بوضع التدريب. أي مكان بيكتب
-     على سيريز المقارنة لازم يمرّ من هون — مش من `compareCandles` مباشرة.
-
-     بوضع المباشر ما في قص: الشارتان عايشان بنفس اللحظة. */
-  function compareCandlesUpToReveal() {
-    if (mode !== "training" || !allCandles.length) return compareCandles;
-    const cutTime = allCandles[Math.min(revealCount, allCandles.length) - 1]?.time;
-    if (cutTime == null) return compareCandles;
-    return compareCandles.filter((c) => c.time <= cutTime);
-  }
-
   /* أي تغيير بإعدادات لوحة المقارنة (نوع الشارت أو ألوانه): نعيد بناء السيريز فوراً ونحفظ بالمتصفح.
      منقّاة بنفس بيانات الشمعة الحالية عشان يبان التغيير مباشرة بدون قفل/إعادة تحميل. */
 
@@ -1687,15 +1650,6 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { drawingsVisibleRef.current = drawingsVisible; scheduleDraw(); }, [drawingsVisible]);
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
   useEffect(() => { setDrawingTemplatesMenuOpen(false); setTextPopoverOpen(false); }, [selectedDrawingId]);
-  useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
-  useEffect(() => {
-    mainTimesRef.current = allCandles.slice(0, revealCount).map((c) => c.time);
-    compareTimesRef.current = compareCandlesUpToReveal().map((c) => c.time);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allCandles, revealCount, compareCandles, mode]);
-  useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
-  useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
-  useEffect(() => { compareCandlesRef.current = compareCandles; }, [compareCandles]);
   /* useLayoutEffect لا useEffect: لازم visibleCandlesRef.current يتحدّث *قبل*
      useLayoutEffect تحديث الشارت تحت (سطر ~4381) يلي بينده scheduleDraw()
      ويرسم كل الرسومات (drawOverlay -> ptToLogical -> visibleCandlesRef.current).
@@ -3943,32 +3897,12 @@ export default function ReplayClient({ userId }) {
             window.innerHeight - rect.top - padTop - padBottom - BOTTOM_BREATHING_ROOM
           );
         }
-        // توزيع الارتفاع بين الشارت الرئيسي وشارت المقارنة (لو مفعّل) حسب أي جزء مكبّر حالياً
-        // وحسب الحجم اللي المستخدم سحبه يدوياً (قاسم قابل للسحب زي تريدنغ فيو)
-        const DIVIDER_H = 10;
-        let mainHeight = totalHeight;
-        let compareHeight = 0;
-        if (compareOpenRef.current) {
-          if (maximizedPaneRef.current === "compare") {
-            mainHeight = 0;
-            compareHeight = totalHeight;
-          } else if (maximizedPaneRef.current === "main") {
-            mainHeight = totalHeight;
-            compareHeight = 0;
-          } else {
-            const maxCompare = Math.max(100, totalHeight - 150 - DIVIDER_H);
-            compareHeight = Math.min(Math.max(100, compareHeightPxRef.current), maxCompare);
-            mainHeight = Math.max(150, totalHeight - compareHeight - DIVIDER_H);
-          }
-        }
-        // نفرض ارتفاع صريح بالبكسل على صندوقي اللوحتين نفسهم (مش بس على الشارت جوّاهم).
-        // هيك بيضلوا مطابقين تماماً لبعض بغض النظر عن طول أي عنصر جوا اللوحة الرئيسية
-        // (زي عمود أدوات الرسم اللي كان بيطوّل أكتر من الشارت ويسيب فراغ أسود تحته).
-        if (mainPaneRef.current) mainPaneRef.current.style.height = `${mainHeight}px`;
-        if (comparePaneRef.current) comparePaneRef.current.style.height = `${compareHeight}px`;
+        /* ⚠️ كان هون توزيع ارتفاع بين الشارت ولوحة المقارنة (قاسم قابل
+           للسحب + حالة تكبير لوحة). اللوحة انشالت، فالشارت بياخد
+           `totalHeight` كامل. */
         chart.applyOptions({
           width: chartContainerRef.current.clientWidth,
-          height: mainHeight,
+          height: totalHeight,
         });
         // مزامنة قياس الـ overlay canvas مع الشارت (للرسومات)
         if (overlayCanvasRef.current) {
@@ -3978,12 +3912,6 @@ export default function ReplayClient({ userId }) {
           overlayCanvasRef.current.height = Math.max(1, rect.height * dpr);
           overlayCanvasRef.current.style.width = rect.width + "px";
           overlayCanvasRef.current.style.height = rect.height + "px";
-        }
-        if (compareChartRef.current && compareContainerRef.current) {
-          compareChartRef.current.applyOptions({
-            width: compareContainerRef.current.clientWidth,
-            height: compareHeight,
-          });
         }
         scheduleDraw();
       };
@@ -4156,10 +4084,9 @@ export default function ReplayClient({ userId }) {
         // للشارت الأصلي (يلي هو المسؤول عن رسم مؤشر التقاطع)
         const idx = Math.round(logical);
         const barForCrosshair = visibleCandlesRef.current[idx];
-        if (barForCrosshair) {
-          chart.setCrosshairPosition(snapped, barForCrosshair.time, series);
-          syncCrosshairToCompare(barForCrosshair.time);
-        }
+        /* ⚠️ هالسطر **للشارت الأساسي** — كان ملتصقاً بمزامنة لوحة المقارنة
+           فانشال معها بالغلط أول مرة. بلاه المغناطيس ما بيحرّك مؤشر التقاطع. */
+        if (barForCrosshair) chart.setCrosshairPosition(snapped, barForCrosshair.time, series);
         if (!isDrawingRef.current && !activePath) return;
         if (isDrawingRef.current && drawStateRef.current) {
           drawStateRef.current.p2 = shiftPressedRef.current
@@ -4305,7 +4232,6 @@ export default function ReplayClient({ userId }) {
            فيها رسمة تحت المؤشّر، وهاد بينفّذ بس لما ما يكون في ولا وحدة.
            وبتوقف كمان لما تكون أداة رسم شغّالة (الشرط بأول الدالة). */
         if (!hit) {
-          if (compareOpenRef.current) toggleMaximizePane("main");
           return;
         }
         if (hit.tradeTag) return;
@@ -4510,49 +4436,6 @@ export default function ReplayClient({ userId }) {
       }
       chart.subscribeCrosshairMove(onCrosshairMagnet);
 
-      /* مزامنة مؤشر تقاطع الوقت/السعر مع لوحة المقارنة (لو مفتوحة) عشان يبانوا
-         كأنهم شاشة وحدة زي تريدنغ فيو بالظبط: أي تحريك بالماوس عالشارت الرئيسي
-         بيحرك نفس عمود الوقت بلوحة المقارنة تلقائياً، شمعة شمعة.
-         ملاحظة مهمة: منستدعيها بشكل مباشر من onMouseMove (مش بس عن طريق
-         subscribeCrosshairMove) لأن مؤشر الشارت الرئيسي أصلاً بينترسم يدوياً
-         عن طريق setCrosshairPosition، وما في ضمان إنها هي نفسها بتفعّل حدث
-         subscribeCrosshairMove بكل نسخ المكتبة — فبالاستدعاء المباشر بنضمن
-         إنها تشتغل دايماً. */
-      function syncCrosshairToCompare(time) {
-        if (crosshairSyncingRef.current) return;
-        const cChart = compareChartRef.current;
-        const cSeries = compareSeriesRef.current;
-        if (!cChart || !cSeries) return;
-        crosshairSyncingRef.current = true;
-        try {
-          if (time == null) {
-            cChart.clearCrosshairPosition();
-          } else {
-            /* 🔴 **المطابقة بالوقت، مش برقم الموضع.**
-               -------------------------------------------------------------
-               كانت: `idx = findCandleIndexByTime(main, time)` وبعدها
-               `compare[idx]` — يعني بتفترض إنّ الرقم N بنفس اللحظة
-               باللوحتين. وهاد **نفس الافتراض** اللي انكسر بمزامنة المدى.
-
-               مقيس: ناسداك ~٢٩٨ شمعة يومية بالسنة (فيها شمعة الأحد من
-               Dukascopy) وSP500 ~٢٥١ — فالرقم N بيبعد أكتر كل ما رحنا للورا،
-               والخط بينزاح ويرجع يتصحّح مع أول حدث تاني. وهاد اللي بلّغ عنه:
-               «بيفلت وبيرجع يعدل».
-
-               الاختيار الأصلي كان **مقصوداً** لأن مزامنة المدى كانت بالفهرس
-               وقتها. المدى صار بالوقت (`mapLogicalRange`)، فهاي لازم تتبعه —
-               وإلا الاتنان بيتناقضوا. */
-            const bar = findNearestBar(compareCandlesRef.current || [], time);
-            if (bar) cChart.setCrosshairPosition(bar.close, bar.time, cSeries);
-            else cChart.clearCrosshairPosition();
-          }
-        } catch {}
-        crosshairSyncingRef.current = false;
-      }
-      function onMainCrosshairSync(param) {
-        syncCrosshairToCompare(param.time ?? null);
-      }
-      chart.subscribeCrosshairMove(onMainCrosshairSync);
 
       chart.__cleanup = () => {
         window.removeEventListener("resize", handleResize);
@@ -4577,7 +4460,6 @@ export default function ReplayClient({ userId }) {
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChangeCloseMenus);
         chart.unsubscribeCrosshairMove(scheduleDraw);
         chart.unsubscribeCrosshairMove(onCrosshairMagnet);
-        chart.unsubscribeCrosshairMove(onMainCrosshairSync);
 
         clearInterval(priceTagInterval);
         clearInterval(ohlcTickerInterval);
@@ -4618,23 +4500,10 @@ export default function ReplayClient({ userId }) {
     }
   }, [isFullscreen, mode, cutMode, randomChart, assetValue, interval, maxBars, speed, isPlaying, loading]);
 
-  /* لما تنفتح/تنقفل لوحة المقارنة أو ينكبّر أي جزء منها، لازم نعيد توزيع الارتفاع بين الشارتين.
-     وكمان لازم نخفي محور الوقت (شريط التواريخ) بالشارت الرئيسي وقتها، عشان يضل
-     محور وقت واحد بس ظاهر بالأسفل (بلوحة المقارنة) - بالضبط زي تريدنغ فيو، مش
-     محورين منفصلين لكل لوحة. */
-  useEffect(() => {
-    const t = setTimeout(() => chartRef.current?.__resize?.(), 30);
-    if (chartRef.current) {
-      const hideMainAxis = compareOpen && maximizedPane !== "main";
-      try { chartRef.current.applyOptions({ timeScale: { visible: !hideMainAxis } }); } catch {}
-    }
-    return () => clearTimeout(t);
-  }, [compareOpen, maximizedPane]);
-
   /* فتح/قفل لوحة المتابعة (Watchlist) بيغيّر عرض حاوية الشارت الفعلي، بس هاد
      التغيير ما بيطلق حدث "resize" على النافذة نفسها (لأنه بس تغيير Flexbox
      جوا الصفحة) - فلازم نطلب من الشارت يعيد حساب عرضه يدوياً، وإلا بضل
-     فراغ أسود مكان اللوحة المقفولة (نفس فكرة تأثير compareOpen فوق). */
+     فراغ أسود مكان اللوحة المقفولة. */
   useEffect(() => {
     const t = setTimeout(() => chartRef.current?.__resize?.(), 30);
     return () => clearTimeout(t);
@@ -4642,47 +4511,6 @@ export default function ReplayClient({ userId }) {
 
 
 
-  /* تحديث بيانات شارت المقارنة كل ما تتغيّر الرسمة/الفريم/تقدّم التشغيل (وضع التدريب).
-     السبب الحقيقي للفراغ يلي كان بيبان يمين الشارت الرئيسي: بوضع "التدريب" (الريبلاي)
-     الشارت الرئيسي بيكون مجمّد على نقطة تاريخية معينة ("اختيار نقطة البداية")
-     ومكشوف منه بس شموع لحد هاي النقطة، بينما رمز المقارنة كان دايماً بيجيب ويعرض
-     آخر بيانات حية لليوم (لحد اليوم)! يعني اللوحتين أصلاً بيمثلوا فترتين زمنيتين
-     مختلفتين تماماً. الحل: نقص بيانات المقارنة لنفس آخر نقطة زمنية مكشوفة
-     بالشارت الرئيسي (بوضع التدريب)، تماماً متل ما بنعمل بالشارت الرئيسي نفسه -
-     هيك ما ينكشف "مستقبل" لرمز المقارنة قبل ما يوصله الريبلاي. */
-
-
-  /* جلب بيانات رمز المقارنة (نفس مصدر البيانات اللي بتستخدمه أداة الريبلاي - Yahoo Finance) */
-
-  function toggleCompare() {
-    setCompareOpen((v) => {
-      const next = !v;
-      if (!next) setMaximizedPane((p) => (p === "compare" ? null : p));
-      return next;
-    });
-  }
-  function toggleMaximizePane(pane) {
-    setMaximizedPane((p) => (p === pane ? null : pane));
-  }
-  /* سحب القاسم بين الشارت الرئيسي ولوحة المقارنة لتكبير/تصغير أي منهم يدوياً (زي تريدنغ فيو بالظبط) */
-  function onDividerMouseDown(e) {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startHeight = compareHeightPxRef.current;
-    function onMove(ev) {
-      const delta = ev.clientY - startY;
-      const next = Math.max(80, startHeight - delta);
-      compareHeightPxRef.current = next;
-      setCompareHeightPx(next);
-      chartRef.current?.__resize?.();
-    }
-    function onUp() {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    }
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }
 
   /* ===================== جلب البيانات ===================== */
   // رقم تسلسلي لكل استدعاء لـ loadData - عشان لو صار كذا طلب بيانات (fetch) شغال
@@ -5505,30 +5333,6 @@ export default function ReplayClient({ userId }) {
     setReplayCutTs(c.time);
   }, [revealCount, allCandles, mode, interval]);
 
-  /* بتثبّت مرساة المقارنة مرة وحدة لكل قصّة. بتقرا من نفس الـref اللي بيقرا
-     منه الشارت الأساسي، فاللوحتان بتطلبا **نفس النافذة**.
-
-     🔴 **`mode !== "training"` شرط ضروري مش تزيين.**
-     -----------------------------------------------------------------------
-     بلاه كانت المرساة بتضل عالقة بالمباشر، فالمقارنة تجيب نافذة تاريخية
-     ضيّقة حوالين قصّة قديمة بينما الأساسي عنده تاريخه كامل — وهاد بيرجّع
-     «مشكلة العمق» بوضع مباشر سليم.
-
-     السبب: `replayStateRef.current.isActive` **ما بتنمسح** عند الرجوع
-     للمباشر إلا جوّا `loadData` غير المتزامنة — يعني **بعد** ما المقارنة
-     جابت بياناتها. وأسوأ: المسح بيصير عبر `setReplayCutTs(null)`، ولو كان
-     `replayCutTs` أصلاً فاضي فالقيمة ما بتتغيّر، والتأثير ما بيعيد التقييم
-     أبداً → المرساة عالقة للأبد.
-
-     `mode` بالتبعيات، فالشرط بينفّذ لحظة التبديل. ونفس الشرط مستعمل بالشارت
-     الأساسي (`mode === "training"` فوق) — يعني اللوحتان على نفس القاعدة. */
-  useEffect(() => {
-    setReplayAnchorTs((prev) => {
-      if (mode !== "training" || !replayStateRef.current.isActive) return null;
-      return prev ?? replayStateRef.current.anchorTimestamp ?? replayCutTs;
-    });
-  }, [replayCutTs, mode]);
-
   /* شبكة أمان لـ resumeSavedSession (شوفي تعليق pendingResumeRef فوق): لو في
      رجوع لمكان توقف لسا "قيد التنفيذ" (loadData ما جابت بيانات التدريب
      الحقيقية بعد)، منفرض نقطة التوقف المحفوظة من جديد بعد أي رندر ممكن يكون
@@ -5596,8 +5400,10 @@ export default function ReplayClient({ userId }) {
        واسعة عمداً — ما بتلمس تبويبة متروكة مفتوحة عطلة أو شهر، وبتمسك حالة
        ٢٠١٦ (٢٦٠٠+ شمعة يومية). */
     if (replayStateRef.current.isActive) {
-      const plotted = mainTimesRef.current;
-      const newest = plotted.length ? plotted[plotted.length - 1] : null;
+      /* ⚠️ كان بيقرا `mainTimesRef` اللي انشال مع لوحة المقارنة.
+         `visibleCandlesRef` هي نفس المحتوى — الشموع المكشوفة فعلاً. */
+      const plotted = visibleCandlesRef.current || [];
+      const newest = plotted.length ? plotted[plotted.length - 1]?.time : null;
       const bucketSec = (INTERVAL_MS[intervalRef.current] || 60000) / 1000;
       if (newest != null && Date.now() / 1000 - newest > bucketSec * 200) return;
     }
@@ -6270,7 +6076,6 @@ export default function ReplayClient({ userId }) {
           <button onClick={() => loadData()} className={iconBtnClass(false)} style={iconBtn(false)} title="تحديث"><ToolIcon id="refresh" /></button>
         )}
         <div style={{ width: 1, height: 22, background: "#1C1630" }} />
-        <button onClick={toggleCompare} className={iconBtnClass(compareOpen)} style={iconBtn(compareOpen)} title="اعرضي رمز ثاني بلوحة منفصلة أسفل الشارت للمقارنة"><ToolIcon id="compare2" /></button>
         <button
           onClick={() => setIndicatorPanelOpen((v) => !v)}
           className={iconBtnClass(indicatorPanelOpen)} style={{ ...iconBtn(indicatorPanelOpen), position: "relative" }}
@@ -8379,72 +8184,6 @@ export default function ReplayClient({ userId }) {
     );
   }
 
-  /* نافذة إعدادات لوحة المقارنة: نوع الشارت (منطقة/خط/شموع) + ألوانه، بتنطبق فوراً وتنحفظ محلياً */
-  function renderCompareSettingsDialog() {
-    if (!compareSettingsOpen) return null;
-    const row = (label, control) => (
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #1C1630" }}>
-        <span style={{ fontSize: 13, color: "#A79FC4" }}>{label}</span>
-        {control}
-      </div>
-    );
-    const colorInput = (val, onChange) => (
-      <input type="color" value={val} onChange={(e) => onChange(e.target.value)}
-        style={{ width: 40, height: 28, border: "1px solid #2A2145", borderRadius: 3, background: "none", cursor: "pointer", padding: 0 }} />
-    );
-    const typeOptions = [
-      { value: "area", label: "منطقة (Area)" },
-      { value: "line", label: "خط (Line)" },
-      { value: "candles", label: "شموع (Candlestick)" },
-    ];
-    return (
-      /* ⚠️ `fixed` مش `absolute`: كانت النافذة مرسومة جوّا لوحة المقارنة، واللوحة
-         عندها `overflow: hidden` بارتفاع ٢٠٠ بكسل افتراضياً — فالنافذة كانت
-         **تنقصّ** وأزرارها ما بتبان إلا لما يرفع القاسم لفوق. بلّغ عنها.
-         بالتثبيت على إطار العرض بتبان كاملة مهما كان ارتفاع اللوحة. */
-      <div style={{
-        position: "fixed", inset: 0, zIndex: 3000, background: "#0A0614cc",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "1rem", overflowY: "auto",
-      }} onClick={() => setCompareSettingsOpen(false)}>
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{ width: 300, background: "#141024", border: `1px solid #3D2F63`, borderRadius: 0, padding: "1.1rem 1.3rem" }}
-        >
-          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 6, fontSize: 15 }}>إعدادات لوحة المقارنة</div>
-          {row("نوع الشارت", (
-            <select
-              value={compareSettings.type}
-              onChange={(e) => setCompareSettings((s) => ({ ...s, type: e.target.value }))}
-              style={{ ...selectStyle, minWidth: 140, padding: "0.35rem 0.5rem" }}
-            >
-              {typeOptions.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
-            </select>
-          ))}
-          {compareSettings.type === "candles" ? (
-            <>
-              {row("لون شمعة الصعود", colorInput(compareSettings.up, (v) => setCompareSettings((s) => ({ ...s, up: v }))))}
-              {row("لون شمعة الهبوط", colorInput(compareSettings.down, (v) => setCompareSettings((s) => ({ ...s, down: v }))))}
-            </>
-          ) : (
-            <>
-              {row("لون الخط", colorInput(compareSettings.lineColor, (v) => setCompareSettings((s) => ({ ...s, lineColor: v }))))}
-              {compareSettings.type === "area" &&
-                row("لون التعبئة", colorInput(compareSettings.fillColor, (v) => setCompareSettings((s) => ({ ...s, fillColor: v }))))}
-            </>
-          )}
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button onClick={() => setCompareSettings(DEFAULT_COMPARE_SETTINGS)} style={{ ...btnStyle("secondary"), flex: 1 }}>
-              الافتراضي
-            </button>
-            <button onClick={() => setCompareSettingsOpen(false)} style={{ ...btnStyle("primary"), flex: 1 }}>
-              تم
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // ملاحظة: renderControls تم دمجها بالكامل جوا renderTopBar (شريط واحد مضغوط
   // بدل صندوقين فوق بعض)، فما عاد في حاجة لها هون.
@@ -8764,12 +8503,11 @@ export default function ReplayClient({ userId }) {
             />
           )}
           <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
-            {/* اللوحة الرئيسية - ارتفاعها الفعلي مضبوط مباشرة بالبكسل من JS (mainPaneRef)
-                عشان يضل مطابق تماماً لارتفاع الشارت نفسه (overflow:hidden هون بيمنعه
-                من "يفلت" ويسيب فراغ أسود تحت الشارت) */}
+            {/* ⚠️ كان هون ضبط ارتفاع بالبكسل من JS (`mainPaneRef`) عشان يتقاسم
+                المساحة مع لوحة المقارنة. اللوحة انشالت، فاللوحة الرئيسية صارت
+                تاخد المساحة كاملة بـ`flex: 1` — بلا حساب ارتفاعات ولا قاسم. */}
             <div
-              ref={mainPaneRef}
-              style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
+              style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden", position: "relative" }}
             >
               <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
                 {allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
@@ -8784,13 +8522,6 @@ export default function ReplayClient({ userId }) {
                 {allCandles.length > 0 && renderContextMenu()}
                 {allCandles.length > 0 && renderLineTextHint()}
                 {renderInlineTextEditor()}
-                {compareOpen && (
-                  <div style={paneCornerBadgeStyle("right")}>
-                    <button onClick={() => toggleMaximizePane("main")} style={paneCornerBtnStyle} title={maximizedPane === "main" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة (أو دبل-كليك على القاسم)"}>
-                      {maximizedPane === "main" ? "⤡" : "⤢"}
-                    </button>
-                  </div>
-                )}
                 {allCandles.length > 0 && activeIndicators.length > 0 && renderActiveIndicatorsBar()}
                 {indicatorPanelOpen && renderIndicatorPanel()}
                 {indicatorSettingsFor && renderIndicatorSettingsDialog()}
@@ -8823,54 +8554,6 @@ export default function ReplayClient({ userId }) {
                 </div>
               </div>
             </div>
-
-            {/* قاسم قابل للسحب لتكبير/تصغير لوحة المقارنة (زي تريدنغ فيو بالظبط) - اسحبيه لفوق/تحت،
-                أو دبل-كليك عليه يرجّع النسبة الافتراضية */}
-            {compareOpen && !maximizedPane && (
-              <div
-                onMouseDown={onDividerMouseDown}
-                onDoubleClick={() => { compareHeightPxRef.current = DEFAULT_COMPARE_HEIGHT; setCompareHeightPx(DEFAULT_COMPARE_HEIGHT); chartRef.current?.__resize?.(); }}
-                title="اسحبي لتكبير/تصغير لوحة المقارنة، أو دبل-كليك للرجوع للحجم الافتراضي"
-                style={dividerStyle}
-              >
-                <span style={dividerGripStyle} />
-              </div>
-            )}
-
-            {/* لوحة المقارنة: رمز ثاني للقراءة فقط، بدون أدوات رسم، مزامَنة سكرول/زوم مع اللوحة الرئيسية.
-                نفس سطح الشارت الرئيسي بالضبط (بدون حدود/زوايا مدوّرة) عشان تبان لوحة وحدة متصلة زي تريدنغ فيو */}
-            {compareOpen && (
-              <div
-                ref={comparePaneRef}
-                style={{ display: maximizedPane === "main" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
-              >
-                <div style={paneCornerBadgeStyle()}>
-                  <ArrowLeftRight size={13} strokeWidth={1.75} aria-hidden />
-                  <select
-                    value={compareSymbol}
-                    onChange={(e) => setCompareSymbol(e.target.value)}
-                    style={{ ...selectStyle, minWidth: 130, padding: "0.2rem 0.4rem", fontSize: 11.5, background: "#0000" }}
-                  >
-                    {ASSETS.map((g) => (
-                      <optgroup key={g.group} label={g.group}>
-                        {g.items.map((it) => (
-                          <option key={it.v} value={it.v} disabled={!it.yahoo}>{it.label}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                  {compareLoading && <span style={{ fontSize: 11, color: "#6E6690" }}>...جاري التحميل</span>}
-                  {compareError && <span style={{ fontSize: 11, color: RED }}>{compareError}</span>}
-                  <button onClick={() => setCompareSettingsOpen(true)} style={paneCornerBtnStyle} title="إعدادات لوحة المقارنة (نوع الشارت والألوان)"><Settings size={14} aria-hidden /></button>
-                  <button onClick={() => toggleMaximizePane("compare")} style={paneCornerBtnStyle} title={maximizedPane === "compare" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة (أو دبل-كليك على القاسم)"}>
-                    {maximizedPane === "compare" ? "⤡" : "⤢"}
-                  </button>
-                  <button onClick={toggleCompare} style={paneCornerBtnStyle} title="إغلاق لوحة المقارنة">✕</button>
-                </div>
-                <div ref={compareContainerRef} style={{ width: "100%", height: "100%", flex: 1, minHeight: 0 }} />
-                {renderCompareSettingsDialog()}
-              </div>
-            )}
           </div>
           {allCandles.length > 0 && renderDrawToolbar()}
         </div>
@@ -8964,16 +8647,6 @@ const templateMenuItemStyle = {
   padding: "9px 14px", cursor: "pointer", fontSize: 13, color: "#F5F3FF",
 };
 
-function paneCornerBadgeStyle(side) {
-  return {
-    position: "absolute", top: 8, [side === "right" ? "right" : "left"]: 8, zIndex: 6,
-    display: "flex", alignItems: "center", gap: 6,
-    background: "rgba(13,13,10,0.72)", backdropFilter: "blur(2px)",
-    border: `1px solid #2A2145`, borderRadius: 3,
-    padding: "0.2rem 0.45rem", fontSize: 12, fontWeight: 700, color: "#ddd",
-    pointerEvents: "auto",
-  };
-}
 const paneCornerBtnStyle = {
   background: "none", border: "none", color: GOLD_LIGHT,
   cursor: "pointer", fontSize: 13, padding: "0 0.15rem", lineHeight: 1,
@@ -8983,18 +8656,3 @@ const quickMenuBtnStyle = {
   width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
   background: "none", border: "none", borderRadius: 3, color: "#A79FC4", cursor: "pointer",
 };
-/* القاسم القابل للسحب بين الشارت الرئيسي ولوحة المقارنة - سطح واحد متصل بدون فراغ، زي تريدنغ فيو بالظبط */
-const dividerStyle = {
-  height: 10, flexShrink: 0, cursor: "row-resize",
-  display: "flex", alignItems: "center", justifyContent: "center",
-  background: "transparent",
-};
-const dividerGripStyle = {
-  width: 40, height: 3, borderRadius: 3, background: `#3D2F63`,
-};
-
-function btnStyle(kind) {
-  const base = { padding: "0.55rem 1rem", borderRadius: 3, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" };
-  if (kind === "primary") return { ...base, background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, color: "#120B24" };
-  return { ...base, background: "transparent", border: `1px solid #3D2F63`, color: GOLD };
-}
