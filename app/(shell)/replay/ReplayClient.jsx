@@ -5140,37 +5140,72 @@ export default function ReplayClient({ userId }) {
        ⚠️ **جولة وحدة عمداً.** الفكرة انكسرت مرة، فالقياس قبل التوسيع:
        `__qtaPaneInfo().compareSource.deepen` بيقول شو صار.
        ═══════════════════════════════════════════════════════════════════════ */
-    const DEEPEN_COUNT = 800;   // ~٢.٧ سنة يومي — طلب خفيف
-    const DEEPEN_DELAY_MS = 4000; // أطول بوضوح من نافذة حد الأرشيف
+    /* 🔴 **وزن الطلب هو اللي بيقرّر يعيش أو يطيح — مش عدد الجولات.**
+       -------------------------------------------------------------------
+       الخادم بيحسب `spanMs = secPerBar × count × 1.25`، وبيجرّب **العامل ١
+       أول شي** قبل ما يقلّص. فنافذة العامل ١ هي الحمل الحقيقي:
+
+           count=800  بلا زحزحة → ٢.٧ سنة  ✓ اشتغل (gained 21)
+           count=2000 مع زحزحة  → ٧.٧ سنة  ✗ طيّح الدالة (500 على كل duk)
+           count=600  مع زحزحة  → ٢.٩ سنة  ← هون
+
+       يعني الزحزحة بتضيف ٣٠٠ يوم للنافذة، فمنعوّضها بتنزيل `count`. الوزن
+       بيضل عند المستوى المثبَت إنه بيمرق، والفرق إنّ النافذة كلها صارت
+       **بيانات جديدة** بدل ٩٢٪ مكرَّر.
+
+       ⚠️ الانهيار موثّق بـ`dukascopy-candles.js`: نفاد ذاكرة بيطيح الـprocess
+       و**ما بينمسك بـtry/catch**. ولمّا تطيح النسخة، كل طلب تاني عليها
+       بيرجع ٥٠٠ — لهيك ظهرت على الذهب وناسداك كمان مش المقارنة بس.
+
+       ⚠️ والزحزحة ضرورية: الخادم بيحسب `toMs = anchor + bufferSeconds`
+       و`bufferSeconds` لليومي **٣٠٠ يوم**. بلاها النافذة بتنتهي ٣٠٠ يوم بعد
+       أقدم شمعة عنا — مقيس: رجع ٢٧٦ شمعة و**٢١ بس جديدة**. */
+    const DEEPEN_BUFFER_BARS = 300; // مطابق لـ`bufferSeconds` بالخادم
+    const DEEPEN_COUNT = 600;       // نافذة العامل١ ≈ ٢.٩ سنة — بمستوى المثبَت
+    const DEEPEN_DELAY_MS = 4000;   // أطول بوضوح من نافذة حد الأرشيف
+    const DEEPEN_ROUNDS = 3;
+    const DEEPEN_MIN_GAIN = 30;     // ربح أقل من هيك = المصدر نفد، بلا إلحاح
 
     async function deepenCompare(seed, info, tdInterval, tdParam, dukParam) {
-      const oldest = seed?.[0]?.time;
+      let oldest = seed?.[0]?.time;
       if (!oldest) return;
-      const mark = (o) => { compareSourceRef.current = { ...compareSourceRef.current, deepen: o }; };
-      mark({ state: "بانتظار", delayMs: DEEPEN_DELAY_MS, count: DEEPEN_COUNT, from: oldest });
+      const barSec = (INTERVAL_MS[interval] || 86400000) / 1000;
+      const log = [];
+      const mark = (o) => { compareSourceRef.current = { ...compareSourceRef.current, deepen: { ...o, log } }; };
 
-      await new Promise((r) => setTimeout(r, DEEPEN_DELAY_MS));
-      if (cancelled || !compareOpenRef.current) { mark({ state: "انلغى" }); return; }
+      for (let round = 1; round <= DEEPEN_ROUNDS; round++) {
+        mark({ state: "بانتظار", round, from: oldest });
+        await new Promise((r) => setTimeout(r, DEEPEN_DELAY_MS));
+        if (cancelled || !compareOpenRef.current) { mark({ state: "انلغى", round }); return; }
 
-      try {
-        const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}` +
-            `&interval=${tdInterval}&count=${DEEPEN_COUNT}&anchor=${oldest}${tdParam}${dukParam}`
-        );
-        if (!res.ok) { mark({ state: `HTTP ${res.status}` }); return; }
-        const data = await res.json();
-        if (data.error) { mark({ state: `خطأ: ${String(data.error).slice(0, 60)}` }); return; }
-        const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
-        if (!older.length) { mark({ state: "ما في أقدم", provider: data.provider }); return; }
-        if (cancelled) return;
-        mark({ state: "نجح", gained: older.length, newFirst: older[0].time, provider: data.provider, duk: data.duk || null });
-        setCompareCandles((prev) => {
-          const seen = new Set(prev.map((c) => c.time));
-          return older.filter((c) => !seen.has(c.time)).concat(prev).sort((a, b) => a.time - b.time);
-        });
-      } catch (e) {
-        mark({ state: `فشل: ${String(e?.message || e).slice(0, 60)}` });
+        const anchor = oldest - DEEPEN_BUFFER_BARS * barSec; // تعويض هامش الخادم
+        try {
+          const res = await fetch(
+            `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}` +
+              `&interval=${tdInterval}&count=${DEEPEN_COUNT}&anchor=${anchor}${tdParam}${dukParam}`
+          );
+          if (!res.ok) { log.push(`ج${round}: HTTP ${res.status}`); mark({ state: "وقف" }); return; }
+          const data = await res.json();
+          if (data.error) { log.push(`ج${round}: ${String(data.error).slice(0, 50)}`); mark({ state: "وقف" }); return; }
+          const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
+          if (cancelled) return;
+          log.push(`ج${round}: رجع ${data.candles?.length || 0} · جديد ${older.length} · عامل ${data.duk?.spanFactor ?? "—"}`);
+          if (!older.length) { mark({ state: "ما في أقدم", provider: data.provider }); return; }
+
+          oldest = older[0].time;
+          setCompareCandles((prev) => {
+            const seen = new Set(prev.map((c) => c.time));
+            return older.filter((c) => !seen.has(c.time)).concat(prev).sort((a, b) => a.time - b.time);
+          });
+          mark({ state: "شغّال", round, newFirst: oldest, provider: data.provider });
+          if (older.length < DEEPEN_MIN_GAIN) { mark({ state: "نفد المصدر", newFirst: oldest }); return; }
+        } catch (e) {
+          log.push(`ج${round}: فشل ${String(e?.message || e).slice(0, 40)}`);
+          mark({ state: "وقف" });
+          return;
+        }
       }
+      mark({ state: "خلص", newFirst: oldest });
     }
 
     async function pollCompareOnce() {
