@@ -5107,6 +5107,7 @@ export default function ReplayClient({ userId }) {
           duk: data.duk || null, // تتبّع تقليص المدى واستكمال العمق
         };
         setCompareCandles(candles);
+        deepenCompare(candles, info, tdInterval, tdParam, dukParam);
       } catch (e) {
         if (!cancelled) { setCompareError(e.message || "تعذّر تحميل بيانات المقارنة"); setCompareCandles([]); }
       } finally {
@@ -5118,6 +5119,60 @@ export default function ReplayClient({ userId }) {
        تصير هي القديمة (نفس مشكلة الشارت الرئيسي بالظبط بس بالاتجاه المعاكس).
        نستخدم count صغير (=3) عشان الطلب يستفيد من liveRangeDays الخفيف
        بالـ API (شوف route.js) وما يثقل على المزوّد. */
+    /* ═══════════════════════════════════════════════════════════════════════
+       تعميق المقارنة بطلب **منفصل** — قطعة وحدة، وبنقيس قبل ما نزيد.
+       ---------------------------------------------------------------------
+       ليش منفصل: Dukascopy بترجّع 429 لأي طلب أرشيف تاني بنفس الاستدعاء.
+       مقيس مرتين بتهدئتين مختلفتين (٢٥٠ و١٤٠٠ ملّي) والوقت كان متوفّراً
+       بالتانية — فالحمل لازم ينوزّع على استدعاءات مستقلة.
+
+       🔴 **و`count` هون هو اللي كسر الإنتاج أول مرة.**
+       بعتّه `20000` (نفس قيمة التحميل الأساسي)، والخادم بيحسب
+       `spanMs = secPerBar × count × 1.25` — يعني **٦٨ سنة** بتنقصّ على ٢٠٠٣.
+       فكل «قطعة» كانت بتطلب الأرشيف كامل من جديد، وتلات طلبات هيك طيّحت
+       الدالة بنفاد ذاكرة (عطل موثّق بـ`dukascopy-candles.js`: الانهيار
+       **ما بينمسك بـtry/catch** لأنه بيطيح الـprocess). ولمّا تطيح النسخة،
+       كل طلب تاني عليها بيرجع ٥٠٠ — فظهرت على الذهب وناسداك كمان.
+
+           count=20000 → مدى ٦٨.٥ سنة   ← اللي كسر
+           count=  800 → مدى  ٢.٧ سنة   ← المقصود
+
+       ⚠️ **جولة وحدة عمداً.** الفكرة انكسرت مرة، فالقياس قبل التوسيع:
+       `__qtaPaneInfo().compareSource.deepen` بيقول شو صار.
+       ═══════════════════════════════════════════════════════════════════════ */
+    const DEEPEN_COUNT = 800;   // ~٢.٧ سنة يومي — طلب خفيف
+    const DEEPEN_DELAY_MS = 4000; // أطول بوضوح من نافذة حد الأرشيف
+
+    async function deepenCompare(seed, info, tdInterval, tdParam, dukParam) {
+      const oldest = seed?.[0]?.time;
+      if (!oldest) return;
+      const mark = (o) => { compareSourceRef.current = { ...compareSourceRef.current, deepen: o }; };
+      mark({ state: "بانتظار", delayMs: DEEPEN_DELAY_MS, count: DEEPEN_COUNT, from: oldest });
+
+      await new Promise((r) => setTimeout(r, DEEPEN_DELAY_MS));
+      if (cancelled || !compareOpenRef.current) { mark({ state: "انلغى" }); return; }
+
+      try {
+        const res = await fetch(
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}` +
+            `&interval=${tdInterval}&count=${DEEPEN_COUNT}&anchor=${oldest}${tdParam}${dukParam}`
+        );
+        if (!res.ok) { mark({ state: `HTTP ${res.status}` }); return; }
+        const data = await res.json();
+        if (data.error) { mark({ state: `خطأ: ${String(data.error).slice(0, 60)}` }); return; }
+        const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
+        if (!older.length) { mark({ state: "ما في أقدم", provider: data.provider }); return; }
+        if (cancelled) return;
+        mark({ state: "نجح", gained: older.length, newFirst: older[0].time, provider: data.provider, duk: data.duk || null });
+        setCompareCandles((prev) => {
+          const seen = new Set(prev.map((c) => c.time));
+          return older.filter((c) => !seen.has(c.time)).concat(prev).sort((a, b) => a.time - b.time);
+        });
+      } catch (e) {
+        mark({ state: `فشل: ${String(e?.message || e).slice(0, 60)}` });
+      }
+    }
+
     async function pollCompareOnce() {
       try {
         const info = getAssetByValue(compareSymbol);
