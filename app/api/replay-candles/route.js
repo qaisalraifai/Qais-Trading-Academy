@@ -165,7 +165,9 @@ export async function GET(req) {
   if (dukSymbol) {
     const dukTimeoutMs = anchor != null ? DUKASCOPY_TIMEOUT_MS_ANCHOR : DUKASCOPY_TIMEOUT_MS_LIVE;
     const dukResult = await withTimeout(
-      fetchDukascopyCandles(dukSymbol, interval, wanted, anchor),
+      // ⚠️ الميزانية بتنمرّر عشان استكمال العمق جوّا يوقف قبل هالمهلة بدل
+      //    ما يستهلكها ويسقط الطلب كله لمزوّد أضعف.
+      fetchDukascopyCandles(dukSymbol, interval, wanted, anchor, dukTimeoutMs),
       dukTimeoutMs,
       { error: `انتهت مهلة الانتظار (${dukTimeoutMs / 1000} ثانية) بدون رد من Dukascopy` }
     );
