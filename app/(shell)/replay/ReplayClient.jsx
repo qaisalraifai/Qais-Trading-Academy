@@ -6008,10 +6008,25 @@ export default function ReplayClient({ userId }) {
   }, [revealCount, allCandles, mode, interval]);
 
   /* بتثبّت مرساة المقارنة مرة وحدة لكل قصّة. بتقرا من نفس الـref اللي بيقرا
-     منه الشارت الأساسي، فاللوحتان بتطلبا **نفس النافذة**. */
+     منه الشارت الأساسي، فاللوحتان بتطلبا **نفس النافذة**.
+
+     🔴 **`mode !== "training"` شرط ضروري مش تزيين.**
+     -----------------------------------------------------------------------
+     بلاه كانت المرساة بتضل عالقة بالمباشر، فالمقارنة تجيب نافذة تاريخية
+     ضيّقة حوالين قصّة قديمة بينما الأساسي عنده تاريخه كامل — وهاد بيرجّع
+     «مشكلة العمق» بوضع مباشر سليم.
+
+     السبب: `replayStateRef.current.isActive` **ما بتنمسح** عند الرجوع
+     للمباشر إلا جوّا `loadData` غير المتزامنة — يعني **بعد** ما المقارنة
+     جابت بياناتها. وأسوأ: المسح بيصير عبر `setReplayCutTs(null)`، ولو كان
+     `replayCutTs` أصلاً فاضي فالقيمة ما بتتغيّر، والتأثير ما بيعيد التقييم
+     أبداً → المرساة عالقة للأبد.
+
+     `mode` بالتبعيات، فالشرط بينفّذ لحظة التبديل. ونفس الشرط مستعمل بالشارت
+     الأساسي (`mode === "training"` فوق) — يعني اللوحتان على نفس القاعدة. */
   useEffect(() => {
     setReplayAnchorTs((prev) => {
-      if (!replayStateRef.current.isActive) return null;
+      if (mode !== "training" || !replayStateRef.current.isActive) return null;
       return prev ?? replayStateRef.current.anchorTimestamp ?? replayCutTs;
     });
   }, [replayCutTs, mode]);
