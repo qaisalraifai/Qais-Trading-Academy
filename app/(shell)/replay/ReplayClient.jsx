@@ -1299,6 +1299,12 @@ export default function ReplayClient({ userId }) {
   // بس عشان نقدر نستخدمها بالـ render (تعطيل خيارات الفريم بالـ select)،
   // لأن الـ ref لحاله ما بيعمل re-render.
   const [replayCutTs, setReplayCutTs] = useState(null);
+  /* مرساة **ثابتة لكل قصّة** — بتستعملها لوحة المقارنة لتجيب نفس النافذة
+     التاريخية اللي جابها الشارت الأساسي.
+     ⚠️ `replayCutTs` فوق بيتحرّك مع **كل خطوة** تدريب، فما بينفع كمُشغِّل
+     جلب: بيعيد تحميل المقارنة كل ضغطة. هاي بتتثبّت مرة عند بداية القص
+     وبتنمسح لما ينتهي. */
+  const [replayAnchorTs, setReplayAnchorTs] = useState(null);
   /* ===== حالة الـ Replay (ReplayState) - مستقلة تماماً عن الفريم الحالي =====
      isActive: هل في Replay/تدريب شغال فعلياً (نقطة قص أو بداية عشوائية).
      anchorTimestamp: الوقت الحقيقي لنقطة "القص" الأصلية (تنعيّن مرة وحدة، وما
@@ -5069,8 +5075,18 @@ export default function ReplayClient({ userId }) {
            فراغات بالشموع. مقيس على ٤ ساعات: ١٩٤ فراغ بيوهو، **صفر** بنفس
            المزوّد. */
         const dukParam = info.dukascopy ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
+        /* ⚠️ **نفس مرساة الشارت الأساسي.** بلا هالسطر كانت المقارنة تجيب
+           دايماً نافذة منتهية **الآن** حتى لما يكون في قص على الماضي.
+           مقيس على الإنتاج (٢٠٢٦-٠٨-٢٦) بقص على ٢٠١٦-٠١-٢٧:
+
+               main    753 شمعة · 2013-05-22 → 2016-01-27
+               compare 0 شمعة
+
+           صفر — لأنّ بيانات SP500 بتبلّش ٢٠١٦-٠٨-٢٩، يعني **بعد** نقطة
+           القص كلها. فالقصّ بالوقت بيرجّع مصفوفة فاضية واللوحة بتضل بيضا. */
+        const cutAnchor = replayAnchorTs != null ? `&anchor=${replayAnchorTs}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${tdParam}${dukParam}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${cutAnchor}${tdParam}${dukParam}`
         );
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -5128,7 +5144,9 @@ export default function ReplayClient({ userId }) {
       }
     }
     loadCompare();
-    if (mode === "live") {
+    /* ⚠️ بلا `replayAnchorTs == null` كان التحديث الدوري يلحق البيانات
+       التاريخية بشمعة **اليوم** — نفس عطل الشارت الأساسي بالضبط. */
+    if (mode === "live" && replayAnchorTs == null) {
       // نفس منطق التبطيء بالشارت الرئيسي: لو أصل المقارنة عنده رمز Twelve
       // Data، منبطّئ لـ10 ثواني (بدل 5) حتى لو ضاف على استهلاك الشارت
       // الرئيسي بنفس الوقت (الحد 8 طلبات/دقيقة مشترك لكل مفتاح، مش لكل
@@ -5138,7 +5156,7 @@ export default function ReplayClient({ userId }) {
       comparePollTimer = setInterval(pollCompareOnce, compareMs);
     }
     return () => { cancelled = true; if (comparePollTimer) clearInterval(comparePollTimer); };
-  }, [compareOpen, compareSymbol, interval, maxBars, mode]);
+  }, [compareOpen, compareSymbol, interval, maxBars, mode, replayAnchorTs]);
 
   function toggleCompare() {
     setCompareOpen((v) => {
@@ -5991,6 +6009,15 @@ export default function ReplayClient({ userId }) {
     setReplayCutTs(c.time);
   }, [revealCount, allCandles, mode, interval]);
 
+  /* بتثبّت مرساة المقارنة مرة وحدة لكل قصّة. بتقرا من نفس الـref اللي بيقرا
+     منه الشارت الأساسي، فاللوحتان بتطلبا **نفس النافذة**. */
+  useEffect(() => {
+    setReplayAnchorTs((prev) => {
+      if (!replayStateRef.current.isActive) return null;
+      return prev ?? replayStateRef.current.anchorTimestamp ?? replayCutTs;
+    });
+  }, [replayCutTs, mode]);
+
   /* شبكة أمان لـ resumeSavedSession (شوفي تعليق pendingResumeRef فوق): لو في
      رجوع لمكان توقف لسا "قيد التنفيذ" (loadData ما جابت بيانات التدريب
      الحقيقية بعد)، منفرض نقطة التوقف المحفوظة من جديد بعد أي رندر ممكن يكون
@@ -6038,6 +6065,31 @@ export default function ReplayClient({ userId }) {
        `stopLivePoll` بتوقف المؤقّت، بس ما بتلغي طلباً منطلقاً — فهاد الفحص
        هو اللي بيمسك الرد المتأخر. */
     if (modeRef.current !== "live") return;
+    /* 🔴 **وقص فعّال معناه إنّك بالماضي — فما إله معنى نجيب سعر اليوم.**
+       -----------------------------------------------------------------
+       الفحص فوق بيمسك تبديل **الوضع** بس، وما بيمسك القص وهو بوضع المباشر.
+       مقيس على الإنتاج (٢٠٢٦-٠٨-٢٦): قص على ٢٠١٦-٠١-٢٧ والشارت عارض ٧٥٣
+       شمعة بسعر ~٤٬١٢٦، والاستطلاع ضل شغّال وبيرمي `Cannot update oldest
+       data` بالكونسول بالتكرار.
+
+       ولو نجح كان أسوأ من الفشل: `merged.push(lastFresh)` بتلزق شمعة اليوم
+       (~٢٩٬٣٠٠) على المصفوفة التاريخية، وبعدها `setRevealCount(merged.length)`
+       بتمسح نقطة القص — يعني محور السعر بينفجر والتمرين بيروح.
+
+       ⚠️ **بس `isActive` لحالها ما بتكفي كشرط.** هي ما بتنمسح لما ترجع من
+       التدريب للمباشر على نفس الرمز — بتنمسح بس لما يتبدّل السوق كلياً
+       (`sameMarketContext` فوق). فحارس مطلق عليها كان بيسكّر التحديث الحي
+       بجلسة مباشرة سليمة بعد أي تمرين سابق.
+
+       الشرط الفعلي: قص فعّال **وبياناتنا منتهية بالماضي**. العتبة ٢٠٠ شمعة
+       واسعة عمداً — ما بتلمس تبويبة متروكة مفتوحة عطلة أو شهر، وبتمسك حالة
+       ٢٠١٦ (٢٦٠٠+ شمعة يومية). */
+    if (replayStateRef.current.isActive) {
+      const plotted = mainTimesRef.current;
+      const newest = plotted.length ? plotted[plotted.length - 1] : null;
+      const bucketSec = (INTERVAL_MS[intervalRef.current] || 60000) / 1000;
+      if (newest != null && Date.now() / 1000 - newest > bucketSec * 200) return;
+    }
     if (randomChart) {
       // بمحاكاة الشارت العشوائي، نولّد حركة سعر بسيطة على آخر شمعة
       setAllCandles((prev) => {
