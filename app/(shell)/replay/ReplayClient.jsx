@@ -5107,6 +5107,7 @@ export default function ReplayClient({ userId }) {
           duk: data.duk || null, // تتبّع تقليص المدى واستكمال العمق
         };
         setCompareCandles(candles);
+        deepenCompare(candles, info, tdInterval, tdParam, dukParam);
       } catch (e) {
         if (!cancelled) { setCompareError(e.message || "تعذّر تحميل بيانات المقارنة"); setCompareCandles([]); }
       } finally {
@@ -5118,6 +5119,56 @@ export default function ReplayClient({ userId }) {
        تصير هي القديمة (نفس مشكلة الشارت الرئيسي بالظبط بس بالاتجاه المعاكس).
        نستخدم count صغير (=3) عشان الطلب يستفيد من liveRangeDays الخفيف
        بالـ API (شوف route.js) وما يثقل على المزوّد. */
+    /* ═══════════════════════════════════════════════════════════════════════
+       🔴 **تعميق تدريجي بطلبات منفصلة — الحل الوحيد اللي بيمرق من حد الأرشيف.**
+       ---------------------------------------------------------------------
+       Dukascopy بترجّع 429 لأي طلب أرشيف **تاني بنفس الاستدعاء**. مقيس على
+       الإنتاج مرتين، والتهدئة داخل الطلب ما نفعت:
+
+           تهدئة 250ملّي  → chunksTried 1 · chunksOk 0 · 429
+           تهدئة 1400ملّي → chunksTried 1 · chunksOk 0 · 429 (والوقت متوفّر:
+                            elapsed 2393 من 6800)
+
+       فالحمل لازم ينوزّع على **استدعاءات مستقلة** بينها ثواني حقيقية. وهاي
+       نفس التقنية الموثّقة اللي نجحت للفريمات اللحظية (١٦ قطعة من ١٨).
+
+       `anchor` بيضبط نافذة **بتنتهي عنده** وبتمتد للورا — فبإرساله على أقدم
+       شمعة عنا منجيب اللي قبلها. وبوجود `anchor` مهلة الخادم بتصير ٢٧ ثانية
+       بدل ٨، فالطلب إله متّسع.
+
+       ⚠️ بيشتغل بالخلفية بعد ما اللوحة تكون رسمت — ما بيأخّر أول عرض.
+       ⚠️ بيوقف أول ما يتوقف يربح شموع: مصدر ما عنده أعمق ما بيتحسّن بالإلحاح.
+       ═══════════════════════════════════════════════════════════════════════ */
+    async function deepenCompare(seed, info, tdInterval, tdParam, dukParam) {
+      const ROUNDS = 3;
+      const GAP_MS = 4000; // أطول من نافذة حد الأرشيف بوضوح
+      let oldest = seed?.[0]?.time;
+      if (!oldest) return;
+
+      for (let i = 0; i < ROUNDS; i++) {
+        await new Promise((r) => setTimeout(r, GAP_MS));
+        if (cancelled || !compareOpenRef.current) return;
+        try {
+          const res = await fetch(
+            `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}` +
+              `&interval=${tdInterval}&count=${maxBars}&anchor=${oldest}${tdParam}${dukParam}`
+          );
+          const data = await res.json();
+          if (data.error) return;
+          const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
+          if (!older.length || cancelled) return;
+          oldest = older[0].time;
+          setCompareCandles((prev) => {
+            const seen = new Set(prev.map((c) => c.time));
+            const merged = older.filter((c) => !seen.has(c.time)).concat(prev);
+            return merged.sort((a, b) => a.time - b.time);
+          });
+        } catch {
+          return; // شبكة/رفض — منكتفي باللي عنا
+        }
+      }
+    }
+
     async function pollCompareOnce() {
       try {
         const info = getAssetByValue(compareSymbol);
