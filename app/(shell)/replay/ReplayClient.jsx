@@ -1493,6 +1493,7 @@ export default function ReplayClient({ userId }) {
      الترجمة بتتبنى على شموع لسا ما انكشفت = نظر للمستقبل. */
   const mainTimesRef = useRef([]);
   const compareTimesRef = useRef([]);
+  const compareSourceRef = useRef({ provider: null, usedFallback: false, symbol: null, errors: null });
   const maximizedPaneRef = useRef(null);
   const [compareHeightPx, setCompareHeightPx] = useState(DEFAULT_COMPARE_HEIGHT);
   const compareHeightPxRef = useRef(DEFAULT_COMPARE_HEIGHT);
@@ -4901,6 +4902,12 @@ export default function ReplayClient({ userId }) {
             main: side(mt, mainTs),
             compare: side(ct, chart.timeScale()),
             mapped: mapLogicalRange(mt, ct, mainTs?.getVisibleLogicalRange()),
+            /* 🔴 مين خدم كل لوحة. بلا هالسطرين كنت بستنتج المزوّد من شكل
+               الأرقام — و«٢٥١٢ شمعة = عشر سنين» طلعت مطابقة لسقف يوهو،
+               فرفعته، ولوحة المقارنة ضلّت أقصر. يعني الاستنتاج كان غلط أو
+               ناقص، وما في طريقة أعرف بلا ما المزوّد يقول عن حاله. */
+            mainSource: dataSourceRef.current,
+            compareSource: compareSourceRef.current,
             breakerTripped: paneSyncBreakerRef.current.isTripped,
           };
         };
@@ -5090,6 +5097,14 @@ export default function ReplayClient({ userId }) {
         if (data.error) throw new Error(data.error);
         const candles = sanitizeCandles(data.candles || []);
         if (cancelled) return;
+        /* ⚠️ مين خدم لوحة المقارنة فعلياً — بيطلع بـ`__qtaPaneInfo()`.
+           بلاه كنت بخمّن المزوّد من شكل الأرقام بدل ما أعرفه. */
+        compareSourceRef.current = {
+          provider: data.provider || null,
+          usedFallback: !!data.usedFallback,
+          symbol: data.sourceSymbol || null,
+          errors: data.providerErrors || null,
+        };
         setCompareCandles(candles);
       } catch (e) {
         if (!cancelled) { setCompareError(e.message || "تعذّر تحميل بيانات المقارنة"); setCompareCandles([]); }
