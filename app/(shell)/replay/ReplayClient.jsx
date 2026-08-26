@@ -696,6 +696,35 @@ function buildCompareSeries(chart, settings) {
    لوحة المقارنة بتثبّت عند أول ما عندها — فبتعرض نافذة أقصر بدل أعمدة فاضية.
    ⚠️ ومنطق كسر حلقة المزامنة معزول ومفحوص بـ`lib/pane-sync.js`.
    ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   تسجيل أوقات الشموع **المرسومة فعلاً** — أساس ترجمة الفهرس بين اللوحتين.
+
+   🔴 **ممنوع نعيد اشتقاقها من الحالة.** أول نسخة عملت هيك:
+
+       mainTimesRef.current = allCandles.slice(0, revealCount).map(c => c.time)
+       compareTimesRef.current = compareCandlesUpToReveal().map(c => c.time)
+
+   واشتغلت بالمباشر وفشلت بالقص — لأنّ الاشتقاق بيتّكل على `mode` و`revealCount`
+   ونفس منطق الكشف، وأي فرق بينهن وبين اللي انضبط بالسيريز بيخلّي الترجمة
+   تشتغل على مصفوفة **مش هي اللي بالشارت**. والفشل **صامت**: `mapLogicalRange`
+   بترجّع مدى غلط أو `null`، فالمزامنة بتوقف بلا أي خطأ.
+
+   وكمان كان في خطر ترتيب: تأثير المقارنة بينفّذ **قبل** تأثير بيانات الشارت
+   الأساسي، فبيقرا مدى منطقي بفضاء بيانات قديم.
+
+   الحل: التسجيل **بنفس السطر** اللي بيرسم. صحيح بحكم البناء.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function rememberPlotted(ref, candles) {
+  ref.current = (candles || []).map((c) => c.time);
+}
+/* `update()` إما بتعدّل آخر شمعة (نفس الوقت) أو بتضيف وحدة أحدث. */
+function rememberUpdated(ref, bar) {
+  if (!bar || bar.time == null) return;
+  const t = ref.current || [];
+  if (t.length && t[t.length - 1] >= bar.time) return;
+  ref.current = [...t, bar.time];
+}
+
 function compareSeriesData(type, candles) {
   return (candles || []).map((c) =>
     type === "candles"
@@ -1477,6 +1506,7 @@ export default function ReplayClient({ userId }) {
      الترجمة بتتبنى على شموع لسا ما انكشفت = نظر للمستقبل. */
   const mainTimesRef = useRef([]);
   const compareTimesRef = useRef([]);
+  const paneSyncSkipRef = useRef("ما اشتغلت بعد");
   const maximizedPaneRef = useRef(null);
   const [compareHeightPx, setCompareHeightPx] = useState(DEFAULT_COMPARE_HEIGHT);
   const compareHeightPxRef = useRef(DEFAULT_COMPARE_HEIGHT);
@@ -1826,7 +1856,9 @@ export default function ReplayClient({ userId }) {
          فيرجع التأثير التاني يقصّها.
 
          بأداة تدريب، تسريب المستقبل مش خلل عرض — هو بيبطّل التمرين نفسه. */
-      series.setData(compareSeriesData(compareSettings.type, compareCandlesUpToReveal()));
+      const cmpPlotted = compareSeriesData(compareSettings.type, compareCandlesUpToReveal());
+      series.setData(cmpPlotted);
+      rememberPlotted(compareTimesRef, cmpPlotted);
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareSettings]);
@@ -1847,11 +1879,6 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
   useEffect(() => { setDrawingTemplatesMenuOpen(false); setTextPopoverOpen(false); }, [selectedDrawingId]);
   useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
-  useEffect(() => {
-    mainTimesRef.current = allCandles.slice(0, revealCount).map((c) => c.time);
-    compareTimesRef.current = compareCandlesUpToReveal().map((c) => c.time);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allCandles, revealCount, compareCandles, mode]);
   useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
   useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
   useEffect(() => { compareCandlesRef.current = compareCandles; }, [compareCandles]);
@@ -4889,6 +4916,7 @@ export default function ReplayClient({ userId }) {
             main: side(mt, mainTs),
             compare: side(ct, chart.timeScale()),
             mapped: mapLogicalRange(mt, ct, mainTs?.getVisibleLogicalRange()),
+            lastSkip: paneSyncSkipRef.current,
             breakerTripped: paneSyncBreakerRef.current.isTripped,
           };
         };
@@ -4944,17 +4972,28 @@ export default function ReplayClient({ userId }) {
         else setTimeout(() => { rangeSyncingRef.current = false; }, 0);
       };
 
+      /* ⚠️ كل خروج مبكر بينسجّل. المزامنة بتفشل **بصمت** بطبيعتها — ما في
+         خطأ ولا رسالة، اللوحة بس ما بتتحرّك. بلا هالسطور كنت بضل أخمّن أي
+         شرط وقف. بيطلع بـ`__qtaPaneInfo().lastSkip`. */
+      const skip = (why) => { paneSyncSkipRef.current = why; };
+
       const syncFrom = (src, dst, srcTimes, dstTimes) => {
-        if (!src || !dst || rangeSyncingRef.current) return;
-        if (!paneSyncBreakerRef.current.allow()) return;
+        if (!src || !dst) return skip("ما في شارت");
+        if (rangeSyncingRef.current) return skip("الحارس مرفوع");
+        if (!paneSyncBreakerRef.current.allow()) return skip("قاطع الدورة");
         let srcRange = null, current = null;
         try { srcRange = src.timeScale().getVisibleLogicalRange(); } catch {}
         try { current = dst.timeScale().getVisibleLogicalRange(); } catch {}
+        if (!srcRange) return skip("ما في مدى بالمصدر");
+        if (!srcTimes?.length) return skip("أوقات المصدر فاضية");
+        if (!dstTimes?.length) return skip("أوقات الهدف فاضية");
         const target = mapLogicalRange(srcTimes, dstTimes, srcRange);
-        if (!shouldApplyRange(current, target, LOGICAL_TOL)) return;
+        if (!target) return skip("الترجمة رجّعت null");
+        if (!shouldApplyRange(current, target, LOGICAL_TOL)) return skip("مطابق أصلاً");
         rangeSyncingRef.current = true;
         try { dst.timeScale().setVisibleLogicalRange(target); } catch {}
         releaseGuard();
+        skip("انطبّق");
       };
 
       const onMainRangeChange = () =>
@@ -5043,11 +5082,12 @@ export default function ReplayClient({ userId }) {
       const data = compareSeriesData(compareSettings.type, compareCandlesUpToReveal());
       try {
         compareSeriesRef.current.setData(data);
+        rememberPlotted(compareTimesRef, data);
         // نحاذي بالفهرس المترجَم عبر الوقت — نفس السبب المشروح فوق بـ
         // setupCompareChart (محاذاة بالبكسل + الموضع بيعني نفس اللحظة)
         const target = mapLogicalRange(
           mainTimesRef.current,
-          data.map((d) => d.time),
+          compareTimesRef.current,
           chartRef.current?.timeScale().getVisibleLogicalRange()
         );
         if (target) compareChartRef.current?.timeScale().setVisibleLogicalRange(target);
@@ -5900,9 +5940,12 @@ export default function ReplayClient({ userId }) {
         // نضيف/نحدّث الشمعة الأخيرة بس، من دون setData/fitContent
         // عشان ما يصير "رجوع" أو ريست مزعج للزوم والسكرول يلي عم تتفرجي عليه
         seriesRef.current.update(allCandles[revealCount - 1]);
+        rememberUpdated(mainTimesRef, allCandles[revealCount - 1]);
       } else {
         // تحميل بيانات جديدة أو قفزة كبيرة (تبديل وضع/أصل/فريم/بداية عشوائية/قص نقطة/إعادة من البداية)
-        seriesRef.current.setData(allCandles.slice(0, revealCount));
+        const plotted = allCandles.slice(0, revealCount);
+        seriesRef.current.setData(plotted);
+        rememberPlotted(mainTimesRef, plotted);
         // ملاحظة مهمة: هون كان في fitContent() بيحشر *كل* الشموع المحمّلة
         // (ممكن تكون مئات الشموع اليومية) بعرض الشارت كامل دفعة وحدة - يعني
         // كل شمعة بتاخد أقل من بكسل واحد عرض، فجسم الشمعة (الملوّن) بيختفي
@@ -6217,6 +6260,7 @@ export default function ReplayClient({ userId }) {
         }
         try {
           seriesRef.current?.update(merged[merged.length - 1]);
+          rememberUpdated(mainTimesRef, merged[merged.length - 1]);
         } catch (err) {
           console.error("live update error:", err);
         }
