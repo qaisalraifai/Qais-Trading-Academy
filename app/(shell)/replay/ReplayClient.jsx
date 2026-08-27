@@ -3901,7 +3901,10 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
 
       const handleResize = () => {
         if (!chartContainerRef.current) return;
-        const isFs = !!document.fullscreenElement;
+        /* ⚠️ لازم يكون **حاوية هاي اللوحة** بالذات. `document.fullscreenElement`
+           عام: لما مساحة العمل كلها تدخل الشاشة الكاملة، القراءة الخام بتخلّي
+           كل شارت يحسب ارتفاعه من النافذة كاملة فيتراكبوا. */
+        const isFs = document.fullscreenElement === chartWrapperRef.current;
         let totalHeight = 480;
         if (isFs) {
           const headerH = headerRef.current?.offsetHeight || 0;
@@ -8522,6 +8525,13 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
           position: "relative",
           display: "flex",
           flexDirection: "column",
+          /* 🔴 **بلا هدول التخطيط جنب بعض بينكسر.**
+             العنصر بالصف ما بينكمش تحت عرض محتواه افتراضياً (`min-width: auto`)،
+             وشريط الأدوات جوّا عريض — فكل شارت بيفرض عرضه الطبيعي، والتاني
+             بينعصر برّا فيبان وكأنه انسكّر.
+             و`flex: 1` مع `minHeight: 0` لازمين عشان `fillContainer` يلاقي
+             ارتفاعاً فعلياً يقراه بدل ما ينهار لصفر. */
+          ...(fillContainer ? { flex: 1, minHeight: 0, minWidth: 0 } : null),
         }}
       >
         {isFullscreen && (

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Columns2, Rows2, Square } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Columns2, Rows2, Square, Maximize2, Minimize2 } from "lucide-react";
 import ReplayClient from "./ReplayClient";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -36,6 +36,30 @@ export default function ReplayWorkspace({ userId }) {
   /* "single" · "rows" (فوق بعض) · "cols" (جنب بعض) */
   const [layout, setLayout] = useState("single");
   const [ready, setReady] = useState(false);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     الشاشة الكاملة **لمساحة العمل كلها** مش لشارت واحد.
+     ---------------------------------------------------------------------
+     زر الشاشة الكاملة جوّا الشارت بيرفع **حاويته هو** — فبالتخطيط المقسوم
+     بيختفي الشارت التاني وشريط التخطيط معه، وما بيبقى مجال تبدّل التخطيط
+     وأنت داخل. هون الحاوية الأعلى هي اللي بترتفع، فالاتنين بيضلوا ظاهرين
+     والأزرار شغّالة.
+
+     ⚠️ وزر الشارت الداخلي انترك كما هو — مفيد بالتخطيط المفرد لما تبغى
+     شارتاً واحداً بلا أي شي حواليه. */
+  const rootRef = useRef(null);
+  const [isFs, setIsFs] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => setIsFs(document.fullscreenElement === rootRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement === rootRef.current) document.exitFullscreen?.();
+    else rootRef.current?.requestFullscreen?.();
+  }
 
   /* ⚠️ القراءة بتأثير مش بالحالة الابتدائية: `localStorage` ما بتنقرا على
      الخادم، وقراءتها وقت أول رندر بتخالف بين الخادم والمتصفّح. */
@@ -74,7 +98,13 @@ export default function ReplayWorkspace({ userId }) {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+    <div
+      ref={rootRef}
+      style={{
+        display: "flex", flexDirection: "column", flex: 1, minHeight: 0,
+        ...(isFs ? { background: "#0A0614", padding: "0.5rem" } : null),
+      }}
+    >
       <div
         style={{
           display: "flex", alignItems: "center", gap: 6,
@@ -85,6 +115,24 @@ export default function ReplayWorkspace({ userId }) {
         {btn("single", Square, "شارت واحد")}
         {btn("rows", Rows2, "شارتان فوق بعض")}
         {btn("cols", Columns2, "شارتان جنب بعض")}
+        <div style={{ width: 1, height: 18, background: "#2A2145", margin: "0 4px" }} />
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          title={isFs ? "خروج من الشاشة الكاملة" : "شاشة كاملة لمساحة العمل"}
+          aria-label={isFs ? "خروج من الشاشة الكاملة" : "شاشة كاملة لمساحة العمل"}
+          style={{
+            width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: 3, cursor: "pointer", flexShrink: 0,
+            border: "1px solid " + (isFs ? "#C9A961" : "transparent"),
+            background: isFs ? "#C9A96122" : "none",
+            color: isFs ? "#E8D9A8" : "#A79FC4",
+          }}
+        >
+          {isFs
+            ? <Minimize2 size={15} strokeWidth={1.75} aria-hidden />
+            : <Maximize2 size={15} strokeWidth={1.75} aria-hidden />}
+        </button>
       </div>
 
       {/* ⚠️ ما بنركّب اللوحة التانية قبل ما نقرا التخطيط المحفوظ — وإلا
@@ -100,7 +148,9 @@ export default function ReplayWorkspace({ userId }) {
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
-          <ReplayClient userId={userId} paneId="main" isPrimary fillContainer={split} />
+          {/* ⚠️ بالشاشة الكاملة كمان — الحاوية بتصير هي النافذة، فالقياس
+              منها أدقّ من الحساب المبني على موضع العنصر بالصفحة. */}
+          <ReplayClient userId={userId} paneId="main" isPrimary fillContainer={split || isFs} />
         </div>
 
         {ready && split && (
