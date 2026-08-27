@@ -1109,6 +1109,41 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   const activeIndicatorsRef = useRef([]);
   useEffect(() => { activeIndicatorsRef.current = activeIndicators; }, [activeIndicators]);
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     أداة قياس — **قراءة فقط**، ما بتغيّر ولا شي وما بتشتغل لحالها.
+     بالكونسول: `__qtaChartInfo()`
+
+     سبب وجودها: العمق والمصدر ما بينقاسوا من شكل الشارت. جرّبت أستنتجهن
+     من الأرقام مراراً وطلعت غلط كل مرة — «٢٥١٢ شمعة = عشر سنين» طابقت سقف
+     يوهو صدفةً وبنيت عليها شحنة كاملة.
+
+     ⚠️ وبيئة التطوير هون ما بتركّب الشارت (مفاتيح Supabase والشبكة
+     للمزوّدين محجوبتان)، فهاي الطريقة الوحيدة نوصل لأرقام حقيقية.
+     ═══════════════════════════════════════════════════════════════════════ */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const at = (t) => (t ? new Date(t * 1000).toISOString().slice(0, 16) : null);
+    const reg = (window.__qtaCharts = window.__qtaCharts || {});
+    reg[paneId] = () => {
+      const c = allCandles;
+      return {
+        pane: paneId,
+        symbol: assetValue,
+        interval,
+        mode,
+        bars: c.length,
+        first: at(c[0]?.time),
+        last: at(c[c.length - 1]?.time),
+        revealed: revealCount,
+        cutTs: at(replayStateRef.current.currentTimestamp),
+        source: dataSourceRef.current,
+      };
+    };
+    window.__qtaChartInfo = (id) =>
+      id ? reg[id]?.() : Object.fromEntries(Object.entries(reg).map(([k, f]) => [k, f()]));
+    return () => { delete reg[paneId]; };
+  }, [paneId, allCandles, assetValue, interval, mode, revealCount]);
+
   const [mode, setMode] = useState("live"); // "live" | "training"
   const [randomChart, setRandomChart] = useState(false);
 
@@ -4937,6 +4972,11 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         symbol: data.sourceSymbol || assetInfo.yahoo,
         usedFallback: false,
         provider: data.provider || "yahoo",
+        /* ⚠️ تتبّع تقليص مدى Dukascopy — بيطلع بـ`__qtaChartInfo()`.
+           التقليص **صامت** بطبعه: `usedFallback:false` و`providerErrors:null`
+           وهو بيسلّم ربع العمق. بلا هالسطر برجع أخمّن العمق من شكل الشارت. */
+        duk: data.duk || null,
+        anchored: !!anchorParam,
       };
       // ما في عقود آجلة نهائياً بعد اليوم (Yahoo سبوت أو Twelve Data بس) -
       // فهاي العلامة صارت دايماً false، تركناها بالكود بدل حذفها بالكامل
