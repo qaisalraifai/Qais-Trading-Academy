@@ -68,6 +68,7 @@ export default function ReplayWorkspace({ userId }) {
   const [slots, setSlots] = useState(null);
   const topSlotRef = useRef(null);
   const toolsSlotRef = useRef(null);
+  const bottomSlotRef = useRef(null);
   const [activePane, setActivePane] = useState("main");
 
   useEffect(() => {
@@ -89,7 +90,7 @@ export default function ReplayWorkspace({ userId }) {
       if (saved === "rows" || saved === "cols" || saved === "single") setLayout(saved);
     } catch {}
     setReady(true);
-    setSlots({ top: topSlotRef.current, tools: toolsSlotRef.current });
+    setSlots({ top: topSlotRef.current, tools: toolsSlotRef.current, bottom: bottomSlotRef.current });
   }, []);
 
   function pick(next) {
@@ -201,6 +202,7 @@ export default function ReplayWorkspace({ userId }) {
             fillContainer={split || isFs}
             chromeSlots={split ? slots : null}
             chromeActive={activePane === "main"}
+            onRequestFullscreen={split ? toggleFullscreen : null}
           />)}
 
           {/* 🔴 الخط الرفيع بين الشارتين — بيسهّل تتبّع نفس اللحظة بينهن */}
@@ -222,9 +224,13 @@ export default function ReplayWorkspace({ userId }) {
             fillContainer
             chromeSlots={slots}
             chromeActive={activePane === "b"}
+            onRequestFullscreen={toggleFullscreen}
           />)}
         </div>
       </div>
+
+      {/* الفتحة المشتركة للشريط السفلي (المدى الزمني + الساعة) */}
+      {split && <div ref={bottomSlotRef} />}
     </div>
   );
 }

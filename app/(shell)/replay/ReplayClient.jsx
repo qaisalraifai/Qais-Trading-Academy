@@ -1066,8 +1066,10 @@ function pointOnLinePx(px, py, x1, y1, x2, y2, clamp) {
  *                     بنفس مكانهن بالشجرة وبكل تمديداتهن، وبس **مكان طباعتهن**
  *                     بينتقل. صفر تغيير بمنطق الأدوات.
  * @param chromeActive هل هاي اللوحة هي النشطة — النشطة وحدها بتطبع أشرطتها.
+ * @param onRequestFullscreen لما ينمرّر، زر الشاشة الكاملة الداخلي بينده هو
+ *                     بدل ما يرفع حاوية هالشارت — عشان يرفع مساحة العمل كلها.
  */
-export default function ReplayClient({ userId, paneId = "main", isPrimary = true, initialAsset = null, fillContainer = false, chromeSlots = null, chromeActive = true }) {
+export default function ReplayClient({ userId, paneId = "main", isPrimary = true, initialAsset = null, fillContainer = false, chromeSlots = null, chromeActive = true, onRequestFullscreen = null }) {
 
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
@@ -4548,6 +4550,10 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
 
   /* ===================== تبديل الشاشة الكاملة ===================== */
   function toggleFullscreen() {
+    /* 🔴 بالتخطيط المقسوم، الشاشة الكاملة لازم ترفع **مساحة العمل** مش هالشارت
+       وحده — وإلا الشارت التاني بيختفي وما بيبقى مجال تشوف الاتنين مع بعض.
+       فلما مساحة العمل تمرّر معالجاً، هو اللي بينفّذ. */
+    if (onRequestFullscreen) { onRequestFullscreen(); return; }
     if (!chartWrapperRef.current) return;
     if (!document.fullscreenElement) {
       chartWrapperRef.current.requestFullscreen?.();
@@ -8658,7 +8664,10 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         )}
       </div>
 
-      {!isFullscreen && renderBottomBar()}
+      {/* الشريط السفلي (المدى الزمني + الساعة): بالمشترك بينطبع بالفتحة */}
+      {chromeSlots
+        ? (chromeActive && chromeSlots.bottom ? createPortal(renderBottomBar(), chromeSlots.bottom) : null)
+        : (!isFullscreen && renderBottomBar())}
 
       {openToolGroup !== null && (
         <div
