@@ -8506,7 +8506,9 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   }
 
   return (
-    <div>
+    /* ⚠️ الجذر كان `<div>` عارية. بالتخطيط المقسوم `flex: 1` على حاوية الشارت
+       ما لاقت شي تملاه — فالشارت كان يفيض تحت حدود الشاشة. */
+    <div style={fillContainer ? { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 } : undefined}>
       {/* ستايل عام مشترك بين شريط الأدوات العلوي والشريط الجانبي، بمواصفات
          تريدنغ فيو: حالة Hover رمادية خفيفة (متل TradingView بالظبط) على أي
          زر مو مفعّل حالياً، وسكرول بار رفيع بنفس أسلوبها لقوائم الأدوات
@@ -8577,7 +8579,12 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
             بالـ DOM ثم الشريط) مقصود: الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل
             ثابت عالشمال دايماً من غير ما نضطر نقلب اتجاه أي نص عربي جوا الشارت. */}
         <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0, gap: 8 }}>
-          {watchlistPanelOpen && (
+          {/* 🔴 **قائمة المتابعة كمان وحدة، مش وحدة لكل شارت.**
+              كانت بتنركّب بكل لوحة ومفتوحة افتراضياً، فبالتخطيط المقسوم صار
+              طلبان متزامنان على `/api/watchlist-quotes` — والنتيجة **502**
+              (مقيس على الإنتاج). وهي أصلاً أداة مكرَّرة زي باقي الأشرطة.
+              فبالمشترك بتنعرض باللوحة النشطة وحدها: طلب واحد ومصدر واحد. */}
+          {watchlistPanelOpen && (!chromeSlots || chromeActive) && (
             <WatchlistPanel
               activeSymbol={assetValue}
               onSelectSymbol={(v) => { setRandomChart(false); setAssetValue(v); }}
