@@ -1,13 +1,13 @@
 "use client";
 import { ArrowLeftRight, Bell, CalendarDays, Check, ClipboardList, CornerUpLeft, Dices, MoveVertical, Pause, PenLine, Play, Settings, SkipForward, SlidersHorizontal, Tag, Trash2, TrendingUp } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets";
 import { createClient } from "@/lib/supabase-client";
 import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
 import { readSeries, writeSeries, mergeCandles, canExtendFrom, cutCacheKey } from "@/lib/candle-cache";
+import { shouldApplyRange, createSyncBreaker, mapLogicalRange } from "@/lib/pane-sync";
 import WatchlistPanel from "./WatchlistPanel";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -60,6 +60,7 @@ const RED = "#FF453A";
 const LINE_TEXT_TYPES = new Set(["trendline", "ray", "extendedline", "arrow", "hline", "hray", "vline", "crossline"]);
 const AREA_TEXT_TYPES = new Set(["circle", "triangle", "path", "parallelchannel"]);
 const TEXT_CAPABLE_TYPES = new Set([...LINE_TEXT_TYPES, ...AREA_TEXT_TYPES, "rectangle"]);
+const DEFAULT_COMPARE_HEIGHT = 200; // ارتفاع لوحة المقارنة الافتراضي بالبكسل (قابل للسحب من المستخدم)
 // عرض ثابت (بالبكسل) لعمود الأسعار باليمين - لازم يكون نفس القيمة بالشارت الرئيسي
 // وشارت المقارنة معاً، وإلا كل شارت (نسخة lightweight-charts منفصلة) بيحسب عرض
 // عمود الأسعار تلقائياً حسب عدد خانات السعر تبعه، فمنطقة رسم الشموع ما بتضل
@@ -472,25 +473,10 @@ function saveChartSettings(settings) {
 
 /* ===================== المؤشرات الفنية المفعّلة (تنحفظ محلياً بالمتصفح) ===================== */
 const INDICATORS_KEY = "qta_active_indicators_v1";
-/* ═══════════════════════════════════════════════════════════════════════════
-   مساحة اسم لمفاتيح التخزين — لازمة عشان الكومبوننت ينتركّب **مرتين**.
-
-   ⚠️ **مش كل المفاتيح بتنفصل.** الفصل الغلط بيكسر تفضيلات المستخدم:
-
-     تنفصل  · المؤشرات المفعّلة · جلسة القص المتوقفة   (حالة الشارت نفسه)
-     تنشارك · ألوان الشارت · قوالب الرسم والمؤشرات ·
-              آخر نمط مستعمل · الأدوات المفضّلة        (تفضيلات المستخدم)
-
-   واللوحة الأساسية بتحتفظ **بالمفتاح الأصلي بلا لاحقة** — عشان أي مستخدم
-   حالي ما يخسر مؤشراته وجلسته المحفوظة عند أول فتح بعد التحديث.
-   ═══════════════════════════════════════════════════════════════════════════ */
-function paneKey(base, paneId) {
-  return !paneId || paneId === "main" ? base : `${base}__${paneId}`;
-}
-function loadActiveIndicators(paneId) {
+function loadActiveIndicators() {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(paneKey(INDICATORS_KEY, paneId));
+    const raw = window.localStorage.getItem(INDICATORS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -500,10 +486,10 @@ function loadActiveIndicators(paneId) {
     return [];
   }
 }
-function saveActiveIndicators(list, paneId) {
+function saveActiveIndicators(list) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(paneKey(INDICATORS_KEY, paneId), JSON.stringify(list));
+    window.localStorage.setItem(INDICATORS_KEY, JSON.stringify(list));
   } catch {}
 }
 
@@ -611,11 +597,128 @@ function styleForNewDrawing(type) {
   return style;
 }
 
+/* ===================== إعدادات لوحة المقارنة (نوع الشارت + ألوان)، تنحفظ محلياً بالمتصفح ===================== */
+const COMPARE_SETTINGS_KEY = "qta_compare_chart_settings_v1";
+const DEFAULT_COMPARE_SETTINGS = {
+  type: "area", // area | line | candles
+  lineColor: GOLD_LIGHT,
+  fillColor: GOLD_LIGHT,
+  lineWidth: 2,
+  up: GREEN,
+  down: RED,
+};
+function loadCompareSettings() {
+  if (typeof window === "undefined") return DEFAULT_COMPARE_SETTINGS;
+  try {
+    const raw = window.localStorage.getItem(COMPARE_SETTINGS_KEY);
+    if (!raw) return DEFAULT_COMPARE_SETTINGS;
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_COMPARE_SETTINGS, ...parsed };
+  } catch {
+    return DEFAULT_COMPARE_SETTINGS;
+  }
+}
+function saveCompareSettings(settings) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(COMPARE_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {}
+}
 /* مفتاح تخزين "جلسة القص/التدريب المتوقفة" (نقطة التوقف + الرسومات) وقت
    الرجوع للمباشر - بادئة "qta_" عشان تنحفظ تلقائياً بحساب الطالب كمان
    (شوفي lib/user-settings-sync.js)، مش بس محلياً بهاد المتصفح. */
 const PAUSED_SESSION_KEY = "qta_paused_replay_session_v1";
+/* بناء سيريز لوحة المقارنة حسب النوع المختار (منطقة/خط/شموع) وألوانه
+   (تحويل اللون لـ rgba بيصير عن طريق hexToRgba المعرّفة تحت بنفس الملف) */
+function buildCompareSeries(chart, settings) {
+  if (settings.type === "line") {
+    return chart.addSeries(LWC.LineSeries, {
+      color: settings.lineColor,
+      lineWidth: settings.lineWidth,
+      priceLineVisible: false,
+      lastValueVisible: true,
+    });
+  }
+  if (settings.type === "candles") {
+    return chart.addSeries(LWC.CandlestickSeries, {
+      upColor: settings.up, downColor: settings.down, borderVisible: false,
+      wickUpColor: settings.up, wickDownColor: settings.down,
+      priceLineVisible: false, lastValueVisible: true,
+    });
+  }
+  return chart.addSeries(LWC.AreaSeries, {
+    lineColor: settings.lineColor,
+    topColor: hexToRgba(settings.fillColor, 0.28),
+    bottomColor: hexToRgba(settings.fillColor, 0.02),
+    lineWidth: settings.lineWidth,
+    priceLineVisible: false,
+    lastValueVisible: true,
+  });
+}
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔴 **بيانات المقارنة بتنبنى على محور أوقات الشارت الأساسي.**
+   ---------------------------------------------------------------------------
+   اللوحتان متزامنتان **بفهرس الشمعة** (`setVisibleLogicalRange`) — وهاد
+   الأسلوب اللي بتوصي فيه lightweight-charts، وبيحاذي عمود N بعمود N بالبكسل.
 
+   ⚠️ بس بيفترض إنّ الفهرس N يعني **نفس اللحظة** باللوحتين. وهاد مش مضمون:
+   الرمزان بيجوا من مزوّدين مختلفين بأعماق مختلفة. مقيس (٢٠٢٦-٠٨-٢٥):
+
+       ناسداك (مع duk)   4551 شمعة · تبلّش 2023-10-19
+       SPX    (بلا duk)  2973 شمعة · تبلّش 2024-08-30
+
+   الاتنين بينتهوا بنفس اللحظة، بس المقارنة أقصر بـ**١٥٧٨ شمعة**. فلما
+   الأساسي يعرض الفهارس ٣٠٠٠→٤٥٥٠، المقارنة ما عندها شي هناك → **فراغ على
+   اليمين**، ومستخدم شافها وبلّغ.
+
+   ⚠️ وتمرير `duk` للمقارنة **ما بيحلّها**: SPX مع duk بيعطي ٩١١٣ شمعة —
+   الخلل بينقلب للاتجاه التاني. أي مزوّدَين بيعطوا أعماقاً مختلفة.
+
+   ---------------------------------------------------------------------------
+   🔴 **الحل الأول كان حشو، والحشو هو اللي عمل الفراغات على اليومي.**
+
+   `alignToMainAxis` كانت تبني سلسلة بطول الأساسي بالضبط، وتحطّ `{ time }`
+   فاضية (whitespace) بكل لحظة ما عند المقارنة شمعة فيها. هاد **كان لازم**
+   لأنّ المزامنة كانت **بفهرس الشمعة** — العمود N لازم يكون نفس اللحظة
+   باللوحتين، وما بينضبط إلا بمساواة الطول.
+
+   بس على اليومي المزوّدان بيختلفوا بالعطل والجلسات، فكل يوم ناقص عند المقارنة
+   بيصير **عمود فاضي مرسوم** — وهاي هي الفراغات اللي بلّغ عنها.
+
+   الحل: **المزامنة صارت بالوقت مش بالفهرس** (`setVisibleRange`)، فقيد تساوي
+   الطول زال من أساسه. كل لوحة بترسم شموعها **الطبيعية** كاملة ومتراصّة،
+   والمكتبة بتحاذيهن بالطابع الزمني. بلا حشو → بلا فراغات.
+
+   ✅ وهاد بيحقّق شرطه الصريح: بلا خسارة عمق، وبلا تبديل مزوّدات. المقارنة
+   حتى بتستفيد من عمقها الزائد بدل ما ينقصّ على طول الأساسي.
+
+   ⚠️ الثمن المعروف: لو الفترة المعروضة بالأساسي بتسبق أول شمعة عند المقارنة،
+   لوحة المقارنة بتثبّت عند أول ما عندها — فبتعرض نافذة أقصر بدل أعمدة فاضية.
+   ⚠️ ومنطق كسر حلقة المزامنة معزول ومفحوص بـ`lib/pane-sync.js`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* أقرب شمعة **بالوقت**. مستعملة بمزامنة خط التقاطع بالاتجاهين.
+   ⚠️ كانت مصرَّحة جوّا إعداد لوحة المقارنة وبس، فاستعمالها من تأثير الشارت
+   الأساسي بيرمي ReferenceError **وقت التشغيل** — والبناء ما بيمسكها. */
+function findNearestBar(candles, time) {
+  if (!candles?.length) return null;
+  const exact = candles.find((c) => c.time === time);
+  if (exact) return exact;
+  let bar = null;
+  let bestDiff = Infinity;
+  for (const c of candles) {
+    const diff = Math.abs(c.time - time);
+    if (diff < bestDiff) { bestDiff = diff; bar = c; }
+  }
+  return bar;
+}
+
+function compareSeriesData(type, candles) {
+  return (candles || []).map((c) =>
+    type === "candles"
+      ? { time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }
+      : { time: c.time, value: c.close }
+  );
+}
 
 /* تحويل صفقة الاستعراض التاريخي لصف جدول trades (نفس شكل أداة الباك تيست بالظبط عشان تظهر فيها وبلوحة التحكم) */
 function tradeToRow(trade, userId) {
@@ -1043,33 +1146,7 @@ function pointOnLinePx(px, py, x1, y1, x2, y2, clamp) {
   return { x: x1 + t * dx, y: y1 + t * dy };
 }
 
-/**
- * شارت الاستعراض. **قابل للتركيب أكتر من مرة** بنفس الصفحة.
- *
- * @param paneId       هويّة اللوحة — بتفصل مفاتيح التخزين اللي لازم تنفصل.
- *                     `"main"` (الافتراضي) بيحتفظ بالمفاتيح الأصلية بلا
- *                     لاحقة، فالمستخدم الحالي ما يخسر مؤشراته وجلسته.
- * @param isPrimary    اللوحة اللي بتتفاعل مع محيط الصفحة: بتقرا رمز الـURL
- *                     (`?asset=`). لوحة تانية بتقراه كمان معناها الاتنين
- *                     بيقفزوا لنفس الرمز — فما إله معنى.
- * @param initialAsset رمز البداية لما ما يكون في `?asset=`.
- * @param fillContainer بتقيس الارتفاع من الحاوية بدل النافذة — لازم بالتخطيط
- *                      المقسوم، وإلا كل شارت بيتمدّد لآخر الشاشة ويتراكبوا.
- * @param chromeSlots  `{ top, tools }` — عنصرا DOM مشتركان بمساحة العمل. لما
- *                     ينمرّروا، الشريط العلوي وشريط الرسم بينطبعوا هناك
- *                     بـ`createPortal` بدل ما ينرسموا جوّا الشارت.
- *
- *                     ⚠️ **البوابة مقصودة بدل رفع الأشرطة لمكوّن أعلى.**
- *                     الشريطان مربوطان بعشرات القيم والدوال جوّا الكومبوننت
- *                     (الأداة النشطة · القوالب · المؤشرات · الرسم · الصفقات).
- *                     رفعهن معناه تمرير كل هاد لفوق. بالبوابة بيضلوا يترسموا
- *                     بنفس مكانهن بالشجرة وبكل تمديداتهن، وبس **مكان طباعتهن**
- *                     بينتقل. صفر تغيير بمنطق الأدوات.
- * @param chromeActive هل هاي اللوحة هي النشطة — النشطة وحدها بتطبع أشرطتها.
- * @param onRequestFullscreen لما ينمرّر، زر الشاشة الكاملة الداخلي بينده هو
- *                     بدل ما يرفع حاوية هالشارت — عشان يرفع مساحة العمل كلها.
- */
-export default function ReplayClient({ userId, paneId = "main", isPrimary = true, initialAsset = null, fillContainer = false, chromeSlots = null, chromeActive = true, onRequestFullscreen = null }) {
+export default function ReplayClient({ userId }) {
 
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
@@ -1112,15 +1189,10 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   const [mode, setMode] = useState("live"); // "live" | "training"
   const [randomChart, setRandomChart] = useState(false);
 
-  const [assetValue, setAssetValue] = useState(initialAsset || "XAUUSD");
+  const [assetValue, setAssetValue] = useState("XAUUSD");
   // بتتحدث كل ما نجيب شموع جديدة: بتقول فعلياً أي رمز يوهو استُخدم (سبوت أو
   // عقد آجل احتياطي) - شوفي التعليق بأول lib/assets.js لسبب وجود هالمنطق.
   const dataSourceRef = useRef({ symbol: null, usedFallback: false, provider: "yahoo" });
-  /* 🔴 مصدر **التحميل التاريخي** وحده — منفصل عن `dataSourceRef`.
-     ذاك بيكتب فوقه الاستطلاع الحي كل بضع ثوانٍ (بمزوّد مختلف وبلا `duk`)،
-     فبيمحي مين خدم البيانات فعلاً. مقيس: القراءة رجّعت `provider: "yahoo"`
-     و`symbol: null` بينما التاريخ من مصدر تاني — وهاد ضلّلني مرة قبل. */
-  const loadSourceRef = useRef(null);
   const [usedFuturesApprox, setUsedFuturesApprox] = useState(false);
   const [interval, setIntervalValue] = useState("15m");
   const [speed, setSpeed] = useState(3); // 3x = 3 شموع/ثانية (قيمة افتراضية معقولة)
@@ -1132,9 +1204,6 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   // فتح الشارت مباشرة على رمز معيّن جاي من صفحة تانية (زر "افتح الشارت" برادار QAIS مثلاً)
   const radarSearchParams = useSearchParams();
   useEffect(() => {
-    /* ⚠️ اللوحة الأساسية وحدها بتقرا رمز الـURL. لو قرأته الاتنين، الاتنين
-       بيقفزوا لنفس الرمز — يعني المقارنة بتفضى من معناها أول ما تنفتح. */
-    if (!isPrimary) return;
     const wanted = radarSearchParams.get("asset");
     if (wanted && getAssetByValue(wanted)?.yahoo) {
       setAssetValue(wanted);
@@ -1210,7 +1279,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   // وعمل reload لاحقاً، رح ينقرا صح بعد إعادة التحميل هاد).
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(paneKey(PAUSED_SESSION_KEY, paneId));
+      const raw = localStorage.getItem(PAUSED_SESSION_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.replayState) {
@@ -1246,6 +1315,12 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   // بس عشان نقدر نستخدمها بالـ render (تعطيل خيارات الفريم بالـ select)،
   // لأن الـ ref لحاله ما بيعمل re-render.
   const [replayCutTs, setReplayCutTs] = useState(null);
+  /* مرساة **ثابتة لكل قصّة** — بتستعملها لوحة المقارنة لتجيب نفس النافذة
+     التاريخية اللي جابها الشارت الأساسي.
+     ⚠️ `replayCutTs` فوق بيتحرّك مع **كل خطوة** تدريب، فما بينفع كمُشغِّل
+     جلب: بيعيد تحميل المقارنة كل ضغطة. هاي بتتثبّت مرة عند بداية القص
+     وبتنمسح لما ينتهي. */
+  const [replayAnchorTs, setReplayAnchorTs] = useState(null);
   /* ===== حالة الـ Replay (ReplayState) - مستقلة تماماً عن الفريم الحالي =====
      isActive: هل في Replay/تدريب شغال فعلياً (نقطة قص أو بداية عشوائية).
      anchorTimestamp: الوقت الحقيقي لنقطة "القص" الأصلية (تنعيّن مرة وحدة، وما
@@ -1254,81 +1329,6 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
        Play، خطوة يدوية، أو حتى بعد تحويله لفريم جديد).
      originalTimeframe: الفريم يلي اتعمل عليه القص أساساً (معلومة توثيقية بس). */
   const replayStateRef = useRef({ isActive: false, anchorTimestamp: null, currentTimestamp: null, originalTimeframe: null });
-
-  /* سجل التعميق التدريجي — بيطلع بـ`__qtaChartInfo().deepen`.
-     ⚠️ بلا هالسجل، فشل التعميق **صامت تماماً**: كل مخارجه `return` بلا أثر
-        (طلب فاشل · خطأ بالجسم · صفر شموع أقدم · ملغى). وصار فعلاً — جولتان
-        من التخمين على «ليش ما ربح ولا شمعة» بلا أي قراءة. */
-  const deepenLogRef = useRef({ state: "لسا ما بلّش", rounds: [], gained: 0 });
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     أداة قياس — **قراءة فقط**، ما بتغيّر ولا شي وما بتشتغل لحالها.
-     بالكونسول: `__qtaChartInfo()`
-
-     سبب وجودها: العمق والمصدر ما بينقاسوا من شكل الشارت. جرّبت أستنتجهن
-     من الأرقام مراراً وطلعت غلط كل مرة — «٢٥١٢ شمعة = عشر سنين» طابقت سقف
-     يوهو صدفةً وبنيت عليها شحنة كاملة.
-
-     ⚠️ وبيئة التطوير هون ما بتركّب الشارت (مفاتيح Supabase والشبكة
-     للمزوّدين محجوبتان)، فهاي الطريقة الوحيدة نوصل لأرقام حقيقية.
-     ═══════════════════════════════════════════════════════════════════════ */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const at = (t) => (t ? new Date(t * 1000).toISOString().slice(0, 16) : null);
-    const reg = (window.__qtaCharts = window.__qtaCharts || {});
-    reg[paneId] = () => {
-      const c = allCandles;
-      /* 🔴 **سلامة المصفوفة نفسها.** بالقياس طلعت ٣٩٧٤ شمعة يومية على ٨.٥
-         سنة = ٤٦٩ بالسنة، وأيام التداول ٢٥٢. يعني في تكرار أو ترتيب مكسور،
-         و`c[0]`/`c[length-1]` بيكذبوا لو المصفوفة مش مرتّبة. */
-      let dupes = 0, unsorted = 0, min = Infinity, max = -Infinity;
-      const seen = new Set();
-      /* ⚠️ `dupes` بيمسك الطوابع المتطابقة تماماً. بس شمعتان بنفس **اليوم**
-         وساعتين مختلفتين (٠٤:٠٠ و٠٥:٠٠ — تبديل التوقيت الصيفي) بتمرقوا منه.
-         مقيس: ٣٩٧٤ شمعة على ٣٠٩٥ يوم = ١.٢٨ باليوم، وأيام التداول أقل من
-         الأيام التقويمية — فالرقم ما بيقعد. `days` بتحسمها. */
-      const days = new Set();
-      for (let i = 0; i < c.length; i++) {
-        const t = c[i]?.time;
-        if (t == null) continue;
-        if (seen.has(t)) dupes++; else seen.add(t);
-        days.add(Math.floor(t / 86400));
-        if (i && t <= c[i - 1]?.time) unsorted++;
-        if (t < min) min = t;
-        if (t > max) max = t;
-      }
-      const span = max > min ? (max - min) / 86400 : 0;
-      return {
-        pane: paneId,
-        symbol: assetValue,
-        interval,
-        mode,
-        bars: c.length,
-        dupes,
-        unsorted,
-        days: days.size,
-        barsPerDay: days.size ? +(c.length / days.size).toFixed(2) : 0,
-        spanDays: Math.round(span),
-        first: at(c[0]?.time),
-        last: at(c[c.length - 1]?.time),
-        minTime: at(min === Infinity ? null : min),
-        maxTime: at(max === -Infinity ? null : max),
-        revealed: revealCount,
-        cutTs: at(replayStateRef.current.currentTimestamp),
-        replayActive: !!replayStateRef.current.isActive,
-        /* مصدر التحميل التاريخي — هاد اللي بيهم للعمق */
-        loadSource: loadSourceRef.current,
-        /* آخر مصدر لمس البيانات (بيشمل الاستطلاع الحي) */
-        liveSource: dataSourceRef.current,
-        /* التعميق التدريجي — وين وصل وليش وقف */
-        deepen: deepenLogRef.current,
-      };
-    };
-    window.__qtaChartInfo = (id) =>
-      id ? reg[id]?.() : Object.fromEntries(Object.entries(reg).map(([k, f]) => [k, f()]));
-    return () => { delete reg[paneId]; };
-  }, [paneId, allCandles, assetValue, interval, mode, revealCount]);
-
   // لما نضطر نرجع لـ CONTEXT_BARS احتياطي (نقطة القص الأصلية مش متوفرة بالفريم
   // الجديد)، ما بدنا الـ useEffect تحت (اللي بيزامن currentTimestamp مع آخر
   // شمعة مكشوفة) "يصدّق" هاد الموضع المؤقت ويكتب فوق نقطة القص الحقيقية بشكل
@@ -1474,6 +1474,38 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   const redoStackRef = useRef([]);
   const HISTORY_LIMIT = 100;
 
+  /* ===== مقارنة الرموز (شارت مقسوم) + تكبير أي جزء بضغطتين ماوس ===== */
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareSymbol, setCompareSymbol] = useState("SPX500");
+  const [compareCandles, setCompareCandles] = useState([]);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState("");
+  const [maximizedPane, setMaximizedPane] = useState(null); // null | "main" | "compare"
+  const compareContainerRef = useRef(null);
+  const compareChartRef = useRef(null);
+  const compareSeriesRef = useRef(null);
+  const compareOpenRef = useRef(false);
+  /* قاطع دورة المزامنة + نسخة من الشموع لحساب تسامح المطابقة.
+     شوفي `lib/pane-sync.js` — الحراس التلاتة ضد انفلات التكبير. */
+  const paneSyncBreakerRef = useRef(createSyncBreaker());
+  /* أوقات الشموع **المرسومة فعلاً** بكل لوحة — عليها بتتبنى ترجمة الفهرس.
+     ⚠️ لازم تكون مقصوصة بنقطة الكشف زي ما انضبطت بالسيريز بالضبط، وإلا
+     الترجمة بتتبنى على شموع لسا ما انكشفت = نظر للمستقبل. */
+  const mainTimesRef = useRef([]);
+  const compareTimesRef = useRef([]);
+  const compareSourceRef = useRef({ provider: null, usedFallback: false, symbol: null, errors: null });
+  const maximizedPaneRef = useRef(null);
+  const [compareHeightPx, setCompareHeightPx] = useState(DEFAULT_COMPARE_HEIGHT);
+  const compareHeightPxRef = useRef(DEFAULT_COMPARE_HEIGHT);
+  const mainPaneRef = useRef(null);
+  const comparePaneRef = useRef(null);
+  const compareCandlesRef = useRef([]);
+  const crosshairSyncingRef = useRef(false);
+  const rangeSyncingRef = useRef(false);
+
+  /* إعدادات لوحة المقارنة (نوع الشارت وألوانه) + نافذتها الخاصة */
+  const [compareSettings, setCompareSettings] = useState(DEFAULT_COMPARE_SETTINGS);
+  const [compareSettingsOpen, setCompareSettingsOpen] = useState(false);
 
   /* إعدادات ألوان الشارت (خلفية + شموع صعود/هبوط) + قائمة الكليك يمين + نافذة الإعدادات */
   const [chartSettings, setChartSettings] = useState(DEFAULT_CHART_SETTINGS);
@@ -1556,12 +1588,13 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   /* تحميل إعدادات الألوان المحفوظة بعد أول رندر عالمتصفح (تفادي مشاكل الـ SSR) */
   useEffect(() => {
     setChartSettings(loadChartSettings());
-    setActiveIndicators(loadActiveIndicators(paneId));
+    setCompareSettings(loadCompareSettings());
+    setActiveIndicators(loadActiveIndicators());
   }, []);
 
   /* أي تغيير بلائحة المؤشرات المفعّلة: نحفظها بالمتصفح فوراً */
   useEffect(() => {
-    saveActiveIndicators(activeIndicators, paneId);
+    saveActiveIndicators(activeIndicators);
   }, [activeIndicators]);
 
   /* أي تغيير بالإعدادات: تطبيق فوري على الشارت + حفظ بالمتصفح (وتطبيق نفس لون الخلفية على لوحة المقارنة لو مفتوحة) */
@@ -1600,6 +1633,19 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
       // أبداً بأي حالة (حتى لو في إعدادات قديمة محفوظة بالمتصفح).
       priceLineVisible: false,
     });
+    if (compareChartRef.current) {
+      compareChartRef.current.applyOptions({
+        layout: { background: { color: chartSettings.bg }, textColor: chartSettings.textColor || "#A79FC4" },
+        grid: {
+          vertLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
+          horzLines: { color: hexToRgba(chartSettings.gridColor, 0.05), visible: chartSettings.gridVisible },
+        },
+        crosshair: {
+          vertLine: { color: chartSettings.crosshairColor },
+          horzLine: { color: chartSettings.crosshairColor },
+        },
+      });
+    }
     saveChartSettings(chartSettings);
     applyIndicatorPaneMargins();
     scheduleDraw();
@@ -1761,8 +1807,46 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   function effectiveLineWidth(it, line) { return it?.style?.widths?.[line.key] || line.lineWidth || 1.4; }
 
   /* ===== شموع المقارنة المسموح عرضها الآن — المصدر الوحيد للقص =====
+     ⚠️ انبنت لأن القص كان مكرَّراً بمكان واحد وناقص بالتاني، فأي مسار
+     بينسى يقصّ بيسرّب مستقبل الرمز المترابط بوضع التدريب. أي مكان بيكتب
+     على سيريز المقارنة لازم يمرّ من هون — مش من `compareCandles` مباشرة.
+
+     بوضع المباشر ما في قص: الشارتان عايشان بنفس اللحظة. */
+  function compareCandlesUpToReveal() {
+    if (mode !== "training" || !allCandles.length) return compareCandles;
+    const cutTime = allCandles[Math.min(revealCount, allCandles.length) - 1]?.time;
+    if (cutTime == null) return compareCandles;
+    return compareCandles.filter((c) => c.time <= cutTime);
+  }
+
   /* أي تغيير بإعدادات لوحة المقارنة (نوع الشارت أو ألوانه): نعيد بناء السيريز فوراً ونحفظ بالمتصفح.
      منقّاة بنفس بيانات الشمعة الحالية عشان يبان التغيير مباشرة بدون قفل/إعادة تحميل. */
+  useEffect(() => {
+    saveCompareSettings(compareSettings);
+    if (!compareChartRef.current) return;
+    try {
+      if (compareSeriesRef.current) compareChartRef.current.removeSeries(compareSeriesRef.current);
+    } catch {}
+    const series = buildCompareSeries(compareChartRef.current, compareSettings);
+    compareSeriesRef.current = series;
+    try {
+      /* ⚠️ **لازم نقصّ هون كمان — مش نحط compareCandles كاملة.**
+         ------------------------------------------------------------------
+         في مكانين بيكتبوا على نفس السيريز: هاد (لما يتغيّر نوع الشارت أو
+         لونه) والتأثير تحت (سطر ~4790، لما تتغيّر البيانات أو تتقدّم نقطة
+         الكشف). التاني بيقصّ عند نقطة الريبلاي؛ هاد كان بيحط **كل** شموع
+         المقارنة بلا قص.
+
+         النتيجة: بوضع التدريب، أول ما تبدّلي شكل لوحة المقارنة (شموع/خط/
+         منطقة أو أي لون)، بتنكشف بيانات الرمز المترابط **لليوم** — يعني
+         مستقبل ما وصله الريبلاي بعد. وبتضل مكشوفة لحد ما تتقدّم شمعة تانية
+         فيرجع التأثير التاني يقصّها.
+
+         بأداة تدريب، تسريب المستقبل مش خلل عرض — هو بيبطّل التمرين نفسه. */
+      series.setData(compareSeriesData(compareSettings.type, compareCandlesUpToReveal()));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareSettings]);
 
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
   useEffect(() => { magnetRef.current = magnetOn; }, [magnetOn]);
@@ -1779,6 +1863,15 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   useEffect(() => { drawingsVisibleRef.current = drawingsVisible; scheduleDraw(); }, [drawingsVisible]);
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
   useEffect(() => { setDrawingTemplatesMenuOpen(false); setTextPopoverOpen(false); }, [selectedDrawingId]);
+  useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
+  useEffect(() => {
+    mainTimesRef.current = allCandles.slice(0, revealCount).map((c) => c.time);
+    compareTimesRef.current = compareCandlesUpToReveal().map((c) => c.time);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCandles, revealCount, compareCandles, mode]);
+  useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
+  useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
+  useEffect(() => { compareCandlesRef.current = compareCandles; }, [compareCandles]);
   /* useLayoutEffect لا useEffect: لازم visibleCandlesRef.current يتحدّث *قبل*
      useLayoutEffect تحديث الشارت تحت (سطر ~4381) يلي بينده scheduleDraw()
      ويرسم كل الرسومات (drawOverlay -> ptToLogical -> visibleCandlesRef.current).
@@ -3995,10 +4088,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
 
       const handleResize = () => {
         if (!chartContainerRef.current) return;
-        /* ⚠️ لازم يكون **حاوية هاي اللوحة** بالذات. `document.fullscreenElement`
-           عام: لما مساحة العمل كلها تدخل الشاشة الكاملة، القراءة الخام بتخلّي
-           كل شارت يحسب ارتفاعه من النافذة كاملة فيتراكبوا. */
-        const isFs = document.fullscreenElement === chartWrapperRef.current;
+        const isFs = !!document.fullscreenElement;
         let totalHeight = 480;
         if (isFs) {
           const headerH = headerRef.current?.offsetHeight || 0;
@@ -4015,19 +4105,6 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
             padBottom = parseFloat(cs.paddingBottom) || 0;
           }
           totalHeight = Math.max(320, window.innerHeight - headerH - headerMarginBottom - padTop - padBottom - 4);
-        } else if (fillContainer && chartWrapperRef.current) {
-          /* 🔴 **بالتخطيط المقسوم الارتفاع بينقاس من الحاوية مش من النافذة.**
-             -----------------------------------------------------------------
-             الحساب تحت بيطرح من `window.innerHeight` — يعني كل شارت بيتمدّد
-             لآخر الشاشة. بشارت واحد هاد صح تماماً. بشارتين فوق بعض، اللي فوق
-             بياخد الشاشة كلها وبيتراكب على اللي تحت.
-
-             فلما تكون اللوحة جوّا تخطيط بيحدّد ارتفاعها (المساحة الشغّالة)،
-             بتقرا ارتفاع حاويتها الفعلي وبس. */
-          const cs = window.getComputedStyle(chartWrapperRef.current);
-          const padTop = parseFloat(cs.paddingTop) || 0;
-          const padBottom = parseFloat(cs.paddingBottom) || 0;
-          totalHeight = Math.max(240, chartWrapperRef.current.clientHeight - padTop - padBottom);
         } else if (chartWrapperRef.current) {
           // نفس فكرة الشاشة الكاملة، بس هون منحسب المساحة المتاحة لغاية آخر الصفحة
           // (مش رقم ثابت 480px) عشان الشارت ياخد كل المساحة المتبقية بالشاشة
@@ -4042,12 +4119,32 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
             window.innerHeight - rect.top - padTop - padBottom - BOTTOM_BREATHING_ROOM
           );
         }
-        /* ⚠️ كان هون توزيع ارتفاع بين الشارت ولوحة المقارنة (قاسم قابل
-           للسحب + حالة تكبير لوحة). اللوحة انشالت، فالشارت بياخد
-           `totalHeight` كامل. */
+        // توزيع الارتفاع بين الشارت الرئيسي وشارت المقارنة (لو مفعّل) حسب أي جزء مكبّر حالياً
+        // وحسب الحجم اللي المستخدم سحبه يدوياً (قاسم قابل للسحب زي تريدنغ فيو)
+        const DIVIDER_H = 10;
+        let mainHeight = totalHeight;
+        let compareHeight = 0;
+        if (compareOpenRef.current) {
+          if (maximizedPaneRef.current === "compare") {
+            mainHeight = 0;
+            compareHeight = totalHeight;
+          } else if (maximizedPaneRef.current === "main") {
+            mainHeight = totalHeight;
+            compareHeight = 0;
+          } else {
+            const maxCompare = Math.max(100, totalHeight - 150 - DIVIDER_H);
+            compareHeight = Math.min(Math.max(100, compareHeightPxRef.current), maxCompare);
+            mainHeight = Math.max(150, totalHeight - compareHeight - DIVIDER_H);
+          }
+        }
+        // نفرض ارتفاع صريح بالبكسل على صندوقي اللوحتين نفسهم (مش بس على الشارت جوّاهم).
+        // هيك بيضلوا مطابقين تماماً لبعض بغض النظر عن طول أي عنصر جوا اللوحة الرئيسية
+        // (زي عمود أدوات الرسم اللي كان بيطوّل أكتر من الشارت ويسيب فراغ أسود تحته).
+        if (mainPaneRef.current) mainPaneRef.current.style.height = `${mainHeight}px`;
+        if (comparePaneRef.current) comparePaneRef.current.style.height = `${compareHeight}px`;
         chart.applyOptions({
           width: chartContainerRef.current.clientWidth,
-          height: totalHeight,
+          height: mainHeight,
         });
         // مزامنة قياس الـ overlay canvas مع الشارت (للرسومات)
         if (overlayCanvasRef.current) {
@@ -4058,13 +4155,17 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
           overlayCanvasRef.current.style.width = rect.width + "px";
           overlayCanvasRef.current.style.height = rect.height + "px";
         }
+        if (compareChartRef.current && compareContainerRef.current) {
+          compareChartRef.current.applyOptions({
+            width: compareContainerRef.current.clientWidth,
+            height: compareHeight,
+          });
+        }
         scheduleDraw();
       };
       window.addEventListener("resize", handleResize);
       const handleFsChange = () => {
-        /* ⚠️ لازم نقارن بحاوية **هاي** اللوحة. `document.fullscreenElement`
-           عام، فلو قرأناه خام بتظن اللوحة التانية حالها بالشاشة الكاملة كمان. */
-        setIsFullscreen(document.fullscreenElement === chartWrapperRef.current);
+        setIsFullscreen(!!document.fullscreenElement);
         setTimeout(handleResize, 50);
       };
       document.addEventListener("fullscreenchange", handleFsChange);
@@ -4231,9 +4332,10 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         // للشارت الأصلي (يلي هو المسؤول عن رسم مؤشر التقاطع)
         const idx = Math.round(logical);
         const barForCrosshair = visibleCandlesRef.current[idx];
-        /* ⚠️ هالسطر **للشارت الأساسي** — كان ملتصقاً بمزامنة لوحة المقارنة
-           فانشال معها بالغلط أول مرة. بلاه المغناطيس ما بيحرّك مؤشر التقاطع. */
-        if (barForCrosshair) chart.setCrosshairPosition(snapped, barForCrosshair.time, series);
+        if (barForCrosshair) {
+          chart.setCrosshairPosition(snapped, barForCrosshair.time, series);
+          syncCrosshairToCompare(barForCrosshair.time);
+        }
         if (!isDrawingRef.current && !activePath) return;
         if (isDrawingRef.current && drawStateRef.current) {
           drawStateRef.current.p2 = shiftPressedRef.current
@@ -4379,6 +4481,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
            فيها رسمة تحت المؤشّر، وهاد بينفّذ بس لما ما يكون في ولا وحدة.
            وبتوقف كمان لما تكون أداة رسم شغّالة (الشرط بأول الدالة). */
         if (!hit) {
+          if (compareOpenRef.current) toggleMaximizePane("main");
           return;
         }
         if (hit.tradeTag) return;
@@ -4583,6 +4686,49 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
       }
       chart.subscribeCrosshairMove(onCrosshairMagnet);
 
+      /* مزامنة مؤشر تقاطع الوقت/السعر مع لوحة المقارنة (لو مفتوحة) عشان يبانوا
+         كأنهم شاشة وحدة زي تريدنغ فيو بالظبط: أي تحريك بالماوس عالشارت الرئيسي
+         بيحرك نفس عمود الوقت بلوحة المقارنة تلقائياً، شمعة شمعة.
+         ملاحظة مهمة: منستدعيها بشكل مباشر من onMouseMove (مش بس عن طريق
+         subscribeCrosshairMove) لأن مؤشر الشارت الرئيسي أصلاً بينترسم يدوياً
+         عن طريق setCrosshairPosition، وما في ضمان إنها هي نفسها بتفعّل حدث
+         subscribeCrosshairMove بكل نسخ المكتبة — فبالاستدعاء المباشر بنضمن
+         إنها تشتغل دايماً. */
+      function syncCrosshairToCompare(time) {
+        if (crosshairSyncingRef.current) return;
+        const cChart = compareChartRef.current;
+        const cSeries = compareSeriesRef.current;
+        if (!cChart || !cSeries) return;
+        crosshairSyncingRef.current = true;
+        try {
+          if (time == null) {
+            cChart.clearCrosshairPosition();
+          } else {
+            /* 🔴 **المطابقة بالوقت، مش برقم الموضع.**
+               -------------------------------------------------------------
+               كانت: `idx = findCandleIndexByTime(main, time)` وبعدها
+               `compare[idx]` — يعني بتفترض إنّ الرقم N بنفس اللحظة
+               باللوحتين. وهاد **نفس الافتراض** اللي انكسر بمزامنة المدى.
+
+               مقيس: ناسداك ~٢٩٨ شمعة يومية بالسنة (فيها شمعة الأحد من
+               Dukascopy) وSP500 ~٢٥١ — فالرقم N بيبعد أكتر كل ما رحنا للورا،
+               والخط بينزاح ويرجع يتصحّح مع أول حدث تاني. وهاد اللي بلّغ عنه:
+               «بيفلت وبيرجع يعدل».
+
+               الاختيار الأصلي كان **مقصوداً** لأن مزامنة المدى كانت بالفهرس
+               وقتها. المدى صار بالوقت (`mapLogicalRange`)، فهاي لازم تتبعه —
+               وإلا الاتنان بيتناقضوا. */
+            const bar = findNearestBar(compareCandlesRef.current || [], time);
+            if (bar) cChart.setCrosshairPosition(bar.close, bar.time, cSeries);
+            else cChart.clearCrosshairPosition();
+          }
+        } catch {}
+        crosshairSyncingRef.current = false;
+      }
+      function onMainCrosshairSync(param) {
+        syncCrosshairToCompare(param.time ?? null);
+      }
+      chart.subscribeCrosshairMove(onMainCrosshairSync);
 
       chart.__cleanup = () => {
         window.removeEventListener("resize", handleResize);
@@ -4607,6 +4753,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChangeCloseMenus);
         chart.unsubscribeCrosshairMove(scheduleDraw);
         chart.unsubscribeCrosshairMove(onCrosshairMagnet);
+        chart.unsubscribeCrosshairMove(onMainCrosshairSync);
 
         clearInterval(priceTagInterval);
         clearInterval(ohlcTickerInterval);
@@ -4630,10 +4777,6 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
 
   /* ===================== تبديل الشاشة الكاملة ===================== */
   function toggleFullscreen() {
-    /* 🔴 بالتخطيط المقسوم، الشاشة الكاملة لازم ترفع **مساحة العمل** مش هالشارت
-       وحده — وإلا الشارت التاني بيختفي وما بيبقى مجال تشوف الاتنين مع بعض.
-       فلما مساحة العمل تمرّر معالجاً، هو اللي بينفّذ. */
-    if (onRequestFullscreen) { onRequestFullscreen(); return; }
     if (!chartWrapperRef.current) return;
     if (!document.fullscreenElement) {
       chartWrapperRef.current.requestFullscreen?.();
@@ -4651,17 +4794,503 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
     }
   }, [isFullscreen, mode, cutMode, randomChart, assetValue, interval, maxBars, speed, isPlaying, loading]);
 
+  /* لما تنفتح/تنقفل لوحة المقارنة أو ينكبّر أي جزء منها، لازم نعيد توزيع الارتفاع بين الشارتين.
+     وكمان لازم نخفي محور الوقت (شريط التواريخ) بالشارت الرئيسي وقتها، عشان يضل
+     محور وقت واحد بس ظاهر بالأسفل (بلوحة المقارنة) - بالضبط زي تريدنغ فيو، مش
+     محورين منفصلين لكل لوحة. */
+  useEffect(() => {
+    const t = setTimeout(() => chartRef.current?.__resize?.(), 30);
+    if (chartRef.current) {
+      const hideMainAxis = compareOpen && maximizedPane !== "main";
+      try { chartRef.current.applyOptions({ timeScale: { visible: !hideMainAxis } }); } catch {}
+    }
+    return () => clearTimeout(t);
+  }, [compareOpen, maximizedPane]);
+
   /* فتح/قفل لوحة المتابعة (Watchlist) بيغيّر عرض حاوية الشارت الفعلي، بس هاد
      التغيير ما بيطلق حدث "resize" على النافذة نفسها (لأنه بس تغيير Flexbox
      جوا الصفحة) - فلازم نطلب من الشارت يعيد حساب عرضه يدوياً، وإلا بضل
-     فراغ أسود مكان اللوحة المقفولة. */
+     فراغ أسود مكان اللوحة المقفولة (نفس فكرة تأثير compareOpen فوق). */
   useEffect(() => {
     const t = setTimeout(() => chartRef.current?.__resize?.(), 30);
     return () => clearTimeout(t);
   }, [watchlistPanelOpen]);
 
 
+  useEffect(() => {
+    if (!compareOpen) {
+      if (compareChartRef.current) {
+        compareChartRef.current.remove();
+        compareChartRef.current = null;
+        compareSeriesRef.current = null;
+      }
+      return;
+    }
+    let cancelled = false;
+    async function setupCompareChart() {
+      LWC = await import("lightweight-charts");
+      const { createChart, CrosshairMode } = LWC;
+      if (cancelled || !compareContainerRef.current) return;
+      const savedSettings = loadChartSettings();
+      const chart = createChart(compareContainerRef.current, {
+        layout: {
+          background: { color: savedSettings.bg },
+          textColor: savedSettings.textColor || "#A79FC4",
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif",
+        },
+        grid: {
+          vertLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
+          horzLines: { color: hexToRgba(savedSettings.gridColor, 0.05), visible: savedSettings.gridVisible },
+        },
+        timeScale: { borderColor: "#2A2145", timeVisible: true, secondsVisible: false },
+        // عرض ثابت مطابق تماماً لعرض عمود الأسعار بالشارت الرئيسي (PRICE_SCALE_WIDTH)،
+        // هاد هو الحل الفعلي لمشكلة "آخر شمعة فوق ما بتطابق آخر شمعة تحت بالضبط":
+        // كل شارت (رئيسي/مقارنة) هو نسخة lightweight-charts منفصلة، وبدون تثبيت
+        // نفس العرض، كل وحدة بتحسب عرض عمود الأسعار تلقائياً حسب عدد خانات
+        // السعر تبعها (مثلاً XAUUSD أربع خانات مقابل NAS100 خمس خانات) - فمنطقة
+        // رسم الشموع الفعلية ما بتضل بنفس المحاذاة بالبكسل بين اللوحتين حتى لو
+        // كانت الفترة الزمنية المعروضة متطابقة 100%.
+        rightPriceScale: { borderColor: "#2A2145", minimumWidth: PRICE_SCALE_WIDTH },
+        // نفس إعدادات مؤشر التقاطع بالضبط زي الشارت الرئيسي (اللون + الوضع Normal)
+        // - قبل هيك ما كان في أي إعداد هون، فكان بياخد لون/سلوك افتراضي من
+        // المكتبة يختلف عن الشارت الرئيسي (هاد سبب اختلاف لون المؤشر).
+        crosshair: {
+          mode: CrosshairMode.Normal,
+          vertLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#3D2F63" },
+          horzLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#3D2F63" },
+        },
+        width: compareContainerRef.current.clientWidth,
+        height: 160,
+        // لوحة المقارنة صارت تفاعلية بالكامل (سكرول/زوم مباشر عليها) — التحكم
+        // متبادل مع الشارت الرئيسي بالاتجاهين (شوف onMainRangeChange/
+        // onCompareRangeChange تحت)، مع حارس (rangeSyncingRef) يمنع أي
+        // "تجاذب"/بينغ-بونغ بين اللوحتين لما توصل تحديثات من الاتجاهين
+        // بنفس الوقت.
+        handleScroll: true,
+        handleScale: true,
+      });
+      const series = buildCompareSeries(chart, loadCompareSettings());
+      compareChartRef.current = chart;
+      compareSeriesRef.current = series;
 
+      /* ═══════════════════════════════════════════════════════════════════
+         أداة قياس — **قراءة فقط**، ما بتغيّر ولا شي وما بتشتغل لحالها.
+         -----------------------------------------------------------------
+         سبب وجودها: انزياح بصري بين اللوحتين ما بينحلّ بالتخمين من صورة.
+         بيئة التطوير هون ما بتركّب الشارت (المفاتيح والشبكة محجوبتان)، فهاي
+         الطريقة الوحيدة نوصل لأرقام حقيقية بدل افتراضات.
+
+         بالكونسول:  __qtaPaneInfo()
+
+         الفرق بين `compare.logical` و`mapped` هو الجواب: لو اتنينهن نفس
+         الشي فالمزامنة بتشتغل والخلل بمكان تاني؛ ولو مختلفين فالشارت بيقصّ
+         المدى المطلوب أو المزامنة ما بتوصل أصلاً.
+         ═══════════════════════════════════════════════════════════════════ */
+      if (typeof window !== "undefined") {
+        window.__qtaPaneInfo = () => {
+          const at = (t) => (t ? new Date(t * 1000).toISOString().slice(0, 16) : null);
+          const side = (times, ts) => ({
+            bars: times.length,
+            first: at(times[0]),
+            last: at(times[times.length - 1]),
+            logical: ts?.getVisibleLogicalRange() || null,
+          });
+          const mt = mainTimesRef.current || [];
+          const ct = compareTimesRef.current || [];
+          const mainTs = chartRef.current?.timeScale();
+          return {
+            main: side(mt, mainTs),
+            compare: side(ct, chart.timeScale()),
+            mapped: mapLogicalRange(mt, ct, mainTs?.getVisibleLogicalRange()),
+            /* 🔴 مين خدم كل لوحة. بلا هالسطرين كنت بستنتج المزوّد من شكل
+               الأرقام — و«٢٥١٢ شمعة = عشر سنين» طلعت مطابقة لسقف يوهو،
+               فرفعته، ولوحة المقارنة ضلّت أقصر. يعني الاستنتاج كان غلط أو
+               ناقص، وما في طريقة أعرف بلا ما المزوّد يقول عن حاله. */
+            mainSource: dataSourceRef.current,
+            compareSource: compareSourceRef.current,
+            breakerTripped: paneSyncBreakerRef.current.isTripped,
+          };
+        };
+      }
+
+      // مزامنة السكرول/الزوم بين الشارت الرئيسي ولوحة المقارنة بالاتجاهين -
+      // أي وحدة فيهم ممكن تقود التانية هلأ (قبل هيك كانت لوحة المقارنة "مرآة"
+      // بس، ما فيها تحكم مباشر). rangeSyncingRef هو الحارس يلي بيمنع
+      // "بينغ-بونغ" (كل شارت يرجع يصحح التاني بلا نهاية): لما وحدة تحدّث
+      // التانية، منرفع الحارس قبل ما نغيّر مدى الشارت التاني، وأي حدث تغيير
+      // ثاني ناتج عن هالتحديث بنفس اللحظة بيتجاهل نفسه لأنه الحارس مرفوع.
+      const mainChart = chartRef.current;
+      /* ═══════════════════════════════════════════════════════════════════
+         المزامنة: **فهرس مترجَم عبر الوقت**.
+         -----------------------------------------------------------------
+         مرّينا بتلات محاولات، وكل وحدة كشفت اللي بعدها:
+
+         ١) **فهرس خام** — بيفترض إنّ العمود N بنفس اللحظة باللوحتين، وهاد
+            مش مضمون مع مزوّدين مختلفي العمق. صار انزياح بصري.
+
+         ٢) **فهرس خام + حشو فراغات** — صلّح الانزياح بمساواة الطول، بس على
+            اليومي المزوّدان بيختلفوا بالعطل فكل يوم ناقص صار **عمود فاضي
+            مرسوم**. هاي كانت ثقوب الشموع.
+
+         ٣) **وقت خام** — شال الحشو والثقوب، بس طلع خلل تاني: الشارت الأساسي
+            عنده `rightOffset: 6` ولوحة المقارنة صفر، و`getVisibleRange()`
+            بترجّع المدى **مقصوصاً على البيانات** (بتنتهي عند آخر شمعة مش
+            عند حافة الرسم). فالأساسي بيعرض الفترة على العرض ناقص ٦ شموع
+            والمقارنة على كامل العرض → مقياسان، وخط التقاطع بمكانين.
+
+         الحل: الضبط بالفهرس (هو اللي بيحكم البكسل وبيغطّي منطقة الإزاحة)،
+         بس بعد **ترجمة الموضع عبر الوقت**: فهرس الأساسي → لحظة → فهرس
+         المقارنة. هيك المحاذاة بالبكسل مضبوطة **والموضع بيعني نفس اللحظة**،
+         والإزاحة بتنترجم بدل ما تنقصّ.
+
+         🔴 وقبل هيك محاولة زمنية عملت **تكبيراً متسارعاً** بالإنتاج: الاشتراك
+         على المدى المنطقي والضبط على الزمني، فكل ضبط بيشغّل الطرف التاني،
+         والحارس بينمسح فوراً بينما النداء بيرجع بالإطار اللي بعده.
+
+         تلات حراس، وكل واحد بيكفي لحاله:
+           ١) `shouldApplyRange` — ما بنضبط إذا المدى مطابق ضمن ربع شمعة.
+           ٢) الحارس بينمسح بعد إطار، مش فوراً.
+           ٣) قاطع دورة — أسوأ حالة «ما بتتزامن»، مش «تكبير جنوني».
+
+         الترجمة والحراس بـ`lib/pane-sync.js`، مفحوصين بمحاكاة الحلقة على
+         سلسلتين مختلفتي العمق والعطل — بلا متصفّح.
+         ═══════════════════════════════════════════════════════════════════ */
+      /* بربع شمعة. أكبر من انزياح الاستيفاء، وأصغر من إنه يبان بالعين. */
+      const LOGICAL_TOL = 0.25;
+
+      const releaseGuard = () => {
+        if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => { rangeSyncingRef.current = false; });
+        else setTimeout(() => { rangeSyncingRef.current = false; }, 0);
+      };
+
+      const syncFrom = (src, dst, srcTimes, dstTimes) => {
+        if (!src || !dst || rangeSyncingRef.current) return;
+        if (!paneSyncBreakerRef.current.allow()) return;
+        let srcRange = null, current = null;
+        try { srcRange = src.timeScale().getVisibleLogicalRange(); } catch {}
+        try { current = dst.timeScale().getVisibleLogicalRange(); } catch {}
+        const target = mapLogicalRange(srcTimes, dstTimes, srcRange);
+        if (!shouldApplyRange(current, target, LOGICAL_TOL)) return;
+        rangeSyncingRef.current = true;
+        try { dst.timeScale().setVisibleLogicalRange(target); } catch {}
+        releaseGuard();
+      };
+
+      const onMainRangeChange = () =>
+        syncFrom(chartRef.current, compareChartRef.current, mainTimesRef.current, compareTimesRef.current);
+      const onCompareRangeChange = () =>
+        syncFrom(chart, chartRef.current, compareTimesRef.current, mainTimesRef.current);
+      mainChart?.timeScale().subscribeVisibleLogicalRangeChange(onMainRangeChange);
+      chart.timeScale().subscribeVisibleLogicalRangeChange(onCompareRangeChange);
+
+      // نحاذي لوحة المقارنة فوراً مع نفس موضع الشارت الرئيسي وقت الفتح (بدل ما
+      // تضل بفترتها الافتراضية العريضة لحد أول سحب/زوم من المستخدم)
+      try {
+        const target = mapLogicalRange(
+          mainTimesRef.current,
+          compareTimesRef.current,
+          mainChart?.timeScale().getVisibleLogicalRange()
+        );
+        if (target) chart.timeScale().setVisibleLogicalRange(target);
+      } catch {}
+
+      /* مزامنة مؤشر تقاطع الوقت/السعر بالاتجاهين (تحريك الماوس فوق أي وحدة من
+         اللوحتين بيحرك نفس عمود الوقت بالتانية) - قبل هيك كانت المزامنة
+         باتجاه واحد بس (الشارت الرئيسي بيقود)، فلما تكوني تحت (لوحة المقارنة)
+         ما كان المؤشر عم يطلع فوق (الشارت الرئيسي). */
+      function syncCrosshairToMain(time) {
+        if (crosshairSyncingRef.current) return;
+        const mChart = chartRef.current;
+        const mSeries = seriesRef.current;
+        if (!mChart || !mSeries) return;
+        crosshairSyncingRef.current = true;
+        try {
+          if (time == null) {
+            mChart.clearCrosshairPosition();
+          } else {
+            // نفس المبدأ بالاتجاه المعاكس — مطابقة بالوقت مش برقم الموضع.
+            // (الشرح الكامل عند `syncCrosshairToCompare` فوق.)
+            const bar = findNearestBar(visibleCandlesRef.current || [], time);
+            if (bar) mChart.setCrosshairPosition(bar.close, bar.time, mSeries);
+            else mChart.clearCrosshairPosition();
+          }
+        } catch {}
+        crosshairSyncingRef.current = false;
+      }
+      chart.subscribeCrosshairMove((param) => syncCrosshairToMain(param.time ?? null));
+
+      chart.__unsyncMain = () => {
+        mainChart?.timeScale().unsubscribeVisibleLogicalRangeChange(onMainRangeChange);
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(onCompareRangeChange);
+      };
+
+      chartRef.current?.__resize?.();
+    }
+    setupCompareChart();
+    return () => {
+      cancelled = true;
+      compareChartRef.current?.__unsyncMain?.();
+    };
+  }, [compareOpen]);
+
+  /* تحديث بيانات شارت المقارنة كل ما تتغيّر الرسمة/الفريم/تقدّم التشغيل (وضع التدريب).
+     السبب الحقيقي للفراغ يلي كان بيبان يمين الشارت الرئيسي: بوضع "التدريب" (الريبلاي)
+     الشارت الرئيسي بيكون مجمّد على نقطة تاريخية معينة ("اختيار نقطة البداية")
+     ومكشوف منه بس شموع لحد هاي النقطة، بينما رمز المقارنة كان دايماً بيجيب ويعرض
+     آخر بيانات حية لليوم (لحد اليوم)! يعني اللوحتين أصلاً بيمثلوا فترتين زمنيتين
+     مختلفتين تماماً. الحل: نقص بيانات المقارنة لنفس آخر نقطة زمنية مكشوفة
+     بالشارت الرئيسي (بوضع التدريب)، تماماً متل ما بنعمل بالشارت الرئيسي نفسه -
+     هيك ما ينكشف "مستقبل" لرمز المقارنة قبل ما يوصله الريبلاي. */
+  useEffect(() => {
+    if (compareSeriesRef.current) {
+      /* ⚠️ القص انتقل لـ`compareCandlesUpToReveal` (فوق) — كان مكرَّراً هون
+         وناقص بمسار إعدادات المقارنة، فتبديل نوع الشارت كان بيسرّب المستقبل. */
+      const data = compareSeriesData(compareSettings.type, compareCandlesUpToReveal());
+      try {
+        compareSeriesRef.current.setData(data);
+        // نحاذي بالفهرس المترجَم عبر الوقت — نفس السبب المشروح فوق بـ
+        // setupCompareChart (محاذاة بالبكسل + الموضع بيعني نفس اللحظة)
+        const target = mapLogicalRange(
+          mainTimesRef.current,
+          data.map((d) => d.time),
+          chartRef.current?.timeScale().getVisibleLogicalRange()
+        );
+        if (target) compareChartRef.current?.timeScale().setVisibleLogicalRange(target);
+      } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareCandles, revealCount, allCandles, mode]);
+
+
+  /* جلب بيانات رمز المقارنة (نفس مصدر البيانات اللي بتستخدمه أداة الريبلاي - Yahoo Finance) */
+  useEffect(() => {
+    if (!compareOpen) return;
+    let cancelled = false;
+    let comparePollTimer = null;
+    async function loadCompare() {
+      setCompareLoading(true);
+      setCompareError("");
+      try {
+        const info = getAssetByValue(compareSymbol);
+        if (!info?.yahoo) throw new Error("هذا الرمز غير مدعوم للمقارنة حالياً");
+        const tdInterval = INTERVAL_MAP[interval];
+        const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
+        /* ⚠️ **نفس مزوّد الشارت الأساسي.** بلا هالسطر كانت المقارنة تنزل
+           ليوهو بينما الأساسي من Dukascopy — جلستان وعُطل مختلفة، فتظهر
+           فراغات بالشموع. مقيس على ٤ ساعات: ١٩٤ فراغ بيوهو، **صفر** بنفس
+           المزوّد. */
+        const dukParam = info.dukascopy ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
+        /* ⚠️ **نفس مرساة الشارت الأساسي.** بلا هالسطر كانت المقارنة تجيب
+           دايماً نافذة منتهية **الآن** حتى لما يكون في قص على الماضي.
+           مقيس على الإنتاج (٢٠٢٦-٠٨-٢٦) بقص على ٢٠١٦-٠١-٢٧:
+
+               main    753 شمعة · 2013-05-22 → 2016-01-27
+               compare 0 شمعة
+
+           صفر — لأنّ بيانات SP500 بتبلّش ٢٠١٦-٠٨-٢٩، يعني **بعد** نقطة
+           القص كلها. فالقصّ بالوقت بيرجّع مصفوفة فاضية واللوحة بتضل بيضا. */
+        const cutAnchor = replayAnchorTs != null ? `&anchor=${replayAnchorTs}` : "";
+        const res = await fetch(
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${cutAnchor}${tdParam}${dukParam}`
+        );
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        const candles = sanitizeCandles(data.candles || []);
+        if (cancelled) return;
+        /* ⚠️ مين خدم لوحة المقارنة فعلياً — بيطلع بـ`__qtaPaneInfo()`.
+           بلاه كنت بخمّن المزوّد من شكل الأرقام بدل ما أعرفه. */
+        compareSourceRef.current = {
+          provider: data.provider || null,
+          usedFallback: !!data.usedFallback,
+          symbol: data.sourceSymbol || null,
+          errors: data.providerErrors || null,
+          duk: data.duk || null, // تتبّع تقليص المدى واستكمال العمق
+        };
+        setCompareCandles(candles);
+        deepenCompare(candles, info, tdInterval, tdParam, dukParam);
+      } catch (e) {
+        if (!cancelled) { setCompareError(e.message || "تعذّر تحميل بيانات المقارنة"); setCompareCandles([]); }
+      } finally {
+        if (!cancelled) setCompareLoading(false);
+      }
+    }
+    /* تحديث خفيف دوري لبيانات المقارنة بوضع المباشر - قبل هالتعديل كانت لوحة
+       المقارنة تُجلب مرة وحدة بس عند الفتح وما تتحدث أبداً بعدها، فمع الوقت
+       تصير هي القديمة (نفس مشكلة الشارت الرئيسي بالظبط بس بالاتجاه المعاكس).
+       نستخدم count صغير (=3) عشان الطلب يستفيد من liveRangeDays الخفيف
+       بالـ API (شوف route.js) وما يثقل على المزوّد. */
+    /* ═══════════════════════════════════════════════════════════════════════
+       تعميق المقارنة بطلب **منفصل** — قطعة وحدة، وبنقيس قبل ما نزيد.
+       ---------------------------------------------------------------------
+       ليش منفصل: Dukascopy بترجّع 429 لأي طلب أرشيف تاني بنفس الاستدعاء.
+       مقيس مرتين بتهدئتين مختلفتين (٢٥٠ و١٤٠٠ ملّي) والوقت كان متوفّراً
+       بالتانية — فالحمل لازم ينوزّع على استدعاءات مستقلة.
+
+       🔴 **و`count` هون هو اللي كسر الإنتاج أول مرة.**
+       بعتّه `20000` (نفس قيمة التحميل الأساسي)، والخادم بيحسب
+       `spanMs = secPerBar × count × 1.25` — يعني **٦٨ سنة** بتنقصّ على ٢٠٠٣.
+       فكل «قطعة» كانت بتطلب الأرشيف كامل من جديد، وتلات طلبات هيك طيّحت
+       الدالة بنفاد ذاكرة (عطل موثّق بـ`dukascopy-candles.js`: الانهيار
+       **ما بينمسك بـtry/catch** لأنه بيطيح الـprocess). ولمّا تطيح النسخة،
+       كل طلب تاني عليها بيرجع ٥٠٠ — فظهرت على الذهب وناسداك كمان.
+
+           count=20000 → مدى ٦٨.٥ سنة   ← اللي كسر
+           count=  800 → مدى  ٢.٧ سنة   ← المقصود
+
+       ⚠️ **جولة وحدة عمداً.** الفكرة انكسرت مرة، فالقياس قبل التوسيع:
+       `__qtaPaneInfo().compareSource.deepen` بيقول شو صار.
+       ═══════════════════════════════════════════════════════════════════════ */
+    /* 🔴 **وزن الطلب هو اللي بيقرّر يعيش أو يطيح — مش عدد الجولات.**
+       -------------------------------------------------------------------
+       الخادم بيحسب `spanMs = secPerBar × count × 1.25`، وبيجرّب **العامل ١
+       أول شي** قبل ما يقلّص. فنافذة العامل ١ هي الحمل الحقيقي:
+
+           count=800  بلا زحزحة → ٢.٧ سنة  ✓ اشتغل (gained 21)
+           count=2000 مع زحزحة  → ٧.٧ سنة  ✗ طيّح الدالة (500 على كل duk)
+           count=600  مع زحزحة  → ٢.٩ سنة  ← هون
+
+       يعني الزحزحة بتضيف ٣٠٠ يوم للنافذة، فمنعوّضها بتنزيل `count`. الوزن
+       بيضل عند المستوى المثبَت إنه بيمرق، والفرق إنّ النافذة كلها صارت
+       **بيانات جديدة** بدل ٩٢٪ مكرَّر.
+
+       ⚠️ الانهيار موثّق بـ`dukascopy-candles.js`: نفاد ذاكرة بيطيح الـprocess
+       و**ما بينمسك بـtry/catch**. ولمّا تطيح النسخة، كل طلب تاني عليها
+       بيرجع ٥٠٠ — لهيك ظهرت على الذهب وناسداك كمان مش المقارنة بس.
+
+       ⚠️ والزحزحة ضرورية: الخادم بيحسب `toMs = anchor + bufferSeconds`
+       و`bufferSeconds` لليومي **٣٠٠ يوم**. بلاها النافذة بتنتهي ٣٠٠ يوم بعد
+       أقدم شمعة عنا — مقيس: رجع ٢٧٦ شمعة و**٢١ بس جديدة**. */
+    const DEEPEN_BUFFER_BARS = 300; // مطابق لـ`bufferSeconds` بالخادم
+    const DEEPEN_COUNT = 600;       // نافذة العامل١ ≈ ٢.٩ سنة — بمستوى المثبَت
+    const DEEPEN_DELAY_MS = 4000;   // أطول بوضوح من نافذة حد الأرشيف
+    const DEEPEN_ROUNDS = 3;
+    const DEEPEN_MIN_GAIN = 30;     // ربح أقل من هيك = المصدر نفد، بلا إلحاح
+
+    async function deepenCompare(seed, info, tdInterval, tdParam, dukParam) {
+      let oldest = seed?.[0]?.time;
+      if (!oldest) return;
+      const barSec = (INTERVAL_MS[interval] || 86400000) / 1000;
+      const log = [];
+      const mark = (o) => { compareSourceRef.current = { ...compareSourceRef.current, deepen: { ...o, log } }; };
+
+      for (let round = 1; round <= DEEPEN_ROUNDS; round++) {
+        mark({ state: "بانتظار", round, from: oldest });
+        await new Promise((r) => setTimeout(r, DEEPEN_DELAY_MS));
+        if (cancelled || !compareOpenRef.current) { mark({ state: "انلغى", round }); return; }
+
+        const anchor = oldest - DEEPEN_BUFFER_BARS * barSec; // تعويض هامش الخادم
+        try {
+          const res = await fetch(
+            `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}` +
+              `&interval=${tdInterval}&count=${DEEPEN_COUNT}&anchor=${anchor}${tdParam}${dukParam}`
+          );
+          if (!res.ok) { log.push(`ج${round}: HTTP ${res.status}`); mark({ state: "وقف" }); return; }
+          const data = await res.json();
+          if (data.error) { log.push(`ج${round}: ${String(data.error).slice(0, 50)}`); mark({ state: "وقف" }); return; }
+          const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
+          if (cancelled) return;
+          log.push(`ج${round}: رجع ${data.candles?.length || 0} · جديد ${older.length} · عامل ${data.duk?.spanFactor ?? "—"}`);
+          if (!older.length) { mark({ state: "ما في أقدم", provider: data.provider }); return; }
+
+          oldest = older[0].time;
+          setCompareCandles((prev) => {
+            const seen = new Set(prev.map((c) => c.time));
+            return older.filter((c) => !seen.has(c.time)).concat(prev).sort((a, b) => a.time - b.time);
+          });
+          mark({ state: "شغّال", round, newFirst: oldest, provider: data.provider });
+          if (older.length < DEEPEN_MIN_GAIN) { mark({ state: "نفد المصدر", newFirst: oldest }); return; }
+        } catch (e) {
+          log.push(`ج${round}: فشل ${String(e?.message || e).slice(0, 40)}`);
+          mark({ state: "وقف" });
+          return;
+        }
+      }
+      mark({ state: "خلص", newFirst: oldest });
+    }
+
+    async function pollCompareOnce() {
+      try {
+        const info = getAssetByValue(compareSymbol);
+        if (!info?.yahoo) return;
+        const tdInterval = INTERVAL_MAP[interval];
+        const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
+        /* ⚠️ **نفس مزوّد الشارت الأساسي.** بلا هالسطر كانت المقارنة تنزل
+           ليوهو بينما الأساسي من Dukascopy — جلستان وعُطل مختلفة، فتظهر
+           فراغات بالشموع. مقيس على ٤ ساعات: ١٩٤ فراغ بيوهو، **صفر** بنفس
+           المزوّد. */
+        const dukParam = info.dukascopy ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
+        const res = await fetch(
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${tdParam}${dukParam}`
+        );
+        const data = await res.json();
+        if (data.error || !data.candles?.length) return;
+        const fresh = sanitizeCandles(data.candles);
+        if (fresh.length === 0) return;
+        const lastFresh = fresh[fresh.length - 1];
+        if (cancelled) return;
+        setCompareCandles((prev) => {
+          if (prev.length === 0) return prev;
+          const merged = [...prev];
+          const last = merged[merged.length - 1];
+          const bucketSec = (INTERVAL_MS[interval] || 60000) / 1000;
+          const sameBar = Math.floor(last.time / bucketSec) === Math.floor(lastFresh.time / bucketSec);
+          if (sameBar) {
+            merged[merged.length - 1] = lastFresh;
+          } else if (lastFresh.time > last.time) {
+            merged.push(lastFresh);
+          } else {
+            return prev;
+          }
+          return merged;
+        });
+      } catch (e) {
+        console.error("compare live poll failed:", e);
+      }
+    }
+    loadCompare();
+    /* ⚠️ بلا `replayAnchorTs == null` كان التحديث الدوري يلحق البيانات
+       التاريخية بشمعة **اليوم** — نفس عطل الشارت الأساسي بالضبط. */
+    if (mode === "live" && replayAnchorTs == null) {
+      // نفس منطق التبطيء بالشارت الرئيسي: لو أصل المقارنة عنده رمز Twelve
+      // Data، منبطّئ لـ10 ثواني (بدل 5) حتى لو ضاف على استهلاك الشارت
+      // الرئيسي بنفس الوقت (الحد 8 طلبات/دقيقة مشترك لكل مفتاح، مش لكل
+      // لوحة) ما يوصلوا سوا لأكتر من الحد بسرعة.
+      const compareInfo = getAssetByValue(compareSymbol);
+      const compareMs = compareInfo?.twelveData ? 10000 : 5000;
+      comparePollTimer = setInterval(pollCompareOnce, compareMs);
+    }
+    return () => { cancelled = true; if (comparePollTimer) clearInterval(comparePollTimer); };
+  }, [compareOpen, compareSymbol, interval, maxBars, mode, replayAnchorTs]);
+
+  function toggleCompare() {
+    setCompareOpen((v) => {
+      const next = !v;
+      if (!next) setMaximizedPane((p) => (p === "compare" ? null : p));
+      return next;
+    });
+  }
+  function toggleMaximizePane(pane) {
+    setMaximizedPane((p) => (p === pane ? null : pane));
+  }
+  /* سحب القاسم بين الشارت الرئيسي ولوحة المقارنة لتكبير/تصغير أي منهم يدوياً (زي تريدنغ فيو بالظبط) */
+  function onDividerMouseDown(e) {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = compareHeightPxRef.current;
+    function onMove(ev) {
+      const delta = ev.clientY - startY;
+      const next = Math.max(80, startHeight - delta);
+      compareHeightPxRef.current = next;
+      setCompareHeightPx(next);
+      chartRef.current?.__resize?.();
+    }
+    function onUp() {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
 
   /* ===================== جلب البيانات ===================== */
   // رقم تسلسلي لكل استدعاء لـ loadData - عشان لو صار كذا طلب بيانات (fetch) شغال
@@ -4802,39 +5431,10 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
       // "آخر X يوم من الآن" واللي ممكن ما توصلها بفريمات دقيقة زي الساعة
       // حتى لو نظرياً المفروض توصل - يوهو نفسه أحياناً ما بيرجّع كل المدى
       // المطلوب لما يكون الطلب من "الآن" للخلف بس).
-      /* ═══════════════════════════════════════════════════════════════════
-         🔴 **ما بنرسي إلا لما نضطر — الطلب المرسى هو اللي بيفشل.**
-         -----------------------------------------------------------------
-         مقيس مراراً على الإنتاج: نفس الرمز ونفس الفريم ونفس المزوّد،
-
-             بلا مرساة → dukascopy ينجح · العمق الكامل
-             بمرساة    → 429 أو 500 · ربع المدى أو تراجع ليوهو
-
-         والمرساة أصلاً بس عشان **نضمن تغطية نقطة القص**. بس الطلب العادي
-         بيغطّي من الآن للورا `secPerBar × count × 1.25` — وهاد بيغطّي نقطة
-         القص لحاله بمعظم الحالات:
-
-             يومي     ← ٦٨ سنة
-             ٤ ساعات  ← ١١.٤ سنة   (قصّة ٢٠١٧ داخلة فيها)
-             ساعة     ← ٢.٩ سنة
-             ١٥ دقيقة ← ٠.٧ سنة
-
-         فلما تكون النقطة داخل هالمدى، بنطلب **بلا مرساة** — نفس البيانات
-         بالضبط، بس بالمسار اللي بينجح.
-
-         ⚠️ وهامش ٢٠٪ عشان ما نوقع على الحافة: تقدير المدى تقريبي (المزوّد
-         بيقصّ حسب توفّره)، والوقوع خارج التغطية بيعمل ثقب.
-         ⚠️ ولما النقطة أقدم من هيك فعلاً (١٥ دقيقة على سنة مثلاً)، المرساة
-         بتضل ضرورية — ما في بديل، والسلوك ما تغيّر هناك. */
-      const cutTsForLoad = replayStateRef.current.currentTimestamp;
-      const wantsAnchor =
-        sameMarketContext && replayStateRef.current.isActive && cutTsForLoad != null;
-      /* ⚠️ محسوب هون مش من `intervalSecs` — ذاك مصرَّح **بعد** هالسطر،
-         وقراءته من مصفوفة تبعيات أو تعبير سابق بتنهار بالمنطقة الميتة. */
-      const barSecsForReach = (INTERVAL_MS[interval] || 900000) / 1000;
-      const plainReachSec = barSecsForReach * maxBars * 1.25 * 0.8;
-      const plainCoversCut = wantsAnchor && Date.now() / 1000 - cutTsForLoad < plainReachSec;
-      const anchorParam = wantsAnchor && !plainCoversCut ? `&anchor=${cutTsForLoad}` : "";
+      const anchorParam =
+        sameMarketContext && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null
+          ? `&anchor=${replayStateRef.current.currentTimestamp}`
+          : "";
       const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
       const dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
       /* ===== التخزين المحلي: نرسم فوراً، وبعدين نجيب الذيل بس =====
@@ -4855,9 +5455,6 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
       const intervalSecs = (INTERVAL_MS[interval] || 900000) / 1000;
       let cached = null;
       let renderedFromCache = false;
-      /* بينترفع لما تكون السلسلة المباشرة المحفوظة بتغطّي نقطة القص —
-         وقتها الطلب المرسى بلا فايدة (والبيانات عنا أعمق). */
-      let skipAnchoredFetch = false;
       if (!anchorParam) {
         cached = await readSeries(cacheSymbol, interval);
         if (myRequestId !== loadRequestIdRef.current) return;
@@ -4879,47 +5476,11 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         const cutCached = await readSeries(cutCacheKey(cacheSymbol), interval);
         if (myRequestId !== loadRequestIdRef.current) return;
         const cutTs = replayStateRef.current.currentTimestamp;
-
-        /* ═══════════════════════════════════════════════════════════════
-           🔴 **السلسلة المباشرة مرشَّحة للقص كمان — وهي الأعمق.**
-           -------------------------------------------------------------
-           مقيس على الإنتاج (٢٠٢٦-٠٨-٢٧):
-
-               مباشر (بلا مرساة) → dukascopy ينجح · عمق ٢٠١٤ أو أبعد
-               قصّ   (بمرساة)    → 429 أو 500 · عمق ٢٠٢٠ أو تراجع ليوهو
-
-           نفس الرمز ونفس الفريم ونفس المزوّد — الفرق **المرساة وحدها**.
-           يعني المسار اللي بينجح موجود أصلاً، وناتجه محفوظ.
-
-           ولو نقطة القص **جوّا** السلسلة المباشرة المحفوظة، ما في أي سبب
-           نطلب مرساة أصلاً: البيانات المطلوبة موجودة، وأعمق.
-
-           ⚠️ التحذير فوق («ممنوع تنخزّن بمفتاح المباشر») بيمنع **الكتابة**
-           بالاتجاه المعاكس — نافذة المرساة ما بتنحط بمفتاح المباشر لأنها
-           بتنتهي عند القص فبتعمل ثقب. القراءة بهالاتجاه آمنة تماماً:
-           المباشرة بتمتد **لهلق**، فبتغطّي القص وما بعده.
-
-           منختار الأعمق: اللي بتبلّش أبكر وبتغطّي النقطة. */
-        const liveCached = await readSeries(cacheSymbol, interval);
-        if (myRequestId !== loadRequestIdRef.current) return;
-        const covers = (arr) =>
-          arr?.length && cutTs != null && arr[0].time <= cutTs && cutTs <= arr[arr.length - 1].time;
-        const lc = liveCached?.candles;
-        const cutOk = covers(cutCached?.candles);
-        const liveOk = covers(lc);
-        const cc =
-          liveOk && (!cutOk || lc[0].time < cutCached.candles[0].time)
-            ? lc
-            : cutCached?.candles;
+        const cc = cutCached?.candles;
         /* بنستعملها **بس** لو بتغطّي نقطة القص فعلاً — نافذة لتاريخ تاني
            ما بتنفع، والثقب أسوأ من الانتظار. */
         if (cc?.length && cutTs != null && cc[0].time <= cutTs && cutTs <= cc[cc.length - 1].time) {
-          cached = { candles: cc, savedAt: (liveOk && cc === lc ? liveCached : cutCached)?.savedAt || 0 };
-          /* 🔴 **لو المباشرة بتغطّي القص، ما منطلب مرساة أصلاً.**
-             الطلب المرسى هو اللي بيرجّع 429/500 — والبيانات اللي بيدوّر
-             عليها موجودة عنا وأعمق. تخطّيه بيشيل العطل من جذره بدل ما
-             نعاير مهلاته. */
-          if (liveOk && cc === lc) skipAnchoredFetch = true;
+          cached = cutCached;
           /* عرض فوري بدل انتظار الشبكة (٢–٩ ثواني حسب المزوّد). نقطة الكشف
              بتنحسب بالوقت مش بالفهرس، فحتى لو الدمج تحت أضاف تاريخاً أقدم
              وزحزح الفهارس، الشمعة المكشوفة بتضل **هي هي**. */
@@ -5024,9 +5585,6 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         if (myRequestId !== loadRequestIdRef.current) return;
       }
 
-      /* 🔴 الطلب المرسى هو مصدر 429/500 المقيس. لو المباشرة غطّت القص
-         منوقف هون — الشارت مرسوم أصلاً من الكاش وأعمق مما بيرجّعه. */
-      if (skipAnchoredFetch) return;
       const res = await fetch(urlFor(effCount, effAnchor));
       const data = await res.json();
       // طلب أحدث صار وخلص قبل ما هاد يوصل جوابه - نتجاهل هاد الجواب "القديم"
@@ -5073,10 +5631,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
       const base = cached?.candles?.length
         ? cached.candles
         : (fastStage || (sameSeries ? allCandles : null));
-      /* ⚠️ `intervalSecs` لازم — بلاها الدمج بيفهرس بالطابع الخام، واليومي
-         بينزاح ساعة مع التوقيت الصيفي فنفس اليوم بيصير شمعتين.
-         مقيس: `barsPerDay 1.6` على NAS100 يومي. */
-      const candles = base?.length ? mergeCandles(base, fetched, intervalSecs) : fetched;
+      const candles = base?.length ? mergeCandles(base, fetched) : fetched;
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
       /* ما بننتظر الحفظ — التخزين تحسين، وأي فشل فيه ما بيهمّ المستخدم.
          ⚠️ وما بنخزّن جلبة **أضحل من المحفوظ** — وإلا جلبة مكسورة وحدة
@@ -5091,19 +5646,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         symbol: data.sourceSymbol || assetInfo.yahoo,
         usedFallback: false,
         provider: data.provider || "yahoo",
-        /* ⚠️ تتبّع تقليص مدى Dukascopy — بيطلع بـ`__qtaChartInfo()`.
-           التقليص **صامت** بطبعه: `usedFallback:false` و`providerErrors:null`
-           وهو بيسلّم ربع العمق. بلا هالسطر برجع أخمّن العمق من شكل الشارت. */
-        duk: data.duk || null,
-        anchored: !!anchorParam,
-        /* 🔴 ليش انتراجع عن Dukascopy. مقيس بوضع القص: `provider: "yahoo"`
-           و`duk: null` — يعني Dukascopy فشلت تماماً بالمسار المرسى، فنزل
-           ليوهو `NQ=F` اللي تاريخه اليومي أقصر بتلات سنين ونص. بلا هالسطر
-           بنعرف **إنها** فشلت بس مش **ليش**. */
-        providerErrors: data.providerErrors || null,
       };
-      /* نسخة **ما بيلمسها الاستطلاع الحي** — هي المرجع الصادق للعمق. */
-      loadSourceRef.current = { ...dataSourceRef.current, bars: candles.length };
       // ما في عقود آجلة نهائياً بعد اليوم (Yahoo سبوت أو Twelve Data بس) -
       // فهاي العلامة صارت دايماً false، تركناها بالكود بدل حذفها بالكامل
       // عشان لو حابين نرجّعها اختيارياً بالمستقبل ما نعيد بناء المنطق من الصفر.
@@ -5143,160 +5686,6 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetValue, interval, mode, maxBars, randomChart]);
-
-  /* ═══════════════════════════════════════════════════════════════════════════
-     تعميق تدريجي — قطع صغيرة متتالية بدل طلب ضخم واحد.
-     ---------------------------------------------------------------------------
-     طلبه: «بدي عمق عالأربع ساعات يوصل نفس بيانات اليوم، وباقي الفريمات نفس
-     الإشي».
-
-     🔴 ليش ما بينحل بطلب واحد أكبر: الفريمات اللحظية بتنبني من ملفات أرشيف
-     **يومية**، فكلفة الطلب بعدد الأيام مش بعدد الشموع. والعتبة مقيسة على ٤
-     ساعات (نافذة نظيفة · صعود بيوقف عند أول فشل):
-
-         ١٢٠ ✓ · ١٨٠ ✓ · ٢٤٠ ✓ · ٣٠٠ ✓ · ٣٦٠ ✓ · **٤٨٠ ✗ 429**
-
-     عشان هيك في سقف ٣٠٠ يوم للطلب الواحد (`lib/dukascopy-candles.js`).
-     فالعمق **مش** مسألة إقناع المزوّد بطلب أضخم — هو تكرار قطع تحت السقف
-     ودمجها. نفس التقنية اللي بنت العيّنات المجمّدة (١٦ قطعة من ١٨).
-
-     ⚠️ **الفاصل ١٢ ثانية مقصود.** النسخة الأولى استعملت ٣.٥ ثانية استناداً
-        على قياس ملوَّث. المقيس على سلّم نظيف: ست قطع متتالية بفاصل ١٢–١٥
-        ثانية بتنجح كلها، وقطعتان بفاصل ٤٠٠ml بتفشل التانية. الخلفية ما
-        بتستعجل — التأخير ما بيكلّف المستخدم إشي.
-
-     ⚠️ **وبتوقف لحالها**: أول فشل، أو أول جولة ما بتربح شموع. مصدر ما عنده
-        أعمق ما بيتحسّن بالإلحاح، والاستمرار بياكل حصة الأرشيف بلا مقابل.
-
-     ⚠️ **`revealCount` فهرس مش وقت** — إضافة تاريخ أقدم بتزحزح الفهارس كلها،
-        فلازم يتعدّل بعدد اللي انضاف قبله وإلا نقطة القص بتقفز.
-
-     ⚠️ هالوحدة انرجعت مرة (`8ae4e95`) لأنها كانت بتربح **صفر** شمعة. السبب
-        ما كان فيها: كل جلب Dukascopy ناجح كان يرمي `ReferenceError` فيرجع
-        500 (`209fd54`). انصلح، وانرجعت.
-     ═══════════════════════════════════════════════════════════════════════════ */
-  const deepenedForRef = useRef(null);
-
-  useEffect(() => {
-    const log = deepenLogRef.current;
-    if (randomChart || !allCandles.length) {
-      log.state = randomChart ? "شارت عشوائي" : "بانتظار الشموع";
-      return;
-    }
-    const seriesKey = `${assetValue}|${interval}|${mode}`;
-    /* ⚠️ الحارس بينخزّن **بعد** ما تبلّش الجولات فعلياً، مش قبل. لو انخزّن
-       هون وبعدها انلغت الحلقة (مثلاً `allCandles` فضيت لحظة بإعادة تحميل ثم
-       رجعت)، بتصير إعادة التشغيل بترجع فوراً من الحارس والتعميق **بيموت
-       للأبد** بلا أي أثر. مقيس: `spanDays 299` بعد ٣ دقايق انتظار. */
-    if (deepenedForRef.current === seriesKey) {
-      log.state = "منفَّذ سابقاً لهالسلسلة";
-      return;
-    }
-
-    const assetInfo = getAssetByValue(assetValue);
-    if (!assetInfo?.yahoo) {
-      log.state = "ما في رمز للأصل";
-      return;
-    }
-    const barSec = (INTERVAL_MS[interval] || 900000) / 1000;
-    const DEEPEN_COUNT = 1500;   // على ٤ ساعات = ٣١٢ يوم → بينقصّ لسقف ٣٠٠
-    const BUFFER_BARS = 300;     // مطابق لـ`bufferSeconds` بالخادم
-    const GAP_MS = 12000;        // مقيس: ١٢–١٥ ثانية بتمرّق قطعاً متتالية
-    const MIN_GAIN = 30;         // أقل من هيك = وصلنا لقاع الأرشيف
-    /* ٤ ساعات بده ~١٢ جولة ليلحق عمق اليومي (٣٠٠ يوم/جولة). الفريمات
-       الأقصر بتقف لحالها بالـ`MIN_GAIN` قبل ما توصل للسقف. */
-    const ROUNDS = 20;
-
-    let cancelled = false;
-    (async () => {
-      let oldest = allCandles[0]?.time;
-      if (!oldest) {
-        log.state = "أقدم شمعة بلا وقت";
-        return;
-      }
-      deepenedForRef.current = seriesKey;
-      log.state = "شغّال";
-      log.series = seriesKey;
-      log.rounds = [];
-      log.gained = 0;
-      log.startedFrom = new Date(oldest * 1000).toISOString().slice(0, 16);
-
-      const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
-      const dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
-      const sym = encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo);
-      const note = (round, outcome) => log.rounds.push(`${round}:${outcome}`);
-
-      for (let round = 1; round <= ROUNDS && !cancelled; round++) {
-        await new Promise((r) => setTimeout(r, GAP_MS));
-        if (cancelled) { log.state = `ملغى قبل جولة ${round}`; return; }
-        /* المرساة مزحزحة بمقدار هامش الخادم، وإلا النافذة بتنتهي بعد أقدم
-           شمعة عنا فبيرجع معظمها مكرَّراً. */
-        const anchor = Math.floor(oldest - BUFFER_BARS * barSec);
-        try {
-          const res = await fetch(
-            `/api/replay-candles?symbol=${sym}&interval=${INTERVAL_MAP[interval]}` +
-              `&count=${DEEPEN_COUNT}&bg=1&anchor=${anchor}${tdParam}${dukParam}`
-          );
-          if (!res.ok) { note(round, `HTTP ${res.status}`); log.state = `وقف: HTTP ${res.status}`; return; }
-          const data = await res.json();
-          if (cancelled) { log.state = `ملغى بجولة ${round}`; return; }
-          if (data.error) {
-            note(round, "خطأ");
-            log.state = `وقف: ${String(data.error).slice(0, 90)}`;
-            return;
-          }
-          const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
-          if (older.length < 1) {
-            /* ⚠️ «صفر أقدم» إلها سببان مختلفان تماماً، وخلطهن بيخلّي القراءة
-               بلا قيمة:
-                 · قاع الأرشيف — المزوّد ما عنده أقدم، والوقوف صح.
-                 · تراجع لمزوّد تاني — بيتجاهل المرساة ويرجّع بيانات **حديثة**،
-                   فبتنرمى كلها بالفلترة وشكلها زي القاع.
-               مقيس: أرشيف Dukascopy لناسداك بيبلّش ٢٠١٢-٠١-١٩ (٤ ساعات
-               واليومي، نفس التاريخ)، وشموع ٢٠٠٦ بالكاش مصدرها مزوّد تاني. */
-            const src = data.usedFallback ? `تراجع لـ${data.provider}` : `قاع ${data.provider || "الأرشيف"}`;
-            note(round, `صفر أقدم · ${src} · رجع ${data.candles?.length || 0}`);
-            log.state = data.usedFallback
-              ? `وقف: Dukascopy فشلت والتراجع بيتجاهل المرساة (${data.provider})`
-              : "وقف: وصلنا قاع الأرشيف — ما في أقدم";
-            return;
-          }
-          oldest = older[0].time;
-          log.gained += older.length;
-          log.oldestNow = new Date(oldest * 1000).toISOString().slice(0, 16);
-          note(round, `+${older.length}`);
-
-          setAllCandles((prev) => {
-            if (!prev.length) return prev;
-            const merged = mergeCandles(older, prev, barSec);
-            const added = merged.length - prev.length;
-            /* ⚠️ الفهارس انزاحت — نقطة الكشف لازم تنزاح معها. */
-            if (added > 0) setRevealCount((rc) => rc + added);
-            return merged;
-          });
-          if (older.length < MIN_GAIN) {
-            log.state = `وقف: ربح جولة ${older.length} < ${MIN_GAIN}`;
-            return;
-          }
-        } catch (e) {
-          note(round, "رمية");
-          log.state = `وقف برمية: ${(e?.message || e).toString().slice(0, 80)}`;
-          return;
-        }
-      }
-      if (!cancelled) log.state = `خلص ${ROUNDS} جولة`;
-    })();
-
-    /* ⚠️ الحارس بينمسح عند الإلغاء — وإلا التعميق **بيموت للأبد** لهالسلسلة.
-       السيناريو: التأثير بيشتغل ويسجّل الحارس، بعدين تتغيّر تبعية فبينلغى،
-       وإعادة التشغيل بترجع فوراً من الحارس بلا ولا جولة. والفشل صامت لأن كل
-       مخارج الحلقة `return` بلا أثر. */
-    return () => {
-      cancelled = true;
-      if (deepenedForRef.current === seriesKey) deepenedForRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assetValue, interval, mode, randomChart, allCandles.length > 0]);
 
   /* ===== تسخين هادي لباقي الفريمات =====
      ⚠️ المشكلة المبلَّغة: «في بطء بالتنقل بالفريمات». مقيسة على SPX500:
@@ -5409,7 +5798,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         }
         await fetch(
           `/api/replay-candles?symbol=${encodeURIComponent(cacheSymbol)}` +
-          `&interval=${INTERVAL_MAP[it.value]}&count=3000&bg=1${anchorSuffix}${tdParam}${dukParam}`
+          `&interval=${INTERVAL_MAP[it.value]}&count=3000${anchorSuffix}${tdParam}${dukParam}`
         )
           .then((r) => r.json())
           .then((d) => {
@@ -5724,6 +6113,30 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
     setReplayCutTs(c.time);
   }, [revealCount, allCandles, mode, interval]);
 
+  /* بتثبّت مرساة المقارنة مرة وحدة لكل قصّة. بتقرا من نفس الـref اللي بيقرا
+     منه الشارت الأساسي، فاللوحتان بتطلبا **نفس النافذة**.
+
+     🔴 **`mode !== "training"` شرط ضروري مش تزيين.**
+     -----------------------------------------------------------------------
+     بلاه كانت المرساة بتضل عالقة بالمباشر، فالمقارنة تجيب نافذة تاريخية
+     ضيّقة حوالين قصّة قديمة بينما الأساسي عنده تاريخه كامل — وهاد بيرجّع
+     «مشكلة العمق» بوضع مباشر سليم.
+
+     السبب: `replayStateRef.current.isActive` **ما بتنمسح** عند الرجوع
+     للمباشر إلا جوّا `loadData` غير المتزامنة — يعني **بعد** ما المقارنة
+     جابت بياناتها. وأسوأ: المسح بيصير عبر `setReplayCutTs(null)`، ولو كان
+     `replayCutTs` أصلاً فاضي فالقيمة ما بتتغيّر، والتأثير ما بيعيد التقييم
+     أبداً → المرساة عالقة للأبد.
+
+     `mode` بالتبعيات، فالشرط بينفّذ لحظة التبديل. ونفس الشرط مستعمل بالشارت
+     الأساسي (`mode === "training"` فوق) — يعني اللوحتان على نفس القاعدة. */
+  useEffect(() => {
+    setReplayAnchorTs((prev) => {
+      if (mode !== "training" || !replayStateRef.current.isActive) return null;
+      return prev ?? replayStateRef.current.anchorTimestamp ?? replayCutTs;
+    });
+  }, [replayCutTs, mode]);
+
   /* شبكة أمان لـ resumeSavedSession (شوفي تعليق pendingResumeRef فوق): لو في
      رجوع لمكان توقف لسا "قيد التنفيذ" (loadData ما جابت بيانات التدريب
      الحقيقية بعد)، منفرض نقطة التوقف المحفوظة من جديد بعد أي رندر ممكن يكون
@@ -5791,10 +6204,8 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
        واسعة عمداً — ما بتلمس تبويبة متروكة مفتوحة عطلة أو شهر، وبتمسك حالة
        ٢٠١٦ (٢٦٠٠+ شمعة يومية). */
     if (replayStateRef.current.isActive) {
-      /* ⚠️ كان بيقرا `mainTimesRef` اللي انشال مع لوحة المقارنة.
-         `visibleCandlesRef` هي نفس المحتوى — الشموع المكشوفة فعلاً. */
-      const plotted = visibleCandlesRef.current || [];
-      const newest = plotted.length ? plotted[plotted.length - 1]?.time : null;
+      const plotted = mainTimesRef.current;
+      const newest = plotted.length ? plotted[plotted.length - 1] : null;
       const bucketSec = (INTERVAL_MS[intervalRef.current] || 60000) / 1000;
       if (newest != null && Date.now() / 1000 - newest > bucketSec * 200) return;
     }
@@ -6081,7 +6492,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
     if (mode !== "training" || !replayStateRef.current.isActive) return;
     const snapshot = buildPausedSnapshot();
     savedSessionRef.current = snapshot;
-    try { localStorage.setItem(paneKey(PAUSED_SESSION_KEY, paneId), JSON.stringify(snapshot)); } catch {}
+    try { localStorage.setItem(PAUSED_SESSION_KEY, JSON.stringify(snapshot)); } catch {}
   }
   /* مرجع حيّ للدالة: مستمعو الأحداث تحت بينتسجّلوا مرة وحدة، وبدون هاد
      بيمسكوا قيم أول رندر (نقطة قص قديمة ورسومات قديمة). */
@@ -6124,7 +6535,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
     savedSessionRef.current = null;
     setHasSavedSession(false);
     suppressPersistRef.current = true; // بينفتح بـfinalizeCut للقص الجديد
-    try { localStorage.removeItem(paneKey(PAUSED_SESSION_KEY, paneId)); } catch {}
+    try { localStorage.removeItem(PAUSED_SESSION_KEY); } catch {}
     setCutChoiceOpen(false);
     openCutModeFresh();
   }
@@ -6467,6 +6878,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
           <button onClick={() => loadData()} className={iconBtnClass(false)} style={iconBtn(false)} title="تحديث"><ToolIcon id="refresh" /></button>
         )}
         <div style={{ width: 1, height: 22, background: "#1C1630" }} />
+        <button onClick={toggleCompare} className={iconBtnClass(compareOpen)} style={iconBtn(compareOpen)} title="اعرضي رمز ثاني بلوحة منفصلة أسفل الشارت للمقارنة"><ToolIcon id="compare2" /></button>
         <button
           onClick={() => setIndicatorPanelOpen((v) => !v)}
           className={iconBtnClass(indicatorPanelOpen)} style={{ ...iconBtn(indicatorPanelOpen), position: "relative" }}
@@ -8575,6 +8987,72 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
     );
   }
 
+  /* نافذة إعدادات لوحة المقارنة: نوع الشارت (منطقة/خط/شموع) + ألوانه، بتنطبق فوراً وتنحفظ محلياً */
+  function renderCompareSettingsDialog() {
+    if (!compareSettingsOpen) return null;
+    const row = (label, control) => (
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #1C1630" }}>
+        <span style={{ fontSize: 13, color: "#A79FC4" }}>{label}</span>
+        {control}
+      </div>
+    );
+    const colorInput = (val, onChange) => (
+      <input type="color" value={val} onChange={(e) => onChange(e.target.value)}
+        style={{ width: 40, height: 28, border: "1px solid #2A2145", borderRadius: 3, background: "none", cursor: "pointer", padding: 0 }} />
+    );
+    const typeOptions = [
+      { value: "area", label: "منطقة (Area)" },
+      { value: "line", label: "خط (Line)" },
+      { value: "candles", label: "شموع (Candlestick)" },
+    ];
+    return (
+      /* ⚠️ `fixed` مش `absolute`: كانت النافذة مرسومة جوّا لوحة المقارنة، واللوحة
+         عندها `overflow: hidden` بارتفاع ٢٠٠ بكسل افتراضياً — فالنافذة كانت
+         **تنقصّ** وأزرارها ما بتبان إلا لما يرفع القاسم لفوق. بلّغ عنها.
+         بالتثبيت على إطار العرض بتبان كاملة مهما كان ارتفاع اللوحة. */
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 3000, background: "#0A0614cc",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "1rem", overflowY: "auto",
+      }} onClick={() => setCompareSettingsOpen(false)}>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{ width: 300, background: "#141024", border: `1px solid #3D2F63`, borderRadius: 0, padding: "1.1rem 1.3rem" }}
+        >
+          <div style={{ fontWeight: 700, color: GOLD_LIGHT, marginBottom: 6, fontSize: 15 }}>إعدادات لوحة المقارنة</div>
+          {row("نوع الشارت", (
+            <select
+              value={compareSettings.type}
+              onChange={(e) => setCompareSettings((s) => ({ ...s, type: e.target.value }))}
+              style={{ ...selectStyle, minWidth: 140, padding: "0.35rem 0.5rem" }}
+            >
+              {typeOptions.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
+            </select>
+          ))}
+          {compareSettings.type === "candles" ? (
+            <>
+              {row("لون شمعة الصعود", colorInput(compareSettings.up, (v) => setCompareSettings((s) => ({ ...s, up: v }))))}
+              {row("لون شمعة الهبوط", colorInput(compareSettings.down, (v) => setCompareSettings((s) => ({ ...s, down: v }))))}
+            </>
+          ) : (
+            <>
+              {row("لون الخط", colorInput(compareSettings.lineColor, (v) => setCompareSettings((s) => ({ ...s, lineColor: v }))))}
+              {compareSettings.type === "area" &&
+                row("لون التعبئة", colorInput(compareSettings.fillColor, (v) => setCompareSettings((s) => ({ ...s, fillColor: v }))))}
+            </>
+          )}
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <button onClick={() => setCompareSettings(DEFAULT_COMPARE_SETTINGS)} style={{ ...btnStyle("secondary"), flex: 1 }}>
+              الافتراضي
+            </button>
+            <button onClick={() => setCompareSettingsOpen(false)} style={{ ...btnStyle("primary"), flex: 1 }}>
+              تم
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ملاحظة: renderControls تم دمجها بالكامل جوا renderTopBar (شريط واحد مضغوط
   // بدل صندوقين فوق بعض)، فما عاد في حاجة لها هون.
@@ -8826,9 +9304,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   }
 
   return (
-    /* ⚠️ الجذر كان `<div>` عارية. بالتخطيط المقسوم `flex: 1` على حاوية الشارت
-       ما لاقت شي تملاه — فالشارت كان يفيض تحت حدود الشاشة. */
-    <div style={fillContainer ? { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 } : undefined}>
+    <div>
       {/* ستايل عام مشترك بين شريط الأدوات العلوي والشريط الجانبي، بمواصفات
          تريدنغ فيو: حالة Hover رمادية خفيفة (متل TradingView بالظبط) على أي
          زر مو مفعّل حالياً، وسكرول بار رفيع بنفس أسلوبها لقوائم الأدوات
@@ -8845,11 +9321,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         .tv-flyout-scroll::-webkit-scrollbar-thumb { background: #241C3E; border-radius: 3px; }
         .tv-flyout-scroll::-webkit-scrollbar-track { background: transparent; }
       `}</style>
-      {/* الشريط العلوي: جوّا الشارت بالتخطيط المفرد، وبالمشترك بينطبع
-          بالفتحة المشتركة — واللوحة النشطة وحدها بتطبع. */}
-      {chromeSlots
-        ? (chromeActive && chromeSlots.top ? createPortal(renderTopBar(), chromeSlots.top) : null)
-        : (!isFullscreen && renderTopBar())}
+      {!isFullscreen && renderTopBar()}
 
       {!supported && !error && (
         <div style={{ color: "#F0A13C", fontSize: 13, marginBottom: "1rem" }}>هذا الأصل غير مدعوم حالياً بعرض الشموع، اختاري أصل آخر من القائمة.
@@ -8869,13 +9341,6 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
           position: "relative",
           display: "flex",
           flexDirection: "column",
-          /* 🔴 **بلا هدول التخطيط جنب بعض بينكسر.**
-             العنصر بالصف ما بينكمش تحت عرض محتواه افتراضياً (`min-width: auto`)،
-             وشريط الأدوات جوّا عريض — فكل شارت بيفرض عرضه الطبيعي، والتاني
-             بينعصر برّا فيبان وكأنه انسكّر.
-             و`flex: 1` مع `minHeight: 0` لازمين عشان `fillContainer` يلاقي
-             ارتفاعاً فعلياً يقراه بدل ما ينهار لصفر. */
-          ...(fillContainer ? { flex: 1, minHeight: 0, minWidth: 0 } : null),
         }}
       >
         {isFullscreen && (
@@ -8899,12 +9364,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
             بالـ DOM ثم الشريط) مقصود: الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل
             ثابت عالشمال دايماً من غير ما نضطر نقلب اتجاه أي نص عربي جوا الشارت. */}
         <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0, gap: 8 }}>
-          {/* 🔴 **قائمة المتابعة كمان وحدة، مش وحدة لكل شارت.**
-              كانت بتنركّب بكل لوحة ومفتوحة افتراضياً، فبالتخطيط المقسوم صار
-              طلبان متزامنان على `/api/watchlist-quotes` — والنتيجة **502**
-              (مقيس على الإنتاج). وهي أصلاً أداة مكرَّرة زي باقي الأشرطة.
-              فبالمشترك بتنعرض باللوحة النشطة وحدها: طلب واحد ومصدر واحد. */}
-          {watchlistPanelOpen && (!chromeSlots || chromeActive) && (
+          {watchlistPanelOpen && (
             <WatchlistPanel
               activeSymbol={assetValue}
               onSelectSymbol={(v) => { setRandomChart(false); setAssetValue(v); }}
@@ -8912,11 +9372,12 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
             />
           )}
           <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
-            {/* ⚠️ كان هون ضبط ارتفاع بالبكسل من JS (`mainPaneRef`) عشان يتقاسم
-                المساحة مع لوحة المقارنة. اللوحة انشالت، فاللوحة الرئيسية صارت
-                تاخد المساحة كاملة بـ`flex: 1` — بلا حساب ارتفاعات ولا قاسم. */}
+            {/* اللوحة الرئيسية - ارتفاعها الفعلي مضبوط مباشرة بالبكسل من JS (mainPaneRef)
+                عشان يضل مطابق تماماً لارتفاع الشارت نفسه (overflow:hidden هون بيمنعه
+                من "يفلت" ويسيب فراغ أسود تحت الشارت) */}
             <div
-              style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden", position: "relative" }}
+              ref={mainPaneRef}
+              style={{ display: maximizedPane === "compare" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
             >
               <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
                 {allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
@@ -8931,6 +9392,13 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
                 {allCandles.length > 0 && renderContextMenu()}
                 {allCandles.length > 0 && renderLineTextHint()}
                 {renderInlineTextEditor()}
+                {compareOpen && (
+                  <div style={paneCornerBadgeStyle("right")}>
+                    <button onClick={() => toggleMaximizePane("main")} style={paneCornerBtnStyle} title={maximizedPane === "main" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة (أو دبل-كليك على القاسم)"}>
+                      {maximizedPane === "main" ? "⤡" : "⤢"}
+                    </button>
+                  </div>
+                )}
                 {allCandles.length > 0 && activeIndicators.length > 0 && renderActiveIndicatorsBar()}
                 {indicatorPanelOpen && renderIndicatorPanel()}
                 {indicatorSettingsFor && renderIndicatorSettingsDialog()}
@@ -8963,12 +9431,56 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
                 </div>
               </div>
             </div>
+
+            {/* قاسم قابل للسحب لتكبير/تصغير لوحة المقارنة (زي تريدنغ فيو بالظبط) - اسحبيه لفوق/تحت،
+                أو دبل-كليك عليه يرجّع النسبة الافتراضية */}
+            {compareOpen && !maximizedPane && (
+              <div
+                onMouseDown={onDividerMouseDown}
+                onDoubleClick={() => { compareHeightPxRef.current = DEFAULT_COMPARE_HEIGHT; setCompareHeightPx(DEFAULT_COMPARE_HEIGHT); chartRef.current?.__resize?.(); }}
+                title="اسحبي لتكبير/تصغير لوحة المقارنة، أو دبل-كليك للرجوع للحجم الافتراضي"
+                style={dividerStyle}
+              >
+                <span style={dividerGripStyle} />
+              </div>
+            )}
+
+            {/* لوحة المقارنة: رمز ثاني للقراءة فقط، بدون أدوات رسم، مزامَنة سكرول/زوم مع اللوحة الرئيسية.
+                نفس سطح الشارت الرئيسي بالضبط (بدون حدود/زوايا مدوّرة) عشان تبان لوحة وحدة متصلة زي تريدنغ فيو */}
+            {compareOpen && (
+              <div
+                ref={comparePaneRef}
+                style={{ display: maximizedPane === "main" ? "none" : "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
+              >
+                <div style={paneCornerBadgeStyle()}>
+                  <ArrowLeftRight size={13} strokeWidth={1.75} aria-hidden />
+                  <select
+                    value={compareSymbol}
+                    onChange={(e) => setCompareSymbol(e.target.value)}
+                    style={{ ...selectStyle, minWidth: 130, padding: "0.2rem 0.4rem", fontSize: 11.5, background: "#0000" }}
+                  >
+                    {ASSETS.map((g) => (
+                      <optgroup key={g.group} label={g.group}>
+                        {g.items.map((it) => (
+                          <option key={it.v} value={it.v} disabled={!it.yahoo}>{it.label}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  {compareLoading && <span style={{ fontSize: 11, color: "#6E6690" }}>...جاري التحميل</span>}
+                  {compareError && <span style={{ fontSize: 11, color: RED }}>{compareError}</span>}
+                  <button onClick={() => setCompareSettingsOpen(true)} style={paneCornerBtnStyle} title="إعدادات لوحة المقارنة (نوع الشارت والألوان)"><Settings size={14} aria-hidden /></button>
+                  <button onClick={() => toggleMaximizePane("compare")} style={paneCornerBtnStyle} title={maximizedPane === "compare" ? "استعادة العرض المقسوم" : "تكبير هاي اللوحة (أو دبل-كليك على القاسم)"}>
+                    {maximizedPane === "compare" ? "⤡" : "⤢"}
+                  </button>
+                  <button onClick={toggleCompare} style={paneCornerBtnStyle} title="إغلاق لوحة المقارنة">✕</button>
+                </div>
+                <div ref={compareContainerRef} style={{ width: "100%", height: "100%", flex: 1, minHeight: 0 }} />
+                {renderCompareSettingsDialog()}
+              </div>
+            )}
           </div>
-          {chromeSlots
-            ? (chromeActive && chromeSlots.tools && allCandles.length > 0
-                ? createPortal(renderDrawToolbar(), chromeSlots.tools)
-                : null)
-            : (allCandles.length > 0 && renderDrawToolbar())}
+          {allCandles.length > 0 && renderDrawToolbar()}
         </div>
         {renderSettingsDialog()}
         {renderCutChoiceDialog()}
@@ -8991,10 +9503,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         )}
       </div>
 
-      {/* الشريط السفلي (المدى الزمني + الساعة): بالمشترك بينطبع بالفتحة */}
-      {chromeSlots
-        ? (chromeActive && chromeSlots.bottom ? createPortal(renderBottomBar(), chromeSlots.bottom) : null)
-        : (!isFullscreen && renderBottomBar())}
+      {!isFullscreen && renderBottomBar()}
 
       {openToolGroup !== null && (
         <div
@@ -9063,6 +9572,16 @@ const templateMenuItemStyle = {
   padding: "9px 14px", cursor: "pointer", fontSize: 13, color: "#F5F3FF",
 };
 
+function paneCornerBadgeStyle(side) {
+  return {
+    position: "absolute", top: 8, [side === "right" ? "right" : "left"]: 8, zIndex: 6,
+    display: "flex", alignItems: "center", gap: 6,
+    background: "rgba(13,13,10,0.72)", backdropFilter: "blur(2px)",
+    border: `1px solid #2A2145`, borderRadius: 3,
+    padding: "0.2rem 0.45rem", fontSize: 12, fontWeight: 700, color: "#ddd",
+    pointerEvents: "auto",
+  };
+}
 const paneCornerBtnStyle = {
   background: "none", border: "none", color: GOLD_LIGHT,
   cursor: "pointer", fontSize: 13, padding: "0 0.15rem", lineHeight: 1,
@@ -9072,3 +9591,18 @@ const quickMenuBtnStyle = {
   width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
   background: "none", border: "none", borderRadius: 3, color: "#A79FC4", cursor: "pointer",
 };
+/* القاسم القابل للسحب بين الشارت الرئيسي ولوحة المقارنة - سطح واحد متصل بدون فراغ، زي تريدنغ فيو بالظبط */
+const dividerStyle = {
+  height: 10, flexShrink: 0, cursor: "row-resize",
+  display: "flex", alignItems: "center", justifyContent: "center",
+  background: "transparent",
+};
+const dividerGripStyle = {
+  width: 40, height: 3, borderRadius: 3, background: `#3D2F63`,
+};
+
+function btnStyle(kind) {
+  const base = { padding: "0.55rem 1rem", borderRadius: 3, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" };
+  if (kind === "primary") return { ...base, background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, color: "#120B24" };
+  return { ...base, background: "transparent", border: `1px solid #3D2F63`, color: GOLD };
+}

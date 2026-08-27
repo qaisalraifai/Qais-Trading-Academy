@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { getVerifiedUserId } from "@/lib/auth-context";
-import ReplayWorkspace from "./ReplayWorkspace";
+import ReplayClient from "./ReplayClient";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,6 @@ export default async function ReplayPage() {
 
 
   return (
-    <ReplayWorkspace userId={userId} />
+    <ReplayClient userId={userId} />
   );
 }
