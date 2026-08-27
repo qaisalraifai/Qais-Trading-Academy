@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchYahooCandles } from "@/lib/yahoo-candles";
 import { fetchTwelveDataCandles } from "@/lib/twelvedata-candles";
 import { fetchDukascopyCandles } from "@/lib/dukascopy-candles";
+import { safeProvider, withTimeout } from "@/lib/provider-guard";
 
 export const dynamic = "force-dynamic";
 // دوكاسكوبي بتنزّل وتفكّ ملفات أرشيف حقيقية (مش JSON فوري)، فأول طلب لمدى
@@ -28,13 +29,9 @@ export const maxDuration = 30;
 const DUKASCOPY_TIMEOUT_MS_LIVE = 8000;
 const DUKASCOPY_TIMEOUT_MS_ANCHOR = 27000;
 
-function withTimeout(promise, ms, timeoutResult) {
-  let timer;
-  const timeout = new Promise((resolve) => {
-    timer = setTimeout(() => resolve(timeoutResult), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
+/* ⚠️ `withTimeout` انتقلت لـlib/provider-guard.js — كانت هون بـ`Promise.race`
+   عارية، والـrace **بتمرّر الرفض**: رمية من المزوّد كانت تسقّط الطلب كله
+   (500 عارية) وتتخطّى سلسلة التراجع. التفاصيل والقياس بالوحدة نفسها. */
 
 // Keep the API contract valid for every client, not only the replay chart.
 // A candle's wick must always contain its body: low <= open/close <= high.
@@ -106,6 +103,27 @@ function isDailyBatchSuspicious(candles) {
    شموع عطلة أسبوع مسطّحة) → Twelve Data سبوت → Yahoo سبوت → خطأ واضح
    (بدل بيانات غلط بصمت). شوفي تعليق "المستوى 0" تحت لتفاصيل السبب. */
 export async function GET(req) {
+  /* ⚠️ ما كان في `try/catch` على المسار **أبداً**. أي رمية = 500 عارية بلا
+     جسم: لا الواجهة بتعرف السبب، ولا التشخيص. صار السبب يطلع كـJSON.
+     ⚠️ وهاد ما بيمسك قتل العملية (OOM) — هديك بتضل 500 عارية، وهيك بالضبط
+        بينفصل الصنفان بالقياس بدل التخمين. */
+  try {
+    return await handleGet(req);
+  } catch (e) {
+    return NextResponse.json(
+      {
+        error: `عطل داخلي بمسار الشموع: ${e?.message || e}`,
+        where: String(e?.stack || "")
+          .split("\n")
+          .slice(0, 4)
+          .join(" | "),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleGet(req) {
   const { searchParams } = new URL(req.url);
   const symbol = searchParams.get("symbol");
   const tdSymbol = searchParams.get("td") || null;
@@ -194,7 +212,7 @@ export async function GET(req) {
 
   // المستوى 1: Twelve Data (سبوت حقيقي).
   if (tdSymbol) {
-    const tdResult = await fetchTwelveDataCandles(tdSymbol, interval, wanted, anchor);
+    const tdResult = await safeProvider(fetchTwelveDataCandles(tdSymbol, interval, wanted, anchor));
     if (!tdResult.error && (tdResult.candles?.length || 0) >= 2) {
       if (interval === "1day" && isDailyBatchSuspicious(tdResult.candles)) {
         tdError = "بيانات Twelve Data اليومية لهذا المدى تبدو غير موثوقة (أجسام شموع أصغر بكثير من مداها بمعظم الدفعة)";
@@ -216,7 +234,7 @@ export async function GET(req) {
   }
 
   // المستوى 2: Yahoo سبوت (لو الرمز نفسه أصلاً رمز سبوت زي XAU=).
-  const yahooResult = await fetchYahooCandles(symbol, interval, wanted, anchor);
+  const yahooResult = await safeProvider(fetchYahooCandles(symbol, interval, wanted, anchor));
   const yahooSuspicious = interval === "1day" && !yahooResult.error && isDailyBatchSuspicious(yahooResult.candles);
   if (!yahooResult.error && !yahooSuspicious && (yahooResult.candles?.length || 0) >= 2) {
     return NextResponse.json({
