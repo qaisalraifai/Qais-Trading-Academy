@@ -4994,7 +4994,10 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
       const base = cached?.candles?.length
         ? cached.candles
         : (fastStage || (sameSeries ? allCandles : null));
-      const candles = base?.length ? mergeCandles(base, fetched) : fetched;
+      /* ⚠️ `intervalSecs` لازم — بلاها الدمج بيفهرس بالطابع الخام، واليومي
+         بينزاح ساعة مع التوقيت الصيفي فنفس اليوم بيصير شمعتين.
+         مقيس: `barsPerDay 1.6` على NAS100 يومي. */
+      const candles = base?.length ? mergeCandles(base, fetched, intervalSecs) : fetched;
       if (candles.length === 0) throw new Error("لا توجد بيانات متاحة لهذا الأصل/الفريم حالياً");
       /* ما بننتظر الحفظ — التخزين تحسين، وأي فشل فيه ما بيهمّ المستخدم.
          ⚠️ وما بنخزّن جلبة **أضحل من المحفوظ** — وإلا جلبة مكسورة وحدة
