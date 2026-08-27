@@ -112,6 +112,12 @@ export async function GET(req) {
   const dukSymbol = searchParams.get("duk") || null;
   const interval = searchParams.get("interval") || "15min";
   const wanted = Math.min(Number(searchParams.get("count") || 1000), 20000);
+  /* ⚠️ `bg=1` = طلب **خلفية** (تسخين الفريمات). بيمرّر مرساة زي الطلب
+     الأمامي، بس ما إله نفس الحق بالوقت: التسخين ست طلبات ورا طلب المستخدم،
+     ولو كل واحد أخد مسار الـ٢٧ ثانية مع التهدئات بيصير الحمل ستة أضعاف —
+     وهاد بالضبط اللي طلّع **500** بالإنتاج بعد ما نجح العامل ١ وصار كل طلب
+     بيسحب سنين أرشيف. الخلفية بتفشل بسرعة وبتتراجع، والمستخدم ما بيحس. */
+  const isBackground = searchParams.get("bg") === "1";
   const anchorRaw = searchParams.get("anchor");
   const anchor = anchorRaw != null && Number.isFinite(Number(anchorRaw)) ? Number(anchorRaw) : null;
 
@@ -163,7 +169,7 @@ export async function GET(req) {
   // لو Dukascopy فشل لأي سبب (رمز غير مدعوم، تعطّل مؤقت بالأرشيف...) منكمل
   // تلقائياً لـTwelve Data ثم يوهو زي ما كان بالضبط - صفر خطر كسر أي أصل.
   if (dukSymbol) {
-    const dukTimeoutMs = anchor != null ? DUKASCOPY_TIMEOUT_MS_ANCHOR : DUKASCOPY_TIMEOUT_MS_LIVE;
+    const dukTimeoutMs = anchor != null && !isBackground ? DUKASCOPY_TIMEOUT_MS_ANCHOR : DUKASCOPY_TIMEOUT_MS_LIVE;
     const dukResult = await withTimeout(
       // ⚠️ الميزانية بتنمرّر عشان استكمال العمق جوّا يوقف قبل هالمهلة بدل
       //    ما يستهلكها ويسقط الطلب كله لمزوّد أضعف.

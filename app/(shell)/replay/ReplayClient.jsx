@@ -5176,7 +5176,7 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         }
         await fetch(
           `/api/replay-candles?symbol=${encodeURIComponent(cacheSymbol)}` +
-          `&interval=${INTERVAL_MAP[it.value]}&count=3000${anchorSuffix}${tdParam}${dukParam}`
+          `&interval=${INTERVAL_MAP[it.value]}&count=3000&bg=1${anchorSuffix}${tdParam}${dukParam}`
         )
           .then((r) => r.json())
           .then((d) => {
