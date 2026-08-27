@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Columns2, Rows2, Square, Maximize2, Minimize2 } from "lucide-react";
 import ReplayClient from "./ReplayClient";
 
@@ -71,8 +71,15 @@ export default function ReplayWorkspace({ userId }) {
      كانت `null` والبوابات ما طبعت ولا شريط.
      بمرجع الاستدعاء، الحالة بتتحدّث لحظة ما ينركّب العنصر فعلاً. */
   const [slots, setSlots] = useState({ top: null, tools: null, bottom: null });
-  const setSlot = (name) => (node) =>
-    setSlots((prev) => (prev[name] === node ? prev : { ...prev, [name]: node }));
+  /* 🔴 **مراجع الاستدعاء لازم تكون ثابتة الهوية.**
+     أول نسخة كانت `setSlot(name)` بتنشئ دالة جديدة كل رندر. ريأكت بتقارن
+     مرجع الاستدعاء بالهوية: هوية جديدة = تفصل القديم بـ`null` وتربط الجديد
+     بالعنصر. والاتنين بيغيّروا الحالة → رندر → دالة جديدة → حلقة لا نهائية
+     (`Minified React error #185`).
+     بـ`useCallback` بمصفوفة فاضية، الهوية بتثبت فالربط بيصير مرة وحدة. */
+  const setTopSlot = useCallback((node) => setSlots((p) => (p.top === node ? p : { ...p, top: node })), []);
+  const setToolsSlot = useCallback((node) => setSlots((p) => (p.tools === node ? p : { ...p, tools: node })), []);
+  const setBottomSlot = useCallback((node) => setSlots((p) => (p.bottom === node ? p : { ...p, bottom: node })), []);
   const [activePane, setActivePane] = useState("main");
 
   useEffect(() => {
@@ -179,13 +186,13 @@ export default function ReplayWorkspace({ userId }) {
       </div>
 
       {/* الفتحة المشتركة للشريط العلوي — بتنعرض بس بالتخطيط المقسوم */}
-      {split && <div ref={setSlot("top")} />}
+      {split && <div ref={setTopSlot} />}
 
       {/* ⚠️ ما بنركّب اللوحة التانية قبل ما نقرا التخطيط المحفوظ — وإلا
           بتنركّب وتنهدم فوراً، يعني طلب بيانات كامل بلا فايدة. */}
       <div style={{ display: "flex", flex: 1, minHeight: 0, minWidth: 0, gap: split ? 6 : 0 }}>
         {/* الفتحة المشتركة لشريط الرسم الجانبي */}
-        {split && <div ref={setSlot("tools")} style={{ flexShrink: 0 }} />}
+        {split && <div ref={setToolsSlot} style={{ flexShrink: 0 }} />}
 
         <div
           style={{
@@ -233,7 +240,7 @@ export default function ReplayWorkspace({ userId }) {
       </div>
 
       {/* الفتحة المشتركة للشريط السفلي (المدى الزمني + الساعة) */}
-      {split && <div ref={setSlot("bottom")} />}
+      {split && <div ref={setBottomSlot} />}
     </div>
   );
 }
