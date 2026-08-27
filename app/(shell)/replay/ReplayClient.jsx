@@ -4818,6 +4818,9 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
       const intervalSecs = (INTERVAL_MS[interval] || 900000) / 1000;
       let cached = null;
       let renderedFromCache = false;
+      /* بينترفع لما تكون السلسلة المباشرة المحفوظة بتغطّي نقطة القص —
+         وقتها الطلب المرسى بلا فايدة (والبيانات عنا أعمق). */
+      let skipAnchoredFetch = false;
       if (!anchorParam) {
         cached = await readSeries(cacheSymbol, interval);
         if (myRequestId !== loadRequestIdRef.current) return;
@@ -4839,11 +4842,47 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         const cutCached = await readSeries(cutCacheKey(cacheSymbol), interval);
         if (myRequestId !== loadRequestIdRef.current) return;
         const cutTs = replayStateRef.current.currentTimestamp;
-        const cc = cutCached?.candles;
+
+        /* ═══════════════════════════════════════════════════════════════
+           🔴 **السلسلة المباشرة مرشَّحة للقص كمان — وهي الأعمق.**
+           -------------------------------------------------------------
+           مقيس على الإنتاج (٢٠٢٦-٠٨-٢٧):
+
+               مباشر (بلا مرساة) → dukascopy ينجح · عمق ٢٠١٤ أو أبعد
+               قصّ   (بمرساة)    → 429 أو 500 · عمق ٢٠٢٠ أو تراجع ليوهو
+
+           نفس الرمز ونفس الفريم ونفس المزوّد — الفرق **المرساة وحدها**.
+           يعني المسار اللي بينجح موجود أصلاً، وناتجه محفوظ.
+
+           ولو نقطة القص **جوّا** السلسلة المباشرة المحفوظة، ما في أي سبب
+           نطلب مرساة أصلاً: البيانات المطلوبة موجودة، وأعمق.
+
+           ⚠️ التحذير فوق («ممنوع تنخزّن بمفتاح المباشر») بيمنع **الكتابة**
+           بالاتجاه المعاكس — نافذة المرساة ما بتنحط بمفتاح المباشر لأنها
+           بتنتهي عند القص فبتعمل ثقب. القراءة بهالاتجاه آمنة تماماً:
+           المباشرة بتمتد **لهلق**، فبتغطّي القص وما بعده.
+
+           منختار الأعمق: اللي بتبلّش أبكر وبتغطّي النقطة. */
+        const liveCached = await readSeries(cacheSymbol, interval);
+        if (myRequestId !== loadRequestIdRef.current) return;
+        const covers = (arr) =>
+          arr?.length && cutTs != null && arr[0].time <= cutTs && cutTs <= arr[arr.length - 1].time;
+        const lc = liveCached?.candles;
+        const cutOk = covers(cutCached?.candles);
+        const liveOk = covers(lc);
+        const cc =
+          liveOk && (!cutOk || lc[0].time < cutCached.candles[0].time)
+            ? lc
+            : cutCached?.candles;
         /* بنستعملها **بس** لو بتغطّي نقطة القص فعلاً — نافذة لتاريخ تاني
            ما بتنفع، والثقب أسوأ من الانتظار. */
         if (cc?.length && cutTs != null && cc[0].time <= cutTs && cutTs <= cc[cc.length - 1].time) {
-          cached = cutCached;
+          cached = { candles: cc, savedAt: (liveOk && cc === lc ? liveCached : cutCached)?.savedAt || 0 };
+          /* 🔴 **لو المباشرة بتغطّي القص، ما منطلب مرساة أصلاً.**
+             الطلب المرسى هو اللي بيرجّع 429/500 — والبيانات اللي بيدوّر
+             عليها موجودة عنا وأعمق. تخطّيه بيشيل العطل من جذره بدل ما
+             نعاير مهلاته. */
+          if (liveOk && cc === lc) skipAnchoredFetch = true;
           /* عرض فوري بدل انتظار الشبكة (٢–٩ ثواني حسب المزوّد). نقطة الكشف
              بتنحسب بالوقت مش بالفهرس، فحتى لو الدمج تحت أضاف تاريخاً أقدم
              وزحزح الفهارس، الشمعة المكشوفة بتضل **هي هي**. */
@@ -4948,6 +4987,9 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         if (myRequestId !== loadRequestIdRef.current) return;
       }
 
+      /* 🔴 الطلب المرسى هو مصدر 429/500 المقيس. لو المباشرة غطّت القص
+         منوقف هون — الشارت مرسوم أصلاً من الكاش وأعمق مما بيرجّعه. */
+      if (skipAnchoredFetch) return;
       const res = await fetch(urlFor(effCount, effAnchor));
       const data = await res.json();
       // طلب أحدث صار وخلص قبل ما هاد يوصل جوابه - نتجاهل هاد الجواب "القديم"
