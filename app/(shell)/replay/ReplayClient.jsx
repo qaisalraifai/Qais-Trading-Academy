@@ -1116,6 +1116,11 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   // بتتحدث كل ما نجيب شموع جديدة: بتقول فعلياً أي رمز يوهو استُخدم (سبوت أو
   // عقد آجل احتياطي) - شوفي التعليق بأول lib/assets.js لسبب وجود هالمنطق.
   const dataSourceRef = useRef({ symbol: null, usedFallback: false, provider: "yahoo" });
+  /* 🔴 مصدر **التحميل التاريخي** وحده — منفصل عن `dataSourceRef`.
+     ذاك بيكتب فوقه الاستطلاع الحي كل بضع ثوانٍ (بمزوّد مختلف وبلا `duk`)،
+     فبيمحي مين خدم البيانات فعلاً. مقيس: القراءة رجّعت `provider: "yahoo"`
+     و`symbol: null` بينما التاريخ من مصدر تاني — وهاد ضلّلني مرة قبل. */
+  const loadSourceRef = useRef(null);
   const [usedFuturesApprox, setUsedFuturesApprox] = useState(false);
   const [interval, setIntervalValue] = useState("15m");
   const [speed, setSpeed] = useState(3); // 3x = 3 شموع/ثانية (قيمة افتراضية معقولة)
@@ -1267,17 +1272,40 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
     const reg = (window.__qtaCharts = window.__qtaCharts || {});
     reg[paneId] = () => {
       const c = allCandles;
+      /* 🔴 **سلامة المصفوفة نفسها.** بالقياس طلعت ٣٩٧٤ شمعة يومية على ٨.٥
+         سنة = ٤٦٩ بالسنة، وأيام التداول ٢٥٢. يعني في تكرار أو ترتيب مكسور،
+         و`c[0]`/`c[length-1]` بيكذبوا لو المصفوفة مش مرتّبة. */
+      let dupes = 0, unsorted = 0, min = Infinity, max = -Infinity;
+      const seen = new Set();
+      for (let i = 0; i < c.length; i++) {
+        const t = c[i]?.time;
+        if (t == null) continue;
+        if (seen.has(t)) dupes++; else seen.add(t);
+        if (i && t <= c[i - 1]?.time) unsorted++;
+        if (t < min) min = t;
+        if (t > max) max = t;
+      }
+      const span = max > min ? (max - min) / 86400 : 0;
       return {
         pane: paneId,
         symbol: assetValue,
         interval,
         mode,
         bars: c.length,
+        dupes,
+        unsorted,
+        spanDays: Math.round(span),
         first: at(c[0]?.time),
         last: at(c[c.length - 1]?.time),
+        minTime: at(min === Infinity ? null : min),
+        maxTime: at(max === -Infinity ? null : max),
         revealed: revealCount,
         cutTs: at(replayStateRef.current.currentTimestamp),
-        source: dataSourceRef.current,
+        replayActive: !!replayStateRef.current.isActive,
+        /* مصدر التحميل التاريخي — هاد اللي بيهم للعمق */
+        loadSource: loadSourceRef.current,
+        /* آخر مصدر لمس البيانات (بيشمل الاستطلاع الحي) */
+        liveSource: dataSourceRef.current,
       };
     };
     window.__qtaChartInfo = (id) =>
@@ -4978,7 +5006,14 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
            وهو بيسلّم ربع العمق. بلا هالسطر برجع أخمّن العمق من شكل الشارت. */
         duk: data.duk || null,
         anchored: !!anchorParam,
+        /* 🔴 ليش انتراجع عن Dukascopy. مقيس بوضع القص: `provider: "yahoo"`
+           و`duk: null` — يعني Dukascopy فشلت تماماً بالمسار المرسى، فنزل
+           ليوهو `NQ=F` اللي تاريخه اليومي أقصر بتلات سنين ونص. بلا هالسطر
+           بنعرف **إنها** فشلت بس مش **ليش**. */
+        providerErrors: data.providerErrors || null,
       };
+      /* نسخة **ما بيلمسها الاستطلاع الحي** — هي المرجع الصادق للعمق. */
+      loadSourceRef.current = { ...dataSourceRef.current, bars: candles.length };
       // ما في عقود آجلة نهائياً بعد اليوم (Yahoo سبوت أو Twelve Data بس) -
       // فهاي العلامة صارت دايماً false، تركناها بالكود بدل حذفها بالكامل
       // عشان لو حابين نرجّعها اختيارياً بالمستقبل ما نعيد بناء المنطق من الصفر.
