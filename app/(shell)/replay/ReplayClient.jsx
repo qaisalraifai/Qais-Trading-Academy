@@ -5247,8 +5247,18 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
           }
           const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
           if (older.length < 1) {
-            note(round, `صفر أقدم (رجع ${data.candles?.length || 0})`);
-            log.state = "وقف: ما في أقدم من هيك";
+            /* ⚠️ «صفر أقدم» إلها سببان مختلفان تماماً، وخلطهن بيخلّي القراءة
+               بلا قيمة:
+                 · قاع الأرشيف — المزوّد ما عنده أقدم، والوقوف صح.
+                 · تراجع لمزوّد تاني — بيتجاهل المرساة ويرجّع بيانات **حديثة**،
+                   فبتنرمى كلها بالفلترة وشكلها زي القاع.
+               مقيس: أرشيف Dukascopy لناسداك بيبلّش ٢٠١٢-٠١-١٩ (٤ ساعات
+               واليومي، نفس التاريخ)، وشموع ٢٠٠٦ بالكاش مصدرها مزوّد تاني. */
+            const src = data.usedFallback ? `تراجع لـ${data.provider}` : `قاع ${data.provider || "الأرشيف"}`;
+            note(round, `صفر أقدم · ${src} · رجع ${data.candles?.length || 0}`);
+            log.state = data.usedFallback
+              ? `وقف: Dukascopy فشلت والتراجع بيتجاهل المرساة (${data.provider})`
+              : "وقف: وصلنا قاع الأرشيف — ما في أقدم";
             return;
           }
           oldest = older[0].time;
