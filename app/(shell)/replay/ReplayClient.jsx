@@ -4794,10 +4794,39 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
       // "آخر X يوم من الآن" واللي ممكن ما توصلها بفريمات دقيقة زي الساعة
       // حتى لو نظرياً المفروض توصل - يوهو نفسه أحياناً ما بيرجّع كل المدى
       // المطلوب لما يكون الطلب من "الآن" للخلف بس).
-      const anchorParam =
-        sameMarketContext && replayStateRef.current.isActive && replayStateRef.current.currentTimestamp != null
-          ? `&anchor=${replayStateRef.current.currentTimestamp}`
-          : "";
+      /* ═══════════════════════════════════════════════════════════════════
+         🔴 **ما بنرسي إلا لما نضطر — الطلب المرسى هو اللي بيفشل.**
+         -----------------------------------------------------------------
+         مقيس مراراً على الإنتاج: نفس الرمز ونفس الفريم ونفس المزوّد،
+
+             بلا مرساة → dukascopy ينجح · العمق الكامل
+             بمرساة    → 429 أو 500 · ربع المدى أو تراجع ليوهو
+
+         والمرساة أصلاً بس عشان **نضمن تغطية نقطة القص**. بس الطلب العادي
+         بيغطّي من الآن للورا `secPerBar × count × 1.25` — وهاد بيغطّي نقطة
+         القص لحاله بمعظم الحالات:
+
+             يومي     ← ٦٨ سنة
+             ٤ ساعات  ← ١١.٤ سنة   (قصّة ٢٠١٧ داخلة فيها)
+             ساعة     ← ٢.٩ سنة
+             ١٥ دقيقة ← ٠.٧ سنة
+
+         فلما تكون النقطة داخل هالمدى، بنطلب **بلا مرساة** — نفس البيانات
+         بالضبط، بس بالمسار اللي بينجح.
+
+         ⚠️ وهامش ٢٠٪ عشان ما نوقع على الحافة: تقدير المدى تقريبي (المزوّد
+         بيقصّ حسب توفّره)، والوقوع خارج التغطية بيعمل ثقب.
+         ⚠️ ولما النقطة أقدم من هيك فعلاً (١٥ دقيقة على سنة مثلاً)، المرساة
+         بتضل ضرورية — ما في بديل، والسلوك ما تغيّر هناك. */
+      const cutTsForLoad = replayStateRef.current.currentTimestamp;
+      const wantsAnchor =
+        sameMarketContext && replayStateRef.current.isActive && cutTsForLoad != null;
+      /* ⚠️ محسوب هون مش من `intervalSecs` — ذاك مصرَّح **بعد** هالسطر،
+         وقراءته من مصفوفة تبعيات أو تعبير سابق بتنهار بالمنطقة الميتة. */
+      const barSecsForReach = (INTERVAL_MS[interval] || 900000) / 1000;
+      const plainReachSec = barSecsForReach * maxBars * 1.25 * 0.8;
+      const plainCoversCut = wantsAnchor && Date.now() / 1000 - cutTsForLoad < plainReachSec;
+      const anchorParam = wantsAnchor && !plainCoversCut ? `&anchor=${cutTsForLoad}` : "";
       const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
       const dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
       /* ===== التخزين المحلي: نرسم فوراً، وبعدين نجيب الذيل بس =====
