@@ -5136,6 +5136,99 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetValue, interval, mode, maxBars, randomChart]);
 
+  /* ═══════════════════════════════════════════════════════════════════════════
+     تعميق تدريجي — قطع صغيرة متتالية بدل طلب ضخم واحد.
+     ---------------------------------------------------------------------------
+     طلبه: «بدي عمق عالأربع ساعات يوصل نفس بيانات اليوم، وباقي الفريمات نفس
+     الإشي».
+
+     🔴 ليش ما بينحل بطلب واحد أكبر: الفريمات اللحظية بتنبني من ملفات أرشيف
+     **يومية**، فكلفة الطلب بعدد الأيام مش بعدد الشموع. والعتبة مقيسة على ٤
+     ساعات (نافذة نظيفة · صعود بيوقف عند أول فشل):
+
+         ١٢٠ ✓ · ١٨٠ ✓ · ٢٤٠ ✓ · ٣٠٠ ✓ · ٣٦٠ ✓ · **٤٨٠ ✗ 429**
+
+     عشان هيك في سقف ٣٠٠ يوم للطلب الواحد (`lib/dukascopy-candles.js`).
+     فالعمق **مش** مسألة إقناع المزوّد بطلب أضخم — هو تكرار قطع تحت السقف
+     ودمجها. نفس التقنية اللي بنت العيّنات المجمّدة (١٦ قطعة من ١٨).
+
+     ⚠️ **الفاصل ١٢ ثانية مقصود.** النسخة الأولى استعملت ٣.٥ ثانية استناداً
+        على قياس ملوَّث. المقيس على سلّم نظيف: ست قطع متتالية بفاصل ١٢–١٥
+        ثانية بتنجح كلها، وقطعتان بفاصل ٤٠٠ml بتفشل التانية. الخلفية ما
+        بتستعجل — التأخير ما بيكلّف المستخدم إشي.
+
+     ⚠️ **وبتوقف لحالها**: أول فشل، أو أول جولة ما بتربح شموع. مصدر ما عنده
+        أعمق ما بيتحسّن بالإلحاح، والاستمرار بياكل حصة الأرشيف بلا مقابل.
+
+     ⚠️ **`revealCount` فهرس مش وقت** — إضافة تاريخ أقدم بتزحزح الفهارس كلها،
+        فلازم يتعدّل بعدد اللي انضاف قبله وإلا نقطة القص بتقفز.
+
+     ⚠️ هالوحدة انرجعت مرة (`8ae4e95`) لأنها كانت بتربح **صفر** شمعة. السبب
+        ما كان فيها: كل جلب Dukascopy ناجح كان يرمي `ReferenceError` فيرجع
+        500 (`209fd54`). انصلح، وانرجعت.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  const deepenedForRef = useRef(null);
+
+  useEffect(() => {
+    if (randomChart || !allCandles.length) return;
+    const seriesKey = `${assetValue}|${interval}|${mode}`;
+    if (deepenedForRef.current === seriesKey) return;
+    deepenedForRef.current = seriesKey;
+
+    const assetInfo = getAssetByValue(assetValue);
+    if (!assetInfo?.yahoo) return;
+    const barSec = (INTERVAL_MS[interval] || 900000) / 1000;
+    const DEEPEN_COUNT = 1500;   // على ٤ ساعات = ٣١٢ يوم → بينقصّ لسقف ٣٠٠
+    const BUFFER_BARS = 300;     // مطابق لـ`bufferSeconds` بالخادم
+    const GAP_MS = 12000;        // مقيس: ١٢–١٥ ثانية بتمرّق قطعاً متتالية
+    const MIN_GAIN = 30;         // أقل من هيك = وصلنا لقاع الأرشيف
+    /* ٤ ساعات بده ~١٢ جولة ليلحق عمق اليومي (٣٠٠ يوم/جولة). الفريمات
+       الأقصر بتقف لحالها بالـ`MIN_GAIN` قبل ما توصل للسقف. */
+    const ROUNDS = 20;
+
+    let cancelled = false;
+    (async () => {
+      let oldest = allCandles[0]?.time;
+      if (!oldest) return;
+      const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
+      const dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
+      const sym = encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo);
+
+      for (let round = 1; round <= ROUNDS && !cancelled; round++) {
+        await new Promise((r) => setTimeout(r, GAP_MS));
+        if (cancelled) return;
+        /* المرساة مزحزحة بمقدار هامش الخادم، وإلا النافذة بتنتهي بعد أقدم
+           شمعة عنا فبيرجع معظمها مكرَّراً. */
+        const anchor = Math.floor(oldest - BUFFER_BARS * barSec);
+        try {
+          const res = await fetch(
+            `/api/replay-candles?symbol=${sym}&interval=${INTERVAL_MAP[interval]}` +
+              `&count=${DEEPEN_COUNT}&bg=1&anchor=${anchor}${tdParam}${dukParam}`
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.error || cancelled) return;
+          const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
+          if (older.length < 1) return;
+          oldest = older[0].time;
+
+          setAllCandles((prev) => {
+            if (!prev.length) return prev;
+            const merged = mergeCandles(older, prev, barSec);
+            const added = merged.length - prev.length;
+            /* ⚠️ الفهارس انزاحت — نقطة الكشف لازم تنزاح معها. */
+            if (added > 0) setRevealCount((rc) => rc + added);
+            return merged;
+          });
+          if (older.length < MIN_GAIN) return;
+        } catch { return; }
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetValue, interval, mode, randomChart, allCandles.length > 0]);
+
   /* ===== تسخين هادي لباقي الفريمات =====
      ⚠️ المشكلة المبلَّغة: «في بطء بالتنقل بالفريمات». مقيسة على SPX500:
 
