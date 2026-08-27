@@ -50,6 +50,26 @@ export default function ReplayWorkspace({ userId }) {
   const rootRef = useRef(null);
   const [isFs, setIsFs] = useState(false);
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     شريط أدوات **واحد** بدل واحد لكل شارت.
+     ---------------------------------------------------------------------
+     الشريطان متطابقان شكلاً، وتكرارهن بياكل مساحة وبيربك: على أي شارت
+     بتشتغل؟ فصار في فتحتان مشتركتان (علوية + جانبية)، واللوحة **النشطة**
+     وحدها بتطبع أشرطتها فيهن بـportal.
+
+     يعني الأدوات دايماً بمكان واحد، وبتشتغل على الشارت اللي ماسكه.
+
+     ⚠️ **النشاط بينحدّد بأول ضغطة** (`pointerDownCapture`) — بالالتقاط عشان
+     يوصل قبل ما الشارت نفسه يمسك الحدث للرسم أو السحب. وبيضل شغّال حتى لو
+     كانت الضغطة أصلاً على أداة رسم.
+     ⚠️ ومنستنى الفتحتين ينركّبوا قبل ما نمرّرهن — `createPortal` بده عنصر
+     DOM موجود فعلاً وقت الرندر، مش ref فاضي.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const [slots, setSlots] = useState(null);
+  const topSlotRef = useRef(null);
+  const toolsSlotRef = useRef(null);
+  const [activePane, setActivePane] = useState("main");
+
   useEffect(() => {
     const onChange = () => setIsFs(document.fullscreenElement === rootRef.current);
     document.addEventListener("fullscreenchange", onChange);
@@ -69,6 +89,7 @@ export default function ReplayWorkspace({ userId }) {
       if (saved === "rows" || saved === "cols" || saved === "single") setLayout(saved);
     } catch {}
     setReady(true);
+    setSlots({ top: topSlotRef.current, tools: toolsSlotRef.current });
   }, []);
 
   function pick(next) {
@@ -77,6 +98,24 @@ export default function ReplayWorkspace({ userId }) {
   }
 
   const split = layout !== "single";
+
+  /* حاوية لوحة: بتلتقط الضغطة عشان تصير هي النشطة، وبتعلّم النشطة بحدّ خفيف
+     ⚠️ الحدّ **بلا إزاحة تخطيط** (`outline` مش `border`) — وإلا كل تبديل نشاط
+     بيغيّر عرض الشارت المتاح فيعيد حسابه بلا داعٍ. */
+  const paneBox = (id, node) => (
+    <div
+      onPointerDownCapture={() => setActivePane(id)}
+      style={{
+        display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0,
+        position: "relative",
+        outline: split && activePane === id ? "1px solid #C9A96155" : "1px solid transparent",
+        outlineOffset: -1,
+        borderRadius: 4,
+      }}
+    >
+      {node}
+    </div>
+  );
 
   const btn = (value, Icon, title) => (
     <button
@@ -135,35 +174,56 @@ export default function ReplayWorkspace({ userId }) {
         </button>
       </div>
 
+      {/* الفتحة المشتركة للشريط العلوي — بتنعرض بس بالتخطيط المقسوم */}
+      {split && <div ref={topSlotRef} />}
+
       {/* ⚠️ ما بنركّب اللوحة التانية قبل ما نقرا التخطيط المحفوظ — وإلا
           بتنركّب وتنهدم فوراً، يعني طلب بيانات كامل بلا فايدة. */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: layout === "cols" ? "row" : "column",
-          gap: split ? 8 : 0,
-          flex: 1,
-          minHeight: 0,
-          minWidth: 0,
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
-          {/* ⚠️ بالشاشة الكاملة كمان — الحاوية بتصير هي النافذة، فالقياس
-              منها أدقّ من الحساب المبني على موضع العنصر بالصفحة. */}
-          <ReplayClient userId={userId} paneId="main" isPrimary fillContainer={split || isFs} />
-        </div>
+      <div style={{ display: "flex", flex: 1, minHeight: 0, minWidth: 0, gap: split ? 6 : 0 }}>
+        {/* الفتحة المشتركة لشريط الرسم الجانبي */}
+        {split && <div ref={toolsSlotRef} style={{ flexShrink: 0 }} />}
 
-        {ready && split && (
-          <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
-            <ReplayClient
-              userId={userId}
-              paneId="b"
-              isPrimary={false}
-              initialAsset={SECOND_PANE_ASSET}
-              fillContainer
+        <div
+          style={{
+            display: "flex",
+            flexDirection: layout === "cols" ? "row" : "column",
+            flex: 1,
+            minHeight: 0,
+            minWidth: 0,
+          }}
+        >
+          {paneBox("main", <ReplayClient
+            userId={userId}
+            paneId="main"
+            isPrimary
+            /* ⚠️ بالشاشة الكاملة كمان — الحاوية بتصير هي النافذة، فالقياس
+               منها أدقّ من الحساب المبني على موضع العنصر بالصفحة. */
+            fillContainer={split || isFs}
+            chromeSlots={split ? slots : null}
+            chromeActive={activePane === "main"}
+          />)}
+
+          {/* 🔴 الخط الرفيع بين الشارتين — بيسهّل تتبّع نفس اللحظة بينهن */}
+          {ready && split && (
+            <div
+              style={{
+                flexShrink: 0,
+                background: "#2A2145",
+                ...(layout === "cols" ? { width: 1, margin: "0 6px" } : { height: 1, margin: "6px 0" }),
+              }}
             />
-          </div>
-        )}
+          )}
+
+          {ready && split && paneBox("b", <ReplayClient
+            userId={userId}
+            paneId="b"
+            isPrimary={false}
+            initialAsset={SECOND_PANE_ASSET}
+            fillContainer
+            chromeSlots={slots}
+            chromeActive={activePane === "b"}
+          />)}
+        </div>
       </div>
     </div>
   );

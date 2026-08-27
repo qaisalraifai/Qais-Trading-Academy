@@ -1,6 +1,7 @@
 "use client";
 import { ArrowLeftRight, Bell, CalendarDays, Check, ClipboardList, CornerUpLeft, Dices, MoveVertical, Pause, PenLine, Play, Settings, SkipForward, SlidersHorizontal, Tag, Trash2, TrendingUp } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets";
 import { createClient } from "@/lib/supabase-client";
@@ -1054,8 +1055,19 @@ function pointOnLinePx(px, py, x1, y1, x2, y2, clamp) {
  * @param initialAsset رمز البداية لما ما يكون في `?asset=`.
  * @param fillContainer بتقيس الارتفاع من الحاوية بدل النافذة — لازم بالتخطيط
  *                      المقسوم، وإلا كل شارت بيتمدّد لآخر الشاشة ويتراكبوا.
+ * @param chromeSlots  `{ top, tools }` — عنصرا DOM مشتركان بمساحة العمل. لما
+ *                     ينمرّروا، الشريط العلوي وشريط الرسم بينطبعوا هناك
+ *                     بـ`createPortal` بدل ما ينرسموا جوّا الشارت.
+ *
+ *                     ⚠️ **البوابة مقصودة بدل رفع الأشرطة لمكوّن أعلى.**
+ *                     الشريطان مربوطان بعشرات القيم والدوال جوّا الكومبوننت
+ *                     (الأداة النشطة · القوالب · المؤشرات · الرسم · الصفقات).
+ *                     رفعهن معناه تمرير كل هاد لفوق. بالبوابة بيضلوا يترسموا
+ *                     بنفس مكانهن بالشجرة وبكل تمديداتهن، وبس **مكان طباعتهن**
+ *                     بينتقل. صفر تغيير بمنطق الأدوات.
+ * @param chromeActive هل هاي اللوحة هي النشطة — النشطة وحدها بتطبع أشرطتها.
  */
-export default function ReplayClient({ userId, paneId = "main", isPrimary = true, initialAsset = null, fillContainer = false }) {
+export default function ReplayClient({ userId, paneId = "main", isPrimary = true, initialAsset = null, fillContainer = false, chromeSlots = null, chromeActive = true }) {
 
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
@@ -8505,7 +8517,11 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         .tv-flyout-scroll::-webkit-scrollbar-thumb { background: #241C3E; border-radius: 3px; }
         .tv-flyout-scroll::-webkit-scrollbar-track { background: transparent; }
       `}</style>
-      {!isFullscreen && renderTopBar()}
+      {/* الشريط العلوي: جوّا الشارت بالتخطيط المفرد، وبالمشترك بينطبع
+          بالفتحة المشتركة — واللوحة النشطة وحدها بتطبع. */}
+      {chromeSlots
+        ? (chromeActive && chromeSlots.top ? createPortal(renderTopBar(), chromeSlots.top) : null)
+        : (!isFullscreen && renderTopBar())}
 
       {!supported && !error && (
         <div style={{ color: "#F0A13C", fontSize: 13, marginBottom: "1rem" }}>هذا الأصل غير مدعوم حالياً بعرض الشموع، اختاري أصل آخر من القائمة.
@@ -8615,7 +8631,11 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
               </div>
             </div>
           </div>
-          {allCandles.length > 0 && renderDrawToolbar()}
+          {chromeSlots
+            ? (chromeActive && chromeSlots.tools && allCandles.length > 0
+                ? createPortal(renderDrawToolbar(), chromeSlots.tools)
+                : null)
+            : (allCandles.length > 0 && renderDrawToolbar())}
         </div>
         {renderSettingsDialog()}
         {renderCutChoiceDialog()}
