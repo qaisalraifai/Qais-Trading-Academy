@@ -165,9 +165,7 @@ export async function GET(req) {
   if (dukSymbol) {
     const dukTimeoutMs = anchor != null ? DUKASCOPY_TIMEOUT_MS_ANCHOR : DUKASCOPY_TIMEOUT_MS_LIVE;
     const dukResult = await withTimeout(
-      // ⚠️ الميزانية بتنمرّر عشان استكمال العمق جوّا يوقف قبل هالمهلة بدل
-      //    ما يستهلكها ويسقط الطلب كله لمزوّد أضعف.
-      fetchDukascopyCandles(dukSymbol, interval, wanted, anchor, dukTimeoutMs),
+      fetchDukascopyCandles(dukSymbol, interval, wanted, anchor),
       dukTimeoutMs,
       { error: `انتهت مهلة الانتظار (${dukTimeoutMs / 1000} ثانية) بدون رد من Dukascopy` }
     );
@@ -178,9 +176,6 @@ export async function GET(req) {
         provider: "dukascopy",
         usedFallback: false,
         providerErrors: null,
-        /* ⚠️ تقليص المدى كان **صامتاً**: `usedFallback:false` و
-           `providerErrors:null` وهو بيسلّم ربع العمق. صار يقول عن حاله. */
-        duk: dukResult.duk || null,
       });
     }
     dukError = dukResult.error || "استجابة فارغة من Dukascopy";

@@ -7,24 +7,7 @@ import { createClient } from "@/lib/supabase-client";
 import { initUserSettingsSync } from "@/lib/user-settings-sync";
 import { INDICATOR_DEFS, searchIndicators, getIndicatorDef, defaultParamsFor } from "@/lib/indicators";
 import { readSeries, writeSeries, mergeCandles, canExtendFrom, cutCacheKey } from "@/lib/candle-cache";
-import { shouldApplyRange, createSyncBreaker, mapLogicalRange } from "@/lib/pane-sync";
 import WatchlistPanel from "./WatchlistPanel";
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   وحدة lightweight-charts بعد تحميلها كسولاً.
-   ---------------------------------------------------------------------------
-   ⚠️ **ليش حافظ على مستوى الوحدة**: بـv5 صار إنشاء السلسلة
-   `chart.addSeries(النوع, خيارات)` — والنوع (`LineSeries` · `AreaSeries` …)
-   **قيمة لازم تنستورد**، مش اسم دالة على الشارت.
-
-   والمكتبة بتنحمّل ديناميكياً (`await import`) عشان تضل برّا الحزمة الأولى.
-   بس كم دالة بتنشئ سلاسل وهي **برّا نطاق** ذاك الاستيراد
-   (`buildCompareSeries` · بناء سلاسل المؤشرات). فبدل ما نمرّر الأنواع
-   بالمعاملات عبر كل مسار، منخزّن الوحدة هون أول ما تتحمّل.
-
-   ⚠️ آمن: كل مستهلك بيشتغل **بعد** إنشاء الشارت، والشارت ما بينعمل إلا بعد
-   ما ينتعبّى هالحافظ. */
-let LWC = null;
 
 const GOLD = "#DCD4F7";
 const GOLD_LIGHT = "#F5F3FF";
@@ -632,7 +615,7 @@ const PAUSED_SESSION_KEY = "qta_paused_replay_session_v1";
    (تحويل اللون لـ rgba بيصير عن طريق hexToRgba المعرّفة تحت بنفس الملف) */
 function buildCompareSeries(chart, settings) {
   if (settings.type === "line") {
-    return chart.addSeries(LWC.LineSeries, {
+    return chart.addLineSeries({
       color: settings.lineColor,
       lineWidth: settings.lineWidth,
       priceLineVisible: false,
@@ -640,13 +623,13 @@ function buildCompareSeries(chart, settings) {
     });
   }
   if (settings.type === "candles") {
-    return chart.addSeries(LWC.CandlestickSeries, {
+    return chart.addCandlestickSeries({
       upColor: settings.up, downColor: settings.down, borderVisible: false,
       wickUpColor: settings.up, wickDownColor: settings.down,
       priceLineVisible: false, lastValueVisible: true,
     });
   }
-  return chart.addSeries(LWC.AreaSeries, {
+  return chart.addAreaSeries({
     lineColor: settings.lineColor,
     topColor: hexToRgba(settings.fillColor, 0.28),
     bottomColor: hexToRgba(settings.fillColor, 0.02),
@@ -655,69 +638,12 @@ function buildCompareSeries(chart, settings) {
     lastValueVisible: true,
   });
 }
-/* ═══════════════════════════════════════════════════════════════════════════
-   🔴 **بيانات المقارنة بتنبنى على محور أوقات الشارت الأساسي.**
-   ---------------------------------------------------------------------------
-   اللوحتان متزامنتان **بفهرس الشمعة** (`setVisibleLogicalRange`) — وهاد
-   الأسلوب اللي بتوصي فيه lightweight-charts، وبيحاذي عمود N بعمود N بالبكسل.
-
-   ⚠️ بس بيفترض إنّ الفهرس N يعني **نفس اللحظة** باللوحتين. وهاد مش مضمون:
-   الرمزان بيجوا من مزوّدين مختلفين بأعماق مختلفة. مقيس (٢٠٢٦-٠٨-٢٥):
-
-       ناسداك (مع duk)   4551 شمعة · تبلّش 2023-10-19
-       SPX    (بلا duk)  2973 شمعة · تبلّش 2024-08-30
-
-   الاتنين بينتهوا بنفس اللحظة، بس المقارنة أقصر بـ**١٥٧٨ شمعة**. فلما
-   الأساسي يعرض الفهارس ٣٠٠٠→٤٥٥٠، المقارنة ما عندها شي هناك → **فراغ على
-   اليمين**، ومستخدم شافها وبلّغ.
-
-   ⚠️ وتمرير `duk` للمقارنة **ما بيحلّها**: SPX مع duk بيعطي ٩١١٣ شمعة —
-   الخلل بينقلب للاتجاه التاني. أي مزوّدَين بيعطوا أعماقاً مختلفة.
-
-   ---------------------------------------------------------------------------
-   🔴 **الحل الأول كان حشو، والحشو هو اللي عمل الفراغات على اليومي.**
-
-   `alignToMainAxis` كانت تبني سلسلة بطول الأساسي بالضبط، وتحطّ `{ time }`
-   فاضية (whitespace) بكل لحظة ما عند المقارنة شمعة فيها. هاد **كان لازم**
-   لأنّ المزامنة كانت **بفهرس الشمعة** — العمود N لازم يكون نفس اللحظة
-   باللوحتين، وما بينضبط إلا بمساواة الطول.
-
-   بس على اليومي المزوّدان بيختلفوا بالعطل والجلسات، فكل يوم ناقص عند المقارنة
-   بيصير **عمود فاضي مرسوم** — وهاي هي الفراغات اللي بلّغ عنها.
-
-   الحل: **المزامنة صارت بالوقت مش بالفهرس** (`setVisibleRange`)، فقيد تساوي
-   الطول زال من أساسه. كل لوحة بترسم شموعها **الطبيعية** كاملة ومتراصّة،
-   والمكتبة بتحاذيهن بالطابع الزمني. بلا حشو → بلا فراغات.
-
-   ✅ وهاد بيحقّق شرطه الصريح: بلا خسارة عمق، وبلا تبديل مزوّدات. المقارنة
-   حتى بتستفيد من عمقها الزائد بدل ما ينقصّ على طول الأساسي.
-
-   ⚠️ الثمن المعروف: لو الفترة المعروضة بالأساسي بتسبق أول شمعة عند المقارنة،
-   لوحة المقارنة بتثبّت عند أول ما عندها — فبتعرض نافذة أقصر بدل أعمدة فاضية.
-   ⚠️ ومنطق كسر حلقة المزامنة معزول ومفحوص بـ`lib/pane-sync.js`.
-   ═══════════════════════════════════════════════════════════════════════════ */
-/* أقرب شمعة **بالوقت**. مستعملة بمزامنة خط التقاطع بالاتجاهين.
-   ⚠️ كانت مصرَّحة جوّا إعداد لوحة المقارنة وبس، فاستعمالها من تأثير الشارت
-   الأساسي بيرمي ReferenceError **وقت التشغيل** — والبناء ما بيمسكها. */
-function findNearestBar(candles, time) {
-  if (!candles?.length) return null;
-  const exact = candles.find((c) => c.time === time);
-  if (exact) return exact;
-  let bar = null;
-  let bestDiff = Infinity;
-  for (const c of candles) {
-    const diff = Math.abs(c.time - time);
-    if (diff < bestDiff) { bestDiff = diff; bar = c; }
-  }
-  return bar;
-}
-
+/* تجهيز بيانات لوحة المقارنة حسب نوع الشارت المختار (شموع كاملة أو قيمة إغلاق فقط) */
 function compareSeriesData(type, candles) {
-  return (candles || []).map((c) =>
-    type === "candles"
-      ? { time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }
-      : { time: c.time, value: c.close }
-  );
+  if (type === "candles") {
+    return candles.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }));
+  }
+  return candles.map((c) => ({ time: c.time, value: c.close }));
 }
 
 /* تحويل صفقة الاستعراض التاريخي لصف جدول trades (نفس شكل أداة الباك تيست بالظبط عشان تظهر فيها وبلوحة التحكم) */
@@ -1315,12 +1241,6 @@ export default function ReplayClient({ userId }) {
   // بس عشان نقدر نستخدمها بالـ render (تعطيل خيارات الفريم بالـ select)،
   // لأن الـ ref لحاله ما بيعمل re-render.
   const [replayCutTs, setReplayCutTs] = useState(null);
-  /* مرساة **ثابتة لكل قصّة** — بتستعملها لوحة المقارنة لتجيب نفس النافذة
-     التاريخية اللي جابها الشارت الأساسي.
-     ⚠️ `replayCutTs` فوق بيتحرّك مع **كل خطوة** تدريب، فما بينفع كمُشغِّل
-     جلب: بيعيد تحميل المقارنة كل ضغطة. هاي بتتثبّت مرة عند بداية القص
-     وبتنمسح لما ينتهي. */
-  const [replayAnchorTs, setReplayAnchorTs] = useState(null);
   /* ===== حالة الـ Replay (ReplayState) - مستقلة تماماً عن الفريم الحالي =====
      isActive: هل في Replay/تدريب شغال فعلياً (نقطة قص أو بداية عشوائية).
      anchorTimestamp: الوقت الحقيقي لنقطة "القص" الأصلية (تنعيّن مرة وحدة، وما
@@ -1485,15 +1405,6 @@ export default function ReplayClient({ userId }) {
   const compareChartRef = useRef(null);
   const compareSeriesRef = useRef(null);
   const compareOpenRef = useRef(false);
-  /* قاطع دورة المزامنة + نسخة من الشموع لحساب تسامح المطابقة.
-     شوفي `lib/pane-sync.js` — الحراس التلاتة ضد انفلات التكبير. */
-  const paneSyncBreakerRef = useRef(createSyncBreaker());
-  /* أوقات الشموع **المرسومة فعلاً** بكل لوحة — عليها بتتبنى ترجمة الفهرس.
-     ⚠️ لازم تكون مقصوصة بنقطة الكشف زي ما انضبطت بالسيريز بالضبط، وإلا
-     الترجمة بتتبنى على شموع لسا ما انكشفت = نظر للمستقبل. */
-  const mainTimesRef = useRef([]);
-  const compareTimesRef = useRef([]);
-  const compareSourceRef = useRef({ provider: null, usedFallback: false, symbol: null, errors: null });
   const maximizedPaneRef = useRef(null);
   const [compareHeightPx, setCompareHeightPx] = useState(DEFAULT_COMPARE_HEIGHT);
   const compareHeightPxRef = useRef(DEFAULT_COMPARE_HEIGHT);
@@ -1727,11 +1638,11 @@ export default function ReplayClient({ userId }) {
       def.lines.forEach((line) => {
         try {
           series[line.key] = line.isHistogram
-            ? chart.addSeries(LWC.HistogramSeries, {
+            ? chart.addHistogramSeries({
                 color: effectiveLineColor(it, line), priceScaleId: scaleId,
                 priceLineVisible: false, lastValueVisible: false, base: 0, visible: isVisible,
               })
-            : chart.addSeries(LWC.LineSeries, {
+            : chart.addLineSeries({
                 color: effectiveLineColor(it, line), lineWidth: effectiveLineWidth(it, line), priceScaleId: scaleId,
                 priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: isVisible,
               });
@@ -1864,11 +1775,6 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { if (activeTool !== "cursor") clearSelection(); }, [activeTool]);
   useEffect(() => { setDrawingTemplatesMenuOpen(false); setTextPopoverOpen(false); }, [selectedDrawingId]);
   useEffect(() => { compareOpenRef.current = compareOpen; }, [compareOpen]);
-  useEffect(() => {
-    mainTimesRef.current = allCandles.slice(0, revealCount).map((c) => c.time);
-    compareTimesRef.current = compareCandlesUpToReveal().map((c) => c.time);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allCandles, revealCount, compareCandles, mode]);
   useEffect(() => { maximizedPaneRef.current = maximizedPane; }, [maximizedPane]);
   useEffect(() => { compareHeightPxRef.current = compareHeightPx; }, [compareHeightPx]);
   useEffect(() => { compareCandlesRef.current = compareCandles; }, [compareCandles]);
@@ -4016,8 +3922,7 @@ export default function ReplayClient({ userId }) {
   useEffect(() => {
     let cancelled = false;
     async function setup() {
-      LWC = await import("lightweight-charts");
-      const { createChart, CrosshairMode } = LWC;
+      const { createChart, CrosshairMode } = await import("lightweight-charts");
       if (cancelled || !chartContainerRef.current) return;
 
       const savedSettings = loadChartSettings();
@@ -4073,7 +3978,7 @@ export default function ReplayClient({ userId }) {
         },
       });
 
-      const series = chart.addSeries(LWC.CandlestickSeries, {
+      const series = chart.addCandlestickSeries({
         upColor: savedSettings.up, downColor: savedSettings.down, borderVisible: true,
         borderUpColor: savedSettings.up, borderDownColor: savedSettings.down,
         wickUpColor: savedSettings.up, wickDownColor: savedSettings.down,
@@ -4476,15 +4381,7 @@ export default function ReplayClient({ userId }) {
         const { x, y } = getLogicalPrice(e.clientX, e.clientY);
         if (x == null || y == null) return;
         const hit = findDrawingAt(x, y);
-        /* ⚠️ دبل-كليك على **مساحة فاضية** = تكبير/استعادة اللوحة (زي تريدنغ فيو).
-           انحطّ هون بالذات عشان ما يمسّ الرسم: الفرع فوق بيمسك الحالات اللي
-           فيها رسمة تحت المؤشّر، وهاد بينفّذ بس لما ما يكون في ولا وحدة.
-           وبتوقف كمان لما تكون أداة رسم شغّالة (الشرط بأول الدالة). */
-        if (!hit) {
-          if (compareOpenRef.current) toggleMaximizePane("main");
-          return;
-        }
-        if (hit.tradeTag) return;
+        if (!hit || hit.tradeTag) return;
         if (hit.type === "text") {
           const p = logicalPriceToXY(hit.p1);
           if (p.x == null || p.y == null) return;
@@ -4704,21 +4601,25 @@ export default function ReplayClient({ userId }) {
           if (time == null) {
             cChart.clearCrosshairPosition();
           } else {
-            /* 🔴 **المطابقة بالوقت، مش برقم الموضع.**
-               -------------------------------------------------------------
-               كانت: `idx = findCandleIndexByTime(main, time)` وبعدها
-               `compare[idx]` — يعني بتفترض إنّ الرقم N بنفس اللحظة
-               باللوحتين. وهاد **نفس الافتراض** اللي انكسر بمزامنة المدى.
-
-               مقيس: ناسداك ~٢٩٨ شمعة يومية بالسنة (فيها شمعة الأحد من
-               Dukascopy) وSP500 ~٢٥١ — فالرقم N بيبعد أكتر كل ما رحنا للورا،
-               والخط بينزاح ويرجع يتصحّح مع أول حدث تاني. وهاد اللي بلّغ عنه:
-               «بيفلت وبيرجع يعدل».
-
-               الاختيار الأصلي كان **مقصوداً** لأن مزامنة المدى كانت بالفهرس
-               وقتها. المدى صار بالوقت (`mapLogicalRange`)، فهاي لازم تتبعه —
-               وإلا الاتنان بيتناقضوا. */
-            const bar = findNearestBar(compareCandlesRef.current || [], time);
+            const mainList = visibleCandlesRef.current || [];
+            const candles = compareCandlesRef.current || [];
+            // مهم: منحاذي بـ"رقم الموضع" (index) مش بأقرب توقيت مطلق. الرمزين
+            // (مثلاً NAS100 وSPX500) ممكن يكون عندهم شموع بأوقات مختلفة شوي عن
+            // بعض (فجوات/إغلاقات مختلفة)، فمطابقة "أقرب توقيت" كانت بترجّع أحياناً
+            // شمعة بموضع مختلف عن يلي تحت الماوس بالضبط بالشارت الرئيسي، فيطلع
+            // الخط العمودي بلوحة المقارنة منزاح شوي عن نفس عمود الوقت فوق - وهاد
+            // هو سبب مشكلة "تزامن الوقت" يلي كانت بتبان بالمقارنة. رقم الموضع
+            // (idx) هو نفسه المستخدم لمزامنة السكرول/الزوم (logical range) بين
+            // اللوحتين، فمطابقته هون بتضمن نفس العمود بالبكسل تماماً بكل الحالات.
+            let idx = findCandleIndexByTime(mainList, time);
+            let bar = idx !== -1 ? candles[idx] : undefined;
+            if (!bar && candles.length) {
+              let bestDiff = Infinity;
+              for (const c of candles) {
+                const diff = Math.abs(c.time - time);
+                if (diff < bestDiff) { bestDiff = diff; bar = c; }
+              }
+            }
             if (bar) cChart.setCrosshairPosition(bar.close, bar.time, cSeries);
             else cChart.clearCrosshairPosition();
           }
@@ -4828,8 +4729,7 @@ export default function ReplayClient({ userId }) {
     }
     let cancelled = false;
     async function setupCompareChart() {
-      LWC = await import("lightweight-charts");
-      const { createChart, CrosshairMode } = LWC;
+      const { createChart, CrosshairMode } = await import("lightweight-charts");
       if (cancelled || !compareContainerRef.current) return;
       const savedSettings = loadChartSettings();
       const chart = createChart(compareContainerRef.current, {
@@ -4873,131 +4773,61 @@ export default function ReplayClient({ userId }) {
       compareChartRef.current = chart;
       compareSeriesRef.current = series;
 
-      /* ═══════════════════════════════════════════════════════════════════
-         أداة قياس — **قراءة فقط**، ما بتغيّر ولا شي وما بتشتغل لحالها.
-         -----------------------------------------------------------------
-         سبب وجودها: انزياح بصري بين اللوحتين ما بينحلّ بالتخمين من صورة.
-         بيئة التطوير هون ما بتركّب الشارت (المفاتيح والشبكة محجوبتان)، فهاي
-         الطريقة الوحيدة نوصل لأرقام حقيقية بدل افتراضات.
-
-         بالكونسول:  __qtaPaneInfo()
-
-         الفرق بين `compare.logical` و`mapped` هو الجواب: لو اتنينهن نفس
-         الشي فالمزامنة بتشتغل والخلل بمكان تاني؛ ولو مختلفين فالشارت بيقصّ
-         المدى المطلوب أو المزامنة ما بتوصل أصلاً.
-         ═══════════════════════════════════════════════════════════════════ */
-      if (typeof window !== "undefined") {
-        window.__qtaPaneInfo = () => {
-          const at = (t) => (t ? new Date(t * 1000).toISOString().slice(0, 16) : null);
-          const side = (times, ts) => ({
-            bars: times.length,
-            first: at(times[0]),
-            last: at(times[times.length - 1]),
-            logical: ts?.getVisibleLogicalRange() || null,
-          });
-          const mt = mainTimesRef.current || [];
-          const ct = compareTimesRef.current || [];
-          const mainTs = chartRef.current?.timeScale();
-          return {
-            main: side(mt, mainTs),
-            compare: side(ct, chart.timeScale()),
-            mapped: mapLogicalRange(mt, ct, mainTs?.getVisibleLogicalRange()),
-            /* 🔴 مين خدم كل لوحة. بلا هالسطرين كنت بستنتج المزوّد من شكل
-               الأرقام — و«٢٥١٢ شمعة = عشر سنين» طلعت مطابقة لسقف يوهو،
-               فرفعته، ولوحة المقارنة ضلّت أقصر. يعني الاستنتاج كان غلط أو
-               ناقص، وما في طريقة أعرف بلا ما المزوّد يقول عن حاله. */
-            mainSource: dataSourceRef.current,
-            compareSource: compareSourceRef.current,
-            breakerTripped: paneSyncBreakerRef.current.isTripped,
-          };
-        };
-      }
-
       // مزامنة السكرول/الزوم بين الشارت الرئيسي ولوحة المقارنة بالاتجاهين -
       // أي وحدة فيهم ممكن تقود التانية هلأ (قبل هيك كانت لوحة المقارنة "مرآة"
       // بس، ما فيها تحكم مباشر). rangeSyncingRef هو الحارس يلي بيمنع
       // "بينغ-بونغ" (كل شارت يرجع يصحح التاني بلا نهاية): لما وحدة تحدّث
       // التانية، منرفع الحارس قبل ما نغيّر مدى الشارت التاني، وأي حدث تغيير
       // ثاني ناتج عن هالتحديث بنفس اللحظة بيتجاهل نفسه لأنه الحارس مرفوع.
+      //
+      // مهم: نستخدم مزامنة "منطقية" (logical range = رقم موضع الشمعة) مش
+      // مزامنة بالتوقيت المطلق (setVisibleRange). المزامنة بالتوقيت كانت هي
+      // سبب مشكلة "الخط العمودي (نقطة الوقت الحالية) مش بنفس المكان بين
+      // الشارتين": أي رمزين مختلفين (زي NAS100 وSPX500) ممكن يكون عندهم
+      // فجوات/شموع ناقصة بأوقات مختلفة شوي عن بعض، فنفس الفترة الزمنية
+      // بالضبط ممكن تترجم لعدد شموع مختلف بكل لوحة، فينزاح كل شي بصرياً حتى
+      // لو الفترة "نفسها" بالتوقيت. المزامنة المنطقية بتحاذي برقم موضع
+      // الشمعة مباشرة، فعمود رقم N بيضل بنفس البكسل بين اللوحتين دايماً -
+      // وهاد هو الأسلوب الموصى فيه رسمياً من مكتبة lightweight-charts
+      // لمزامنة عدة شارتات مع بعض.
       const mainChart = chartRef.current;
-      /* ═══════════════════════════════════════════════════════════════════
-         المزامنة: **فهرس مترجَم عبر الوقت**.
-         -----------------------------------------------------------------
-         مرّينا بتلات محاولات، وكل وحدة كشفت اللي بعدها:
-
-         ١) **فهرس خام** — بيفترض إنّ العمود N بنفس اللحظة باللوحتين، وهاد
-            مش مضمون مع مزوّدين مختلفي العمق. صار انزياح بصري.
-
-         ٢) **فهرس خام + حشو فراغات** — صلّح الانزياح بمساواة الطول، بس على
-            اليومي المزوّدان بيختلفوا بالعطل فكل يوم ناقص صار **عمود فاضي
-            مرسوم**. هاي كانت ثقوب الشموع.
-
-         ٣) **وقت خام** — شال الحشو والثقوب، بس طلع خلل تاني: الشارت الأساسي
-            عنده `rightOffset: 6` ولوحة المقارنة صفر، و`getVisibleRange()`
-            بترجّع المدى **مقصوصاً على البيانات** (بتنتهي عند آخر شمعة مش
-            عند حافة الرسم). فالأساسي بيعرض الفترة على العرض ناقص ٦ شموع
-            والمقارنة على كامل العرض → مقياسان، وخط التقاطع بمكانين.
-
-         الحل: الضبط بالفهرس (هو اللي بيحكم البكسل وبيغطّي منطقة الإزاحة)،
-         بس بعد **ترجمة الموضع عبر الوقت**: فهرس الأساسي → لحظة → فهرس
-         المقارنة. هيك المحاذاة بالبكسل مضبوطة **والموضع بيعني نفس اللحظة**،
-         والإزاحة بتنترجم بدل ما تنقصّ.
-
-         🔴 وقبل هيك محاولة زمنية عملت **تكبيراً متسارعاً** بالإنتاج: الاشتراك
-         على المدى المنطقي والضبط على الزمني، فكل ضبط بيشغّل الطرف التاني،
-         والحارس بينمسح فوراً بينما النداء بيرجع بالإطار اللي بعده.
-
-         تلات حراس، وكل واحد بيكفي لحاله:
-           ١) `shouldApplyRange` — ما بنضبط إذا المدى مطابق ضمن ربع شمعة.
-           ٢) الحارس بينمسح بعد إطار، مش فوراً.
-           ٣) قاطع دورة — أسوأ حالة «ما بتتزامن»، مش «تكبير جنوني».
-
-         الترجمة والحراس بـ`lib/pane-sync.js`، مفحوصين بمحاكاة الحلقة على
-         سلسلتين مختلفتي العمق والعطل — بلا متصفّح.
-         ═══════════════════════════════════════════════════════════════════ */
-      /* بربع شمعة. أكبر من انزياح الاستيفاء، وأصغر من إنه يبان بالعين. */
-      const LOGICAL_TOL = 0.25;
-
-      const releaseGuard = () => {
-        if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => { rangeSyncingRef.current = false; });
-        else setTimeout(() => { rangeSyncingRef.current = false; }, 0);
-      };
-
-      const syncFrom = (src, dst, srcTimes, dstTimes) => {
-        if (!src || !dst || rangeSyncingRef.current) return;
-        if (!paneSyncBreakerRef.current.allow()) return;
-        let srcRange = null, current = null;
-        try { srcRange = src.timeScale().getVisibleLogicalRange(); } catch {}
-        try { current = dst.timeScale().getVisibleLogicalRange(); } catch {}
-        const target = mapLogicalRange(srcTimes, dstTimes, srcRange);
-        if (!shouldApplyRange(current, target, LOGICAL_TOL)) return;
+      const onMainRangeChange = (range) => {
+        if (!range || !compareChartRef.current || rangeSyncingRef.current) return;
         rangeSyncingRef.current = true;
-        try { dst.timeScale().setVisibleLogicalRange(target); } catch {}
-        releaseGuard();
+        try { compareChartRef.current.timeScale().setVisibleLogicalRange(range); } catch {}
+        rangeSyncingRef.current = false;
       };
-
-      const onMainRangeChange = () =>
-        syncFrom(chartRef.current, compareChartRef.current, mainTimesRef.current, compareTimesRef.current);
-      const onCompareRangeChange = () =>
-        syncFrom(chart, chartRef.current, compareTimesRef.current, mainTimesRef.current);
+      const onCompareRangeChange = (range) => {
+        if (!range || !chartRef.current || rangeSyncingRef.current) return;
+        rangeSyncingRef.current = true;
+        try { chartRef.current.timeScale().setVisibleLogicalRange(range); } catch {}
+        rangeSyncingRef.current = false;
+      };
       mainChart?.timeScale().subscribeVisibleLogicalRangeChange(onMainRangeChange);
       chart.timeScale().subscribeVisibleLogicalRangeChange(onCompareRangeChange);
 
-      // نحاذي لوحة المقارنة فوراً مع نفس موضع الشارت الرئيسي وقت الفتح (بدل ما
-      // تضل بفترتها الافتراضية العريضة لحد أول سحب/زوم من المستخدم)
+      // نحاذي لوحة المقارنة فوراً مع نفس الموضع المنطقي للشارت الرئيسي وقت الفتح
+      // (بدل ما تضل بفترتها الافتراضية العريضة لحد أول سحب/زوم من المستخدم)
       try {
-        const target = mapLogicalRange(
-          mainTimesRef.current,
-          compareTimesRef.current,
-          mainChart?.timeScale().getVisibleLogicalRange()
-        );
-        if (target) chart.timeScale().setVisibleLogicalRange(target);
+        const mainRange = mainChart?.timeScale().getVisibleLogicalRange();
+        if (mainRange) chart.timeScale().setVisibleLogicalRange(mainRange);
       } catch {}
 
       /* مزامنة مؤشر تقاطع الوقت/السعر بالاتجاهين (تحريك الماوس فوق أي وحدة من
          اللوحتين بيحرك نفس عمود الوقت بالتانية) - قبل هيك كانت المزامنة
          باتجاه واحد بس (الشارت الرئيسي بيقود)، فلما تكوني تحت (لوحة المقارنة)
          ما كان المؤشر عم يطلع فوق (الشارت الرئيسي). */
+      function findNearestBar(candles, time) {
+        if (!candles?.length) return null;
+        let bar = candles.find((c) => c.time === time);
+        if (bar) return bar;
+        let bestDiff = Infinity;
+        for (const c of candles) {
+          const diff = Math.abs(c.time - time);
+          if (diff < bestDiff) { bestDiff = diff; bar = c; }
+        }
+        return bar || null;
+      }
       function syncCrosshairToMain(time) {
         if (crosshairSyncingRef.current) return;
         const mChart = chartRef.current;
@@ -5008,9 +4838,12 @@ export default function ReplayClient({ userId }) {
           if (time == null) {
             mChart.clearCrosshairPosition();
           } else {
-            // نفس المبدأ بالاتجاه المعاكس — مطابقة بالوقت مش برقم الموضع.
-            // (الشرح الكامل عند `syncCrosshairToCompare` فوق.)
-            const bar = findNearestBar(visibleCandlesRef.current || [], time);
+            // نفس المبدأ بالاتجاه المعاكس: نلاقي رقم موضع الشمعة تحت الماوس
+            // بلوحة المقارنة، ونستخدم نفس الرقم بالشارت الرئيسي (مش أقرب توقيت)
+            // عشان الخط العمودي يضل بنفس العمود بالبكسل بين اللوحتين تماماً.
+            const compareList = compareCandlesRef.current || [];
+            const idx = compareList.findIndex((c) => c.time === time);
+            const bar = idx !== -1 ? visibleCandlesRef.current[idx] : findNearestBar(visibleCandlesRef.current, time);
             if (bar) mChart.setCrosshairPosition(bar.close, bar.time, mSeries);
             else mChart.clearCrosshairPosition();
           }
@@ -5048,14 +4881,10 @@ export default function ReplayClient({ userId }) {
       const data = compareSeriesData(compareSettings.type, compareCandlesUpToReveal());
       try {
         compareSeriesRef.current.setData(data);
-        // نحاذي بالفهرس المترجَم عبر الوقت — نفس السبب المشروح فوق بـ
-        // setupCompareChart (محاذاة بالبكسل + الموضع بيعني نفس اللحظة)
-        const target = mapLogicalRange(
-          mainTimesRef.current,
-          data.map((d) => d.time),
-          chartRef.current?.timeScale().getVisibleLogicalRange()
-        );
-        if (target) compareChartRef.current?.timeScale().setVisibleLogicalRange(target);
+        // نحاذي بالموضع المنطقي (logical range) مش بالتوقيت المطلق - نفس السبب
+        // المشروح فوق بـ setupCompareChart (تفادي انزياح الخط العمودي بين اللوحتين)
+        const mainRange = chartRef.current?.timeScale().getVisibleLogicalRange();
+        if (mainRange) compareChartRef.current?.timeScale().setVisibleLogicalRange(mainRange);
       } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5075,39 +4904,14 @@ export default function ReplayClient({ userId }) {
         if (!info?.yahoo) throw new Error("هذا الرمز غير مدعوم للمقارنة حالياً");
         const tdInterval = INTERVAL_MAP[interval];
         const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
-        /* ⚠️ **نفس مزوّد الشارت الأساسي.** بلا هالسطر كانت المقارنة تنزل
-           ليوهو بينما الأساسي من Dukascopy — جلستان وعُطل مختلفة، فتظهر
-           فراغات بالشموع. مقيس على ٤ ساعات: ١٩٤ فراغ بيوهو، **صفر** بنفس
-           المزوّد. */
-        const dukParam = info.dukascopy ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
-        /* ⚠️ **نفس مرساة الشارت الأساسي.** بلا هالسطر كانت المقارنة تجيب
-           دايماً نافذة منتهية **الآن** حتى لما يكون في قص على الماضي.
-           مقيس على الإنتاج (٢٠٢٦-٠٨-٢٦) بقص على ٢٠١٦-٠١-٢٧:
-
-               main    753 شمعة · 2013-05-22 → 2016-01-27
-               compare 0 شمعة
-
-           صفر — لأنّ بيانات SP500 بتبلّش ٢٠١٦-٠٨-٢٩، يعني **بعد** نقطة
-           القص كلها. فالقصّ بالوقت بيرجّع مصفوفة فاضية واللوحة بتضل بيضا. */
-        const cutAnchor = replayAnchorTs != null ? `&anchor=${replayAnchorTs}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${cutAnchor}${tdParam}${dukParam}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${tdParam}`
         );
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         const candles = sanitizeCandles(data.candles || []);
         if (cancelled) return;
-        /* ⚠️ مين خدم لوحة المقارنة فعلياً — بيطلع بـ`__qtaPaneInfo()`.
-           بلاه كنت بخمّن المزوّد من شكل الأرقام بدل ما أعرفه. */
-        compareSourceRef.current = {
-          provider: data.provider || null,
-          usedFallback: !!data.usedFallback,
-          symbol: data.sourceSymbol || null,
-          errors: data.providerErrors || null,
-          duk: data.duk || null, // تتبّع تقليص المدى واستكمال العمق
-        };
         setCompareCandles(candles);
-        deepenCompare(candles, info, tdInterval, tdParam, dukParam);
       } catch (e) {
         if (!cancelled) { setCompareError(e.message || "تعذّر تحميل بيانات المقارنة"); setCompareCandles([]); }
       } finally {
@@ -5119,108 +4923,14 @@ export default function ReplayClient({ userId }) {
        تصير هي القديمة (نفس مشكلة الشارت الرئيسي بالظبط بس بالاتجاه المعاكس).
        نستخدم count صغير (=3) عشان الطلب يستفيد من liveRangeDays الخفيف
        بالـ API (شوف route.js) وما يثقل على المزوّد. */
-    /* ═══════════════════════════════════════════════════════════════════════
-       تعميق المقارنة بطلب **منفصل** — قطعة وحدة، وبنقيس قبل ما نزيد.
-       ---------------------------------------------------------------------
-       ليش منفصل: Dukascopy بترجّع 429 لأي طلب أرشيف تاني بنفس الاستدعاء.
-       مقيس مرتين بتهدئتين مختلفتين (٢٥٠ و١٤٠٠ ملّي) والوقت كان متوفّراً
-       بالتانية — فالحمل لازم ينوزّع على استدعاءات مستقلة.
-
-       🔴 **و`count` هون هو اللي كسر الإنتاج أول مرة.**
-       بعتّه `20000` (نفس قيمة التحميل الأساسي)، والخادم بيحسب
-       `spanMs = secPerBar × count × 1.25` — يعني **٦٨ سنة** بتنقصّ على ٢٠٠٣.
-       فكل «قطعة» كانت بتطلب الأرشيف كامل من جديد، وتلات طلبات هيك طيّحت
-       الدالة بنفاد ذاكرة (عطل موثّق بـ`dukascopy-candles.js`: الانهيار
-       **ما بينمسك بـtry/catch** لأنه بيطيح الـprocess). ولمّا تطيح النسخة،
-       كل طلب تاني عليها بيرجع ٥٠٠ — فظهرت على الذهب وناسداك كمان.
-
-           count=20000 → مدى ٦٨.٥ سنة   ← اللي كسر
-           count=  800 → مدى  ٢.٧ سنة   ← المقصود
-
-       ⚠️ **جولة وحدة عمداً.** الفكرة انكسرت مرة، فالقياس قبل التوسيع:
-       `__qtaPaneInfo().compareSource.deepen` بيقول شو صار.
-       ═══════════════════════════════════════════════════════════════════════ */
-    /* 🔴 **وزن الطلب هو اللي بيقرّر يعيش أو يطيح — مش عدد الجولات.**
-       -------------------------------------------------------------------
-       الخادم بيحسب `spanMs = secPerBar × count × 1.25`، وبيجرّب **العامل ١
-       أول شي** قبل ما يقلّص. فنافذة العامل ١ هي الحمل الحقيقي:
-
-           count=800  بلا زحزحة → ٢.٧ سنة  ✓ اشتغل (gained 21)
-           count=2000 مع زحزحة  → ٧.٧ سنة  ✗ طيّح الدالة (500 على كل duk)
-           count=600  مع زحزحة  → ٢.٩ سنة  ← هون
-
-       يعني الزحزحة بتضيف ٣٠٠ يوم للنافذة، فمنعوّضها بتنزيل `count`. الوزن
-       بيضل عند المستوى المثبَت إنه بيمرق، والفرق إنّ النافذة كلها صارت
-       **بيانات جديدة** بدل ٩٢٪ مكرَّر.
-
-       ⚠️ الانهيار موثّق بـ`dukascopy-candles.js`: نفاد ذاكرة بيطيح الـprocess
-       و**ما بينمسك بـtry/catch**. ولمّا تطيح النسخة، كل طلب تاني عليها
-       بيرجع ٥٠٠ — لهيك ظهرت على الذهب وناسداك كمان مش المقارنة بس.
-
-       ⚠️ والزحزحة ضرورية: الخادم بيحسب `toMs = anchor + bufferSeconds`
-       و`bufferSeconds` لليومي **٣٠٠ يوم**. بلاها النافذة بتنتهي ٣٠٠ يوم بعد
-       أقدم شمعة عنا — مقيس: رجع ٢٧٦ شمعة و**٢١ بس جديدة**. */
-    const DEEPEN_BUFFER_BARS = 300; // مطابق لـ`bufferSeconds` بالخادم
-    const DEEPEN_COUNT = 600;       // نافذة العامل١ ≈ ٢.٩ سنة — بمستوى المثبَت
-    const DEEPEN_DELAY_MS = 4000;   // أطول بوضوح من نافذة حد الأرشيف
-    const DEEPEN_ROUNDS = 3;
-    const DEEPEN_MIN_GAIN = 30;     // ربح أقل من هيك = المصدر نفد، بلا إلحاح
-
-    async function deepenCompare(seed, info, tdInterval, tdParam, dukParam) {
-      let oldest = seed?.[0]?.time;
-      if (!oldest) return;
-      const barSec = (INTERVAL_MS[interval] || 86400000) / 1000;
-      const log = [];
-      const mark = (o) => { compareSourceRef.current = { ...compareSourceRef.current, deepen: { ...o, log } }; };
-
-      for (let round = 1; round <= DEEPEN_ROUNDS; round++) {
-        mark({ state: "بانتظار", round, from: oldest });
-        await new Promise((r) => setTimeout(r, DEEPEN_DELAY_MS));
-        if (cancelled || !compareOpenRef.current) { mark({ state: "انلغى", round }); return; }
-
-        const anchor = oldest - DEEPEN_BUFFER_BARS * barSec; // تعويض هامش الخادم
-        try {
-          const res = await fetch(
-            `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}` +
-              `&interval=${tdInterval}&count=${DEEPEN_COUNT}&anchor=${anchor}${tdParam}${dukParam}`
-          );
-          if (!res.ok) { log.push(`ج${round}: HTTP ${res.status}`); mark({ state: "وقف" }); return; }
-          const data = await res.json();
-          if (data.error) { log.push(`ج${round}: ${String(data.error).slice(0, 50)}`); mark({ state: "وقف" }); return; }
-          const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
-          if (cancelled) return;
-          log.push(`ج${round}: رجع ${data.candles?.length || 0} · جديد ${older.length} · عامل ${data.duk?.spanFactor ?? "—"}`);
-          if (!older.length) { mark({ state: "ما في أقدم", provider: data.provider }); return; }
-
-          oldest = older[0].time;
-          setCompareCandles((prev) => {
-            const seen = new Set(prev.map((c) => c.time));
-            return older.filter((c) => !seen.has(c.time)).concat(prev).sort((a, b) => a.time - b.time);
-          });
-          mark({ state: "شغّال", round, newFirst: oldest, provider: data.provider });
-          if (older.length < DEEPEN_MIN_GAIN) { mark({ state: "نفد المصدر", newFirst: oldest }); return; }
-        } catch (e) {
-          log.push(`ج${round}: فشل ${String(e?.message || e).slice(0, 40)}`);
-          mark({ state: "وقف" });
-          return;
-        }
-      }
-      mark({ state: "خلص", newFirst: oldest });
-    }
-
     async function pollCompareOnce() {
       try {
         const info = getAssetByValue(compareSymbol);
         if (!info?.yahoo) return;
         const tdInterval = INTERVAL_MAP[interval];
         const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
-        /* ⚠️ **نفس مزوّد الشارت الأساسي.** بلا هالسطر كانت المقارنة تنزل
-           ليوهو بينما الأساسي من Dukascopy — جلستان وعُطل مختلفة، فتظهر
-           فراغات بالشموع. مقيس على ٤ ساعات: ١٩٤ فراغ بيوهو، **صفر** بنفس
-           المزوّد. */
-        const dukParam = info.dukascopy ? `&duk=${encodeURIComponent(info.dukascopy)}` : "";
         const res = await fetch(
-          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${tdParam}${dukParam}`
+          `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${tdParam}`
         );
         const data = await res.json();
         if (data.error || !data.candles?.length) return;
@@ -5248,9 +4958,7 @@ export default function ReplayClient({ userId }) {
       }
     }
     loadCompare();
-    /* ⚠️ بلا `replayAnchorTs == null` كان التحديث الدوري يلحق البيانات
-       التاريخية بشمعة **اليوم** — نفس عطل الشارت الأساسي بالضبط. */
-    if (mode === "live" && replayAnchorTs == null) {
+    if (mode === "live") {
       // نفس منطق التبطيء بالشارت الرئيسي: لو أصل المقارنة عنده رمز Twelve
       // Data، منبطّئ لـ10 ثواني (بدل 5) حتى لو ضاف على استهلاك الشارت
       // الرئيسي بنفس الوقت (الحد 8 طلبات/دقيقة مشترك لكل مفتاح، مش لكل
@@ -5260,7 +4968,7 @@ export default function ReplayClient({ userId }) {
       comparePollTimer = setInterval(pollCompareOnce, compareMs);
     }
     return () => { cancelled = true; if (comparePollTimer) clearInterval(comparePollTimer); };
-  }, [compareOpen, compareSymbol, interval, maxBars, mode, replayAnchorTs]);
+  }, [compareOpen, compareSymbol, interval, maxBars, mode]);
 
   function toggleCompare() {
     setCompareOpen((v) => {
@@ -6113,30 +5821,6 @@ export default function ReplayClient({ userId }) {
     setReplayCutTs(c.time);
   }, [revealCount, allCandles, mode, interval]);
 
-  /* بتثبّت مرساة المقارنة مرة وحدة لكل قصّة. بتقرا من نفس الـref اللي بيقرا
-     منه الشارت الأساسي، فاللوحتان بتطلبا **نفس النافذة**.
-
-     🔴 **`mode !== "training"` شرط ضروري مش تزيين.**
-     -----------------------------------------------------------------------
-     بلاه كانت المرساة بتضل عالقة بالمباشر، فالمقارنة تجيب نافذة تاريخية
-     ضيّقة حوالين قصّة قديمة بينما الأساسي عنده تاريخه كامل — وهاد بيرجّع
-     «مشكلة العمق» بوضع مباشر سليم.
-
-     السبب: `replayStateRef.current.isActive` **ما بتنمسح** عند الرجوع
-     للمباشر إلا جوّا `loadData` غير المتزامنة — يعني **بعد** ما المقارنة
-     جابت بياناتها. وأسوأ: المسح بيصير عبر `setReplayCutTs(null)`، ولو كان
-     `replayCutTs` أصلاً فاضي فالقيمة ما بتتغيّر، والتأثير ما بيعيد التقييم
-     أبداً → المرساة عالقة للأبد.
-
-     `mode` بالتبعيات، فالشرط بينفّذ لحظة التبديل. ونفس الشرط مستعمل بالشارت
-     الأساسي (`mode === "training"` فوق) — يعني اللوحتان على نفس القاعدة. */
-  useEffect(() => {
-    setReplayAnchorTs((prev) => {
-      if (mode !== "training" || !replayStateRef.current.isActive) return null;
-      return prev ?? replayStateRef.current.anchorTimestamp ?? replayCutTs;
-    });
-  }, [replayCutTs, mode]);
-
   /* شبكة أمان لـ resumeSavedSession (شوفي تعليق pendingResumeRef فوق): لو في
      رجوع لمكان توقف لسا "قيد التنفيذ" (loadData ما جابت بيانات التدريب
      الحقيقية بعد)، منفرض نقطة التوقف المحفوظة من جديد بعد أي رندر ممكن يكون
@@ -6184,31 +5868,6 @@ export default function ReplayClient({ userId }) {
        `stopLivePoll` بتوقف المؤقّت، بس ما بتلغي طلباً منطلقاً — فهاد الفحص
        هو اللي بيمسك الرد المتأخر. */
     if (modeRef.current !== "live") return;
-    /* 🔴 **وقص فعّال معناه إنّك بالماضي — فما إله معنى نجيب سعر اليوم.**
-       -----------------------------------------------------------------
-       الفحص فوق بيمسك تبديل **الوضع** بس، وما بيمسك القص وهو بوضع المباشر.
-       مقيس على الإنتاج (٢٠٢٦-٠٨-٢٦): قص على ٢٠١٦-٠١-٢٧ والشارت عارض ٧٥٣
-       شمعة بسعر ~٤٬١٢٦، والاستطلاع ضل شغّال وبيرمي `Cannot update oldest
-       data` بالكونسول بالتكرار.
-
-       ولو نجح كان أسوأ من الفشل: `merged.push(lastFresh)` بتلزق شمعة اليوم
-       (~٢٩٬٣٠٠) على المصفوفة التاريخية، وبعدها `setRevealCount(merged.length)`
-       بتمسح نقطة القص — يعني محور السعر بينفجر والتمرين بيروح.
-
-       ⚠️ **بس `isActive` لحالها ما بتكفي كشرط.** هي ما بتنمسح لما ترجع من
-       التدريب للمباشر على نفس الرمز — بتنمسح بس لما يتبدّل السوق كلياً
-       (`sameMarketContext` فوق). فحارس مطلق عليها كان بيسكّر التحديث الحي
-       بجلسة مباشرة سليمة بعد أي تمرين سابق.
-
-       الشرط الفعلي: قص فعّال **وبياناتنا منتهية بالماضي**. العتبة ٢٠٠ شمعة
-       واسعة عمداً — ما بتلمس تبويبة متروكة مفتوحة عطلة أو شهر، وبتمسك حالة
-       ٢٠١٦ (٢٦٠٠+ شمعة يومية). */
-    if (replayStateRef.current.isActive) {
-      const plotted = mainTimesRef.current;
-      const newest = plotted.length ? plotted[plotted.length - 1] : null;
-      const bucketSec = (INTERVAL_MS[intervalRef.current] || 60000) / 1000;
-      if (newest != null && Date.now() / 1000 - newest > bucketSec * 200) return;
-    }
     if (randomChart) {
       // بمحاكاة الشارت العشوائي، نولّد حركة سعر بسيطة على آخر شمعة
       setAllCandles((prev) => {
@@ -6278,10 +5937,6 @@ export default function ReplayClient({ userId }) {
         tdParam = "";
       }
       const res = await fetch(
-        /* ⚠️ **بلا `duk` عن قصد** — الاستطلاع اللحظي ما بيمرّ على Dukascopy
-           إطلاقاً (أرشيف تاريخي مش بثاً)، زي ما بيشرح التعليق فوق. سكربت
-           ترحيل داس على هالقرار مرة وانكشف بفحص كونسول المتصفّح
-           (`ReferenceError: dukParam is not defined`) — البناء ما مسكه. */
         `/api/replay-candles?symbol=${encodeURIComponent(pollSymbol)}&interval=${tdInterval}&count=3${tdParam}`
       );
       const data = await res.json();
@@ -9006,14 +8661,9 @@ export default function ReplayClient({ userId }) {
       { value: "candles", label: "شموع (Candlestick)" },
     ];
     return (
-      /* ⚠️ `fixed` مش `absolute`: كانت النافذة مرسومة جوّا لوحة المقارنة، واللوحة
-         عندها `overflow: hidden` بارتفاع ٢٠٠ بكسل افتراضياً — فالنافذة كانت
-         **تنقصّ** وأزرارها ما بتبان إلا لما يرفع القاسم لفوق. بلّغ عنها.
-         بالتثبيت على إطار العرض بتبان كاملة مهما كان ارتفاع اللوحة. */
       <div style={{
-        position: "fixed", inset: 0, zIndex: 3000, background: "#0A0614cc",
+        position: "absolute", inset: 0, zIndex: 30, background: "#0A0614aa",
         display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "1rem", overflowY: "auto",
       }} onClick={() => setCompareSettingsOpen(false)}>
         <div
           onClick={(e) => e.stopPropagation()}
