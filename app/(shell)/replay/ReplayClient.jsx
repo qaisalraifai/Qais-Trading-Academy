@@ -1255,6 +1255,12 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
      originalTimeframe: الفريم يلي اتعمل عليه القص أساساً (معلومة توثيقية بس). */
   const replayStateRef = useRef({ isActive: false, anchorTimestamp: null, currentTimestamp: null, originalTimeframe: null });
 
+  /* سجل التعميق التدريجي — بيطلع بـ`__qtaChartInfo().deepen`.
+     ⚠️ بلا هالسجل، فشل التعميق **صامت تماماً**: كل مخارجه `return` بلا أثر
+        (طلب فاشل · خطأ بالجسم · صفر شموع أقدم · ملغى). وصار فعلاً — جولتان
+        من التخمين على «ليش ما ربح ولا شمعة» بلا أي قراءة. */
+  const deepenLogRef = useRef({ state: "لسا ما بلّش", rounds: [], gained: 0 });
+
   /* ═══════════════════════════════════════════════════════════════════════
      أداة قياس — **قراءة فقط**، ما بتغيّر ولا شي وما بتشتغل لحالها.
      بالكونسول: `__qtaChartInfo()`
@@ -1314,6 +1320,8 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         loadSource: loadSourceRef.current,
         /* آخر مصدر لمس البيانات (بيشمل الاستطلاع الحي) */
         liveSource: dataSourceRef.current,
+        /* التعميق التدريجي — وين وصل وليش وقف */
+        deepen: deepenLogRef.current,
       };
     };
     window.__qtaChartInfo = (id) =>
@@ -5170,13 +5178,26 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
   const deepenedForRef = useRef(null);
 
   useEffect(() => {
-    if (randomChart || !allCandles.length) return;
+    const log = deepenLogRef.current;
+    if (randomChart || !allCandles.length) {
+      log.state = randomChart ? "شارت عشوائي" : "بانتظار الشموع";
+      return;
+    }
     const seriesKey = `${assetValue}|${interval}|${mode}`;
-    if (deepenedForRef.current === seriesKey) return;
-    deepenedForRef.current = seriesKey;
+    /* ⚠️ الحارس بينخزّن **بعد** ما تبلّش الجولات فعلياً، مش قبل. لو انخزّن
+       هون وبعدها انلغت الحلقة (مثلاً `allCandles` فضيت لحظة بإعادة تحميل ثم
+       رجعت)، بتصير إعادة التشغيل بترجع فوراً من الحارس والتعميق **بيموت
+       للأبد** بلا أي أثر. مقيس: `spanDays 299` بعد ٣ دقايق انتظار. */
+    if (deepenedForRef.current === seriesKey) {
+      log.state = "منفَّذ سابقاً لهالسلسلة";
+      return;
+    }
 
     const assetInfo = getAssetByValue(assetValue);
-    if (!assetInfo?.yahoo) return;
+    if (!assetInfo?.yahoo) {
+      log.state = "ما في رمز للأصل";
+      return;
+    }
     const barSec = (INTERVAL_MS[interval] || 900000) / 1000;
     const DEEPEN_COUNT = 1500;   // على ٤ ساعات = ٣١٢ يوم → بينقصّ لسقف ٣٠٠
     const BUFFER_BARS = 300;     // مطابق لـ`bufferSeconds` بالخادم
@@ -5189,14 +5210,25 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
     let cancelled = false;
     (async () => {
       let oldest = allCandles[0]?.time;
-      if (!oldest) return;
+      if (!oldest) {
+        log.state = "أقدم شمعة بلا وقت";
+        return;
+      }
+      deepenedForRef.current = seriesKey;
+      log.state = "شغّال";
+      log.series = seriesKey;
+      log.rounds = [];
+      log.gained = 0;
+      log.startedFrom = new Date(oldest * 1000).toISOString().slice(0, 16);
+
       const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
       const dukParam = assetInfo.dukascopy ? `&duk=${encodeURIComponent(assetInfo.dukascopy)}` : "";
       const sym = encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo);
+      const note = (round, outcome) => log.rounds.push(`${round}:${outcome}`);
 
       for (let round = 1; round <= ROUNDS && !cancelled; round++) {
         await new Promise((r) => setTimeout(r, GAP_MS));
-        if (cancelled) return;
+        if (cancelled) { log.state = `ملغى قبل جولة ${round}`; return; }
         /* المرساة مزحزحة بمقدار هامش الخادم، وإلا النافذة بتنتهي بعد أقدم
            شمعة عنا فبيرجع معظمها مكرَّراً. */
         const anchor = Math.floor(oldest - BUFFER_BARS * barSec);
@@ -5205,12 +5237,24 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
             `/api/replay-candles?symbol=${sym}&interval=${INTERVAL_MAP[interval]}` +
               `&count=${DEEPEN_COUNT}&bg=1&anchor=${anchor}${tdParam}${dukParam}`
           );
-          if (!res.ok) return;
+          if (!res.ok) { note(round, `HTTP ${res.status}`); log.state = `وقف: HTTP ${res.status}`; return; }
           const data = await res.json();
-          if (data.error || cancelled) return;
+          if (cancelled) { log.state = `ملغى بجولة ${round}`; return; }
+          if (data.error) {
+            note(round, "خطأ");
+            log.state = `وقف: ${String(data.error).slice(0, 90)}`;
+            return;
+          }
           const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
-          if (older.length < 1) return;
+          if (older.length < 1) {
+            note(round, `صفر أقدم (رجع ${data.candles?.length || 0})`);
+            log.state = "وقف: ما في أقدم من هيك";
+            return;
+          }
           oldest = older[0].time;
+          log.gained += older.length;
+          log.oldestNow = new Date(oldest * 1000).toISOString().slice(0, 16);
+          note(round, `+${older.length}`);
 
           setAllCandles((prev) => {
             if (!prev.length) return prev;
@@ -5220,12 +5264,27 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
             if (added > 0) setRevealCount((rc) => rc + added);
             return merged;
           });
-          if (older.length < MIN_GAIN) return;
-        } catch { return; }
+          if (older.length < MIN_GAIN) {
+            log.state = `وقف: ربح جولة ${older.length} < ${MIN_GAIN}`;
+            return;
+          }
+        } catch (e) {
+          note(round, "رمية");
+          log.state = `وقف برمية: ${(e?.message || e).toString().slice(0, 80)}`;
+          return;
+        }
       }
+      if (!cancelled) log.state = `خلص ${ROUNDS} جولة`;
     })();
 
-    return () => { cancelled = true; };
+    /* ⚠️ الحارس بينمسح عند الإلغاء — وإلا التعميق **بيموت للأبد** لهالسلسلة.
+       السيناريو: التأثير بيشتغل ويسجّل الحارس، بعدين تتغيّر تبعية فبينلغى،
+       وإعادة التشغيل بترجع فوراً من الحارس بلا ولا جولة. والفشل صامت لأن كل
+       مخارج الحلقة `return` بلا أثر. */
+    return () => {
+      cancelled = true;
+      if (deepenedForRef.current === seriesKey) deepenedForRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetValue, interval, mode, randomChart, allCandles.length > 0]);
 
