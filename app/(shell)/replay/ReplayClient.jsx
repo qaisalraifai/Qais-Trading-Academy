@@ -1277,10 +1277,16 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
          و`c[0]`/`c[length-1]` بيكذبوا لو المصفوفة مش مرتّبة. */
       let dupes = 0, unsorted = 0, min = Infinity, max = -Infinity;
       const seen = new Set();
+      /* ⚠️ `dupes` بيمسك الطوابع المتطابقة تماماً. بس شمعتان بنفس **اليوم**
+         وساعتين مختلفتين (٠٤:٠٠ و٠٥:٠٠ — تبديل التوقيت الصيفي) بتمرقوا منه.
+         مقيس: ٣٩٧٤ شمعة على ٣٠٩٥ يوم = ١.٢٨ باليوم، وأيام التداول أقل من
+         الأيام التقويمية — فالرقم ما بيقعد. `days` بتحسمها. */
+      const days = new Set();
       for (let i = 0; i < c.length; i++) {
         const t = c[i]?.time;
         if (t == null) continue;
         if (seen.has(t)) dupes++; else seen.add(t);
+        days.add(Math.floor(t / 86400));
         if (i && t <= c[i - 1]?.time) unsorted++;
         if (t < min) min = t;
         if (t > max) max = t;
@@ -1294,6 +1300,8 @@ export default function ReplayClient({ userId, paneId = "main", isPrimary = true
         bars: c.length,
         dupes,
         unsorted,
+        days: days.size,
+        barsPerDay: days.size ? +(c.length / days.size).toFixed(2) : 0,
         spanDays: Math.round(span),
         first: at(c[0]?.time),
         last: at(c[c.length - 1]?.time),
