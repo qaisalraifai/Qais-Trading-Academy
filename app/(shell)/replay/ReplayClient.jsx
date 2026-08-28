@@ -1,6 +1,7 @@
 "use client";
 import { ArrowLeftRight, Bell, CalendarDays, Check, ClipboardList, CornerUpLeft, Dices, MoveVertical, Pause, PenLine, Play, Settings, SkipForward, SlidersHorizontal, Tag, Trash2, TrendingUp } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import { ASSETS, getAssetByValue, INTERVAL_MAP, INTERVAL_MS } from "@/lib/assets";
 import { createClient } from "@/lib/supabase-client";
@@ -1057,7 +1058,33 @@ function pointOnLinePx(px, py, x1, y1, x2, y2, clamp) {
   return { x: x1 + t * dx, y: y1 + t * dy };
 }
 
-export default function ReplayClient({ userId }) {
+/* ═══════════════════════════════════════════════════════════════════════════
+   الـprops الجديدة كلها **اختيارية بقيم افتراضية تحافظ على السلوك الحالي
+   حرفياً**. بلا تمريرها، الكومبوننت زي ما كان بالضبط — شارت واحد، شريطه
+   جوّاه، ومفاتيح تخزينه كما هي.
+
+   `paneId`    هوية اللوحة. `"main"` بيحتفظ بمفاتيح التخزين القديمة، فالجلسات
+               المحفوظة عند المستخدمين ما بتضيع. أي لوحة تانية بتاخد مفاتيح
+               منمّطة باسمها فما بتخلط رسوماتها ولا نقطة قصّها مع غيرها.
+   `fillContainer` بوضع الشارتات المتعددة الجذر بيصير `flex` وبيملا خليّته
+               بدل ما ياخد ارتفاع الشاشة.
+   `chromeSlots` فتحات مشتركة للشريط العلوي/الجانبي. لما تنمرّر، الشريط
+               بينتقل لها بـ`createPortal` بدل ما ينرسم مكانه — فبيصير شريط
+               واحد للوحة النشطة بدل شريط لكل شارت.
+   `onActivate` بينده لما يلمس المستخدم هاللوحة، عشان مساحة العمل تعرف
+               أيّهن النشطة.
+   ═══════════════════════════════════════════════════════════════════════════ */
+export default function ReplayClient({
+  userId,
+  paneId = "main",
+  fillContainer = false,
+  chromeSlots = null,
+  chromeActive = true,
+  onActivate = null,
+}) {
+  /* مفتاح تخزين خاص باللوحة. `"main"` بيرجّع المفتاح كما هو — شرط أساسي
+     عشان ما تضيع جلسات المستخدمين القائمة. */
+  const paneKey = (base) => (paneId === "main" ? base : `${base}__${paneId}`);
 
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
@@ -1190,7 +1217,7 @@ export default function ReplayClient({ userId }) {
   // وعمل reload لاحقاً، رح ينقرا صح بعد إعادة التحميل هاد).
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(PAUSED_SESSION_KEY);
+      const raw = localStorage.getItem(paneKey(PAUSED_SESSION_KEY));
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.replayState) {
@@ -6329,7 +6356,7 @@ export default function ReplayClient({ userId }) {
     if (mode !== "training" || !replayStateRef.current.isActive) return;
     const snapshot = buildPausedSnapshot();
     savedSessionRef.current = snapshot;
-    try { localStorage.setItem(PAUSED_SESSION_KEY, JSON.stringify(snapshot)); } catch {}
+    try { localStorage.setItem(paneKey(PAUSED_SESSION_KEY), JSON.stringify(snapshot)); } catch {}
   }
   /* مرجع حيّ للدالة: مستمعو الأحداث تحت بينتسجّلوا مرة وحدة، وبدون هاد
      بيمسكوا قيم أول رندر (نقطة قص قديمة ورسومات قديمة). */
@@ -6372,7 +6399,7 @@ export default function ReplayClient({ userId }) {
     savedSessionRef.current = null;
     setHasSavedSession(false);
     suppressPersistRef.current = true; // بينفتح بـfinalizeCut للقص الجديد
-    try { localStorage.removeItem(PAUSED_SESSION_KEY); } catch {}
+    try { localStorage.removeItem(paneKey(PAUSED_SESSION_KEY)); } catch {}
     setCutChoiceOpen(false);
     openCutModeFresh();
   }
@@ -9097,7 +9124,13 @@ export default function ReplayClient({ userId }) {
   }
 
   return (
-    <div>
+    /* ⚠️ بوضع الشارتات المتعددة الجذر لازم يصير `flex` وياخد `minHeight:0`،
+       وإلا بيتمدّد فوق خليّته بالشبكة والشارت بيفيض تحتها. بالوضع المفرد
+       بيضل `<div>` عادي زي ما كان — صفر تغيير بالسلوك القائم. */
+    <div
+      style={fillContainer ? { display: "flex", flexDirection: "column", height: "100%", minHeight: 0, minWidth: 0 } : undefined}
+      onPointerDownCapture={onActivate || undefined}
+    >
       {/* ستايل عام مشترك بين شريط الأدوات العلوي والشريط الجانبي، بمواصفات
          تريدنغ فيو: حالة Hover رمادية خفيفة (متل TradingView بالظبط) على أي
          زر مو مفعّل حالياً، وسكرول بار رفيع بنفس أسلوبها لقوائم الأدوات
@@ -9114,7 +9147,12 @@ export default function ReplayClient({ userId }) {
         .tv-flyout-scroll::-webkit-scrollbar-thumb { background: #241C3E; border-radius: 3px; }
         .tv-flyout-scroll::-webkit-scrollbar-track { background: transparent; }
       `}</style>
-      {!isFullscreen && renderTopBar()}
+      {/* ⚠️ بوضع الشارتات المتعددة الشريط بينتقل لفتحة مشتركة بدل ما يتكرر مع
+          كل شارت. `chromeActive` بتضمن إنّ **اللوحة النشطة وحدها** بترسم
+          فيها — وإلا شارتان بيكتبوا بنفس الفتحة ويتصارعوا عليها. */}
+      {chromeSlots
+        ? (chromeActive && chromeSlots.top ? createPortal(renderTopBar(), chromeSlots.top) : null)
+        : (!isFullscreen && renderTopBar())}
 
       {!supported && !error && (
         <div style={{ color: "#F0A13C", fontSize: 13, marginBottom: "1rem" }}>هذا الأصل غير مدعوم حالياً بعرض الشموع، اختاري أصل آخر من القائمة.
