@@ -120,6 +120,14 @@ export async function GET(req) {
   const dukSymbol = searchParams.get("duk") || null;
   const interval = searchParams.get("interval") || "15min";
   const wanted = Math.min(Number(searchParams.get("count") || 1000), 20000);
+  /* ⚠️ `bg=1` = طلب **خلفية** (تعميق تدريجي · محمّل السحب). فشله اختياري
+     بطبعه: الشارت شغّال أصلاً وهاد بس بيزيد عمقاً. بس المتصفّح بيسجّل أي رد
+     غير ناجح بالكونسول، فبيبان كأنه عطل بالمنصّة — وهاد بيضيّع التشخيص
+     الحقيقي وسط ضجيج ما إله معنى.
+     فبيرجع **200 مع الخطأ بالجسم**: العميل بيعالجه زي أي فشل (بيقرا
+     `data.error` أصلاً)، والكونسول بيضل نظيفاً للأعطال الحقيقية.
+     ⚠️ الطلب الأمامي بيضل يرجّع 502 — هناك الفشل بيمسّ المستخدم فعلاً. */
+  const isBackground = searchParams.get("bg") === "1";
   const anchorRaw = searchParams.get("anchor");
   const anchor = anchorRaw != null && Number.isFinite(Number(anchorRaw)) ? Number(anchorRaw) : null;
 
@@ -334,7 +342,7 @@ export async function GET(req) {
           store: storeHit ? storeHit.status : null,
           storeDetail: storeHit?.detail || null,
         },
-        { status: 502 }
+        { status: isBackground ? 200 : 502 }
       );
     }
   }

@@ -5597,7 +5597,7 @@ export default function ReplayClient({ userId }) {
       const sym = encodeURIComponent(info.yahooSpot || info.yahoo);
       const res = await fetch(
         `/api/replay-candles?symbol=${sym}&interval=${INTERVAL_MAP[interval]}` +
-          `&count=${DEEPEN_CHUNK_BARS[interval] || 1200}&anchor=${anchor}${tdParam}&duk=${encodeURIComponent(info.dukascopy)}`
+          `&count=${DEEPEN_CHUNK_BARS[interval] || 1200}&anchor=${anchor}&bg=1${tdParam}&duk=${encodeURIComponent(info.dukascopy)}`
       );
       const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       /* رفض عابر: ما منعلّمها «خلصت» — الحد متقطّع، والسحبة الجاية بتعيد. */
@@ -5787,7 +5787,7 @@ export default function ReplayClient({ userId }) {
             }
             const res = await fetch(
               `/api/replay-candles?symbol=${sym}&interval=${INTERVAL_MAP[interval]}` +
-                `&count=${CHUNK_BARS}&anchor=${anchor}${tdParam}${dukParam}`
+                `&count=${CHUNK_BARS}&anchor=${anchor}&bg=1${tdParam}${dukParam}`
             );
             data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
             if (!data.error) break;
