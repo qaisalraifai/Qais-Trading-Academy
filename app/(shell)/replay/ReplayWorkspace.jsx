@@ -30,8 +30,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Columns2, Grid2x2, LayoutGrid, Rows2, Square, X } from "lucide-react";
 import ReplayClient from "./ReplayClient";
 
-const LAYOUT_KEY = "qta_replay_layout_v1";
-const SYNC_KEY = "qta_replay_sync_v1";
+/* ⚠️ **بلا بادئة `qta_` عمداً.** `user-settings-sync` بيزامن كل مفتاح
+   بهالبادئة مع الحساب، و**بيعيد تحميل الصفحة** عند أول اختلاف — عشان الحالات
+   اللي بتنقرا مرة وحدة عند الإقلاع تاخد القيم الجاية من الحساب.
+   مقيس محلياً: كل تبديل تخطيط كان يطلق إعادة تحميل.
+   وتخطيط الشاشة تفضيل **جهاز** مش إعداد حساب — شاشة الموبايل ما بدها نفس
+   تقسيم شاشة المكتب. فبيضل محلياً وبس. */
+const LAYOUT_KEY = "replayLayout_v1";
+const SYNC_KEY = "replaySync_v1";
 
 /* التخطيطات: `panes` عدد اللوحات · `css` شبكة CSS.
    ⚠️ الأسماء ثابتة لأنها بتنحفظ بالمتصفح — تغييرها بيفقد تخطيط المستخدم. */
@@ -53,6 +59,21 @@ export default function ReplayWorkspace({ userId }) {
      مقروء، وطلبه صريح: «على الشاشات الصغيرة لا تحاول ضغط ٤ شارتات». */
   const [maxPanes, setMaxPanes] = useState(4);
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     🔴 **الكتابة عند الإقلاع كانت تعمل حلقة إعادة تحميل لا نهائية.**
+     -----------------------------------------------------------------------
+     `lib/user-settings-sync.js` بيراقب **كل** مفتاح يبدأ بـ`qta_` وبيزامنه
+     مع الخادم؛ ولما يلاقي فرقاً بيكتب المحلي و**بيعمل reload**. عنده حارس
+     `reloadedThisSession`، بس الـreload بيخلق سياق JS جديد فالحارس بينصفّر.
+
+     فالكتابة عند الإقلاع كانت: نكتب المفتاح → الخادم ما عنده → فرق →
+     reload → نكتب من جديد… بلا نهاية. مقيس محلياً: `GET /replay` بيتكرر
+     وطلبات الشموع بتتعاد، والشارت ما بيوصل يرسم أبداً.
+
+     والكتابة عند الإقلاع **غلط بذاتها**: القيمة الافتراضية مش اختيار
+     المستخدم، فما بتستاهل تنكتب ولا تنزامن. بنكتب بس لما يبدّل فعلاً.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const hydrated = useRef(false);
   useEffect(() => {
     try {
       const l = localStorage.getItem(LAYOUT_KEY);
@@ -60,9 +81,16 @@ export default function ReplayWorkspace({ userId }) {
       const s = localStorage.getItem(SYNC_KEY);
       if (s) setSync((p) => ({ ...p, ...JSON.parse(s) }));
     } catch { /* تخزين محلي معطّل — الافتراضي بيكفي */ }
+    hydrated.current = true;
   }, []);
-  useEffect(() => { try { localStorage.setItem(LAYOUT_KEY, layout); } catch {} }, [layout]);
-  useEffect(() => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch {} }, [sync]);
+  useEffect(() => {
+    if (!hydrated.current) return;
+    try { localStorage.setItem(LAYOUT_KEY, layout); } catch {}
+  }, [layout]);
+  useEffect(() => {
+    if (!hydrated.current) return;
+    try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch {}
+  }, [sync]);
 
   /* الحد حسب العرض الفعلي — بلا تخمين نقاط توقّف. */
   useEffect(() => {
@@ -93,9 +121,18 @@ export default function ReplayWorkspace({ userId }) {
   const active = ids.includes(activePane) ? activePane : "main";
 
   const menuRef = useRef(null);
+  /* ⚠️ **زر الفتح لازم ينستثنى من مستمع الإغلاق.**
+     المستمع على `pointerdown`، وهو بينطلق **قبل** `click`. فضغطة الزر كانت
+     تسكّر القائمة (لأنه برّا `menuRef`) وبعدها `click` بيبدّل الحالة —
+     فالنتيجة إنها ما بتفتح أبداً. مقيس بالفحص المحلي: ضغطتان متتاليتان
+     وما ظهرت ولا مرة. */
+  const btnRef = useRef(null);
   useEffect(() => {
     if (!menuOpen) return;
-    const onDown = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    const onDown = (e) => {
+      if (btnRef.current?.contains(e.target)) return;
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
     window.addEventListener("pointerdown", onDown);
     return () => window.removeEventListener("pointerdown", onDown);
   }, [menuOpen]);
@@ -104,10 +141,16 @@ export default function ReplayWorkspace({ userId }) {
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, position: "relative" }}>
       {/* شريط مشترك: اللوحة النشطة بتنقل شريطها لهون بـcreatePortal.
           بالوضع المفرد بيضل فاضياً والشريط بينرسم جوّا الشارت زي ما كان. */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-        <div ref={setTopSlot} style={{ flex: 1, minWidth: 0 }} />
+      {/* ⚠️ الفتحة بترسم **بس** بوضع الشارتات المتعددة. بالوضع المفرد الشريط
+          بيضل جوّا الشارت زي ما كان، والفتحة الفاضية كانت بتاخد صفاً كامل
+          وبتزحّ الشارت لتحت — بان بالفحص المحلي. */}
+      {/* صف نحيف: الزر ببدايته (يمين بالـRTL)، والشريط المشترك بيملا الباقي.
+          ⚠️ جرّبت أخلّي الزر طبقة مطلقة فوق الشريط — بيغطّي أزراره. والصف
+          النحيف أوضح، وبالوضع المفرد بياخد ارتفاع الزر وبس. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: multi ? 4 : 0 }}>
         <button
           type="button"
+          ref={btnRef}
           onClick={() => setMenuOpen((v) => !v)}
           title="تخطيط الشارتات"
           style={{
@@ -123,6 +166,9 @@ export default function ReplayWorkspace({ userId }) {
           <LayoutGrid size={15} strokeWidth={1.9} aria-hidden />
           تخطيط
         </button>
+        {/* ⚠️ الفتحة بترسم **بس** بوضع الشارتات المتعددة — بالوضع المفرد
+            الشريط بيضل جوّا الشارت زي ما كان بالضبط. */}
+        {multi && <div ref={setTopSlot} style={{ flex: 1, minWidth: 0 }} />}
       </div>
 
       {menuOpen && (
