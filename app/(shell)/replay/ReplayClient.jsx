@@ -4471,7 +4471,9 @@ export default function ReplayClient({ userId }) {
       window.addEventListener("keydown", onKeyDown);
       window.addEventListener("keyup", onKeyUp);
       window.addEventListener("blur", onWindowBlurResetShift);
-      chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+        /* ⚠️ سحب لليسار قرب أقدم شمعة = طلب المزيد. شوف `loadOlderRef`. */
+        if (range && range.from < 80) loadOlderRef.current();
         if (suppressRangeChangeDrawRef.current) return; // شوفي waitForChartSettleAndRedraw
         scheduleDraw();
       });
@@ -5466,6 +5468,89 @@ export default function ReplayClient({ userId }) {
   const deepenLogRef = useRef({ state: "لسا ما بلّش", rounds: [], gained: 0 });
   const deepenedForRef = useRef(null);
 
+  /* ═══════════════════════════════════════════════════════════════════════════
+     تحميل حسب النظر — كل فريم بيوصل ٢٠٠٣ بلا ما تتقل المنصّة.
+     ---------------------------------------------------------------------------
+     طلبه: «بدنا طريقة نقدر نوصل كل الفريمات فيها لـ٢٠٠٣ بدون ما نخسر سرعة
+     المنصّة».
+
+     🔴 التحميل الكامل **مستحيل** للفريمات الصغيرة — عدد الشموع من ٢٠٠٣ لقصّة
+        ٢٠٠٦:
+
+            ٤ ساعات ~٦٥٠٠ · ساعة ~٢٦٠٠٠ · ١٥ دقيقة ~١٠٥٠٠٠
+            ٥ دقايق ~٣١٥٠٠٠ · دقيقة ~١.٥ مليون
+
+        فوق ~٦٠ ألف بيتقل الرسم والذاكرة. يعني «حمّل كل شي» و«خلّيها سريعة»
+        بينتاقضوا **بالتحميل المسبق**، مش بالمبدأ.
+
+     الحل: نحمّل اللي بينتنظر فعلاً. التعميق التلقائي بيملّي مخزوناً مريحاً
+     ويوقف عند السقف؛ وبعدها لما يسحب المستخدم لليسار وبيقرب من أقدم شمعة،
+     بنجيب قطعة أقدم ونضمّها. الذاكرة بتزيد **بس** لتاريخ فعلاً انتنظر.
+
+     ⚠️ **الفهارس بتنزاح مع الضم** — إضافة شموع أقدم بتزحزح كل شي، فلو ما
+        عدّلنا المدى المرئي بيقفز الشارت تحت إيد المستخدم وهو ساحب. منزحزح
+        `visibleLogicalRange` بنفس عدد المضاف، فالمنظر بيضل ثابت بالضبط.
+
+     ⚠️ ما بيشتغل والتعميق التلقائي شغّال — وإلا الاتنان بيتنافسوا على نفس
+        حصة الأرشيف وبيرفعوا احتمال الرفض.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  const allCandlesRef = useRef([]);
+  useEffect(() => { allCandlesRef.current = allCandles; }, [allCandles]);
+  const olderBusyRef = useRef(false);
+  const olderDoneRef = useRef(false);
+  useEffect(() => { olderDoneRef.current = false; }, [assetValue, interval, mode]);
+
+  const loadOlderRef = useRef(() => {});
+  loadOlderRef.current = async () => {
+    if (olderBusyRef.current || olderDoneRef.current) return;
+    /* التعميق التلقائي لسا شغّال — ما بنزاحمه على حصة الأرشيف. */
+    if (deepenLogRef.current.state === "شغّال") return;
+    const prev = allCandlesRef.current;
+    if (!prev?.length) return;
+    const info = getAssetByValue(assetValue);
+    if (!info?.dukascopy) return;
+
+    const barSec = (INTERVAL_MS[interval] || 900000) / 1000;
+    const oldest = prev[0].time;
+    const ARCHIVE_FLOOR = Date.UTC(2003, 0, 1) / 1000;
+    const anchor = Math.floor(oldest - 300 * barSec);
+    if (anchor <= ARCHIVE_FLOOR) { olderDoneRef.current = true; return; }
+
+    olderBusyRef.current = true;
+    try {
+      const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
+      const sym = encodeURIComponent(info.yahooSpot || info.yahoo);
+      const res = await fetch(
+        `/api/replay-candles?symbol=${sym}&interval=${INTERVAL_MAP[interval]}` +
+          `&count=2000&anchor=${anchor}${tdParam}&duk=${encodeURIComponent(info.dukascopy)}`
+      );
+      const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      /* رفض عابر: ما منعلّمها «خلصت» — الحد متقطّع، والسحبة الجاية بتعيد. */
+      if (data.error) return;
+      const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
+      if (!older.length) { olderDoneRef.current = true; return; }
+
+      const base = allCandlesRef.current;
+      const merged = mergeCandles(older, base);
+      const added = merged.length - base.length;
+      if (added <= 0) { olderDoneRef.current = true; return; }
+
+      const ts = chartRef.current?.timeScale();
+      const before = ts?.getVisibleLogicalRange();
+      setAllCandles(merged);
+      setRevealCount((rc) => rc + added);
+      if (ts && before) {
+        /* بعد ما يرسم الشارت المصفوفة الجديدة — وإلا الزحزحة بتنطبّق على
+           المدى القديم وبتروح هدر. */
+        requestAnimationFrame(() => {
+          try { ts.setVisibleLogicalRange({ from: before.from + added, to: before.to + added }); } catch {}
+        });
+      }
+    } catch { /* شبكة — السحبة الجاية بتعيد */ } finally {
+      olderBusyRef.current = false;
+    }
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.__qtaDeepen = () => deepenLogRef.current;
@@ -5494,7 +5579,14 @@ export default function ReplayClient({ userId }) {
        المقيس (~٣٠٠–٣٦٠ يوم للفريمات الكبيرة، وأقل بكتير للصغيرة لأنها
        بتنبني من ملفات أدقّ). */
     const CHUNK_BARS = { "1m": 3000, "5m": 3000, "15m": 3000, "1h": 2000, "4h": 1500, "1d": 2000 }[interval] || 2000;
-    const MAX_BARS_CEILING = 60000;  // أبعد من هيك بيتقل الرسم والذاكرة
+    /* ═══ سقف التحميل المسبق — صار أوطى بعد ما إجا التحميل حسب النظر ═══
+       كان ٦٠٠٠٠: التعميق يجرّ عشرين جولة مسبقاً على فريم صغير، وهاد بالضبط
+       اللي بيبطّئ المنصّة. وصار في محمّل عند السحب (`loadOlderRef`)، فما عاد
+       في داعي نحمّل تاريخاً ما حدا نظر إليه.
+       ٢٠٠٠٠ مختار عشان **٤ ساعات يضل يوصل ٢٠٠٣ لحاله** (~٦٥٠٠ شمعة) —
+       وهاي الحالة اللي تحقّقت بصورته. الفريمات الأصغر بتاخد مخزوناً مريحاً
+       وبتكمّل عند السحب. */
+    const MAX_BARS_CEILING = 20000;
     const BUFFER_BARS = 300;         // مطابق لـ`bufferSeconds` بالخادم
     /* ═══ الفاصل بين الجولات: تكيّفي مش ثابت ═══
        🔴 بلاغه: «التحويل بين الفريمات كثير بطيء… كنت معلّق بنفس الفريم وبس».
