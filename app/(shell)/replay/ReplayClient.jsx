@@ -5199,6 +5199,22 @@ export default function ReplayClient({ userId }) {
           expectedRevealRef.current = rc;
           setRevealCount(rc);
           setLoading(false);
+
+          /* ═══ المحفوظ بيغطّي القص = خلصنا، بلا أي طلب ═══
+             🔴 بلاغه: «التحويل بين الفريمات كثير بطيء».
+             السبب: حتى بعد الرسم الفوري من الكاش، كان بيكمّل **الجلبة
+             الكاملة** ويستبدل فيها المصفوفة. وبما إنّ القص صار من Dukascopy
+             وحده (بلا تراجع) مع فواصل إعادة ٦ ثواني، صارت الجلبة توصل
+             ١٨ ثانية بدل ما تتراجع بسرعة زي قبل.
+
+             والجلبة **بلا فايدة هون**: المحفوظ بيغطّي نقطة القص أصلاً،
+             والعمق بيزيد بالتعميق التدريجي بالخلفية، والتمديد للأمام
+             بيشتغل وقت التشغيل. فالطلب بيكرّر بيانات موجودة ويحرق حصة
+             أرشيف بيحتاجها التعميق.
+
+             ⚠️ الشرط `>= 600` مقصود: نافذة ضحلة جداً بتخلّي الشارت شبه
+                فاضي حوالين القص، وهناك الانتظار أفضل من عرض ناقص. */
+          if (cc.length >= 600) return;
         }
       }
 
@@ -5480,7 +5496,16 @@ export default function ReplayClient({ userId }) {
     const CHUNK_BARS = { "1m": 3000, "5m": 3000, "15m": 3000, "1h": 2000, "4h": 1500, "1d": 2000 }[interval] || 2000;
     const MAX_BARS_CEILING = 60000;  // أبعد من هيك بيتقل الرسم والذاكرة
     const BUFFER_BARS = 300;         // مطابق لـ`bufferSeconds` بالخادم
-    const GAP_MS = 7000;             // مقيس: ~٤٠٠ملّي بتفشل · ٦–١٥ ثانية بتمرّق
+    /* ═══ الفاصل بين الجولات: تكيّفي مش ثابت ═══
+       🔴 بلاغه: «التحويل بين الفريمات كثير بطيء… كنت معلّق بنفس الفريم وبس».
+       الفاصل الثابت ٧ ثواني كان بينتظر **حتى بعد الجولات الناجحة**، فالوصول
+       لقاع الأرشيف (~١٠ جولات) كان بياخد أكتر من دقيقة لكل فريم — وكل فريم
+       بيبلّش من الصفر.
+       والحد بيعضّ **بعد الفشل** مش بعد النجاح. فبنبلّش سريع، وبنتراجع بس
+       لما ننرفض، وبنرجع نتسارع لما ننجح. */
+    const GAP_MIN = 1200;
+    const GAP_MAX = 30000;
+    let gap = GAP_MIN;
     const MIN_GAIN = 20;
     const ROUNDS = 25;
 
@@ -5517,7 +5542,7 @@ export default function ReplayClient({ userId }) {
           log.state = `وقف: قاع أرشيف Dukascopy (${new Date(oldest * 1000).toISOString().slice(0, 10)})`;
           return;
         }
-        await new Promise((r) => setTimeout(r, GAP_MS));
+        await new Promise((r) => setTimeout(r, gap));
         if (cancelled) { log.state = `ملغى قبل جولة ${round}`; return; }
         const anchor = Math.floor(oldest - BUFFER_BARS * barSec);
         try {
@@ -5539,6 +5564,8 @@ export default function ReplayClient({ userId }) {
             );
             data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
             if (!data.error) break;
+            /* رفض = الحصة ضيّقة الآن → تباعد أكتر بالجولات الجاية. */
+            gap = Math.min(GAP_MAX, Math.round(gap * 2.5));
             log.rounds.push(`${round}.${attempt + 1}:رفض`);
           }
           if (cancelled) { log.state = `ملغى بجولة ${round}`; return; }
@@ -5552,6 +5579,8 @@ export default function ReplayClient({ userId }) {
             log.state = "وقف: وصلنا قاع الأرشيف";
             return;
           }
+          /* نجاح = الحصة مرتاحة → نتسارع تدريجياً بدل ما نضل نبطّئ. */
+          gap = Math.max(GAP_MIN, Math.round(gap * 0.6));
           oldest = older[0].time;
           log.gained += older.length;
           log.oldestNow = new Date(oldest * 1000).toISOString().slice(0, 10);
