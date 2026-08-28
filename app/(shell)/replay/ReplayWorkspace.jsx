@@ -37,7 +37,10 @@ import ReplayClient from "./ReplayClient";
    وتخطيط الشاشة تفضيل **جهاز** مش إعداد حساب — شاشة الموبايل ما بدها نفس
    تقسيم شاشة المكتب. فبيضل محلياً وبس. */
 const LAYOUT_KEY = "replayLayout_v1";
-const SYNC_KEY = "replaySync_v1";
+/* v2: انضافت مزامنة المؤشر والزوم وصارت مشغّلة افتراضياً. المفتاح انبدّل
+   عشان القيمة المحفوظة القديمة (اللي فيها الاتنين مطفيين لأنهما ما كانوا
+   مبنيين) ما تلغي التشغيل. اللي بينحفظ هون أربع قيم منطقية وبس. */
+const SYNC_KEY = "replaySync_v2";
 
 /* التخطيطات: `panes` عدد اللوحات · `css` شبكة CSS.
    ⚠️ الأسماء ثابتة لأنها بتنحفظ بالمتصفح — تغييرها بيفقد تخطيط المستخدم. */
@@ -54,7 +57,7 @@ export default function ReplayWorkspace({ userId }) {
   const [layout, setLayout] = useState("single");
   const [menuOpen, setMenuOpen] = useState(false);
   const [activePane, setActivePane] = useState("main");
-  const [sync, setSync] = useState({ on: true, time: true, crosshair: false, zoom: false });
+  const [sync, setSync] = useState({ on: true, time: true, crosshair: true, zoom: true });
   /* أضيق من هيك ما بتنقسم الشاشة — عمود شارت أقل من ~٤٢٠ بكسل بيصير غير
      مقروء، وطلبه صريح: «على الشاشات الصغيرة لا تحاول ضغط ٤ شارتات». */
   const [maxPanes, setMaxPanes] = useState(4);
@@ -207,12 +210,22 @@ export default function ReplayWorkspace({ userId }) {
      ═══════════════════════════════════════════════════════════════════════ */
   const busRef = useRef(null);
   if (!busRef.current) {
-    const subs = new Set();
-    let last = null;
+    /* قنوات مسمّاة: `time` (نقطة القص) · `crosshair` · `zoom`. كل وحدة إلها
+       مشتركيها وآخر قيمة فيها، فتشغيل وحدة ما بيوقظ التانيات. */
+    const subs = new Map();
+    const last = new Map();
     busRef.current = {
-      publish(t) { last = t; subs.forEach((fn) => { try { fn(t); } catch {} }); },
-      subscribe(fn) { subs.add(fn); return () => subs.delete(fn); },
-      peek() { return last; },
+      publish(kind, payload) {
+        last.set(kind, payload);
+        const set = subs.get(kind);
+        if (set) set.forEach((fn) => { try { fn(payload); } catch {} });
+      },
+      subscribe(kind, fn) {
+        if (!subs.has(kind)) subs.set(kind, new Set());
+        subs.get(kind).add(fn);
+        return () => subs.get(kind)?.delete(fn);
+      },
+      peek(kind) { return last.get(kind); },
     };
   }
 
@@ -369,33 +382,22 @@ export default function ReplayWorkspace({ userId }) {
           {/* ⚠️ ولا مزامنة إجبارية: الرمز والفريم بيضلوا مستقلين تماماً —
               طلبه الصريح. المزامنة بس على الزمن/المؤشر/الزوم. */}
           <div style={{ marginTop: 6, opacity: sync.on ? 1 : 0.45, pointerEvents: sync.on ? "auto" : "none" }}>
-            {/* ⚠️ **المطفيان مطفيان لأنهما ما انبنوا — مش لأنهما اختيار.**
-                الوقت وحده موصول بالمحرّك. مربّع بينضغط وما بيعمل شي أسوأ من
-                مربّع مش موجود: بيخلّي المستخدم يظن إنه شغّل مزامنة وهي مطفية.
-                فبيضلّوا ظاهرين (عشان يبان إنهم قادمون) ومعطَّلين بوضوح. */}
+            {/* ✅ التلاتة موصولات بالمحرّك (٢٠٢٦-٠٨-٢٨، قراره: «شغل مزامنة
+                المؤشر والزوم»). كانوا اتنين منهن معطَّلين لأنهم ما كانوا
+                مبنيين — والمربّع اللي بينضغط وما بيعمل شي أسوأ من غيابه. */}
             {[
-              ["time", "الوقت ونقطة القص", true],
-              ["crosshair", "المؤشر", false],
-              ["zoom", "الزوم والتحريك", false],
-            ].map(([k, label, ready]) => (
-              <label
-                key={k}
-                title={ready ? label : "لسا ما انبنت"}
-                style={{
-                  display: "flex", alignItems: "center", gap: 7, padding: "0.25rem 0",
-                  cursor: ready ? "pointer" : "not-allowed", fontSize: 12,
-                  color: ready ? "#A79FC4" : "#4A4363",
-                }}
-              >
+              ["time", "الوقت ونقطة القص"],
+              ["crosshair", "المؤشر"],
+              ["zoom", "الزوم والتحريك"],
+            ].map(([k, label]) => (
+              <label key={k} style={{ display: "flex", alignItems: "center", gap: 7, padding: "0.25rem 0", cursor: "pointer", fontSize: 12, color: "#A79FC4" }}>
                 <input
                   type="checkbox"
-                  disabled={!ready}
-                  checked={ready && !!sync[k]}
+                  checked={!!sync[k]}
                   onChange={(e) => setSync((p) => ({ ...p, [k]: e.target.checked }))}
-                  style={{ accentColor: "#6D4AFF", width: 14, height: 14, cursor: ready ? "pointer" : "not-allowed" }}
+                  style={{ accentColor: "#6D4AFF", width: 14, height: 14, cursor: "pointer" }}
                 />
                 {label}
-                {!ready && <span style={{ fontSize: 10.5, color: "#4A4363" }}>· قريباً</span>}
               </label>
             ))}
           </div>
@@ -456,6 +458,8 @@ export default function ReplayWorkspace({ userId }) {
                    واحد ما في مع مين تتزامن، وتشغيلها بيخلّي اللوحات المخفية
                    تلحق موضعاً هي مش معروضة أصلاً. */
                 syncTime={multi && sync.on && sync.time && shown}
+                syncCrosshair={multi && sync.on && sync.crosshair && shown}
+                syncZoom={multi && sync.on && sync.zoom && shown}
               />
             </div>
           );

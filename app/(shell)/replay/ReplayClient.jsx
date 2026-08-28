@@ -1083,12 +1083,27 @@ export default function ReplayClient({
   onActivate = null,
   syncBus = null,
   syncTime = false,
+  syncCrosshair = false,
+  syncZoom = false,
 }) {
   /* ⚠️ **اللوحة النشطة هي القائدة** — منها بينتشر موضع القص وبس. مساحة العمل
      بتمرّر `chromeActive` أصلاً لتحديد مين بيملك الشريط المشترك، ونفس
      التمييز بيخدم هون: قائد واحد، والباقي عارضات. */
   const isSyncLeader = !!syncBus && syncTime && chromeActive;
   const isSyncFollower = !!syncBus && syncTime && !chromeActive;
+
+  /* ⚠️ **معالِجات الشارت بتنبنى مرة وحدة** جوّا تأثير إنشاء الشارت، فما
+     بتشوف البروبس الجديدة أبداً. المرجع بينقرا وقت الحدث مش وقت الإنشاء،
+     فتبديل اللوحة النشطة أو إطفاء مربّع بالقائمة بينطبّق فوراً بلا ما
+     نعيد بناء الشارت. */
+  const syncRef = useRef({});
+  syncRef.current.bus = syncBus;
+  syncRef.current.leader = !!syncBus && chromeActive;
+  syncRef.current.crosshair = !!syncCrosshair;
+  syncRef.current.zoom = !!syncZoom;
+  /* حارس ارتداد: لما التابعة تطبّق قيمة جاية من الناقل، الشارت بيطلق نفس
+     الحدث تاني — وبلا الحارس بيرجع ينشر ويصير رنين بين اللوحات. */
+  const applyingSyncRef = useRef(false);
   /* مفتاح تخزين خاص باللوحة. `"main"` بيرجّع المفتاح كما هو — شرط أساسي
      عشان ما تضيع جلسات المستخدمين القائمة. */
   const paneKey = (base) => (paneId === "main" ? base : `${base}__${paneId}`);
@@ -4549,8 +4564,33 @@ export default function ReplayClient({
          subscribeCrosshairMove بكل نسخ المكتبة — فبالاستدعاء المباشر بنضمن
          إنها تشتغل دايماً. */
       function onMainCrosshairSync(param) {
+        const s = syncRef.current;
+        if (!s.bus || !s.crosshair || !s.leader) return;
+        if (applyingSyncRef.current) return;
+        /* بلا وقت = الفأرة برّا الشارت. منمرّر `null` عشان التابعات تعرف
+           تسكّر مؤشرها، مش تجمّده على آخر مكان. */
+        s.bus.publish("crosshair", param?.time ?? null);
       }
       chart.subscribeCrosshairMove(onMainCrosshairSync);
+
+      /* ═══════════════════════════════════════════════════════════════════════
+         نشر نافذة العرض — **بالوقت مش بالمدى المنطقي**.
+         -----------------------------------------------------------------------
+         `VisibleLogicalRange` فهارس بمصفوفة اللوحة نفسها، وكل لوحة إلها
+         فريمها وعمقها؛ الفهرس ٥٠ بربع ساعة ما بيقابل الفهرس ٥٠ بأربع ساعات.
+         `getVisibleRange()` بترجّع نفس النافذة **بالوقت**، وهو المشترك
+         الوحيد بين اللوحات — نفس مبدأ مزامنة نقطة القص.
+         ═══════════════════════════════════════════════════════════════════════ */
+      function onVisibleRangeSyncPublish() {
+        const s = syncRef.current;
+        if (!s.bus || !s.zoom || !s.leader) return;
+        if (applyingSyncRef.current) return;
+        try {
+          const vr = chart.timeScale().getVisibleRange();
+          if (vr && vr.from != null && vr.to != null) s.bus.publish("zoom", { from: vr.from, to: vr.to });
+        } catch { /* المدى برّا البيانات — ما في شي ينتشر */ }
+      }
+      chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeSyncPublish);
 
       chart.__cleanup = () => {
         window.removeEventListener("resize", handleResize);
@@ -4572,6 +4612,7 @@ export default function ReplayClient({
         window.removeEventListener("keydown", onKeyDown);
         window.removeEventListener("keyup", onKeyUp);
         window.removeEventListener("blur", onWindowBlurResetShift);
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeSyncPublish);
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(scheduleDraw);
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChangeCloseMenus);
         chart.unsubscribeCrosshairMove(scheduleDraw);
@@ -6382,7 +6423,7 @@ export default function ReplayClient({
     if (!isSyncLeader || mode !== "training") return;
     const list = allCandles;
     const c = list[Math.min(revealCount, list.length) - 1];
-    if (c) syncBus.publish(c.time);
+    if (c) syncBus.publish("time", c.time);
   }, [isSyncLeader, syncBus, mode, revealCount, allCandles]);
 
   useEffect(() => {
@@ -6401,10 +6442,63 @@ export default function ReplayClient({
       if (found < 0) return;
       setRevealCount((cur) => (cur === found + 1 ? cur : found + 1));
     };
-    const off = syncBus.subscribe(apply);
-    apply(syncBus.peek());
+    const off = syncBus.subscribe("time", apply);
+    apply(syncBus.peek("time"));
     return off;
   }, [isSyncFollower, syncBus]);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     مؤشر التقاطع — التابعة بتحط مؤشرها على **نفس عمود الوقت**.
+     ---------------------------------------------------------------------------
+     ⚠️ السعر ما بينزامن: لوحة على الذهب (٤٥٠٠) ولوحة على ناسداك (٢٩٠٠٠) ما
+     إلهن سلّم مشترك. اللي بينزامن هو الوقت، والسعر بيتحدّد من شمعة اللوحة
+     نفسها عند ذاك الوقت — فبيطلع عمود واحد عابر للشارتات زي تريدنغ فيو.
+
+     ⚠️ `setCrosshairPosition` بتطلق `subscribeCrosshairMove` من جديد، وهاد
+     **مقصود**: هيك ترويسة الـOHLC بالتابعة بتتحدّث على الشمعة الموقوف عليها.
+     الحارس بيمنع الجزء الخطر وبس — إعادة النشر.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  useEffect(() => {
+    if (!syncBus || !syncCrosshair || chromeActive) return;
+    const apply = (t) => {
+      const chart = chartRef.current, series = seriesRef.current;
+      if (!chart || !series) return;
+      applyingSyncRef.current = true;
+      try {
+        if (!Number.isFinite(t)) { chart.clearCrosshairPosition(); return; }
+        const arr = visibleCandlesRef.current;
+        if (!arr || !arr.length) return;
+        let lo = 0, hi = arr.length - 1, found = -1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (arr[mid].time <= t) { found = mid; lo = mid + 1; } else { hi = mid - 1; }
+        }
+        const bar = arr[found < 0 ? 0 : found];
+        if (bar) chart.setCrosshairPosition(bar.close, bar.time, series);
+      } catch { /* الشارت انفكّ أو الوقت برّا مداه */ } finally {
+        applyingSyncRef.current = false;
+      }
+    };
+    return syncBus.subscribe("crosshair", apply);
+  }, [syncBus, syncCrosshair, chromeActive]);
+
+  /* نافذة العرض — نفس المبدأ: بالوقت، والتابعة بتقصّها على مداها المتاح. */
+  useEffect(() => {
+    if (!syncBus || !syncZoom || chromeActive) return;
+    const apply = (r) => {
+      const chart = chartRef.current;
+      if (!chart || !r || r.from == null || r.to == null) return;
+      applyingSyncRef.current = true;
+      try {
+        chart.timeScale().setVisibleRange({ from: r.from, to: r.to });
+      } catch { /* النافذة كلها برّا بيانات هاللوحة — بتضل مكانها */ } finally {
+        applyingSyncRef.current = false;
+      }
+    };
+    const off = syncBus.subscribe("zoom", apply);
+    apply(syncBus.peek("zoom"));
+    return off;
+  }, [syncBus, syncZoom, chromeActive]);
 
   /* ===== حفظ جلسة القص/التدريب =====
      ⚠️ **كانت بتنكتب بمكان واحد بس: لحظة الضغط على «مباشر».**
