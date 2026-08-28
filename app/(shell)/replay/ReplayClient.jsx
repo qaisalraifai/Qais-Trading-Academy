@@ -5780,6 +5780,13 @@ export default function ReplayClient({ userId }) {
       const sym = encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo);
       let total = allCandles.length;
 
+      /* ⚠️ **مهلة قبل أول جولة — الشارت لازم يستقر أول.**
+         التعميق بيبلّش فور ما توصل البيانات، يعني بالضبط وقت ما الشارت عم
+         يركّب `setData` ويحسب المدى ويرسم الأوفرلاي. إضافة جولات فوقها
+         بتخلّي التبديل يحسّ ثقيل. ثانيتان بتخلّي أول رسمة تخلص براحتها. */
+      await new Promise((r) => setTimeout(r, 2000));
+      if (cancelled) { log.state = "ملغى قبل البداية"; return; }
+
       for (let round = 1; round <= ROUNDS && !cancelled; round++) {
         if (total >= MAX_BARS_CEILING) { log.state = `وقف: سقف ${MAX_BARS_CEILING} شمعة`; return; }
         /* ═══ قاع الأرشيف — الوقوف قبل الباب المسدود ═══
@@ -5864,7 +5871,15 @@ export default function ReplayClient({ userId }) {
              مخزَّنة أصلاً.
              ⚠️ ولما يرد المزوّد بنرجع للتباعد التكيّفي كما هو. */
           noGainStreak = 0;
-          gap = data.fromStore ? 120 : Math.max(GAP_MIN, Math.round(gap * 0.6));
+          /* ⚠️ **٦٠٠ ملّي مش ١٢٠.** حطّيت ١٢٠ لما اكتشفت إنّ المخزن ما إله حد،
+             وهاد صح من ناحية الشبكة — بس الكلفة مش هناك: كل جولة بتعمل
+             `mergeCandles` و`setData` على مصفوفة بتوصل ٢٠ ألف شمعة، فستون
+             جولة بثواني = فيضان على الخيط الرئيسي **بالضبط لحظة ما يبدّل
+             المستخدم الفريم**. وهاد بلاغه: «صار في بطء بتحويل الفريمات».
+             مقيس بنفس اللحظة: المسار بيرد بـ١.٣–١.٧ ثانية من المخزن — يعني
+             البطء كان عندي بالواجهة مش بالخادم.
+             ٦٠٠ بتوصل ٢٠٠٣ بـ~٣٥ ثانية وبتترك الواجهة تتنفّس. */
+          gap = data.fromStore ? 600 : Math.max(GAP_MIN, Math.round(gap * 0.6));
           oldest = older[0].time;
           log.gained += older.length;
           log.oldestNow = new Date(oldest * 1000).toISOString().slice(0, 10);
