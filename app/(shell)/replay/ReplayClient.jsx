@@ -5418,6 +5418,158 @@ export default function ReplayClient({ userId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetValue, interval, mode, maxBars, randomChart]);
 
+  /* ═══════════════════════════════════════════════════════════════════════════
+     تعميق تدريجي — كل فريم بيلحق عمق اليومي بقطع متتالية.
+     ---------------------------------------------------------------------------
+     🔴 بلاغه (بصورتين): «رسمت إشي على اليومي عند ٢٠٠٣، حوّلت لأربع ساعات
+     فراح. بدي البيانات يلي بيوصلها اليومي توصلها كل الفريمات».
+
+     السبب مقيس: طلب ٤ ساعات لـ٢٠٠٣ **بينرفض** فبيشتغل تقليص المدى وبيرجع
+     من نصّه. على ذهب بمرساة ٢٠٠٦:
+
+         count=20000 (٤١٦٧ يوم مطلوبة) → 2570 شمعة · بتبلّش ٢٠٠٤-٠٨
+         count=3000  (٦٢٥ يوم)          → 2982 شمعة · بتبلّش ٢٠٠٤-٠٥
+
+     الطلب **الأكبر رجّع أقل** — لأنه انرفض وانقلّص. فالعمق ما بينجاب بطلب
+     أضخم، بينجاب بقطع كل وحدة تحت الحد وبتنضم لبعضها.
+
+     ⚠️ **بتشتغل بالقص كمان** — وهاي حالته. المرساة بتتحرّك للورا من أقدم
+        شمعة عنا، فالقطع بتتراكم قبل نقطة القص بالضبط وين رسوماته.
+
+     ⚠️ **`revealCount` فهرس مش وقت** — إضافة تاريخ أقدم بتزحزح الفهارس كلها،
+        فلازم يتعدّل بعدد اللي انضاف قبله وإلا نقطة القص بتقفز.
+
+     ⚠️ **السقف مش تعسّفي — حدّ فيزيائي.** «كل الفريمات توصل عمق اليومي»
+        مستحيلة حرفياً على فريم الدقيقة: ٢٠٠٣→٢٠٠٧ = ٢.٤ مليون شمعة. فبنعمّق
+        لحد ما نلحق أقدم نقطة أو نضرب `MAX_BARS_CEILING`. عملياً ٤ ساعات
+        والساعة بيوصلوا، والدقيقة/٥ دقايق بيوقفوا عند سقفهن.
+
+     ⚠️ الفشل كان **صامتاً بالكامل** بأول نسخة (كل المخارج `return` بلا أثر)،
+        وضاعت جولتان بالتخمين. فصار في سجل: `__qtaDeepen()` بالكونسول.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  const deepenLogRef = useRef({ state: "لسا ما بلّش", rounds: [], gained: 0 });
+  const deepenedForRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.__qtaDeepen = () => deepenLogRef.current;
+  }, []);
+
+  useEffect(() => {
+    const log = deepenLogRef.current;
+    if (randomChart || !allCandles.length) {
+      log.state = randomChart ? "شارت عشوائي" : "بانتظار الشموع";
+      return;
+    }
+    const seriesKey = `${assetValue}|${interval}|${mode}`;
+    if (deepenedForRef.current === seriesKey) {
+      log.state = "منفَّذ سابقاً لهالسلسلة";
+      return;
+    }
+    const assetInfo = getAssetByValue(assetValue);
+    if (!assetInfo?.dukascopy) {
+      /* بلا Dukascopy ما في عمق تاريخي يستاهل التعميق — يوهو محدود أصلاً. */
+      log.state = "الأصل بلا رمز Dukascopy";
+      return;
+    }
+
+    const barSec = (INTERVAL_MS[interval] || 900000) / 1000;
+    /* حجم القطعة بالشموع — مضبوط عشان مداها بالأيام يضل تحت حد الأرشيف
+       المقيس (~٣٠٠–٣٦٠ يوم للفريمات الكبيرة، وأقل بكتير للصغيرة لأنها
+       بتنبني من ملفات أدقّ). */
+    const CHUNK_BARS = { "1m": 3000, "5m": 3000, "15m": 3000, "1h": 2000, "4h": 1500, "1d": 2000 }[interval] || 2000;
+    const MAX_BARS_CEILING = 60000;  // أبعد من هيك بيتقل الرسم والذاكرة
+    const BUFFER_BARS = 300;         // مطابق لـ`bufferSeconds` بالخادم
+    const GAP_MS = 7000;             // مقيس: ~٤٠٠ملّي بتفشل · ٦–١٥ ثانية بتمرّق
+    const MIN_GAIN = 20;
+    const ROUNDS = 25;
+
+    let cancelled = false;
+    (async () => {
+      let oldest = allCandles[0]?.time;
+      if (!oldest) { log.state = "أقدم شمعة بلا وقت"; return; }
+      /* ⚠️ الحارس بينخزّن **بعد** ما تبلّش الجولات، وبينمسح عند الإلغاء —
+         وإلا لو انلغى التأثير بعد تسجيله، إعادة التشغيل بترجع فوراً منه
+         والتعميق بيموت لهالسلسلة للأبد. */
+      deepenedForRef.current = seriesKey;
+      Object.assign(log, {
+        state: "شغّال", series: seriesKey, rounds: [], gained: 0,
+        startedFrom: new Date(oldest * 1000).toISOString().slice(0, 10),
+      });
+
+      const tdParam = assetInfo.twelveData ? `&td=${encodeURIComponent(assetInfo.twelveData)}` : "";
+      const dukParam = `&duk=${encodeURIComponent(assetInfo.dukascopy)}`;
+      const sym = encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo);
+      let total = allCandles.length;
+
+      for (let round = 1; round <= ROUNDS && !cancelled; round++) {
+        if (total >= MAX_BARS_CEILING) { log.state = `وقف: سقف ${MAX_BARS_CEILING} شمعة`; return; }
+        await new Promise((r) => setTimeout(r, GAP_MS));
+        if (cancelled) { log.state = `ملغى قبل جولة ${round}`; return; }
+        const anchor = Math.floor(oldest - BUFFER_BARS * barSec);
+        try {
+          /* ⚠️ **الرفض متقطّع، فجولة فاشلة وحدة ما بتوقف التعميق.**
+             مقيس على ذهب فريم ربع الساعة، نفس النافذة ونفس الحجم:
+                 ٢٠٠٦ ✗ · ٢٠١٠ ✗ · ٢٠١٤ ✓ · ٢٠٢٠ ✗ · ٢٠٢٦ ✓
+             يعني الفشل مش بنيوي. والوصول لـ٢٠٠٣ على ٤ ساعات بده ~١٠ جولات،
+             فلو وقفنا عند أول رفض ما بنوصل أبداً. بالخلفية الصبر مجاني. */
+          const RETRY_WAITS = [20000, 45000];
+          let data = null;
+          for (let attempt = 0; attempt <= RETRY_WAITS.length; attempt++) {
+            if (attempt > 0) {
+              await new Promise((r) => setTimeout(r, RETRY_WAITS[attempt - 1]));
+              if (cancelled) { log.state = `ملغى بجولة ${round}`; return; }
+            }
+            const res = await fetch(
+              `/api/replay-candles?symbol=${sym}&interval=${INTERVAL_MAP[interval]}` +
+                `&count=${CHUNK_BARS}&anchor=${anchor}${tdParam}${dukParam}`
+            );
+            data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+            if (!data.error) break;
+            log.rounds.push(`${round}.${attempt + 1}:رفض`);
+          }
+          if (cancelled) { log.state = `ملغى بجولة ${round}`; return; }
+          if (data.error) {
+            log.state = `وقف بعد ${RETRY_WAITS.length + 1} محاولات: ${String(data.error).slice(0, 80)}`;
+            return;
+          }
+          const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
+          if (older.length < 1) {
+            log.rounds.push(`${round}:صفر أقدم (رجع ${data.candles?.length || 0})`);
+            log.state = "وقف: وصلنا قاع الأرشيف";
+            return;
+          }
+          oldest = older[0].time;
+          log.gained += older.length;
+          log.oldestNow = new Date(oldest * 1000).toISOString().slice(0, 10);
+          log.rounds.push(`${round}:+${older.length}`);
+
+          setAllCandles((prev) => {
+            if (!prev.length) return prev;
+            const merged = mergeCandles(older, prev);
+            const added = merged.length - prev.length;
+            total = merged.length;
+            /* ⚠️ الفهارس انزاحت — نقطة الكشف لازم تنزاح معها. */
+            if (added > 0) setRevealCount((rc) => rc + added);
+            return merged;
+          });
+          if (older.length < MIN_GAIN) { log.state = `وقف: ربح جولة ${older.length} < ${MIN_GAIN}`; return; }
+        } catch (e) {
+          log.rounds.push(`${round}:رمية`);
+          log.state = `وقف برمية: ${(e?.message || e).toString().slice(0, 80)}`;
+          return;
+        }
+      }
+      if (!cancelled) log.state = `خلص ${ROUNDS} جولة`;
+    })();
+
+    return () => {
+      cancelled = true;
+      if (deepenedForRef.current === seriesKey) deepenedForRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetValue, interval, mode, randomChart, allCandles.length > 0]);
+
   /* ===== تسخين هادي لباقي الفريمات =====
      ⚠️ المشكلة المبلَّغة: «في بطء بالتنقل بالفريمات». مقيسة على SPX500:
 
