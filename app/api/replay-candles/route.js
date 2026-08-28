@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchYahooCandles } from "@/lib/yahoo-candles";
 import { fetchTwelveDataCandles } from "@/lib/twelvedata-candles";
 import { fetchDukascopyCandles } from "@/lib/dukascopy-candles";
-import { readRange, writeRange } from "@/lib/candle-store";
+import { readRange, writeRange, contiguousAround, bucketOf, BUCKET_BARS } from "@/lib/candle-store";
 
 export const dynamic = "force-dynamic";
 // دوكاسكوبي بتنزّل وتفكّ ملفات أرشيف حقيقية (مش JSON فوري)، فأول طلب لمدى
@@ -188,7 +188,24 @@ export async function GET(req) {
     try {
       const hit = await readRange(storeKey, interval, secPerBar, wantFrom, wantTo);
       storeHit = hit;
-      if (hit.candles.length >= 2 && hit.have.size >= hit.want.length) {
+      /* ═══ التغطية الجزئية بتنفع — لو متصلة حوالي المرساة ═══
+         🔴 بلاغه: «تبديل الفريمات صار كثير بطيء». السبب إنّ المخزن كان
+         بيخدم **بس** لو غطّى النافذة كاملة؛ وأي نقص بينزل للمزوّد فبينتظر
+         المستخدم لحد ١٢ ثانية — حتى لو المخزن عنده تسعين بالمية.
+
+         الحل: نخدم أطول سلسلة **متصلة** بتحوي نقطة القص. متصلة = بلا ثقوب،
+         والباقي بيجي بالتعميق بالخلفية.
+         ⚠️ الاتصال شرط مش تفصيل: دلاء متفرقة بتعطي شارتاً فيه ثقب، والمستخدم
+            بيقرا حركة سعر ما صارت. */
+      const runAroundAnchor =
+        hit.candles.length >= 2 ? contiguousAround(hit.have, bucketOf(anchor, secPerBar)) : null;
+      if (runAroundAnchor) {
+        const span = secPerBar * BUCKET_BARS;
+        const runFrom = runAroundAnchor.from * span;
+        const runTo = (runAroundAnchor.to + 1) * span;
+        hit.candles = hit.candles.filter((c) => c.time >= runFrom && c.time < runTo);
+      }
+      if (runAroundAnchor && hit.candles.length >= 2) {
         return NextResponse.json(
           {
             candles: normalizeOhlc(hit.candles).slice(-wanted),
