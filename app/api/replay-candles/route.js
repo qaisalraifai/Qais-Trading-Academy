@@ -228,6 +228,12 @@ export async function GET(req) {
           provider: "dukascopy",
           usedFallback: false,
           providerErrors: null,
+          /* حالة المخزن على كل رد بمرساة: hit · miss · error · off.
+             ⚠️ `error` بتعني الجدول مش موجود أو مش مقروء — وبلا هالتمييز ما
+             في فرق ظاهر بين «مخزن فاضي» و«مخزن مش شغّال»، وهاد بيخلّي
+             التشخيص تخميناً. */
+          store: storeHit ? storeHit.status : null,
+          storeDetail: storeHit?.detail || null,
         },
         /* ══════════════════════════════════════════════════════════════
            🔴 **الشموع التاريخية ما بتتغيّر — وكنا نسأل الأرشيف كل مرة.**
@@ -326,6 +332,8 @@ export async function GET(req) {
           provider: "dukascopy",
           anchored: true,
           providerErrors: { dukascopy: dukError },
+          store: storeHit ? storeHit.status : null,
+          storeDetail: storeHit?.detail || null,
         },
         { status: 502 }
       );
