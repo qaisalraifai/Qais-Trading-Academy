@@ -5171,7 +5171,7 @@ export default function ReplayClient({ userId }) {
         if (cached?.candles?.length && mode === "live") {
           /* شارت شغّال بالحال — الجلب تحت بيكمّله لما يوصل. */
           setAllCandles(cached.candles);
-          loadedSeriesRef.current = { asset: assetValue, interval };
+          markSeriesLoaded();
           setRevealCount(cached.candles.length);
           setLoading(false);
           renderedFromCache = true;
@@ -5195,7 +5195,7 @@ export default function ReplayClient({ userId }) {
              بتنحسب بالوقت مش بالفهرس، فحتى لو الدمج تحت أضاف تاريخاً أقدم
              وزحزح الفهارس، الشمعة المكشوفة بتضل **هي هي**. */
           setAllCandles(cc);
-          loadedSeriesRef.current = { asset: assetValue, interval };
+          markSeriesLoaded();
           renderedFromCache = true;
           const rc = pickTrainingRevealCount(cc);
           expectedRevealRef.current = rc;
@@ -5320,7 +5320,7 @@ export default function ReplayClient({ userId }) {
           if (fast.length) {
             fastStage = fast;
             setAllCandles(fast);
-            loadedSeriesRef.current = { asset: assetValue, interval };
+            markSeriesLoaded();
             if (mode === "training") {
               const rcFast = pickTrainingRevealCount(fast);
               expectedRevealRef.current = rcFast;
@@ -5402,7 +5402,7 @@ export default function ReplayClient({ userId }) {
       setUsedFuturesApprox(false);
 
       setAllCandles(candles);
-      loadedSeriesRef.current = { asset: assetValue, interval };
+      markSeriesLoaded();
       // وصلت بيانات حقيقية (مباشر أو تدريب) - أي "رجوع لمكان توقف" قيد التنفيذ
       // خلص فعلياً هون (pickTrainingRevealCount تحت رح تستخدم نقطة التوقف
       // الصح المحفوظة بـ replayStateRef.current)، فما في داعي شبكة الأمان تفرضها
@@ -5467,6 +5467,16 @@ export default function ReplayClient({ userId }) {
      ═══════════════════════════════════════════════════════════════════════════ */
   const deepenLogRef = useRef({ state: "لسا ما بلّش", rounds: [], gained: 0 });
   const deepenedForRef = useRef(null);
+
+  /* إشارة «خلص تحميل سلسلة» — بتتحرّك مع كل تحميل مكتمل وبس.
+     ⚠️ لازمة لأن تبديل الفريم بيغيّر `interval` **فوراً** بينما `allCandles`
+        بتضل مصفوفة الفريم القديم لحد ما توصل الجلبة. بلا هالإشارة التعميق
+        بيشتغل بينهن على المصفوفة الغلط. */
+  const [seriesReadyTick, setSeriesReadyTick] = useState(0);
+  function markSeriesLoaded() {
+    loadedSeriesRef.current = { asset: assetValue, interval };
+    setSeriesReadyTick((t) => t + 1);
+  }
 
   /* ═══════════════════════════════════════════════════════════════════════════
      تحميل حسب النظر — كل فريم بيوصل ٢٠٠٣ بلا ما تتقل المنصّة.
@@ -5599,6 +5609,30 @@ export default function ReplayClient({ userId }) {
     const seriesKey = `${assetValue}|${interval}|${mode}`;
     if (deepenedForRef.current === seriesKey) {
       log.state = "منفَّذ سابقاً لهالسلسلة";
+      return;
+    }
+    /* ═══════════════════════════════════════════════════════════════════
+       🔴 **سباق مقيس: التعميق كان يشتغل على مصفوفة الفريم السابق.**
+       -------------------------------------------------------------------
+       تبديل الفريم بيغيّر `interval` فوراً، بس `allCandles` بتضل مصفوفة
+       الفريم القديم لحد ما توصل الجلبة. فالتأثير كان يشتغل بينهن ويقرا
+       أقدم شمعة من المصفوفة الغلط.
+
+       مقيس على الإنتاج (ذهب · تبديل من اليومي لـ٤ ساعات):
+
+           series "XAUUSD|4h|training" · startedFrom "2003-01-02"
+           bars 2015 · first "2008-12-21"
+
+       شاف ٢٠٠٣ (مصفوفة اليومي)، قرّر «وصلنا قاع الأرشيف» ووقف — وبعدين
+       إجت بيانات ٤ ساعات من ٢٠٠٨. وما رجع اشتغل أبداً لأن الحارس انخزّن.
+
+       فلازم نتأكد إنّ المصفوفة **إلها** قبل ما نبلّش. والتبعية صارت
+       `allCandles` نفسها (مش `length > 0`) عشان يعيد المحاولة لما توصل
+       — والحارس فوق بيمنع التكرار، فما في حلقة.
+       ═══════════════════════════════════════════════════════════════════ */
+    const ls = loadedSeriesRef.current;
+    if (ls?.asset !== assetValue || ls?.interval !== interval) {
+      log.state = "بانتظار تحميل السلسلة";
       return;
     }
     const assetInfo = getAssetByValue(assetValue);
@@ -5739,7 +5773,12 @@ export default function ReplayClient({ userId }) {
       if (deepenedForRef.current === seriesKey) deepenedForRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assetValue, interval, mode, randomChart, allCandles.length > 0]);
+    /* ⚠️ **التبعية `seriesReadyTick` مش `allCandles`.** الاتنان بيحلّوا
+       السباق، بس `allCandles` بتتغيّر مع **كل ضم** — فالتنظيف بيلغي الجولة
+       الجارية وبيمسح الحارس، والتأثير بيرجع يبلّش: حلقة بتضم وبتلغي حالها.
+       الإشارة بتتحرّك **بس** لما يخلص تحميل سلسلة فعلي. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetValue, interval, mode, randomChart, seriesReadyTick]);
 
   /* ===== تسخين هادي لباقي الفريمات =====
      ⚠️ المشكلة المبلَّغة: «في بطء بالتنقل بالفريمات». مقيسة على SPX500:
@@ -7052,11 +7091,34 @@ export default function ReplayClient({ userId }) {
             // المستخدم يبدّل وبعدين يوصله توست "أقرب نقطة متاحة". لو الأصل
             // الحالي عنده رمز Dukascopy، منستخدم عمق موسّع (rangeDaysFor) بدل
             // حد يوهو الضيق، لأنه أداة الريبلاي رح تجرب Dukascopy أول شي.
-            const cutAgeDays = replayStateRef.current.isActive && replayCutTs
-              ? (Date.now() / 1000 - replayCutTs) / 86400
-              : null;
+            /* ═══════════════════════════════════════════════════════════
+               🔴 **البوابة كانت تقفل الفريمات على رقم مخترع.**
+               -----------------------------------------------------------
+               بلاغه: «معلّق عاليومي، مش قابل يرجع أربع ساعات».
+
+               السبب: `DUKASCOPY_RANGE_DAYS = 8000` يوم — **عدّاد متدحرج من
+               اليوم**، يعني السقف بيتحرّك للأمام كل يوم. اليوم ٢٠٢٦-٠٨-٢٨
+               ناقص ٨٠٠٠ يوم = ٢٠٠٤-١٠. فأي قص قبل هالتاريخ بيقفل **كل
+               الفريمات**، اليومي معهن. وهو كان قاصص ٢٠٠٤ فانحصر.
+
+               والرقم ٨٠٠٠ ما إله مرجع أصلاً — تقدير لعمر الأرشيف. والقياس
+               اليوم أعطى الرقم الحقيقي: أرشيف Dukascopy بيبلّش **٢٠٠٣-٠١**
+               (مثبت على ذهب وناسداك، وعلى اليومي و٤ ساعات وفريم الدقيقة —
+               كلهن بيرجّعوا فاضي قبله بلا خطأ، ومن ٢٠١٢/٢٠٠٣ بيرجّعوا شموع).
+
+               فصار الشرط **تاريخاً ثابتاً** بدل عدّاد متدحرج: القص مسموح لو
+               بعد بداية الأرشيف. ما بيصير فريم ينقفل لمجرد إنّ الوقت مشي.
+
+               ⚠️ حد يوهو الضيّق بيضل مطبَّقاً للأصول **بلا** رمز Dukascopy —
+                  هناك ٥٨ يوم لربع الساعة حقيقي فعلاً.
+               ═══════════════════════════════════════════════════════════ */
             const hasDuk = !!getAssetByValue(assetValue)?.dukascopy;
-            const unreachable = cutAgeDays != null && cutAgeDays > rangeDaysFor(o.value, hasDuk);
+            const cutTs = replayStateRef.current.isActive && replayCutTs ? replayCutTs : null;
+            const DUKASCOPY_EARLIEST_TS = Date.UTC(2003, 0, 1) / 1000;
+            const cutAgeDays = cutTs != null ? (Date.now() / 1000 - cutTs) / 86400 : null;
+            const unreachable = hasDuk
+              ? cutTs != null && cutTs < DUKASCOPY_EARLIEST_TS
+              : cutAgeDays != null && cutAgeDays > rangeDaysFor(o.value, false);
             return (
               <option
                 key={o.value}
