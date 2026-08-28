@@ -1081,7 +1081,14 @@ export default function ReplayClient({
   chromeSlots = null,
   chromeActive = true,
   onActivate = null,
+  syncBus = null,
+  syncTime = false,
 }) {
+  /* ⚠️ **اللوحة النشطة هي القائدة** — منها بينتشر موضع القص وبس. مساحة العمل
+     بتمرّر `chromeActive` أصلاً لتحديد مين بيملك الشريط المشترك، ونفس
+     التمييز بيخدم هون: قائد واحد، والباقي عارضات. */
+  const isSyncLeader = !!syncBus && syncTime && chromeActive;
+  const isSyncFollower = !!syncBus && syncTime && !chromeActive;
   /* مفتاح تخزين خاص باللوحة. `"main"` بيرجّع المفتاح كما هو — شرط أساسي
      عشان ما تضيع جلسات المستخدمين القائمة. */
   const paneKey = (base) => (paneId === "main" ? base : `${base}__${paneId}`);
@@ -3956,6 +3963,25 @@ export default function ReplayClient({
             padBottom = parseFloat(cs.paddingBottom) || 0;
           }
           totalHeight = Math.max(320, window.innerHeight - headerH - headerMarginBottom - padTop - padBottom - 4);
+        } else if (fillContainer && chartWrapperRef.current) {
+          /* ═══════════════════════════════════════════════════════════════
+             🔴 **بوضع الشارتات المتعددة القياس من النافذة بيكسر الشبكة.**
+             ---------------------------------------------------------------
+             الفرع تحت بيحسب `window.innerHeight - rect.top` — منطقي لشارت
+             واحد بيمتد لآخر الصفحة، وغلط تماماً لخليّة بشبكة: اللوحة
+             العلوية بتاخد كل المسافة لآخر النافذة، والسفلية `rect.top`
+             تبعها أصلاً تحت حافة النافذة فبتقع على الأرضية `420`.
+             مقيس بالتشغيل على ٢×٢ بنافذة ١٠٠٠px: الشبكة طلعت **٢١٢٥px**
+             (٨٦٤ + ٤٢٠ لكل صف) فصار للصفحة تمرير عمودي بدل ما تملا الشاشة.
+
+             هون بنقيس **الحاوية نفسها** — وهي أصلاً محدودة بخليّة الشبكة —
+             فكل لوحة بتاخد حصّتها بالضبط. والأرضية أوطى لأن ربع شاشة
+             شرعي، بعكس الشارت المفرد.
+             ═══════════════════════════════════════════════════════════════ */
+          const cs = window.getComputedStyle(chartWrapperRef.current);
+          const padTop = parseFloat(cs.paddingTop) || 0;
+          const padBottom = parseFloat(cs.paddingBottom) || 0;
+          totalHeight = Math.max(160, chartWrapperRef.current.clientHeight - padTop - padBottom);
         } else if (chartWrapperRef.current) {
           // نفس فكرة الشاشة الكاملة، بس هون منحسب المساحة المتاحة لغاية آخر الصفحة
           // (مش رقم ثابت 480px) عشان الشارت ياخد كل المساحة المتبقية بالشاشة
@@ -3990,6 +4016,15 @@ export default function ReplayClient({
         scheduleDraw();
       };
       window.addEventListener("resize", handleResize);
+      /* ⚠️ حدث `resize` بينطلق على **النافذة** وبس — وتبديل التخطيط بيغيّر
+         حجم الخليّة بلا ما تتغيّر النافذة. بلا مراقب، الشارت بيضل على مقاس
+         التخطيط السابق لحد أول تحريك للنافذة. `ResizeObserver` بيمسك
+         التبديل وكمان فتح/قفل الشريط الجانبي. */
+      let paneRO = null;
+      if (fillContainer && typeof ResizeObserver !== "undefined" && chartWrapperRef.current) {
+        paneRO = new ResizeObserver(() => handleResize());
+        paneRO.observe(chartWrapperRef.current);
+      }
       const handleFsChange = () => {
         setIsFullscreen(!!document.fullscreenElement);
         setTimeout(handleResize, 50);
@@ -4519,6 +4554,7 @@ export default function ReplayClient({
 
       chart.__cleanup = () => {
         window.removeEventListener("resize", handleResize);
+        paneRO?.disconnect();
         document.removeEventListener("fullscreenchange", handleFsChange);
         containerEl?.removeEventListener("mouseleave", onContainerMouseLeaveClearHover);
         overlayEl?.removeEventListener("wheel", onOverlayWheel);
@@ -6281,6 +6317,12 @@ export default function ReplayClient({
      ═══════════════════════════════════════════════════════════════════════════ */
   useEffect(() => {
     if (!isPlaying) return;
+    /* ⚠️ **العارضة ما بتشغّل حلقتها.** طلبه: «لا تنشئ Replay Engine منفصل
+       لكل Chart… الأفضل Shared Replay Controller + Multiple Chart Views».
+       أربع حلقات rAF مستقلة بتنحرف عن بعضها خلال ثواني حتى لو بلّشوا سوا،
+       لأن كل وحدة بتلاقي شموعها بطول مختلف وبتوقف بحدود مختلفة. فالقائدة
+       وحدها بتخطي، وبتنشر وقتها، والباقي بتلحق فيه. */
+    if (isSyncFollower) return;
     const stepMs = Math.max(30, 1000 / (speed || 1));
     let rafId = 0;
     let last = performance.now();
@@ -6322,7 +6364,47 @@ export default function ReplayClient({
 
     rafId = requestAnimationFrame(tick);
     return () => { stop = true; cancelAnimationFrame(rafId); };
-  }, [isPlaying, speed, allCandles.length]);
+  }, [isPlaying, speed, allCandles.length, isSyncFollower]);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     مزامنة موضع القص بين اللوحات — **بالوقت مش بالفهرس**.
+     ---------------------------------------------------------------------------
+     `revealCount` فهرس بمصفوفة اللوحة نفسها، وكل لوحة إلها رمزها وفريمها
+     وعمقها التاريخي المستقل — فالفهرس ٤٠٠ بلوحة ما بيقابل الفهرس ٤٠٠ بلوحة
+     تانية إطلاقاً. الوقت هو الوحيد المشترك بينهن.
+
+     ⚠️ **بتشتغل على اللوحات اللي بوضع التدريب وبس.** لوحة بالوضع المباشر
+     ما إلها «موضع قص» تنزامن عليه، وتحويلها للتدريب من برّا بيمرق بمسار
+     `finalizeCut` كامل (بيوقف الاستطلاع الحي وبيكتب منطقة قص بالتخزين) —
+     يعني بيعمل للمستخدم قصّة ما طلبها. فبتنتجاهل بهدوء، وهي تبان بمكانها.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  useEffect(() => {
+    if (!isSyncLeader || mode !== "training") return;
+    const list = allCandles;
+    const c = list[Math.min(revealCount, list.length) - 1];
+    if (c) syncBus.publish(c.time);
+  }, [isSyncLeader, syncBus, mode, revealCount, allCandles]);
+
+  useEffect(() => {
+    if (!isSyncFollower) return;
+    const apply = (t) => {
+      if (!Number.isFinite(t)) return;
+      if (modeRef.current !== "training") return;
+      const arr = allCandlesRef.current;
+      if (!arr || !arr.length) return;
+      /* بحث ثنائي: آخر شمعة وقتها ≤ وقت القائدة. */
+      let lo = 0, hi = arr.length - 1, found = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (arr[mid].time <= t) { found = mid; lo = mid + 1; } else { hi = mid - 1; }
+      }
+      if (found < 0) return;
+      setRevealCount((cur) => (cur === found + 1 ? cur : found + 1));
+    };
+    const off = syncBus.subscribe(apply);
+    apply(syncBus.peek());
+    return off;
+  }, [isSyncFollower, syncBus]);
 
   /* ===== حفظ جلسة القص/التدريب =====
      ⚠️ **كانت بتنكتب بمكان واحد بس: لحظة الضغط على «مباشر».**
@@ -9172,6 +9254,11 @@ export default function ReplayClient({
           position: "relative",
           display: "flex",
           flexDirection: "column",
+          /* بوضع الشبكة الحاوية لازم تتقيّد بالخليّة، وإلا `clientHeight`
+             تبعها بيساوي محتواها فالقياس فوق بيدور بحاله. */
+          ...(fillContainer && !isFullscreen
+            ? { flex: 1, minHeight: 0, padding: "0.45rem", borderRadius: 4 }
+            : null),
         }}
       >
         {isFullscreen && (
@@ -9195,7 +9282,11 @@ export default function ReplayClient({
             بالـ DOM ثم الشريط) مقصود: الصفحة كلها RTL، فبهيك ترتيب الشريط بيضل
             ثابت عالشمال دايماً من غير ما نضطر نقلب اتجاه أي نص عربي جوا الشارت. */}
         <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0, gap: 8 }}>
-          {watchlistPanelOpen && (
+          {/* ⚠️ بوضع الشارتات المتعددة **اللوحة النشطة وحدها** بتعرضها.
+              مقيس بالتشغيل: كانت تنرسم بكل لوحة، فتطلع نسختان متطابقتان
+              وكل وحدة بتاكل عرضاً من شارتها — وهاد بالضبط الازدحام اللي
+              منعه («لا تجعل العناصر تتداخل أو تسبب ازدحاماً»). */}
+          {watchlistPanelOpen && chromeActive && (
             <WatchlistPanel
               activeSymbol={assetValue}
               onSelectSymbol={(v) => { setRandomChart(false); setAssetValue(v); }}
@@ -9257,7 +9348,11 @@ export default function ReplayClient({
             </div>
 
           </div>
-          {allCandles.length > 0 && renderDrawToolbar()}
+          {/* ⚠️ بوضع الشارتات المتعددة أدوات الرسم بتنتقل لفتحة مشتركة —
+              وإلا بتتكرر مع كل شارت (٤ أعمدة أدوات بتخطيط الأربعة). */}
+          {allCandles.length > 0 && (chromeSlots
+            ? (chromeActive && chromeSlots.side ? createPortal(renderDrawToolbar(), chromeSlots.side) : null)
+            : renderDrawToolbar())}
         </div>
         {renderSettingsDialog()}
         {renderCutChoiceDialog()}
@@ -9280,7 +9375,9 @@ export default function ReplayClient({
         )}
       </div>
 
-      {!isFullscreen && renderBottomBar()}
+      {chromeSlots
+        ? (chromeActive && chromeSlots.bottom ? createPortal(renderBottomBar(), chromeSlots.bottom) : null)
+        : (!isFullscreen && renderBottomBar())}
 
       {openToolGroup !== null && (
         <div

@@ -81,7 +81,6 @@ export default function ReplayWorkspace({ userId }) {
       const s = localStorage.getItem(SYNC_KEY);
       if (s) setSync((p) => ({ ...p, ...JSON.parse(s) }));
     } catch { /* تخزين محلي معطّل — الافتراضي بيكفي */ }
-    hydrated.current = true;
   }, []);
   useEffect(() => {
     if (!hydrated.current) return;
@@ -91,32 +90,165 @@ export default function ReplayWorkspace({ userId }) {
     if (!hydrated.current) return;
     try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch {}
   }, [sync]);
+  /* ═══════════════════════════════════════════════════════════════════════
+     🔴 **الحارس كان بينرفع بدري فبيمسح التخطيط المحفوظ.**
+     -----------------------------------------------------------------------
+     كان `hydrated.current = true` بآخر تأثير القراءة. وتأثيرات React بتنفّذ
+     **بترتيب التصريح على نفس التركيبة**: القراءة بتجدول `setLayout("four")`
+     بس ما بتطبّقها فوراً، وبعدها تأثيرا الحفظ بينفّذوا و`hydrated` صار
+     `true` بينما `layout` لسا القيمة الافتراضية — فبيكتبوا `"single"` فوق
+     `"four"` المحفوظ.
+     مقيس بالتشغيل: بدّلت لأربعة شارتات، عملت تحديث، رجع شارت واحد
+     والمفتاح بالتخزين صار `"single"`.
 
-  /* الحد حسب العرض الفعلي — بلا تخمين نقاط توقّف. */
+     رفع الحارس بتأثير **مصرَّح بعد** تأثيري الحفظ بيصلحها: على التركيبة
+     الأولى الحفظ بيتخطّى (الحارس لسا `false`)، وبعدها بيرتفع؛ ولما تنطبّق
+     القيمة المقروءة بتصير تركيبة تانية فبيتحفظ الصح.
+     ═══════════════════════════════════════════════════════════════════════ */
+  useEffect(() => { hydrated.current = true; }, []);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     الحد حسب عرض **الحاوية** — مش نافذة المتصفّح.
+     -----------------------------------------------------------------------
+     🔴 مقيس بالتشغيل: التخطيط `cols2` والعرض ٩٠٤ بكسل، ومع هيك بترسم
+     **خلية وحدة**. السبب: القياس كان بينعمل مرة عند التركيب على
+     `window.innerWidth`؛ ولو كانت اللوحة لسا ما استقرّت وقتها بيطلع الحد
+     ١، وما في حدث `resize` بعدها ليصحّحه — فبيعلق على شارت واحد بلا سبب
+     ظاهر للمستخدم.
+
+     `ResizeObserver` بيقيس **الحاوية** وبينده مع كل تغيّر، فبيمسك الاستقرار
+     المتأخّر — وكمان تغيّر عرض اللوحة (فتح/قفل الشريط الجانبي) وهو ما
+     بيطلق `resize` على النافذة أصلاً.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const rootRef = useRef(null);
   useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const apply = (w) => setMaxPanes(w < 900 ? 1 : w < 1400 ? 2 : 4);
+    const measure = () => apply(el.clientWidth || window.innerWidth);
+    measure();
+    /* ⚠️ **مصدران للقياس عمداً.** `ResizeObserver` بيمسك تغيّر الحاوية اللي
+       ما بيطلق حدث نافذة (فتح/قفل الشريط الجانبي)، بس تسليمه مربوط بدورة
+       الرسم — بصفحة ما بترسم (تبويب بالخلفية، أو لوحة معاينة مش معروضة)
+       ما بينده أبداً، ولا حتى النداء الأولي. مقيس: راقبت العنصر بمراقب
+       جديد وما وصل ولا نداء بـ٩٠٠ms، والحاوية كانت فعلاً ٨١٠px.
+       فلو اعتمدنا عليه لحاله، تصغير الشاشة ممكن يضل يعرض أربع شارتات على
+       عرض ما بيتحمّل وحدة. حدث النافذة بيغطّي الحالة الشائعة. */
+    window.addEventListener("resize", measure);
+    let ro = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver((entries) => {
+        const w = entries[0]?.contentRect?.width;
+        if (w) apply(w);
+      });
+      ro.observe(el);
+    }
+    return () => { window.removeEventListener("resize", measure); ro?.disconnect(); };
+  }, []);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     ارتفاع مساحة العمل — لازم ينقاس، ما بينورث.
+     -----------------------------------------------------------------------
+     `AppShell` بيلفّ الصفحات بـ`<div className="animate-fade-in">` وهاد
+     ارتفاعه تلقائي، فـ`height:100%` هون بينحل لـ`auto` والشبكة بتتمدّد
+     بطول محتواها بدل ما تملا الشاشة.
+
+     ⚠️ **ما لمست `AppShell`** — كل صفحات المنصّة بتمرق منه، وتغيير ارتفاعه
+     بيمسّها كلها. القياس هون محلي ومحصور بهالصفحة.
+
+     الارتفاع = من أعلى مساحة العمل لآخر النافذة. بينقاس بعد كل رسم لأن
+     أعلاها بيتحرّك مع الهيدر والشريط العلوي.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const [fitH, setFitH] = useState(0);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
     const measure = () => {
-      const w = window.innerWidth;
-      setMaxPanes(w < 900 ? 1 : w < 1400 ? 2 : 4);
+      const top = el.getBoundingClientRect().top;
+      setFitH(Math.max(360, Math.round(window.innerHeight - top - 8)));
     };
     measure();
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
+    /* تبديل التخطيط بيحرّك المحتوى بلا حدث نافذة — إطار واحد بيكفي ليستقر. */
+    const t = requestAnimationFrame(measure);
+    return () => { window.removeEventListener("resize", measure); cancelAnimationFrame(t); };
+  }, [layout, maxPanes]);
 
   /* ⚠️ **الفتحات لازم تكون مراجع ثابتة الهوية.**
      أول تنفيذ استعمل `ref={(n) => setSlot("top", n)}` — دالة جديدة كل رندر،
      فReact بينده القديمة بـnull والجديدة بالعنصر مع **كل** رندر، والحالة
      بتتغيّر، فبيرندر من جديد: حلقة لا نهائية (React #185) بتجمّد الصفحة.
      `useCallback` بمصفوفة تبعيات فاضية بتثبّت الهوية. */
-  const [slots, setSlots] = useState({ top: null });
+  const [slots, setSlots] = useState({ top: null, side: null, bottom: null });
   const setTopSlot = useCallback((node) => {
     setSlots((p) => (p.top === node ? p : { ...p, top: node }));
   }, []);
+  const setSideSlot = useCallback((node) => {
+    setSlots((p) => (p.side === node ? p : { ...p, side: node }));
+  }, []);
+  const setBottomSlot = useCallback((node) => {
+    setSlots((p) => (p.bottom === node ? p : { ...p, bottom: node }));
+  }, []);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     المتحكّم المشترك بالقص — ناقل رقيق، مش محرّك تاني.
+     -----------------------------------------------------------------------
+     طلبه: «لا تنشئ Replay Engine منفصل لكل Chart… الأفضل أن يكون هناك
+     Shared Replay Controller + Multiple Chart Views».
+
+     المحرّك الحقيقي بيضل جوّا `ReplayClient` — نقله لبرّا يعني تفكيك ٩٠
+     `useState` و٦٥ `useEffect`، وهو الـrefactor الكبير الممنوع. اللي انبنى
+     هون هو **التحكّم** المشترك: اللوحة النشطة وحدها بتخطي وبتنشر وقتها،
+     والباقي بتلحق. النتيجة اللي بيشوفها المستخدم وحدة — زر تشغيل واحد
+     بيحرّك كل الشارتات — بلا ما نلمس المحرّك.
+
+     ⚠️ الناقل بـ`useRef` مش بحالة: النشر بيصير مع كل شمعة أثناء التشغيل،
+     ولو مرق بحالة كان كل خطوة بترندر مساحة العمل كلها بشارتاتها.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const busRef = useRef(null);
+  if (!busRef.current) {
+    const subs = new Set();
+    let last = null;
+    busRef.current = {
+      publish(t) { last = t; subs.forEach((fn) => { try { fn(t); } catch {} }); },
+      subscribe(fn) { subs.add(fn); return () => subs.delete(fn); },
+      peek() { return last; },
+    };
+  }
 
   const conf = LAYOUTS[layout] || LAYOUTS.single;
   const paneCount = Math.min(conf.panes, maxPanes);
   const multi = paneCount > 1;
   const ids = PANE_IDS.slice(0, paneCount);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     اللوحة اللي انفتحت مرة **بتضل مركّبة** — حتى لما التخطيط يصغّر.
+     -----------------------------------------------------------------------
+     طلبه: «تغيير التخطيط يجب ألا يفقد الرسومات أو موضع الـReplay أو الرمز
+     أو الفريم»، و«لا تعمل إعادة إنشاء لكل الـchart instances عند تغيير
+     التخطيط».
+
+     الرسومات بـ`useRef` جوّا كل نسخة وما بتنحفظ بأي مخزن — فتفكيك اللوحة
+     بيمسحها نهائياً. أربعة → اتنين → أربعة كان بيرجّع C وD **فاضيتين**.
+     فبدل التفكيك بنخفيها بـ`display:none`: النسخة بتضل، والشارت ما
+     بينبنى من جديد، والرسومات ونقطة القص بمكانهن.
+
+     ⚠️ **ما منركّب الأربعة سلفاً.** التركيب بيجيب شموع وبيبني شارت، فأربع
+     نسخ على شارت واحد = أربع أضعاف الشغل بلا ما يطلبها المستخدم. المجموعة
+     بتكبر بس لما يفتح تخطيطاً فعلاً — وما بتصغر.
+
+     ⚠️ اللوحة المخفية `clientHeight` تبعها صفر فبتقع على أرضية الارتفاع؛
+     ومراقب الحجم بيصحّحها لما ترجع تبان. */
+  const [everShown, setEverShown] = useState(() => new Set(["main"]));
+  useEffect(() => {
+    setEverShown((prev) => {
+      if (ids.every((id) => prev.has(id))) return prev;
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return next;
+    });
+  }, [ids.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rendered = PANE_IDS.filter((id) => everShown.has(id));
   /* اللوحة النشطة لازم تكون موجودة فعلاً — بعد التصغير ممكن تختفي. */
   const active = ids.includes(activePane) ? activePane : "main";
 
@@ -138,7 +270,15 @@ export default function ReplayWorkspace({ userId }) {
   }, [menuOpen]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, position: "relative" }}>
+    <div
+      ref={rootRef}
+      style={{
+        display: "flex", flexDirection: "column", minHeight: 0, position: "relative",
+        /* ⚠️ بالوضع المفرد بيضل `100%` بالضبط زي ما كان — صفر تغيير بالسلوك
+           القديم. الارتفاع المقيس بينطبّق **بس** لما تنفتح شبكة. */
+        height: multi && fitH ? fitH : "100%",
+      }}
+    >
       {/* شريط مشترك: اللوحة النشطة بتنقل شريطها لهون بـcreatePortal.
           بالوضع المفرد بيضل فاضياً والشريط بينرسم جوّا الشارت زي ما كان. */}
       {/* ⚠️ الفتحة بترسم **بس** بوضع الشارتات المتعددة. بالوضع المفرد الشريط
@@ -248,26 +388,42 @@ export default function ReplayWorkspace({ userId }) {
         </div>
       )}
 
+      {/* ═════════════════════════════════════════════════════════════════════
+          الهيكل المشترك: شريط علوي واحد · عمود أدوات واحد · شريط سفلي واحد.
+          ---------------------------------------------------------------------
+          من صورته الثانية (ملء الشاشة ٢×٢): الشبكة بالنص، عمود الأدوات
+          على الشمال، والشريط السفلي تحتها — **نسخة وحدة من كل واحد** مش
+          نسخة لكل شارت. اللي بيضل لكل شارت: ترويسته (رمز · فريم · OHLC).
+
+          ⚠️ الترتيب بالـDOM (الشبكة أولاً ثم العمود) **مقصود**: الصفحة RTL
+          فأول عنصر بينحط يمين — وهيك العمود بيستقر شمال بلا ما نقلب اتجاه
+          أي نص عربي جوّاه. نفس الحيلة المستعملة جوّا `ReplayClient`.
+          ═════════════════════════════════════════════════════════════════ */}
+      <div style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0, gap: multi ? 6 : 0 }}>
       <div
         style={{
-          flex: 1, minHeight: 0, display: "grid", gap: multi ? 6 : 0,
+          flex: 1, minWidth: 0, minHeight: 0, display: "grid", gap: multi ? 6 : 0,
           gridTemplateColumns: paneCount === 1 ? "1fr" : conf.cols,
           gridTemplateRows: paneCount === 1 ? "1fr" : conf.rows,
         }}
       >
-        {ids.map((id, i) => {
-          const isActive = id === active;
+        {rendered.map((id) => {
+          const i = ids.indexOf(id);
+          const shown = i !== -1;
+          const isActive = shown && id === active;
           /* تلات شارتات: الأول بياخد العمود كامل. */
-          const span = conf.panes === 3 && i === 0 ? { gridRow: "1 / span 2" } : null;
+          const span = shown && conf.panes === 3 && i === 0 ? { gridRow: "1 / span 2" } : null;
           return (
             <div
               key={id}
               style={{
-                minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column",
+                minWidth: 0, minHeight: 0, flexDirection: "column",
                 position: "relative", borderRadius: 4, ...span,
+                /* مخفية مش مفكوكة — شوف شرح `everShown` فوق. */
+                display: shown ? "flex" : "none",
                 /* ⚠️ `outline` مش `border`: الحدّ بيغيّر مقاس الصندوق فبيقفز
                    الشارت كل ما تتبدّل اللوحة النشطة. */
-                outline: multi ? `1px solid ${isActive ? "#6D4AFF" : "#1C1630"}` : "none",
+                outline: multi && shown ? `1px solid ${isActive ? "#6D4AFF" : "#1C1630"}` : "none",
                 outlineOffset: -1,
                 transition: "outline-color 0.12s ease",
               }}
@@ -275,15 +431,29 @@ export default function ReplayWorkspace({ userId }) {
               <ReplayClient
                 userId={userId}
                 paneId={id}
-                fillContainer={multi}
+                /* اللوحات الإضافية بتضل بوضع «املا الخليّة» حتى وهي مخفية —
+                   وإلا كل رجوع لشارت واحد بيعيد قياسهن على النافذة بلا فايدة. */
+                fillContainer={multi || id !== "main"}
                 chromeSlots={multi ? slots : null}
                 chromeActive={isActive}
                 onActivate={multi ? () => setActivePane(id) : null}
+                syncBus={busRef.current}
+                /* ⚠️ المزامنة **بس** لما يكون في أكتر من لوحة معروضة. بشارت
+                   واحد ما في مع مين تتزامن، وتشغيلها بيخلّي اللوحات المخفية
+                   تلحق موضعاً هي مش معروضة أصلاً. */
+                syncTime={multi && sync.on && sync.time && shown}
               />
             </div>
           );
         })}
       </div>
+        {/* عمود الأدوات المشترك — بيرسم بس بالوضع المتعدّد. عرضه بيجي من
+            الشريط نفسه (٥٢px)، فالفتحة بتتمدّد على ارتفاع الصف وبس. */}
+        {multi && <div ref={setSideSlot} style={{ flex: "0 0 auto", display: "flex", minHeight: 0 }} />}
+      </div>
+
+      {/* الشريط السفلي المشترك — نفس المنطق: نسخة وحدة لكل مساحة العمل. */}
+      {multi && <div ref={setBottomSlot} />}
     </div>
   );
 }
