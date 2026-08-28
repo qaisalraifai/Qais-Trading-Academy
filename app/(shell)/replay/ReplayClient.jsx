@@ -5731,7 +5731,16 @@ export default function ReplayClient({ userId }) {
     const GAP_MAX = 30000;
     let gap = GAP_MIN;
     const MIN_GAIN = 20;
-    const ROUNDS = 25;
+    /* ٤ ساعات بده **١٦ جولة** ليوصل ٢٠٠٣ من قصّة ٢٠٠٨ (٨٠٠ شمعة = ١٣٣ يوم
+       للجولة، والمسافة ٢٠٨٠ يوم). ٢٥ كانت ضيّقة: أي جولة بترجع ناقصة بتاكل
+       من الرصيد فما بنوصل. والجولات بالخلفية ورخيصة — فاللي بيوقف التعميق
+       لازم يكون **قاع الأرشيف أو السقف**، مش عدّاد اخترعته. */
+    const ROUNDS = 60;
+    /* حارس ضد اللف الفاضي: ثمان جولات متتالية بلا أي ربح = المصدر فعلاً ما
+       بيعطي. متساهل عمداً — الفشل العابر شائع، والوقوف المبكّر هو اللي منع
+       الوصول لـ٢٠٠٣ أصلاً. */
+    const NO_GAIN_LIMIT = 8;
+    let noGainStreak = 0;
 
     let cancelled = false;
     (async () => {
@@ -5796,17 +5805,43 @@ export default function ReplayClient({ userId }) {
             log.rounds.push(`${round}.${attempt + 1}:رفض`);
           }
           if (cancelled) { log.state = `ملغى بجولة ${round}`; return; }
+          /* ═══════════════════════════════════════════════════════════════
+             🔴 **ولا فشل عابر بيوقف التعميق — القاع والسقف وبس.**
+             ---------------------------------------------------------------
+             بلاغه: «ما عم نوصل لـ٢٠٠٣». السبب إنّ الحلقة كان فيها **تلات
+             مخارج نهائية على أعطال عابرة**: رفض بعد ٣ محاولات · رد بلا شموع
+             أقدم · رمية شبكة. أي واحد منهن بيقفل السلسلة **للأبد** وهي لسا
+             بعيدة سنين عن القاع.
+
+             وكلهن عابرة بالقياس: الأرشيف بيرفض نفس النافذة مرة وبيعطيها
+             بعدين (٢٠٠٦ ✗ · ٢٠١٤ ✓ · ٢٠٢٠ ✗ · ٢٠٢٦ ✓)، والرد الفاضي بيجي
+             من تقليص مدى أو فجوة سوق.
+
+             صاروا **يبطّئوا بس**: بنوسّع الفاصل وبنكمّل بنفس المرساة. واللي
+             بيوقف فعلاً: قاع الأرشيف (٢٠٠٣) · السقف · إلغاء · أو ثمان جولات
+             متتالية بلا أي ربح (حارس ضد اللف الفاضي).
+             ═══════════════════════════════════════════════════════════════ */
           if (data.error) {
-            log.state = `وقف بعد ${RETRY_WAITS.length + 1} محاولات: ${String(data.error).slice(0, 80)}`;
-            return;
+            gap = Math.min(GAP_MAX, Math.round(gap * 3));
+            if (++noGainStreak >= NO_GAIN_LIMIT) {
+              log.state = `وقف: ${NO_GAIN_LIMIT} جولات بلا ربح — ${String(data.error).slice(0, 60)}`;
+              return;
+            }
+            log.state = `رفض ×${noGainStreak} — بيكمّل بفاصل ${Math.round(gap / 1000)}ث`;
+            continue;
           }
           const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
           if (older.length < 1) {
             log.rounds.push(`${round}:صفر أقدم (رجع ${data.candles?.length || 0})`);
-            log.state = "وقف: وصلنا قاع الأرشيف";
-            return;
+            gap = Math.min(GAP_MAX, Math.round(gap * 2));
+            if (++noGainStreak >= NO_GAIN_LIMIT) {
+              log.state = `وقف: ${NO_GAIN_LIMIT} جولات بلا ربح`;
+              return;
+            }
+            continue;
           }
           /* نجاح = الحصة مرتاحة → نتسارع تدريجياً بدل ما نضل نبطّئ. */
+          noGainStreak = 0;
           gap = Math.max(GAP_MIN, Math.round(gap * 0.6));
           oldest = older[0].time;
           log.gained += older.length;
@@ -5822,11 +5857,22 @@ export default function ReplayClient({ userId }) {
             if (added > 0) setRevealCount((rc) => rc + added);
             return merged;
           });
-          if (older.length < MIN_GAIN) { log.state = `وقف: ربح جولة ${older.length} < ${MIN_GAIN}`; return; }
+          /* ⚠️ **الربح الصغير ما بيوقف التعميق** — كان بيوقفه، وهاد كان
+             بيمنع الوصول لـ٢٠٠٣.
+             السبب: الخادم بيقلّص المدى عند الضغط فبترجع الجولة ١٥ شمعة بدل
+             ٨٠٠ — وهاد **ضغط عابر مش نهاية أرشيف**. الوقوف عنده بيقفل
+             السلسلة نهائياً وهي لسا بعيدة سنين عن القاع.
+             الإشارة الوحيدة الموثوقة هي قاع الأرشيف (مفحوص فوق) والسقف.
+             الربح الصغير صار **يبطّئ** بس: بنوسّع الفاصل ونكمّل. */
+          if (older.length < MIN_GAIN) gap = Math.min(GAP_MAX, Math.round(gap * 2));
         } catch (e) {
+          /* رمية شبكة عابرة كمان — بتبطّئ ما بتوقف. */
           log.rounds.push(`${round}:رمية`);
-          log.state = `وقف برمية: ${(e?.message || e).toString().slice(0, 80)}`;
-          return;
+          gap = Math.min(GAP_MAX, Math.round(gap * 3));
+          if (++noGainStreak >= NO_GAIN_LIMIT) {
+            log.state = `وقف: ${NO_GAIN_LIMIT} جولات بلا ربح — ${(e?.message || e).toString().slice(0, 60)}`;
+            return;
+          }
         }
       }
       if (!cancelled) log.state = `خلص ${ROUNDS} جولة`;
