@@ -5233,7 +5233,30 @@ export default function ReplayClient({ userId }) {
          رغم إنها بدها شمعتين: مقيس، `count=20000` مع مرساة = 1586KB.
          بنطلب فجوة الوقت + هامش ٤٠٠ شمعة (تداخل يضمن ما يضل ثقب). */
       const gapBars = canTail ? Math.ceil((Date.now() / 1000 - lastCachedTime) / intervalSecs) : 0;
-      const effCount = canTail ? Math.min(maxBars, gapBars + 400) : maxBars;
+      /* ═══ الفريمات تحت الساعة بالقص: نافذة مقيسة بدل ٢٠٠٠٠ شمعة ═══
+         -----------------------------------------------------------------
+         🔴 بلاغه: «قاصص الذهب من ٢٠٠٦ وبفتح ربع ساعة — ما بيفتح».
+
+         السبب: `count = maxBars = 20000` مع مرساة بيطلب من الأرشيف
+
+             ١ دقيقة   ١٧ يوم      ٥ دقايق  ٨٧ يوم     ١٥ دقيقة  ٢٦٠ يوم
+
+         وكلهن انرفضوا بـ429، بينما فريم الساعة (١٠٤٢ يوم) واليومي (٢٥٠٠٠
+         يوم) نجحوا بنفس اللحظة. فالمتغيّر مش المدى الزمني — هو **عدد ملفات
+         الأرشيف**: الفريمات تحت الساعة بتنبني من ملفات أدقّ بكتير، فنفس
+         عدد الأيام بيكلّف أضعافاً.
+
+         والنافذة الكبيرة **بلا فايدة أصلاً عند القص**: نقطة الكشف بتنحسب
+         عند المرساة، واللي بعدها بيجي بالتمديد التلقائي وقت التشغيل
+         (`maybeExtendCandles`). فاللي بنحتاجه سياق حوالي المرساة لا أكتر.
+
+         ⚠️ الرقم ٣٠٠٠ = ٤١ يوم على ربع ساعة · ١٠ أيام على ٥ دقايق · يومين
+            على الدقيقة. مقيس إنه فريم الدقيقة بيرجّع ١٢٨٤ شمعة من ٢٠٠٦
+            و١٤١٧ من ٢٠١١ — فالأرشيف موجود، والحجم هو اللي كان بيرفضه.
+         ⚠️ الساعة وأكبر **ما بتتأثّر** — نجحت بمداها الكامل بالقياس. */
+      const SUB_HOUR = interval === "1m" || interval === "5m" || interval === "15m";
+      const anchoredCap = anchorParam && SUB_HOUR ? Math.min(maxBars, 3000) : maxBars;
+      const effCount = canTail ? Math.min(maxBars, gapBars + 400) : anchoredCap;
 
       const urlFor = (n, anchor) =>
         `/api/replay-candles?symbol=${encodeURIComponent(cacheSymbol)}&interval=${tdInterval}&count=${n}${anchor}${tdParam}${dukParam}`;
