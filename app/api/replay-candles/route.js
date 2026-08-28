@@ -186,7 +186,17 @@ export async function GET(req) {
     const wantFrom = anchor - Math.ceil(secPerBar * wanted * 1.25);
     const wantTo = anchor + bufferSeconds;
     try {
-      const hit = await readRange(storeKey, interval, secPerBar, wantFrom, wantTo);
+      /* ⚠️ **مهلة على قراءة المخزن — التحسين ممنوع يبطّئ الطلب.**
+         مقيس على الإنتاج: **504** على طلب بمرساة بينما التعبئة شغّالة على
+         نفس القاعدة. مهلة Dukascopy ١٢ ثانية و`maxDuration` ٣٠ — فالباقي
+         كان قراءة مخزن بطيئة تحت الضغط (Supabase المجاني اتصالاته محدودة).
+
+         المخزن مصمَّم كتسريع: لو ما رد بسرعة، بننساه وبنكمّل للمزوّد. أسوأ
+         حالة نخسر التسريع؛ ما بنخسر الطلب. */
+      const hit = await Promise.race([
+        readRange(storeKey, interval, secPerBar, wantFrom, wantTo),
+        new Promise((r) => setTimeout(() => r({ candles: [], have: new Set(), want: [], status: "slow" }), 3000)),
+      ]);
       storeHit = hit;
       /* ═══ التغطية الجزئية بتنفع — لو متصلة حوالي المرساة ═══
          🔴 بلاغه: «تبديل الفريمات صار كثير بطيء». السبب إنّ المخزن كان
