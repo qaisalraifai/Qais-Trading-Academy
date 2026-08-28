@@ -5508,8 +5508,30 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { allCandlesRef.current = allCandles; }, [allCandles]);
   const olderBusyRef = useRef(false);
   const olderDoneRef = useRef(false);
+  /* ═══════════════════════════════════════════════════════════════════════
+     🔴 **«صفر أقدم» مرة وحدة كان بيقتل المحمّل للأبد.**
+     -----------------------------------------------------------------------
+     مقيس على الإنتاج (ذهب · ٤ ساعات · قص ٢٠٠٩):
+
+         older: { state: "خلص — ما في أقدم", calls: 1017, gained: 0 }
+         bars: 1489 · first: "2009-01-11"
+
+     ١٠١٧ استدعاء كلهن بيرجعوا فوراً من الحارس — والأرشيف فيه ٢٠٠٣→٢٠٠٩
+     كاملة. رد واحد رجع بلا شموع أقدم (مدى انقلّص · نافذة وقعت بفجوة ·
+     رفض جزئي) فانعلّم «خلصت» نهائياً.
+
+     الإشارة **الوحيدة** الموثوقة لانتهاء البيانات هي قاع الأرشيف
+     (٢٠٠٣-٠١-٠١) وهي مفحوصة صراحةً فوق. «صفر أقدم» عارض — فبينستنى
+     تلات مرات متتالية قبل الاستسلام، والعدّاد بينصفّر مع أول نجاح.
+
+     ⚠️ وفي تهدئة بعد كل فشل: بلاها كل بكسل سحب بيطلق طلباً جديداً.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const olderZeroStreakRef = useRef(0);
+  const olderNextAtRef = useRef(0);
   useEffect(() => {
     olderDoneRef.current = false;
+    olderZeroStreakRef.current = 0;
+    olderNextAtRef.current = 0;
     /* نفس السبب: سجل من فريم سابق بيوهم إنه المحمّل اشتغل على هالفريم. */
     olderLogRef.current = { state: "ما انتنادى", calls: 0, gained: 0 };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5526,6 +5548,8 @@ export default function ReplayClient({ userId }) {
     olog.calls++;
     if (olderBusyRef.current) { olog.state = "مشغول"; return; }
     if (olderDoneRef.current) { olog.state = "خلص — ما في أقدم"; return; }
+    /* تهدئة بعد فشل — بلاها كل بكسل سحب بيطلق طلباً جديداً. */
+    if (Date.now() < olderNextAtRef.current) return;
     /* التعميق التلقائي لسا شغّال — ما بنزاحمه على حصة الأرشيف. */
     if (deepenLogRef.current.state === "شغّال") { olog.state = "التعميق التلقائي شغّال"; return; }
     const prev = allCandlesRef.current;
@@ -5555,13 +5579,20 @@ export default function ReplayClient({ userId }) {
       );
       const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       /* رفض عابر: ما منعلّمها «خلصت» — الحد متقطّع، والسحبة الجاية بتعيد. */
-      if (data.error) { olog.state = `رفض (بيعيد بالسحبة الجاية): ${String(data.error).slice(0, 80)}`; return; }
+      if (data.error) { olderNextAtRef.current = Date.now() + 5000; olog.state = `رفض (بيعيد بعد ٥ ثواني): ${String(data.error).slice(0, 80)}`; return; }
       const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
       if (!older.length) {
-        olderDoneRef.current = true;
-        olog.state = `صفر أقدم (رجع ${data.candles?.length || 0})`;
+        olderZeroStreakRef.current++;
+        olderNextAtRef.current = Date.now() + 5000;
+        if (olderZeroStreakRef.current >= 3) {
+          olderDoneRef.current = true;
+          olog.state = `خلص بعد ٣ ردود بلا أقدم (آخرها رجع ${data.candles?.length || 0})`;
+        } else {
+          olog.state = `صفر أقدم ${olderZeroStreakRef.current}/٣ — بيعيد`;
+        }
         return;
       }
+      olderZeroStreakRef.current = 0;
 
       const base = allCandlesRef.current;
       const merged = mergeCandles(older, base);
@@ -5582,6 +5613,7 @@ export default function ReplayClient({ userId }) {
         });
       }
     } catch (e) {
+      olderNextAtRef.current = Date.now() + 5000;
       olog.state = `رمية شبكة (بيعيد): ${(e?.message || e).toString().slice(0, 60)}`;
     } finally {
       olderBusyRef.current = false;
