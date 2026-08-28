@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchYahooCandles } from "@/lib/yahoo-candles";
 import { fetchTwelveDataCandles } from "@/lib/twelvedata-candles";
 import { fetchDukascopyCandles } from "@/lib/dukascopy-candles";
+import { readRange, writeRange } from "@/lib/candle-store";
 
 export const dynamic = "force-dynamic";
 // دوكاسكوبي بتنزّل وتفكّ ملفات أرشيف حقيقية (مش JSON فوري)، فأول طلب لمدى
@@ -147,6 +148,45 @@ export async function GET(req) {
   let dukError = null;
   let tdError = null;
 
+  /* ══════════════════════════════════════════════════════════════════════
+     المخزن أولاً — الشموع التاريخية بتنجلب مرة واحدة للأبد.
+     ----------------------------------------------------------------------
+     بقراره: «المفروض احنا نجيب كل الشموع ونخزّنهم وما تكون بيانات حيّة زي
+     سوق اللايف، لأن الشموع التاريخية ما رح تتغيّر».
+
+     الحد عند Dukascopy مربوط برقم خروج **مشترك بين كل وظائف Vercel**، فكل
+     طلب مكرَّر بياكل حصة بلا مقابل — مقيس: نفس النافذة بنفس الحجم بتنجح
+     مرة وبتنرفض بعدها بدقيقة. المخزن بيشيل التكرار من أصله.
+
+     ⚠️ **بس بمرساة.** الطلب المباشر بينتهي عند «الآن» فآخر شمعة فيه لسا
+        بتتحرّك — تخزينها بيجمّدها.
+     ══════════════════════════════════════════════════════════════════════ */
+  const INTERVAL_SECS = { "1min": 60, "5min": 300, "15min": 900, "1h": 3600, "4h": 14400, "1day": 86400 };
+  const secPerBar = INTERVAL_SECS[interval];
+  const storeKey = dukSymbol || tdSymbol || symbol;
+  if (anchor != null && secPerBar) {
+    /* نفس نافذة `fetchDukascopyCandles` عشان المخزن والمزوّد يتكلّموا نفس المدى. */
+    const bufferSeconds = Math.max(secPerBar * 300, 3 * 24 * 60 * 60);
+    const wantFrom = anchor - Math.ceil(secPerBar * wanted * 1.25);
+    const wantTo = anchor + bufferSeconds;
+    try {
+      const hit = await readRange(storeKey, interval, secPerBar, wantFrom, wantTo);
+      if (hit.candles.length >= 2 && hit.have.size >= hit.want.length) {
+        return NextResponse.json(
+          {
+            candles: normalizeOhlc(hit.candles).slice(-wanted),
+            sourceSymbol: storeKey,
+            provider: "store",
+            usedFallback: false,
+            providerErrors: null,
+            fromStore: true,
+          },
+          { headers: { "Cache-Control": "public, s-maxage=31536000, max-age=3600, immutable" } }
+        );
+      }
+    } catch { /* المخزن تحسين — فشله ما بيوقف الطلب */ }
+  }
+
   // المستوى 0: Dukascopy - هلق هو المصدر الافتراضي الأساسي (مو بس لما يكون
   // في anchor فعلي). قبل هيك كان محصور بوضع الريبلاي العميق بس، بس تبيّن
   // إنه أفضل خيار افتراضي أصلاً لثلاث أسباب مع بعض:
@@ -172,6 +212,13 @@ export async function GET(req) {
       { error: `انتهت مهلة الانتظار (${dukTimeoutMs / 1000} ثانية) بدون رد من Dukascopy` }
     );
     if (!dukResult.error && (dukResult.candles?.length || 0) >= 2) {
+      /* ⚠️ الكتابة **ما بتنتظر** الرد — المستخدم ما إله علاقة بالتخزين، وأي
+         تأخير هون بيتحوّل لانتظار عنده. والدلاء الناقصة بتنرفض جوّا
+         `writeRange` نفسها. */
+      if (anchor != null && secPerBar) {
+        const cs = dukResult.candles;
+        writeRange(storeKey, interval, secPerBar, cs, cs[0].time, cs[cs.length - 1].time).catch(() => {});
+      }
       return NextResponse.json(
         {
           candles: normalizeOhlc(dukResult.candles),
