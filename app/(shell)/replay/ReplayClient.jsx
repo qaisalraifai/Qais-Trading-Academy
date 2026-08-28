@@ -5860,9 +5860,14 @@ export default function ReplayClient({ userId }) {
             }
             continue;
           }
-          /* نجاح = الحصة مرتاحة → نتسارع تدريجياً بدل ما نضل نبطّئ. */
+          /* ═══ الجولة اللي إجت من المخزن ما إلها فاصل أصلاً ═══
+             الفواصل كلها موجودة لحد أرشيف Dukascopy. لما يرد المخزن
+             (`fromStore`) ما في أي حد — قراءة قاعدة بيانات وبس. فالانتظار
+             هون خسارة صافية: بيخلّي الوصول لـ٢٠٠٣ دقيقة بدل ثواني، وبيانات
+             مخزَّنة أصلاً.
+             ⚠️ ولما يرد المزوّد بنرجع للتباعد التكيّفي كما هو. */
           noGainStreak = 0;
-          gap = Math.max(GAP_MIN, Math.round(gap * 0.6));
+          gap = data.fromStore ? 120 : Math.max(GAP_MIN, Math.round(gap * 0.6));
           oldest = older[0].time;
           log.gained += older.length;
           log.oldestNow = new Date(oldest * 1000).toISOString().slice(0, 10);
