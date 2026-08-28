@@ -164,6 +164,7 @@ export async function GET(req) {
   const INTERVAL_SECS = { "1min": 60, "5min": 300, "15min": 900, "1h": 3600, "4h": 14400, "1day": 86400 };
   const secPerBar = INTERVAL_SECS[interval];
   const storeKey = dukSymbol || tdSymbol || symbol;
+  let storeHit = null;
   if (anchor != null && secPerBar) {
     /* نفس نافذة `fetchDukascopyCandles` عشان المخزن والمزوّد يتكلّموا نفس المدى. */
     const bufferSeconds = Math.max(secPerBar * 300, 3 * 24 * 60 * 60);
@@ -171,6 +172,7 @@ export async function GET(req) {
     const wantTo = anchor + bufferSeconds;
     try {
       const hit = await readRange(storeKey, interval, secPerBar, wantFrom, wantTo);
+      storeHit = hit;
       if (hit.candles.length >= 2 && hit.have.size >= hit.want.length) {
         return NextResponse.json(
           {
@@ -286,6 +288,38 @@ export async function GET(req) {
           يوهو بتغطّي المدى المطلوب فعلاً، والتراجع مفيد.
        ══════════════════════════════════════════════════════════════════ */
     if (anchor != null) {
+      /* ═══════════════════════════════════════════════════════════════
+         🔴 **حلقة مقفلة: المخزن بده جلبة ناجحة، والجلبات بتنرفض.**
+         ---------------------------------------------------------------
+         بعد ما صار القص من Dukascopy وحده، أي رفض بيطلّع خطأ صريح بدل
+         بيانات — وهاد صح (التراجع كان بيعطي شموع بمكان غلط). بس النتيجة
+         إنّ المستخدم بيوقف تماماً لما يخنق الأرشيف، والمخزن ما بيتعبّى
+         أبداً فما في شي بيتحسّن مع الوقت.
+
+         المخزن بيكسرها: حتى التغطية **الناقصة** أحسن من لا شي، ما دامت
+         بتغطّي نقطة القص — لأن كل جلبة بتنجح (ولو بمدى مقلَّص) بتضيف
+         دلاءها، فالتغطية بتكبر مع كل محاولة بدل ما تضل صفر.
+
+         ⚠️ الشرط: لازم تحوي نقطة القص فعلاً. نافذة لتاريخ تاني بتعطي
+            شارتاً بمكان غلط — وهاد بالضبط اللي منعناه بشيل التراجع.
+         ═══════════════════════════════════════════════════════════════ */
+      const cached = storeHit?.candles || [];
+      const coversAnchor =
+        cached.length >= 2 && cached[0].time <= anchor && anchor <= cached[cached.length - 1].time;
+      if (coversAnchor) {
+        return NextResponse.json(
+          {
+            candles: normalizeOhlc(cached).slice(-wanted),
+            sourceSymbol: storeKey,
+            provider: "store",
+            usedFallback: false,
+            providerErrors: { dukascopy: dukError },
+            fromStore: true,
+            partial: storeHit.have.size < storeHit.want.length,
+          },
+          { headers: { "Cache-Control": "public, s-maxage=60" } }
+        );
+      }
       return NextResponse.json(
         {
           error: `القص بيعتمد على Dukascopy وحده — ${dukError}`,
