@@ -5498,7 +5498,12 @@ export default function ReplayClient({ userId }) {
   useEffect(() => { allCandlesRef.current = allCandles; }, [allCandles]);
   const olderBusyRef = useRef(false);
   const olderDoneRef = useRef(false);
-  useEffect(() => { olderDoneRef.current = false; }, [assetValue, interval, mode]);
+  useEffect(() => {
+    olderDoneRef.current = false;
+    /* نفس السبب: سجل من فريم سابق بيوهم إنه المحمّل اشتغل على هالفريم. */
+    olderLogRef.current = { state: "ما انتنادى", calls: 0, gained: 0 };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetValue, interval, mode]);
 
   /* سجل المحمّل — بيطلع بـ`__qtaDeepen().older`.
      ⚠️ بلا سجل، كل مخارجه `return` صامتة (مشغول · خلص · التعميق شغّال · بلا
@@ -5638,8 +5643,11 @@ export default function ReplayClient({ userId }) {
          وإلا لو انلغى التأثير بعد تسجيله، إعادة التشغيل بترجع فوراً منه
          والتعميق بيموت لهالسلسلة للأبد. */
       deepenedForRef.current = seriesKey;
+      /* ⚠️ `oldestNow` لازم ينمسح مع كل سلسلة — بلا هيك بيضل من الفريم
+         السابق وبيكذب. مقيس: `rounds: []` و`gained: 0` مع
+         `oldestNow: "2025-10-26"` على سلسلة بتبلّش ٢٠٠٣. */
       Object.assign(log, {
-        state: "شغّال", series: seriesKey, rounds: [], gained: 0,
+        state: "شغّال", series: seriesKey, rounds: [], gained: 0, oldestNow: null,
         startedFrom: new Date(oldest * 1000).toISOString().slice(0, 10),
       });
 
