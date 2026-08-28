@@ -5294,8 +5294,24 @@ export default function ReplayClient({ userId }) {
             على الدقيقة. مقيس إنه فريم الدقيقة بيرجّع ١٢٨٤ شمعة من ٢٠٠٦
             و١٤١٧ من ٢٠١١ — فالأرشيف موجود، والحجم هو اللي كان بيرفضه.
          ⚠️ الساعة وأكبر **ما بتتأثّر** — نجحت بمداها الكامل بالقياس. */
-      const SUB_HOUR = interval === "1m" || interval === "5m" || interval === "15m";
-      const anchoredCap = anchorParam && SUB_HOUR ? Math.min(maxBars, 3000) : maxBars;
+      /* 🔴 **السقف بالقص لكل الفريمات اللحظية — مش تحت الساعة وبس.**
+         بلاغه: «ما بيحوّل لأربع ساعات».
+         سقّفت `1m/5m/15m` وتركت `4h` على `maxBars = 20000` — وهاد على ٤
+         ساعات **٤١٦٧ يوم** أرشيف، مرفوض حتماً، فالتحميل بيفشل و502.
+
+         والقياس بيثبت إنّ العطل بالطلب مش بالأرشيف — نفس الرمز ونفس المرساة:
+
+             count=20000  (٤١٦٧ يوم)  ✗ مرفوض
+             count=800    (١٦٧ يوم)   ✓ ٨٠٠ شمعة بـ420ms
+
+         فالتحميل الأول صار ياخد نفس مقاس قطعة التعميق (مقاس إنه بيمرق من
+         أول محاولة)، والعمق بيجي بالتعميق بالخلفية زي ما هو مصمَّم.
+
+         ⚠️ اليومي مستثنى — ملفات شهرية، ومقيس إنه بيجيب من ٢٠٠٣ بطلب واحد. */
+      const anchoredCap =
+        anchorParam && interval !== "1d"
+          ? Math.min(maxBars, DEEPEN_CHUNK_BARS[interval] || 1200)
+          : maxBars;
       const effCount = canTail ? Math.min(maxBars, gapBars + 400) : anchoredCap;
 
       const urlFor = (n, anchor) =>
