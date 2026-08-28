@@ -183,7 +183,13 @@ export async function GET(req) {
             providerErrors: null,
             fromStore: true,
           },
-          { headers: { "Cache-Control": "public, s-maxage=31536000, max-age=3600, immutable" } }
+          /* ⚠️ **ممنوع `public` هون — جرّبتها وطلّعت المستخدم من جلسته.**
+             ردود المسار بيمرق عليها تجديد كوكي الجلسة، وتخزين رد فيه
+             `Set-Cookie` بيضيّع التجديد؛ وعلى مخزن مشترك (CDN) بيسرّب كوكي
+             مستخدم لغيره — وهاد أخطر من البطء بمراتب.
+             والتخزين صار بقاعدة البيانات (`candle_cache`) وهي بتعطي نفس
+             الفايدة بلا ما تلمس الجلسة إطلاقاً. */
+          { headers: { "Cache-Control": "no-store" } }
         );
       }
     } catch { /* المخزن تحسين — فشله ما بيوقف الطلب */ }
@@ -257,21 +263,7 @@ export async function GET(req) {
            ⚠️ **بس بمرساة.** الطلب المباشر بينتهي عند «الآن» فتخزينه
               بيجمّد الشمعة الجارية. `no-store` صراحةً هناك.
            ══════════════════════════════════════════════════════════════ */
-        /* 🔴 **ممنوع نخزّن رداً ناقصاً سنة.** التقليص بيرجّع ربع المطلوب أحياناً
-           (مقيس: طلبنا ٨٠٠ ورجع ٢٣٧)، وتخزينه بيجمّد النقص على الحافة —
-           فالمستخدم بيعلق على شارت شبه فاضي ولا إعادة بتصلحه.
-           فالتخزين الطويل **بس** للرد المكتمل؛ والناقص دقيقة وبس ليقدر
-           يتحسّن بالمحاولة الجاية. */
-        anchor != null
-          ? {
-              headers: {
-                "Cache-Control":
-                  (dukResult.candles?.length || 0) >= wanted * 0.8
-                    ? "public, s-maxage=31536000, max-age=3600, immutable"
-                    : "public, s-maxage=60",
-              },
-            }
-          : { headers: { "Cache-Control": "no-store" } }
+        { headers: { "Cache-Control": "no-store" } }
       );
     }
     dukError = dukResult.error || "استجابة فارغة من Dukascopy";
@@ -323,7 +315,7 @@ export async function GET(req) {
             fromStore: true,
             partial: storeHit.have.size < storeHit.want.length,
           },
-          { headers: { "Cache-Control": "public, s-maxage=60" } }
+          { headers: { "Cache-Control": "no-store" } }
         );
       }
       return NextResponse.json(
