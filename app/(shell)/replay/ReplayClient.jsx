@@ -5604,14 +5604,18 @@ export default function ReplayClient({ userId }) {
       if (data.error) { olderNextAtRef.current = Date.now() + 5000; olog.state = `رفض (بيعيد بعد ٥ ثواني): ${String(data.error).slice(0, 80)}`; return; }
       const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
       if (!older.length) {
+        /* ⚠️ **ما في استسلام نهائي هون — «صفر أقدم» عارض بالقياس.**
+           جرّبت ٣ ضربات وبعدها «خلصت»: طلع بالإنتاج `state: "خلص — ما في
+           أقدم"` مع `calls: 496` و`gained: 0` بينما الأرشيف فيه ٢٠٠٣→٢٠٠٦
+           كاملة. الرد الفاضي بيجي من تقليص مدى أو نافذة وقعت بفجوة سوق أو
+           خنقة عابرة — ولا واحد فيهن بيعني «ما في بيانات».
+           الإشارة الوحيدة الموثوقة هي قاع الأرشيف، وهي مفحوصة فوق.
+           فبنتراجع تصاعدياً وبنضل نحاول: ٥ · ١٥ · ٤٥ · ٩٠ ثانية سقفاً. */
         olderZeroStreakRef.current++;
-        olderNextAtRef.current = Date.now() + 5000;
-        if (olderZeroStreakRef.current >= 3) {
-          olderDoneRef.current = true;
-          olog.state = `خلص بعد ٣ ردود بلا أقدم (آخرها رجع ${data.candles?.length || 0})`;
-        } else {
-          olog.state = `صفر أقدم ${olderZeroStreakRef.current}/٣ — بيعيد`;
-        }
+        const waits = [5000, 15000, 45000, 90000];
+        const wait = waits[Math.min(olderZeroStreakRef.current - 1, waits.length - 1)];
+        olderNextAtRef.current = Date.now() + wait;
+        olog.state = `صفر أقدم ×${olderZeroStreakRef.current} — بيعيد بعد ${wait / 1000}ث`;
         return;
       }
       olderZeroStreakRef.current = 0;
@@ -5619,7 +5623,8 @@ export default function ReplayClient({ userId }) {
       const base = allCandlesRef.current;
       const merged = mergeCandles(older, base);
       const added = merged.length - base.length;
-      if (added <= 0) { olderDoneRef.current = true; olog.state = "الضم ما أضاف إشي"; return; }
+      /* نفس المبدأ: الضم اللي ما أضاف إشي (تداخل كامل) عارض مش نهائي. */
+      if (added <= 0) { olderNextAtRef.current = Date.now() + 15000; olog.state = "الضم ما أضاف إشي — بيعيد"; return; }
       olog.gained += added;
       olog.state = `✓ +${added} · أقدم ${new Date(merged[0].time * 1000).toISOString().slice(0, 10)}`;
 

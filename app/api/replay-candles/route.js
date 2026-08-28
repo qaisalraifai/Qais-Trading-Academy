@@ -172,13 +172,40 @@ export async function GET(req) {
       { error: `انتهت مهلة الانتظار (${dukTimeoutMs / 1000} ثانية) بدون رد من Dukascopy` }
     );
     if (!dukResult.error && (dukResult.candles?.length || 0) >= 2) {
-      return NextResponse.json({
-        candles: normalizeOhlc(dukResult.candles),
-        sourceSymbol: dukSymbol,
-        provider: "dukascopy",
-        usedFallback: false,
-        providerErrors: null,
-      });
+      return NextResponse.json(
+        {
+          candles: normalizeOhlc(dukResult.candles),
+          sourceSymbol: dukSymbol,
+          provider: "dukascopy",
+          usedFallback: false,
+          providerErrors: null,
+        },
+        /* ══════════════════════════════════════════════════════════════
+           🔴 **الشموع التاريخية ما بتتغيّر — وكنا نسأل الأرشيف كل مرة.**
+           --------------------------------------------------------------
+           مقيس على الإنتاج (ذهب · ٤ ساعات · قص ٢٠٠٦):
+
+               rounds ["1:+237", "2.1:رفض"]   ← طلبنا ٨٠٠ ورجع ٢٣٧
+
+           يعني الخادم قلّص المدى للربع، والجولة اللي بعدها انرفضت. الحد
+           صار يعضّ حتى على ٢١٧ يوم — لأن رقم خروج Vercel مشترك بين وظائف
+           كتيرة، فحصّة الأرشيف بتنستهلك من برّا جلستنا كمان.
+
+           والتصغير ما بيحلّها: كل طلب جديد بيدفع من نفس الحصة.
+
+           بس نافذة **بمرساة** تاريخية = بيانات ماتت من زمان وما بتتغيّر
+           أبداً. فبتنخزّن على حافة Vercel، وأي طلب تاني لنفس النافذة
+           (إعادة بعد رفض · رجوع لنفس الفريم · جلسة تانية · مستخدم تاني)
+           بينخدم من الحافة **بلا ما يلمس Dukascopy** — يعني بيوفّر حصة
+           بدل ما يستهلكها.
+
+           ⚠️ **بس بمرساة.** الطلب المباشر بينتهي عند «الآن» فتخزينه
+              بيجمّد الشمعة الجارية. `no-store` صراحةً هناك.
+           ══════════════════════════════════════════════════════════════ */
+        anchor != null
+          ? { headers: { "Cache-Control": "public, s-maxage=31536000, max-age=3600, immutable" } }
+          : { headers: { "Cache-Control": "no-store" } }
+      );
     }
     dukError = dukResult.error || "استجابة فارغة من Dukascopy";
 
