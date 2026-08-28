@@ -4931,7 +4931,7 @@ export default function ReplayClient({ userId }) {
         const res = await fetch(
           `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=${maxBars}${tdParam}`
         );
-        const data = await res.json();
+        const data = await res.json().catch(() => ({ error: `رد غير صالح (HTTP ${res.status})` }));
         if (data.error) throw new Error(data.error);
         const candles = sanitizeCandles(data.candles || []);
         if (cancelled) return;
@@ -4956,7 +4956,7 @@ export default function ReplayClient({ userId }) {
         const res = await fetch(
           `/api/replay-candles?symbol=${encodeURIComponent(info.yahooSpot || info.yahoo)}&interval=${tdInterval}&count=3${tdParam}`
         );
-        const data = await res.json();
+        const data = await res.json().catch(() => ({ error: `رد غير صالح (HTTP ${res.status})` }));
         if (data.error || !data.candles?.length) return;
         const fresh = sanitizeCandles(data.candles);
         if (fresh.length === 0) return;
@@ -5357,7 +5357,7 @@ export default function ReplayClient({ userId }) {
       }
 
       const res = await fetch(urlFor(effCount, effAnchor));
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ error: `رد غير صالح (HTTP ${res.status})` }));
       // طلب أحدث صار وخلص قبل ما هاد يوصل جوابه - نتجاهل هاد الجواب "القديم"
       // نهائياً (ما منكمل ولا حتى ما بعد try/catch/finally) عشان ما يفسد
       // allCandles/pendingReprojectRef يلي أصلاً محدَّثين بالطلب الأحدث.
@@ -5960,7 +5960,7 @@ export default function ReplayClient({ userId }) {
           `/api/replay-candles?symbol=${encodeURIComponent(cacheSymbol)}` +
           `&interval=${INTERVAL_MAP[it.value]}&count=3000${anchorSuffix}${tdParam}${dukParam}`
         )
-          .then((r) => r.json())
+          .then((r) => r.json().catch(() => ({ error: `رد غير صالح (HTTP ${r.status})` })))
           .then((d) => {
             if (runId !== warmAbortRef.current) return;
             const c = sanitizeCandles(d?.candles || []);
@@ -6002,7 +6002,7 @@ export default function ReplayClient({ userId }) {
       const res = await fetch(
         `/api/replay-candles?symbol=${encodeURIComponent(assetInfo.yahooSpot || assetInfo.yahoo)}&interval=${tdInterval}&count=${maxBars}&anchor=${lastCandle.time}${tdParam}${dukParam}`
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ error: `رد غير صالح (HTTP ${res.status})` }));
       if (data.error) { noMoreForwardDataRef.current = true; setDataExhausted(true); return; }
       const fresh = sanitizeCandles(data.candles || []);
       const newer = fresh.filter((c) => c.time > lastCandle.time);
@@ -6391,7 +6391,7 @@ export default function ReplayClient({ userId }) {
       const res = await fetch(
         `/api/replay-candles?symbol=${encodeURIComponent(pollSymbol)}&interval=${tdInterval}&count=3${tdParam}`
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ error: `رد غير صالح (HTTP ${res.status})` }));
       if (data.error || !data.candles?.length) {
         // مهم: *ما* منعتبر هاد "فشل" بمعنى يستاهل إعادة تحميل كامل (زوم).
         // لو route.js رجّع خطأ صريح، غالباً السبب "السوق مقفول حالياً فمافي
