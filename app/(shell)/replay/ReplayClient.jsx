@@ -5500,23 +5500,37 @@ export default function ReplayClient({ userId }) {
   const olderDoneRef = useRef(false);
   useEffect(() => { olderDoneRef.current = false; }, [assetValue, interval, mode]);
 
+  /* سجل المحمّل — بيطلع بـ`__qtaDeepen().older`.
+     ⚠️ بلا سجل، كل مخارجه `return` صامتة (مشغول · خلص · التعميق شغّال · بلا
+        رمز · رفض · صفر أقدم). وصار فعلاً: الشارت وقف على شهر واحد وما كان
+        في طريقة أعرف أيّ حارس وقّفه. */
+  const olderLogRef = useRef({ state: "ما انتنادى", calls: 0, gained: 0 });
   const loadOlderRef = useRef(() => {});
   loadOlderRef.current = async () => {
-    if (olderBusyRef.current || olderDoneRef.current) return;
+    const olog = olderLogRef.current;
+    olog.calls++;
+    if (olderBusyRef.current) { olog.state = "مشغول"; return; }
+    if (olderDoneRef.current) { olog.state = "خلص — ما في أقدم"; return; }
     /* التعميق التلقائي لسا شغّال — ما بنزاحمه على حصة الأرشيف. */
-    if (deepenLogRef.current.state === "شغّال") return;
+    if (deepenLogRef.current.state === "شغّال") { olog.state = "التعميق التلقائي شغّال"; return; }
     const prev = allCandlesRef.current;
-    if (!prev?.length) return;
+    if (!prev?.length) { olog.state = "بلا شموع"; return; }
     const info = getAssetByValue(assetValue);
-    if (!info?.dukascopy) return;
+    if (!info?.dukascopy) { olog.state = "الأصل بلا رمز Dukascopy"; return; }
 
     const barSec = (INTERVAL_MS[interval] || 900000) / 1000;
     const oldest = prev[0].time;
     const ARCHIVE_FLOOR = Date.UTC(2003, 0, 1) / 1000;
     const anchor = Math.floor(oldest - 300 * barSec);
-    if (anchor <= ARCHIVE_FLOOR) { olderDoneRef.current = true; return; }
+    if (anchor <= ARCHIVE_FLOOR) {
+      olderDoneRef.current = true;
+      olog.state = "قاع أرشيف Dukascopy (٢٠٠٣)";
+      return;
+    }
 
     olderBusyRef.current = true;
+    olog.state = "بيجيب…";
+    olog.askedFor = new Date(anchor * 1000).toISOString().slice(0, 10);
     try {
       const tdParam = info.twelveData ? `&td=${encodeURIComponent(info.twelveData)}` : "";
       const sym = encodeURIComponent(info.yahooSpot || info.yahoo);
@@ -5526,14 +5540,20 @@ export default function ReplayClient({ userId }) {
       );
       const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       /* رفض عابر: ما منعلّمها «خلصت» — الحد متقطّع، والسحبة الجاية بتعيد. */
-      if (data.error) return;
+      if (data.error) { olog.state = `رفض (بيعيد بالسحبة الجاية): ${String(data.error).slice(0, 80)}`; return; }
       const older = sanitizeCandles(data.candles || []).filter((c) => c.time < oldest);
-      if (!older.length) { olderDoneRef.current = true; return; }
+      if (!older.length) {
+        olderDoneRef.current = true;
+        olog.state = `صفر أقدم (رجع ${data.candles?.length || 0})`;
+        return;
+      }
 
       const base = allCandlesRef.current;
       const merged = mergeCandles(older, base);
       const added = merged.length - base.length;
-      if (added <= 0) { olderDoneRef.current = true; return; }
+      if (added <= 0) { olderDoneRef.current = true; olog.state = "الضم ما أضاف إشي"; return; }
+      olog.gained += added;
+      olog.state = `✓ +${added} · أقدم ${new Date(merged[0].time * 1000).toISOString().slice(0, 10)}`;
 
       const ts = chartRef.current?.timeScale();
       const before = ts?.getVisibleLogicalRange();
@@ -5546,14 +5566,23 @@ export default function ReplayClient({ userId }) {
           try { ts.setVisibleLogicalRange({ from: before.from + added, to: before.to + added }); } catch {}
         });
       }
-    } catch { /* شبكة — السحبة الجاية بتعيد */ } finally {
+    } catch (e) {
+      olog.state = `رمية شبكة (بيعيد): ${(e?.message || e).toString().slice(0, 60)}`;
+    } finally {
       olderBusyRef.current = false;
     }
   };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.__qtaDeepen = () => deepenLogRef.current;
+    window.__qtaDeepen = () => ({
+      ...deepenLogRef.current,
+      older: olderLogRef.current,
+      bars: allCandlesRef.current?.length || 0,
+      first: allCandlesRef.current?.[0]
+        ? new Date(allCandlesRef.current[0].time * 1000).toISOString().slice(0, 10)
+        : null,
+    });
   }, []);
 
   useEffect(() => {
