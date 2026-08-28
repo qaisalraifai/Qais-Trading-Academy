@@ -5542,6 +5542,9 @@ export default function ReplayClient({ userId }) {
      ⚠️ ما بيشتغل والتعميق التلقائي شغّال — وإلا الاتنان بيتنافسوا على نفس
         حصة الأرشيف وبيرفعوا احتمال الرفض.
      ═══════════════════════════════════════════════════════════════════════════ */
+  /* عدد الشموع اللي انضافت **قبل** الموجودة بآخر ضم — بينستهلكه تأثير رسم
+     الشارت ليزحزح المدى المرئي بنفس المقدار، فيضل المنظر على نفس الشموع. */
+  const pendingPrependRef = useRef(0);
   const allCandlesRef = useRef([]);
   useEffect(() => { allCandlesRef.current = allCandles; }, [allCandles]);
   const olderBusyRef = useRef(false);
@@ -5644,17 +5647,11 @@ export default function ReplayClient({ userId }) {
       olog.gained += added;
       olog.state = `✓ +${added} · أقدم ${new Date(merged[0].time * 1000).toISOString().slice(0, 10)}`;
 
-      const ts = chartRef.current?.timeScale();
-      const before = ts?.getVisibleLogicalRange();
+      /* الزحزحة بتصير جوّا تأثير رسم الشارت — هناك بينقرا المدى قبل `setData`.
+         شوف `pendingPrependRef` هناك للسبب الكامل. */
+      pendingPrependRef.current += added;
       setAllCandles(merged);
       setRevealCount((rc) => rc + added);
-      if (ts && before) {
-        /* بعد ما يرسم الشارت المصفوفة الجديدة — وإلا الزحزحة بتنطبّق على
-           المدى القديم وبتروح هدر. */
-        requestAnimationFrame(() => {
-          try { ts.setVisibleLogicalRange({ from: before.from + added, to: before.to + added }); } catch {}
-        });
-      }
     } catch (e) {
       olderNextAtRef.current = Date.now() + 5000;
       olog.state = `رمية شبكة (بيعيد): ${(e?.message || e).toString().slice(0, 60)}`;
@@ -5878,8 +5875,12 @@ export default function ReplayClient({ userId }) {
             const merged = mergeCandles(older, prev);
             const added = merged.length - prev.length;
             total = merged.length;
-            /* ⚠️ الفهارس انزاحت — نقطة الكشف لازم تنزاح معها. */
-            if (added > 0) setRevealCount((rc) => rc + added);
+            /* ⚠️ الفهارس انزاحت — نقطة الكشف **والمنظر** لازم ينزاحوا معها.
+               بلا الزحزحة الشارت بيقفز لآخر الشموع مع كل جولة تعميق. */
+            if (added > 0) {
+              pendingPrependRef.current += added;
+              setRevealCount((rc) => rc + added);
+            }
             return merged;
           });
           /* ⚠️ **الربح الصغير ما بيوقف التعميق** — كان بيوقفه، وهاد كان
@@ -6208,6 +6209,33 @@ export default function ReplayClient({ userId }) {
     // نفس مكان الزوم/السكرول بالضبط بعد ما نطبّق setData تحت (بدل ما يرجع
     // الشارت افتراضياً لآخر الشموع يمين الشارت).
     let restoreVisibleRange = null;
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       🔴 **ضمّ شموع أقدم كان يرجّع المنظر لآخر الشارت.**
+       -----------------------------------------------------------------------
+       بلاغه: «لما يحمّل شموع جديدة بيرجّعني للشموع اللي كانت آخر إشي، فبدّي
+       أرجع أمشي لورا من أول وجديد».
+
+       السبب: ضمّ الأقدم بيغيّر طول المصفوفة، فبينزل على مسار `setData` الكامل
+       تحت — وهداك بيرجّع الزوم لليمين (`barSpacing: 7`) لأنه مصمَّم لتبديل
+       فريم/أصل. فالمستخدم بيكون ساحب لـ٢٠٠٤ وبينقذف لـ٢٠٢٦.
+
+       وإضافة `added` شمعة **بتزحزح كل الفهارس** بنفس المقدار: اللي كان عند
+       الفهرس ١٠٠ صار عند ١٠٠+added. فالمنظر بينحفظ بزحزحة المدى المرئي
+       بنفس الرقم — بيضل على **نفس الشموع** بالضبط.
+
+       ⚠️ القراءة لازم تصير **قبل** `setData` — بعدها المدى بيكون انضبط أصلاً
+          وضاعت القيمة القديمة. جرّبت الزحزحة بـ`requestAnimationFrame` من
+          مكان الضم، وكانت تنطبّق قبل ما يطبّق الشارت البيانات فتنمسح.
+       ═══════════════════════════════════════════════════════════════════════ */
+    if (pendingPrependRef.current > 0) {
+      const shift = pendingPrependRef.current;
+      pendingPrependRef.current = 0;
+      try {
+        const cur = chartRef.current?.timeScale()?.getVisibleLogicalRange();
+        if (cur) restoreVisibleRange = { from: cur.from + shift, to: cur.to + shift };
+      } catch { /* بلا مدى مقروء منترك الافتراضي */ }
+    }
     if (pendingReprojectRef.current) {
       const { fromCandles, fromVisibleLogicalRange } = pendingReprojectRef.current;
       pendingReprojectRef.current = null;
