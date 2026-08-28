@@ -5504,6 +5504,19 @@ export default function ReplayClient({ userId }) {
 
       for (let round = 1; round <= ROUNDS && !cancelled; round++) {
         if (total >= MAX_BARS_CEILING) { log.state = `وقف: سقف ${MAX_BARS_CEILING} شمعة`; return; }
+        /* ═══ قاع الأرشيف — الوقوف قبل الباب المسدود ═══
+           🔴 مقيس على الإنتاج: ٤ ساعات وصلت `2003-01-02` (نفس عمق اليومي)،
+              وبعدها ضلّ التعميق يطلب `anchor=2002-11-13` — قبل بداية أرشيف
+              Dukascopy (٢٠٠٣-٠١-٠١). فكل جولة بترجع 502، وبتنعاد ٣ مرات
+              بانتظار ٢٠ و٤٥ ثانية، على بيانات **مستحيل** تكون موجودة.
+              السجل وقتها: `rounds: ["1.1:رفض","1.2:رفض","2.2:رفض"] · gained: 0`.
+           ⚠️ نفس الرقم المستعمل بالخادم (`DUKASCOPY_EARLIEST_MS`) — لو تغيّر
+              هناك لازم يتغيّر هون. */
+        const ARCHIVE_FLOOR = Date.UTC(2003, 0, 1) / 1000;
+        if (oldest - BUFFER_BARS * barSec <= ARCHIVE_FLOOR) {
+          log.state = `وقف: قاع أرشيف Dukascopy (${new Date(oldest * 1000).toISOString().slice(0, 10)})`;
+          return;
+        }
         await new Promise((r) => setTimeout(r, GAP_MS));
         if (cancelled) { log.state = `ملغى قبل جولة ${round}`; return; }
         const anchor = Math.floor(oldest - BUFFER_BARS * barSec);
@@ -5669,6 +5682,14 @@ export default function ReplayClient({ userId }) {
     for (const it of INTERVALS) {
       if (runId !== warmAbortRef.current) return;      // المستخدم بدّل — بنوقف
       if (it.value === intervalRef.current) continue;
+      /* ═══ بالقص: ما بنسخّن الفريمات تحت الساعة ═══
+         🔴 مقيس على الإنتاج: `5min` و`15min` بمرساة ٢٠٠٦ رجعوا **502** —
+            الفريمات تحت الساعة بتنبني من ملفات أرشيف أدقّ بكتير فبتضرب
+            الحد أسرع. والأسوأ إنّ الطلب الفاشل بياكل حصة الأرشيف اللي
+            بيحتاجها **تبديل المستخدم الفعلي** بعدها بثواني.
+         يعني التسخين هون بيدفع تكلفة بلا أي فايدة — بيفشل هو، وبيفشّل
+         اللي بعده. بالمباشر بيضل شغّال زي ما كان (المدى قصير فبينجح). */
+      if (anchorSuffix && (it.value === "1m" || it.value === "5m" || it.value === "15m")) continue;
       try {
         /* محفوظ أصلاً؟ بنافذة القص لازم كمان **تغطّي نقطة القص** — نافذة
            لتاريخ تاني موجودة بس ما بتنفع. */
