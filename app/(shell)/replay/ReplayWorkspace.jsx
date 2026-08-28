@@ -369,19 +369,33 @@ export default function ReplayWorkspace({ userId }) {
           {/* ⚠️ ولا مزامنة إجبارية: الرمز والفريم بيضلوا مستقلين تماماً —
               طلبه الصريح. المزامنة بس على الزمن/المؤشر/الزوم. */}
           <div style={{ marginTop: 6, opacity: sync.on ? 1 : 0.45, pointerEvents: sync.on ? "auto" : "none" }}>
+            {/* ⚠️ **المطفيان مطفيان لأنهما ما انبنوا — مش لأنهما اختيار.**
+                الوقت وحده موصول بالمحرّك. مربّع بينضغط وما بيعمل شي أسوأ من
+                مربّع مش موجود: بيخلّي المستخدم يظن إنه شغّل مزامنة وهي مطفية.
+                فبيضلّوا ظاهرين (عشان يبان إنهم قادمون) ومعطَّلين بوضوح. */}
             {[
-              ["time", "الوقت ونقطة القص"],
-              ["crosshair", "المؤشر"],
-              ["zoom", "الزوم والتحريك"],
-            ].map(([k, label]) => (
-              <label key={k} style={{ display: "flex", alignItems: "center", gap: 7, padding: "0.25rem 0", cursor: "pointer", fontSize: 12, color: "#A79FC4" }}>
+              ["time", "الوقت ونقطة القص", true],
+              ["crosshair", "المؤشر", false],
+              ["zoom", "الزوم والتحريك", false],
+            ].map(([k, label, ready]) => (
+              <label
+                key={k}
+                title={ready ? label : "لسا ما انبنت"}
+                style={{
+                  display: "flex", alignItems: "center", gap: 7, padding: "0.25rem 0",
+                  cursor: ready ? "pointer" : "not-allowed", fontSize: 12,
+                  color: ready ? "#A79FC4" : "#4A4363",
+                }}
+              >
                 <input
                   type="checkbox"
-                  checked={!!sync[k]}
+                  disabled={!ready}
+                  checked={ready && !!sync[k]}
                   onChange={(e) => setSync((p) => ({ ...p, [k]: e.target.checked }))}
-                  style={{ accentColor: "#6D4AFF", width: 14, height: 14, cursor: "pointer" }}
+                  style={{ accentColor: "#6D4AFF", width: 14, height: 14, cursor: ready ? "pointer" : "not-allowed" }}
                 />
                 {label}
+                {!ready && <span style={{ fontSize: 10.5, color: "#4A4363" }}>· قريباً</span>}
               </label>
             ))}
           </div>
