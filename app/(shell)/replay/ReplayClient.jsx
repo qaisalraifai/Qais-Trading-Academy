@@ -1295,7 +1295,8 @@ export default function ReplayClient({ userId }) {
   const chartWrapperRef = useRef(null);
   const headerRef = useRef(null);
 
-  const playTimerRef = useRef(null);
+  /* ⚠️ `playTimerRef` انشال — التشغيل صار على `requestAnimationFrame` وما عاد
+     في مؤقّت ينحفظ. تركه كان بيوهم إنّ في مؤقّت شغّال لازم ينوقف. */
   const livePollRef = useRef(null);
   // عداد فشل التحديث اللايف المتتالي - لو تكرر الفشل (مثلاً تقييد مؤقت من يوهو)
   // منجبر إعادة تحميل كاملة بدل ما نضل نحاول تحديثات جزئية فاشلة للأبد بصمت
@@ -6684,11 +6685,37 @@ export default function ReplayClient({ userId }) {
   function togglePlay() {
     setIsPlaying((p) => !p);
   }
+  /* ═══════════════════════════════════════════════════════════════════════════
+     التشغيل على إطار الشاشة بدل مؤقّت ثابت.
+     ---------------------------------------------------------------------------
+     طلبه: «بدنا نزيد السلاسة والأداء ليشعر الطالب إنه داخل منصّة احترافية».
+
+     كان `setInterval(1000/speed)`. المشكلة إنّ الفاصل ما إله علاقة بإيقاع
+     الرسم: على ١٠x الفاصل ١٠٠ملّي والإطار ١٦.٧ملّي، فالخطوة بتقع بمكان
+     عشوائي جوّا الإطار — بعض الشموع بتبان بعد ٦ إطارات وبعضها بعد ٧، وهاد
+     التذبذب هو اللي بيحسّه العين «تقطيع». وبيسوء أكتر لما يطوّل رندر
+     (الكومبوننت ٩٨٧٦ سطر) فيزحف المؤقّت.
+
+     `requestAnimationFrame` بيربط الخطوة بلحظة الرسم نفسها، فالإيقاع بينضبط
+     على الشاشة وبيصير منتظماً.
+
+     ⚠️ **الخطوة بتضل شمعة وحدة** ولو تراكم أكتر. مسار `trainingStep` بمحدّث
+        الشارت بيشترط `revealCount === prev + 1` ليستعمل `series.update()`
+        الرخيص؛ أي قفزة أكبر بتوقعه على `setData` الكامل — يعني «اللحاق»
+        بيطلع **أبطأ** من التأخّر نفسه. فبنرمي الفائض بدل ما نقفز.
+
+     ⚠️ وrAF بيتوقف لحاله لما يروح التبويب للخلفية، فما في «عاصفة لحاق» عند
+        الرجوع — وهاد كان بيصير مع المؤقّت.
+     ═══════════════════════════════════════════════════════════════════════════ */
   useEffect(() => {
-    if (!isPlaying) { clearInterval(playTimerRef.current); return; }
-    // السرعة مخزّنة كـ "شموع بالثانية" (1x..10x)، فمدة الفاصل الحقيقية = 1000 / السرعة
-    const stepMs = Math.max(30, Math.round(1000 / (speed || 1)));
-    playTimerRef.current = setInterval(() => {
+    if (!isPlaying) return;
+    const stepMs = Math.max(30, 1000 / (speed || 1));
+    let rafId = 0;
+    let last = performance.now();
+    let acc = 0;
+    let stop = false;
+
+    const advance = () => {
       setRevealCount((c) => {
         const cutCap = cutRegionEndIndex();
         const limit = Math.min(allCandles.length, cutCap);
@@ -6700,13 +6727,29 @@ export default function ReplayClient({ userId }) {
           // أول ما توصل شموع جديدة، allCandles.length بتزيد وهاد الـ effect
           // بيعيد التشغيل تلقائياً بحد جديد أعلى.
           const respectingCutBoundary = cutCap < allCandles.length;
-          if (respectingCutBoundary || noMoreForwardDataRef.current) setIsPlaying(false);
+          if (respectingCutBoundary || noMoreForwardDataRef.current) { stop = true; setIsPlaying(false); }
           return c;
         }
         return c + 1;
       });
-    }, stepMs);
-    return () => clearInterval(playTimerRef.current);
+    };
+
+    const tick = (now) => {
+      if (stop) return;
+      rafId = requestAnimationFrame(tick);
+      /* بعد رجوع التبويب من الخلفية بيوصل فارق ضخم — بنسقّفه بدل ما نراكم
+         مئات الخطوات ونطلقهن دفعة. */
+      acc += Math.min(now - last, 250);
+      last = now;
+      if (acc < stepMs) return;
+      /* الفائض بينرمى مش بينتراكم — اللحاق بخطوات متعددة بيوقعنا على
+         `setData` الكامل وبيصير أبطأ من التأخّر نفسه. */
+      acc = Math.min(acc - stepMs, stepMs);
+      advance();
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => { stop = true; cancelAnimationFrame(rafId); };
   }, [isPlaying, speed, allCandles.length]);
 
   /* ===== حفظ جلسة القص/التدريب =====
