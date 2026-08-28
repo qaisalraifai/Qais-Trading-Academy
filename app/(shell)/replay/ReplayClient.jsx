@@ -3269,12 +3269,21 @@ export default function ReplayClient({ userId }) {
   /* بتحسب مكان الشريط العائم *مرة وحدة بس* (أول ظهور له)، وبعدها بيضل بمكانه
      بغض النظر عن تغيير الرسمة المختارة أو الزوم/البان - تماماً متل تريدنغ فيو:
      شريط عائم مستقل بيتحرك بس لما المستخدم نفسه يسحبه (شوفي onToolbarDragStart) */
+  /* آخر حالة إظهار مكتوبة فعلياً — بتمنع كتابة نفس القيمة كل إطار.
+     ⚠️ الدالة بتنستدعى من `drawOverlay`، يعني **٦٠ مرة بالثانية** طول ما
+        المستخدم بيحرّك الفأرة أو بيسحب الشارت. والحالة الغالبة إنه ما في شي
+        محدَّد، فكانت تكتب `display:"none"` ستين مرة بالثانية بلا أي تغيير —
+        وكل كتابة بتوسّخ الأنماط وبتدفع المتصفّح لإعادة حساب. */
+  const toolbarShownRef = useRef(null);
   function positionSelectionToolbar() {
     const el = selectionToolbarRef.current;
     if (!el) return;
     const d = getSelectedDrawing();
-    if (!d) { el.style.display = "none"; return; }
-    el.style.display = "flex";
+    if (!d) {
+      if (toolbarShownRef.current !== false) { el.style.display = "none"; toolbarShownRef.current = false; }
+      return;
+    }
+    if (toolbarShownRef.current !== true) { el.style.display = "flex"; toolbarShownRef.current = true; }
     if (toolbarPosRef.current) {
       el.style.left = `${toolbarPosRef.current.x}px`;
       el.style.top = `${toolbarPosRef.current.y}px`;
