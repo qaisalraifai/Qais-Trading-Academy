@@ -1085,6 +1085,18 @@ export default function ReplayClient({
   syncTime = false,
   syncCrosshair = false,
   syncZoom = false,
+  /* ⚠️ **الفريم بينزامن دايماً بوضع الشبكة** — قراره: «خلي الفريمات دايماً
+     متزامنة». هاد بيخالف قيد المواصفة الأصلي («الرمز والفريم مستقلان»)،
+     فالرمز ضل مستقل والفريم وحده صار مشتركاً. ما إله مربّع بالقائمة لأنه
+     مطلوب دايماً مش خياراً. */
+  syncTimeframe = false,
+  /* ⚠️ **محور زمن واحد مشترك** — قراره: «بدنا مؤشر زمن واحد زي تريدنغ
+     فيو». اللوحات اللي مش بآخر صف بتخفي محورها، فبيصير محور واحد تحت
+     الشبكة زي التخطيط المكدّس عندهم. */
+  showTimeAxis = true,
+  fullscreenTargetRef = null,
+  onMaximizeToggle = null,
+  isMaximized = false,
 }) {
   /* ⚠️ **اللوحة النشطة هي القائدة** — منها بينتشر موضع القص وبس. مساحة العمل
      بتمرّر `chromeActive` أصلاً لتحديد مين بيملك الشريط المشترك، ونفس
@@ -1096,6 +1108,26 @@ export default function ReplayClient({
      بتشوف البروبس الجديدة أبداً. المرجع بينقرا وقت الحدث مش وقت الإنشاء،
      فتبديل اللوحة النشطة أو إطفاء مربّع بالقائمة بينطبّق فوراً بلا ما
      نعيد بناء الشارت. */
+  /* ═══════════════════════════════════════════════════════════════════════════
+     🔴 **`handleResize` كان بيقرا `fillContainer` من إغلاق قديم.**
+     ---------------------------------------------------------------------------
+     تأثير إنشاء الشارت تبعيّاته `[]`، فـ`handleResize` بتتعرّف مرة وحدة
+     وبتمسك قيمة `fillContainer` **تبع أول رندر**. والتخطيط بينقرا من التخزين
+     بتأثير بعد التركيب، يعني أول رندر دايماً `single` → `fillContainer=false`.
+     فحتى لما يصير التخطيط أربعة، القياس بيضل ياخد فرع النافذة.
+
+     الأثر المقيس (تحميل نظيف · ٢×٢ · نافذة ١٠٠٠): الخليّة ارتفاعها ٤١٥ والصندوق
+     المقيس صح (`clientHeight` ٤١٤ → المعادلة بتعطي ٣٩٩.٦)، بس المطبَّق على
+     الشارت **٨٥٢px** — قيمة فرع النافذة. النتيجة: شارت الصف العلوي بيطلع ٤٥px
+     تحت خليّته وبيتراكب مع الصف السفلي. وهاد بالضبط «تداخل» اللي منمنعه.
+
+     ⚠️ **وما بيتصلح بمراقب الحجم**: حتى لما ينده، الإغلاق لسا قديم فبياخد
+     نفس الفرع الغلط. فالمرجع ضروري، والنداء الصريح تحت ضروري كمان عشان ما
+     نتّكل على مراقب ممكن ما ينده أصلاً.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  const fillContainerRef = useRef(fillContainer);
+  fillContainerRef.current = fillContainer;
+
   const syncRef = useRef({});
   syncRef.current.bus = syncBus;
   syncRef.current.leader = !!syncBus && chromeActive;
@@ -1104,6 +1136,37 @@ export default function ReplayClient({
   /* حارس ارتداد: لما التابعة تطبّق قيمة جاية من الناقل، الشارت بيطلق نفس
      الحدث تاني — وبلا الحارس بيرجع ينشر ويصير رنين بين اللوحات. */
   const applyingSyncRef = useRef(false);
+  /* هل الفأرة فوق هاللوحة الآن — بينضبط من مستمعي الحاوية تحت. */
+  const hoveredRef = useRef(false);
+  /* **الطابع الزمني** لمؤشر المزامنة — `null` يعني ما في مؤشر. */
+  const syncCursorRef = useRef(null);
+  /* ═══════════════════════════════════════════════════════════════════════════
+     عرض منطقة الرسم — مرجع موحّد للمزامنة.
+     ---------------------------------------------------------------------------
+     🔴 كنت أستعمل عرض محور الزمن. ومع المحور المشترك صار محور اللوحات
+     العلوية **مخفي**، وعرضه بيرجّع **صفر** ساعتها (مقيس بمتصفّحه:
+     اللوحة العلوية صفر والسفلية ١٣٧٠). فالناشر كان يطلع من أول سطر — يعني
+     اللوحة اللي محورها مخفي ما بتنشر مؤشرها إطلاقاً، والرسم بالتابعة بيقع
+     على مرجع غلط.
+
+     عرض الحاوية ناقص محور السعر بيعطي نفس الرقم وبيضل صحيحاً سواء كان محور
+     الزمن ظاهراً أو مخفياً.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  function plotWidth() {
+    try {
+      const cw = chartContainerRef.current?.clientWidth || 0;
+      const ps = chartRef.current?.priceScale?.("right")?.width?.() || 0;
+      const w = cw - ps;
+      if (w > 0) return w;
+      return chartRef.current?.timeScale?.().width?.() || cw;
+    } catch { return chartContainerRef.current?.clientWidth || 0; }
+  }
+
+  const showTimeAxisRef = useRef(showTimeAxis);
+  showTimeAxisRef.current = showTimeAxis;
+  /* آخر هندسة منظر **انطبّقت من المزامنة** على هاللوحة. الناشر بيقارن فيها
+     ليميّز صدى المزامنة عن تحريك المستخدم — شوف الشرح عند الناشر. */
+  const lastAppliedGeomRef = useRef(null);
   /* مفتاح تخزين خاص باللوحة. `"main"` بيرجّع المفتاح كما هو — شرط أساسي
      عشان ما تضيع جلسات المستخدمين القائمة. */
   const paneKey = (base) => (paneId === "main" ? base : `${base}__${paneId}`);
@@ -1129,7 +1192,10 @@ export default function ReplayClient({
   const [indicatorSettingsFor, setIndicatorSettingsFor] = useState(null);
   const [indicatorSettingsTab, setIndicatorSettingsTab] = useState("visibility"); // visibility | style | inputs
   const [templatesPanelOpen, setTemplatesPanelOpen] = useState(false);
-  const [watchlistPanelOpen, setWatchlistPanelOpen] = useState(true);
+  /* ⚠️ **مقفولة افتراضياً** بقراره. كانت `true`، وبوضع الشارتات المتعددة
+     بتترسم للوحة **النشطة** وبس — فكل ضغطة على شارت كانت تطلّعها من جديد
+     وتاكل عرضاً من الشارت. الزر بالشريط العلوي بيفتحها لما يبدّه ياها. */
+  const [watchlistPanelOpen, setWatchlistPanelOpen] = useState(false);
 
   /* ===== وضع تسجيل تمارين SMC+ICT (Admin Practice Mode) ===== */
   const [isAdmin, setIsAdmin] = useState(false);
@@ -1176,6 +1242,41 @@ export default function ReplayClient({
   const [allCandles, setAllCandles] = useState([]);
   const [revealCount, setRevealCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  /* مرجع للحالة نفسها — معالِجات الشارت بتنبنى مرة وحدة فما بتشوف الحالة. */
+  const loadingRef = useRef(true);
+  loadingRef.current = loading;
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     هندسة المنظر — اللي بينتشر بين اللوحات.
+     ---------------------------------------------------------------------------
+     🔴 النشر بالوقت وحده (`getVisibleRange`) بيضيّع **الهامش الفاضي** بعد آخر
+     شمعة، لأنه بيرجّع مدى البيانات جوّا المنظر وبس. فالتابعة كانت تحشر ذاك
+     المدى على كل عرضها، وتطلع مزحزحة عن القائدة. مقيس بمتصفّحه على **نفس
+     الرمز ونفس الفريم**: المؤشر على نفس العمود بس ٠٥:٤٥ فوق و٠٢:٣٠ تحت.
+
+     فبنّشر الهندسة كاملة بدل المدى:
+       `anchorTime`   وقت الشمعة عند الحافة اليمنى للمنظر
+       `bars`         كم شمعة بيسعها المنظر
+       `rightOffset`  كم شمعة فاضية بعد شمعة المرساة
+
+     التابعة بتلاقي **فهرسها هي** لوقت المرساة وبتعيد بناء نفس الهندسة. فلو
+     الرمزان متطابقان بينطبقوا تماماً، ولو مختلفين بينحاذوا على لحظة المرساة
+     مع نفس عدد الشموع ونفس الهامش.
+
+     ⚠️ الفهارس من `visibleCandlesRef` مش `allCandles`: هي اللي الشارت مبني
+     عليها فعلاً (بوضع التدريب المكشوف أقل من الكل)، فالفهرس بيطابق.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  function viewGeometry(chart) {
+    const arr = visibleCandlesRef.current;
+    if (!arr || arr.length < 3) return null;
+    const lr = chart.timeScale().getVisibleLogicalRange();
+    if (!lr) return null;
+    const bars = lr.to - lr.from;
+    if (!(bars >= 3)) return null;
+    const rightIdx = Math.max(0, Math.min(Math.floor(lr.to), arr.length - 1));
+    return { anchorTime: arr[rightIdx].time, bars, rightOffset: lr.to - rightIdx };
+  }
   const [error, setError] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   // true بس لما نتأكد فعلاً إنه ما في شموع أحدث متوفرة من المصدر (شوفي
@@ -1219,6 +1320,9 @@ export default function ReplayClient({
   const [cutRegion, setCutRegion] = useState(null); // {fromLogical, toLogical} | null
   const cutRegionRef = useRef(null);
   useEffect(() => { cutRegionRef.current = cutRegion; }, [cutRegion]);
+  /* منطقة قص **لوحة تانية** عم تتحدد هلق — للتعتيم وبس. مش حالة قص محلية:
+     ما بتفعّل أزرار القص ولا بتنبثّ من جديد. شوف قناة `cutPreview` تحت. */
+  const syncedCutRegionRef = useRef(null);
   const [appliedCutRegion, setAppliedCutRegion] = useState(null); // {fromTime, toTime} | null
   const appliedCutRegionRef = useRef(null);
   useEffect(() => { appliedCutRegionRef.current = appliedCutRegion; }, [appliedCutRegion]);
@@ -1313,6 +1417,9 @@ export default function ReplayClient({
   // عداد فشل التحديث اللايف المتتالي - لو تكرر الفشل (مثلاً تقييد مؤقت من يوهو)
   // منجبر إعادة تحميل كاملة بدل ما نضل نحاول تحديثات جزئية فاشلة للأبد بصمت
   const livePollFailCountRef = useRef(0);
+  /* هل عملنا إعادة تحميل كاملة بلا ما ينجح ولا استطلاع بعدها — لمنع
+     تكرارها للأبد لما يكون عطل المزوّد دائماً مش عابر. */
+  const reloadedWithoutSuccessRef = useRef(false);
   const countdownTickRef = useRef(null);
   const forminCandleStartRef = useRef(null);
 
@@ -1867,6 +1974,16 @@ export default function ReplayClient({
     }
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
+    /* مخزن البكسل بيتصالح مع صندوق الكانفاس **عند الرسم نفسه**.
+       مقاس الكانفاس صار من CSS (`100%`)، فبيتغيّر مع كل تبديل تخطيط أو تغيّر
+       خليّة — وتصحيحه كان معلّقاً على `handleResize` وحده. الرسم أصلاً بيمرق
+       من هون، فالمصالحة هون بتضمن إنه ما يضل مقاس قديم بلا أي مؤقّت.
+       ⚠️ الشرط ضروري: تعيين `canvas.width` بيمسح اللوحة، فبنعمله بس لما
+       يختلف فعلاً — وبعده الرسم كامل بيصير تحت. */
+    const needW = Math.max(1, Math.round(canvas.clientWidth * dpr));
+    const needH = Math.max(1, Math.round(canvas.clientHeight * dpr));
+    if (canvas.clientWidth && canvas.width !== needW) canvas.width = needW;
+    if (canvas.clientHeight && canvas.height !== needH) canvas.height = needH;
     const w = canvas.width / dpr;
     const h = canvas.height / dpr;
     ctx.save();
@@ -1878,6 +1995,48 @@ export default function ReplayClient({
        كل أسعار الخطوط تترسم مكانها الصح وتظهر واضحة جوا صناديقها. */
     ctx.direction = "ltr";
     ctx.textAlign = "left";
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       مؤشر المزامنة — **بالوقت، وكل لوحة بتحسب عمودها هي.**
+       -----------------------------------------------------------------------
+       اللي بينتقل بين اللوحات هو **الطابع الزمني** وبس. كل لوحة بتحوّله لموضع
+       منطقي بمصفوفتها هي وخطوتها هي (`timeToDrawingLogicalForCandles`)، وبعدين
+       لبكسل بمحورها هي. فولا فهرس بينتشارك بين فريمات مختلفة — قراره الصريح.
+
+       ⚠️ ومش ملتصق بشمعة: الوقت بينحسب بكسر الشمعة عند الناشر، فالخط بيتحرّك
+       بنعومة زي مؤشر المكتبة، مش بقفزات بين الأعمدة.
+
+       ⚠️ واللوحة اللي الفأرة فوقها بتمسح خطها هاد (شوف `onPaneEnter`) عشان ما
+       يصير فيها خطّان — مؤشر المكتبة وهاد.
+       ═══════════════════════════════════════════════════════════════════════ */
+    if (syncCursorRef.current != null) {
+      const lgSync = timeToDrawingLogicalForCandles(
+        syncCursorRef.current, visibleCandlesRef.current, currentStepSeconds()
+      );
+      const rawX = Number.isFinite(lgSync)
+        ? chartRef.current?.timeScale?.().logicalToCoordinate?.(lgSync)
+        : null;
+      const cx = rawX == null ? null : Math.round(rawX) + 0.5;
+      if (cx != null && cx >= 0 && cx <= w) {
+        ctx.save();
+        /* ⚠️ **نفس ستايل مؤشر المكتبة بالحرف** — لأنه اللوحة اللي تحت الفأرة
+           بترسم مؤشرها هي، والباقي بترسم هاد. لو اختلف اللون أو النقط بيبان
+           الشارتان مش متناسقين. المكتبة متضبّطة على
+           `crosshairColor` بعرض ١ و`style: 2` (متقطّع). */
+        /* ⚠️ النمط مش رقماً اخترته: lightweight-charts بـ`style: 2` (متقطّع)
+           بتحسبه من عرض الخط — `[2×العرض, 2×العرض]`. كنت حاطط `[4,4]`
+           فطلع تقطيعي أطول وبان الشارتان مش متناسقين بلقطته. */
+        const lw = 1;
+        ctx.lineWidth = lw;
+        ctx.setLineDash([2 * lw, 2 * lw]);
+        ctx.strokeStyle = chartSettings?.crosshairColor || "#9AA0B5";
+        ctx.beginPath();
+        ctx.moveTo(cx, 0);
+        ctx.lineTo(cx, h);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
 
     /* أداة القص الجديدة (سحب لتحديد منطقة كاملة): 3 حالات محتملة بالرسم -
        1) منطقة "قيد التعديل" حالياً (لسا ما انطبقت): حدود متقطعة + تعتيم خارجها
@@ -1936,7 +2095,14 @@ export default function ReplayClient({
         ctx.restore();
       };
 
-      if (cm && region) {
+      if (!cm && syncedCutRegionRef.current) {
+        /* لوحة تانية عم تحدّد قصاً: بنعتّم معها بنفس اللحظة — بلا مقابض،
+           لأن التعديل عندها مش عنا. */
+        const sr = syncedCutRegionRef.current;
+        paintRegion(sr.fromLogical, sr.toLogical, {
+          dim: dimOutside, fill: true, color: GOLD_LIGHT, dash: [5, 4],
+        });
+      } else if (cm && region) {
         paintRegion(region.fromLogical, region.toLogical, {
           dim: dimOutside, fill: true, color: GOLD_LIGHT,
           dash: sub === "select" ? [5, 4] : [],
@@ -3913,6 +4079,7 @@ export default function ReplayClient({
           ? { visible: true, text: savedSettings.watermarkText, color: "rgba(201,162,75,0.12)", fontSize: 48, horzAlign: "center", vertAlign: "center" }
           : { visible: false },
         timeScale: {
+          visible: showTimeAxisRef.current,
           borderColor: "#2A2145",
           timeVisible: true,
           secondsVisible: false,
@@ -3961,7 +4128,10 @@ export default function ReplayClient({
 
       const handleResize = () => {
         if (!chartContainerRef.current) return;
-        const isFs = !!document.fullscreenElement;
+        /* ⚠️ محلي مش عالمي — نفس سبب `handleFsChange` تحت. لما تكون مساحة
+           العمل كلها بالشاشة الكاملة، اللوحة لازم تضل تقيس **خليّتها**
+           بالشبكة، مش ارتفاع الشاشة كلها. */
+        const isFs = document.fullscreenElement === chartWrapperRef.current;
         let totalHeight = 480;
         if (isFs) {
           const headerH = headerRef.current?.offsetHeight || 0;
@@ -3978,7 +4148,7 @@ export default function ReplayClient({
             padBottom = parseFloat(cs.paddingBottom) || 0;
           }
           totalHeight = Math.max(320, window.innerHeight - headerH - headerMarginBottom - padTop - padBottom - 4);
-        } else if (fillContainer && chartWrapperRef.current) {
+        } else if (fillContainerRef.current && chartWrapperRef.current) {
           /* ═══════════════════════════════════════════════════════════════
              🔴 **بوضع الشارتات المتعددة القياس من النافذة بيكسر الشبكة.**
              ---------------------------------------------------------------
@@ -4014,19 +4184,63 @@ export default function ReplayClient({
         // نفرض ارتفاع صريح بالبكسل على صندوقي اللوحتين نفسهم (مش بس على الشارت جوّاهم).
         // هيك بيضلوا مطابقين تماماً لبعض بغض النظر عن طول أي عنصر جوا اللوحة الرئيسية
         // (زي عمود أدوات الرسم اللي كان بيطوّل أكتر من الشارت ويسيب فراغ أسود تحته).
-        if (mainPaneRef.current) mainPaneRef.current.style.height = `${totalHeight}px`;
+        /* ═══════════════════════════════════════════════════════════════════
+           بوضع الشبكة الاتجاه بينعكس: **بنقرا الارتفاع، ما بنفرضه.**
+           -------------------------------------------------------------------
+           الصندوق `flex:1` فبيتبع خليّته، والشارت بياخد قياسه **منه**. هيك
+           صندوق الـDOM ما بيقدر يفيض أبداً مهما تأخّر القياس؛ وأسوأ حالة إنّ
+           الكانفاس يضل لحظة على مقاس قديم، وهو مقصوص بـ`overflow:hidden`
+           فما بيطلع على الصف تحته.
+
+           ⚠️ السطر القديم (`style.height = totalHeight`) كان بيجمّد رقماً
+           محسوباً وقت الشريط السفلي لسا فاضي (٤٢٢.٦) وبيضل عليه بعد ما
+           تصغر الخليّة لـ٣٩٩.٦ — وهاد كان مصدر الفيض ١٦px بالضبط.
+           ═══════════════════════════════════════════════════════════════════ */
+        if (mainPaneRef.current) {
+          if (fillContainerRef.current && !isFs) {
+            mainPaneRef.current.style.height = "";
+            const boxH = mainPaneRef.current.clientHeight;
+            if (boxH > 0) totalHeight = boxH;
+          } else {
+            mainPaneRef.current.style.height = `${totalHeight}px`;
+          }
+        }
         chart.applyOptions({
           width: chartContainerRef.current.clientWidth,
           height: totalHeight,
         });
-        // مزامنة قياس الـ overlay canvas مع الشارت (للرسومات)
+        /* ═══════════════════════════════════════════════════════════════════
+           🔴 **طبقة الرسم كانت تتمدّد خارج لوحتها.**
+           -------------------------------------------------------------------
+           الكانفاس معرَّف `position:absolute; inset:0` — يعني المفروض ياخد
+           صندوق أبيه بالضبط. بس هالسطرين كانوا **يفرضوا عليه عرضاً وارتفاعاً
+           بالبكسل**، والمقاس الصريح بيغلب `inset`. فلما بيروح القياس قديماً
+           بيضل الكانفاس على مقاسه القديم.
+
+           والأسوأ بواجهة RTL: `inset:0` بتثبّت `right:0` كمان، فمقاس أعرض من
+           الأب بيمدّد الكانفاس **لليسار** — يعني باتجاه اللوحة المجاورة.
+           مقيس بلوحتين: الأب ٥١٥×٨١٨ والكانفاس ٥٤٠.٦×٨٦٤.٢ — بيطلع ١٨px
+           برّا من الجنب و٣٨px تحت حدّ اللوحة.
+           (`pointer-events:none` فما كان بيسرق أحداث فأرة، بس هو السطح اللي
+           بتنرسم عليه الرسومات ومقابضها — فكل شي بينرسم عليه بينزاح.)
+
+           بشيل المقاس المفروض: `inset:0` بتعطيه صندوق أبيه دايماً، وما بيقدر
+           بنيوياً يتجاوز لوحته. وJS بتضل مسؤولة عن **مخزن البكسل** وبس
+           (`canvas.width/height`)، وبتقراه من صندوق الكانفاس نفسه بعد ما
+           تحكم عليه الـCSS — نفس مبدأ إصلاح `mainPane`: نقرا لا نفرض.
+           ═══════════════════════════════════════════════════════════════════ */
         if (overlayCanvasRef.current) {
-          const rect = chartContainerRef.current.getBoundingClientRect();
+          const oc = overlayCanvasRef.current;
+          /* ⚠️ **ما بنلمس `style.width/height` هون إطلاقاً.** الستايل بيجي من
+             React (`100%`)، ولو مسحناه من JS بيضل ممسوحاً — لأن React ما
+             بتعيد كتابته إلا لو تغيّرت قيمة الـprop، وهي ما بتتغيّر.
+             مقيس: المسح رجّع الكانفاس لمقاسه الذاتي ٣٠٠×١٥٠. */
+          const rect = oc.getBoundingClientRect();
           const dpr = window.devicePixelRatio || 1;
-          overlayCanvasRef.current.width = Math.max(1, rect.width * dpr);
-          overlayCanvasRef.current.height = Math.max(1, rect.height * dpr);
-          overlayCanvasRef.current.style.width = rect.width + "px";
-          overlayCanvasRef.current.style.height = rect.height + "px";
+          const w = Math.max(1, Math.round(rect.width * dpr));
+          const h = Math.max(1, Math.round(rect.height * dpr));
+          if (oc.width !== w) oc.width = w;
+          if (oc.height !== h) oc.height = h;
         }
         scheduleDraw();
       };
@@ -4036,12 +4250,28 @@ export default function ReplayClient({
          التخطيط السابق لحد أول تحريك للنافذة. `ResizeObserver` بيمسك
          التبديل وكمان فتح/قفل الشريط الجانبي. */
       let paneRO = null;
-      if (fillContainer && typeof ResizeObserver !== "undefined" && chartWrapperRef.current) {
+      if (typeof ResizeObserver !== "undefined" && chartWrapperRef.current) {
         paneRO = new ResizeObserver(() => handleResize());
         paneRO.observe(chartWrapperRef.current);
       }
+      /* ═══════════════════════════════════════════════════════════════════════
+         🔴 **كان بيسأل «في شاشة كاملة؟» بدل «أنا الشاشة الكاملة؟»**
+         -----------------------------------------------------------------------
+         `!!document.fullscreenElement` قيمة **عالمية**: كل نسخة من الكومبوننت
+         بتسجّل مستمعها على `document`، فأول ما لوحة وحدة تفتح شاشة كاملة،
+         الأربعة بيرفعوا `isFullscreen`.
+
+         الأثر المقيس (زوّرت `fullscreenElement` = صندوق اللوحة الأولى وأطلقت
+         الحدث): الأربعة تحوّلوا لتنجيد الشاشة الكاملة (حشوة `0.6rem` وزاوية
+         صفر)، و**كل وحدة رسمت شريطها العلوي جوّاها** — صار بالصفحة ١٠ قوائم
+         منسدلة بدل ٢ (أربع نسخ × ٢ + الشريط المشترك). يعني أربعة شرايط أدوات
+         متراكبة بوضع الشاشة الكاملة.
+
+         المقارنة بالمرجع بتخلّي الجواب محلياً. وبالشارت المفرد ما تغيّر شي:
+         هو نفسه العنصر المفتوح، فالشرط بيتحقق زي ما كان.
+         ═══════════════════════════════════════════════════════════════════════ */
       const handleFsChange = () => {
-        setIsFullscreen(!!document.fullscreenElement);
+        setIsFullscreen(document.fullscreenElement === chartWrapperRef.current);
         setTimeout(handleResize, 50);
       };
       document.addEventListener("fullscreenchange", handleFsChange);
@@ -4138,7 +4368,47 @@ export default function ReplayClient({
         isDrawingRef.current = true;
         scheduleDraw();
       }
+      /* ═══════════════════════════════════════════════════════════════════════
+         🔴 **تسريب المؤشر بين اللوحات — سببه إنّ المستمع على `window`.**
+         -----------------------------------------------------------------------
+         `onMouseMove` مسجَّلة على **النافذة**، وكل لوحة بتسجّل نسختها. فحركة
+         فأرة فوق اللوحة العلوية بتشغّل معالِج **الأربع لوحات**.
+
+         واللوحة اللي الفأرة مش فوقها ما بتتجاهل الحدث: بتحوّل
+         `e.clientX/clientY` بشارتها هي عبر `getLogicalPrice`، وlightweight-charts
+         بتمدّد خارج حدود الحاوية بدل ما تقصّ — فبترجّع فهرساً صالحاً،
+         وبتنرسم شمعة تقاطع لفأرة أصلاً برّاها. ونفس الشي بيصير لحالة التحويم
+         (`hoveredIdRef` و`style.cursor`).
+
+         بشارت واحد ما بان أبداً لأنه ما في لوحة تانية تستقبل الحدث.
+
+         الحارس بيمرّق **بس** لو الفأرة فوق حاوية هاللوحة، أو لو في سحب/رسم
+         جاري **بدأ جوّاها** — لأن السحب لازم يكمل حتى لو طلعت الفأرة برّا،
+         وهاد بالضبط سبب وجود المستمع على النافذة أصلاً.
+
+         ⚠️ مزامنة المؤشر الاختيارية ما إلها علاقة بهاد: هاي بتشتغل عبر
+         الناقل وبتنطفي بمربّعها. هاد تسريب غير مقصود بينضل حتى وهي مطفية.
+         ═══════════════════════════════════════════════════════════════════════ */
+      function pointerInsideThisPane(e) {
+        const el = chartContainerRef.current;
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return e.clientX >= r.left && e.clientX <= r.right &&
+               e.clientY >= r.top && e.clientY <= r.bottom;
+      }
+
       function onMouseMove(e) {
+        const busyInThisPane = !!dragStateRef.current || isDrawingRef.current ||
+                               pathPointsRef.current.length > 0 || !!panDrag;
+        if (!busyInThisPane && !pointerInsideThisPane(e)) {
+          /* الفأرة برّا هاللوحة: نفكّ أي تحويم كان معلّقاً فيها وبنطلع. */
+          if (hoveredIdRef.current != null) {
+            hoveredIdRef.current = null;
+            if (chartContainerRef.current) chartContainerRef.current.style.cursor = "default";
+            scheduleDraw();
+          }
+          return;
+        }
         // وضع المؤشر: تلوين مؤشر الفأرة لما يكون فوق رسمة (يد) عشان يبين إنها قابلة للسحب،
         // وتحديث موقع الرسمة إذا كان في سحب جاري حالياً
         if (activeToolRef.current !== "cursor" && hoveredIdRef.current != null) {
@@ -4425,6 +4695,19 @@ export default function ReplayClient({
       }
       const overlayEl = overlayCanvasRef.current;
       const containerEl = chartContainerRef.current;
+      /* ⚠️ اللوحة اللي دخلتها الفأرة بتمسح خطها المتزامن: هي بتعرض مؤشر
+         المكتبة الحقيقي، ولو ضل خطها القديم مرسوماً بيصير فيها **خطّان**. */
+      const onPaneEnter = () => {
+        hoveredRef.current = true;
+        if (syncCursorRef.current !== null) { syncCursorRef.current = null; scheduleDraw(); }
+      };
+      const onPaneLeave = () => { hoveredRef.current = false; };
+      /* على **صندوق الشارت كله** مش على حاوية المكتبة: منزلق الزوم وأزراره
+         جوّا الصندوق وبرّا الحاوية، ولو ربطناها بالحاوية بيصير الزوم بالأزرار
+         ما بينتشر (الفأرة بتكون طلعت من الحاوية وقت الضغط). */
+      const hoverEl = chartWrapperRef.current;
+      hoverEl?.addEventListener("mouseenter", onPaneEnter);
+      hoverEl?.addEventListener("mouseleave", onPaneLeave);
       containerEl?.addEventListener("mouseleave", onContainerMouseLeaveClearHover);
       overlayEl?.addEventListener("wheel", onOverlayWheel, { passive: false });
       overlayEl?.addEventListener("mousedown", onOverlayAuxDown);
@@ -4563,13 +4846,49 @@ export default function ReplayClient({
          عن طريق setCrosshairPosition، وما في ضمان إنها هي نفسها بتفعّل حدث
          subscribeCrosshairMove بكل نسخ المكتبة — فبالاستدعاء المباشر بنضمن
          إنها تشتغل دايماً. */
+      /* ═══════════════════════════════════════════════════════════════════════
+         🔴 **مزامنة المؤشر كانت تنشر وقتاً — والمطلوب موضع.**
+         -----------------------------------------------------------------------
+         الوقت مشترك بين اللوحات، بس **البكسل اللي بينرسم عنده مش مشترك**:
+         موضع أي وقت على المحور بيعتمد على نطاق العرض والزوم وعرض اللوحة
+         وفريمها. فلوحتان على نفس اللحظة بترسموا الخط بعمودين مختلفين — وهاد
+         بالضبط اللي بان بلقطته: التاريخ متقارب والخط مزحزح.
+
+         الصح للسلوك المطلوب: **ننشر الموضع الأفقي مُنمَّطاً** (نسبة من عرض
+         محور الوقت)، وكل لوحة تشتقّ **وقتها هي** من ذاك الموضع بمعطياتها هي.
+         فالنتيجة: نفس العمود البصري، وكل لوحة على شمعتها الصحيحة حتى لو
+         الرمز والفريم مختلفين.
+
+         ⚠️ النسبة مش بكسل مطلق: اللوحات ممكن تختلف بالعرض (لوحة مفتوح جنبها
+         قائمة المتابعة مثلاً)، والبكسل المطلق فوق لوحة ما بيقع أصلاً جوّا
+         التانية بتخطيط الأعمدة. النسبة بتعطي «نفس المكان من الشارت» بكل
+         التخطيطات.
+         ═══════════════════════════════════════════════════════════════════════ */
       function onMainCrosshairSync(param) {
         const s = syncRef.current;
-        if (!s.bus || !s.crosshair || !s.leader) return;
+        /* من اللوحة اللي الفأرة **فوقها** — مش من النشطة. وإلا التحويم فوق
+           لوحة غير نشطة ما بيوصل لحدا (نفس علّة الزوم). و بيقفل
+           الحلقة:  بالتابعة بتطلق نفس الحدث، بس
+           الفأرة مش فوقها فما بتنشر. */
+        /* من اللوحة اللي الفأرة **فوقها** — مش من النشطة. وإلا التحويم فوق
+           لوحة غير نشطة ما بيوصل لحدا (نفس علّة الزوم). والمرجع بيقفل الحلقة:
+           `setCrosshairPosition` بالتابعة بتطلق نفس الحدث، بس الفأرة مش
+           فوقها فما بتنشر. */
+        if (!s.bus || !s.crosshair || !hoveredRef.current) return;
         if (applyingSyncRef.current) return;
-        /* بلا وقت = الفأرة برّا الشارت. منمرّر `null` عشان التابعات تعرف
-           تسكّر مؤشرها، مش تجمّده على آخر مكان. */
-        s.bus.publish("crosshair", param?.time ?? null);
+        const x = param?.point?.x;
+        /* بلا نقطة = الفأرة برّا الشارت. منمرّر `null` عشان التابعات تسكّر
+           مؤشرها بدل ما تجمّده على آخر مكان. */
+        if (x == null) { s.bus.publish("crosshair", { src: paneId }); return; }
+        /* ننشر **وقتاً** لا موضعاً: كل لوحة بتحوّله لعمودها هي بمعطياتها هي.
+           الموضع المشترك بيصطف بالبكسل بس بيوقع على لحظتين مختلفتين لما
+           تختلف نافذة العرض أو الفريم. والوقت بينحسب بكسر الشمعة عشان يضل
+           الخط ناعماً مش لازقاً بالأعمدة. */
+        const lg = chart.timeScale().coordinateToLogical(x);
+        if (lg == null) return;
+        const t = logicalToTimeForCandles(lg, visibleCandlesRef.current, currentStepSeconds());
+        if (!Number.isFinite(t)) return;
+        s.bus.publish("crosshair", { t, src: paneId });
       }
       chart.subscribeCrosshairMove(onMainCrosshairSync);
 
@@ -4581,13 +4900,83 @@ export default function ReplayClient({
          `getVisibleRange()` بترجّع نفس النافذة **بالوقت**، وهو المشترك
          الوحيد بين اللوحات — نفس مبدأ مزامنة نقطة القص.
          ═══════════════════════════════════════════════════════════════════════ */
+      /* عدد الشموع وقت آخر حدث نطاق — لتمييز تغيّر البيانات عن تحريك المستخدم. */
+      let barsAtLastRangeEvent = -1;
       function onVisibleRangeSyncPublish() {
         const s = syncRef.current;
-        if (!s.bus || !s.zoom || !s.leader) return;
+        /* ═══════════════════════════════════════════════════════════════════
+           🔴 **كانت اللوحة النشطة وحدها بتنشر — فتحريك غيرها ما بيوصل لحدا.**
+           -------------------------------------------------------------------
+           بلاغه: «لما أحرك فوق ما بيتحرك تحت معه». السبب إني ربطت النشر
+           بـ`chromeActive`، فلو النشطة هي السفلية وحرّك العلوية، العلوية ما
+           بتنشر أصلاً. وبتريدنغ فيو أي شارت تحرّكه بيسحب الباقي.
+
+           فصار **أي لوحة** بتنشر تغيّراتها. والحلقة مقفولة بشغلتين:
+           `applyingSyncRef` بيمنع النشر أثناء تطبيق قيمة جاية، و`src`
+           بتخلّي كل لوحة تتجاهل رسالتها هي.
+           ═══════════════════════════════════════════════════════════════════ */
+        if (!s.bus || !s.zoom) return;
         if (applyingSyncRef.current) return;
+        /* ═══════════════════════════════════════════════════════════════════
+           🔴 **تراشق: ٩٩٩ نشرة بـ١٥ ثانية من اللوحتين معاً.**
+           -------------------------------------------------------------------
+           لما خلّيت أي لوحة تنشر (عشان السحب يشتغل من أي شارت)، صارت التابعة
+           تطبّق ثم تعيد النشر للقائدة، والقائدة تطبّق وتنشر… وحارس الصدى ما
+           بيمسكها لأن القائدة عم تتحرّك أثناء السحب فالهندسة بتفرق كل دورة.
+           مقيس بسحب حقيقي عنده: ٩٩٩ نشرة، والمصدر اللوحتين معاً — وكل
+           الإطارات بتروح بالتراشق فبتحسّ التانية جامدة.
+
+           اللي بيحرّك فعلاً هو اللوحة اللي **الفأرة فوقها**. فهي وحدها بتنشر،
+           والباقي بتستقبل وبس. وهيك بيضل أي شارت تسحبه بيسحب الباقي، بلا
+           حلقة — نفس مبدأ المؤشر. */
+        if (!hoveredRef.current) return;
+        /* ⚠️ **ما بننشر ونحنا لسا عم نحمّل.** نطاق العرض بيتغيّر **برمجياً**
+           أثناء التحميل (أول دفعة صغيرة، ثم تبديل البيانات، ثم استرجاع
+           المدى) — ولحظة عابرة من هدول لو انتشرت بتعلق عند التابعات حتى بعد
+           ما تكتمل البيانات. القياس اللي وصلني: شارتان بنفس الزوم المتطرّف،
+           ٣ شموع على كل العرض. المستخدم ما زوّم — التحميل زوّم.
+           بننشر بس لما تكون بيانات هاللوحة مستقرّة. */
+        if (loadingRef.current || !allCandlesRef.current?.length) return;
+        /* ═══════════════════════════════════════════════════════════════════
+           🔴 **ننشر تغيّرات المستخدم وبس — مش تغيّرات البيانات.**
+           -------------------------------------------------------------------
+           كل تِك من الاستطلاع الحي بيضيف شمعة، والإضافة بتزحزح نطاق العرض
+           لحالها فبتطلق هالمعالِج. فالقائدة كانت تنشر مداها **كل ٥ ثواني**
+           بلا ما يلمس المستخدم شي، والتابعة تطبّقه فترجع لآخر شمعة.
+           بلاغه: «بيعمل زي ريفرش وبيرجع عند آخر شمعة».
+
+           الفرق بين الحالتين مقيس بلا مؤقّت: تغيّر البيانات بيجي **مع تغيّر
+           عدد الشموع**، وتحريك المستخدم بيجي والعدد ثابت. فأول حدث بعد أي
+           تغيّر بالعدد بينتخطّى، واللي بعده (لو صار) بيكون من المستخدم.
+           ═══════════════════════════════════════════════════════════════════ */
+        const barsNow = allCandlesRef.current.length;
+        if (barsNow !== barsAtLastRangeEvent) { barsAtLastRangeEvent = barsNow; return; }
+        /* ⚠️ **انشال حارس «٣ شموع جوّا المنظر»** — كان بقايا من لما كنت أنشر
+           الوقت ()، لأنها بتنهار لشمعة وحدة لما يكون المنظر
+           مسحوباً بعد نهاية البيانات. هلق بننشر **هندسة** (مرساة + عدد شموع +
+           هامش) وهي سليمة بهالحالة كمان. فالحارس صار يمنع سحبات مشروعة قرب
+           الحافة — بلاغه: «أسحب فوق بيتحرك فوق وتحت لأ». */
         try {
-          const vr = chart.timeScale().getVisibleRange();
-          if (vr && vr.from != null && vr.to != null) s.bus.publish("zoom", { from: vr.from, to: vr.to });
+          const g = viewGeometry(chart);
+          if (!g) return;
+          /* ═══════════════════════════════════════════════════════════════
+             🔴 **حلقة صدى كانت تهزّ الشارت.**
+             ---------------------------------------------------------------
+             تطبيق النافذة على التابعة بيطلق حدث نطاق — بس **بعد** ما ينمسح
+             `applyingSyncRef` (المكتبة بتأجّله للرسمة الجاية). فالتابعة كانت
+             ترجع تنشرها للقائدة، والقائدة تطبّق وتنشر… وهيك يتراشقوها.
+             ولأن الفهارس بتختلف بين اللوحتين، كل دورة بتزحزح شوي — فبيبان
+             اهتزاز. بلاغه: «بدّلت الفريم لساعة، صرت بس أحرك الشارت يهتز».
+
+             القاعدة: **ما بنعيد بثّ منظر إحنا انطلب منّا**. بنقارن الهندسة
+             الحالية بآخر وحدة انطبّقت من المزامنة — لو نفسها، هاد صدى مش
+             تحريك مستخدم. التسامح نص شمعة لأن الفهارس بتتقرّب.
+             ═══════════════════════════════════════════════════════════════ */
+          const la = lastAppliedGeomRef.current;
+          if (la && la.anchorTime === g.anchorTime &&
+              Math.abs(la.bars - g.bars) < 0.5 &&
+              Math.abs(la.rightOffset - g.rightOffset) < 0.5) return;
+          s.bus.publish("zoom", { ...g, src: paneId });
         } catch { /* المدى برّا البيانات — ما في شي ينتشر */ }
       }
       chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeSyncPublish);
@@ -4596,6 +4985,8 @@ export default function ReplayClient({
         window.removeEventListener("resize", handleResize);
         paneRO?.disconnect();
         document.removeEventListener("fullscreenchange", handleFsChange);
+        hoverEl?.removeEventListener("mouseenter", onPaneEnter);
+        hoverEl?.removeEventListener("mouseleave", onPaneLeave);
         containerEl?.removeEventListener("mouseleave", onContainerMouseLeaveClearHover);
         overlayEl?.removeEventListener("wheel", onOverlayWheel);
         overlayEl?.removeEventListener("mousedown", onOverlayAuxDown);
@@ -4639,13 +5030,72 @@ export default function ReplayClient({
     };
   }, []);
 
+  /* تبدّل وضع القياس (خليّة ↔ نافذة) لازم يعيد الحساب فوراً.
+     ⚠️ **بلا الاتّكال على مراقب الحجم**: مقيس بهالجلسة إنه بصفحة ما بترسم ما
+     بينده ولا نداء — والنتيجة كانت شارتاً بارتفاع النافذة جوّا خليّة شبكة. */
+  useEffect(() => {
+    /* قياسان: فوري وواحد بعد ما يستقر أول رسم. نفس نمط `setTimeout` المستعمل
+       أصلاً بمسار الشاشة الكاملة بهالملف.
+
+       ⚠️ **وهدول ما بيغطّوا الاستقرار المتأخّر.** الشريط السفلي المشترك
+       بينتقل بـportal لفتحة بمساحة العمل، وما بيتعبّى إلا لما توصل الشموع —
+       يعني بعد ثواني. ساعتها بياخد ٤٦px من الشبكة (٢٣ من كل صف) فالصندوق
+       بيصغر من ٤٣٧ لـ٤١٤، والشارت بيضل على القياس القديم.
+       مقيس بتحميل نظيف: مطبَّق ٤٢٢.٦ بدل ٣٩٩.٦ → فيض ١٦px على الصف تحته.
+
+       اللي بيسكّر هالفجوة هو **`ResizeObserver` على الصندوق** (مركّب فوق):
+       متحقَّق إنّ نداء `__resize` واحد بيوصّل لـ٣٩٩.٦ وفيض صفر بالأربع لوحات.
+       بس المراقب ما بينده بصفحة ما بترسم، فالفيض بيضل ظاهراً بلوحة المعاينة
+       هون. **ما انحلّت بمؤقّت أطول عمداً** — ضبط رقم على بيئة قياس بيخفي
+       العطل بدل ما يصلحه. */
+    const t0 = setTimeout(() => chartRef.current?.__resize?.(), 0);
+    const t1 = setTimeout(() => chartRef.current?.__resize?.(), 120);
+    return () => { clearTimeout(t0); clearTimeout(t1); };
+  }, [fillContainer]);
+
   /* ===================== تبديل الشاشة الكاملة ===================== */
+  /* ═══════════════════════════════════════════════════════════════════════════
+     🔴 **بوضع الشارتات المتعددة كان بيفتح لوحة وحدة ويخفي الشريط المشترك.**
+     ---------------------------------------------------------------------------
+     `requestFullscreen` بيرسم **شجرة العنصر المفتوح وبس**. وصندوق الشارت
+     صندوق لوحة وحدة، بينما الشريط العلوي وعمود الأدوات والشريط السفلي
+     بينتقلوا بـ`createPortal` لفتحات جوّا مساحة العمل — يعني **برّا** تلك
+     الشجرة. فالنتيجة كانت: شارت واحد بلا أي أدوات، والتلات التانية اختفوا.
+
+     وطلبه صريح: «أكثر من chart ظاهرين معًا». فبوضع الشبكة الهدف هو **مساحة
+     العمل كلها** — بتضم الشبكة والشريط المشترك سوا.
+
+     ⚠️ بالشارت المفرد الهدف ضل صندوق الشارت نفسه — ولا تغيير بالسلوك القديم.
+     ═══════════════════════════════════════════════════════════════════════════ */
   function toggleFullscreen() {
-    if (!chartWrapperRef.current) return;
-    if (!document.fullscreenElement) {
-      chartWrapperRef.current.requestFullscreen?.();
-    } else {
-      document.exitFullscreen?.();
+    /* الخروج أولاً — أياً كان الوضع اللي إحنا فيه. */
+    if (isMaximized) { onMaximizeToggle?.(); return; }
+    if (document.fullscreenElement) { document.exitFullscreen?.(); return; }
+
+    const el = fullscreenTargetRef?.current || chartWrapperRef.current;
+    if (!el) return;
+
+    /* البديل بالـCSS: بيملا النافذة بلا ما يحتاج إذن من المتصفّح.
+       بينستعمل بس لما تكون الأصلية ممنوعة أو ترفض. */
+    const fallback = (why) => {
+      if (!onMaximizeToggle) { console.error("fullscreen:", why); return; }
+      console.warn("fullscreen: الشاشة الكاملة الأصلية مش متاحة (" + why + ") — انفتح وضع التكبير بدلها.");
+      onMaximizeToggle();
+    };
+
+    /* ⚠️ **أكتر سبب بيخلّي الزر «ما بيعمل شي»**: الصفحة جوّا `iframe` بلا
+       `allow="fullscreen"` — حالة المتصفّحات المدمجة بالتطبيقات. المتصفّح
+       بيرفض بصمت بلا أي خطأ، فالزر بيبان ميتاً. */
+    if (document.fullscreenEnabled === false || typeof el.requestFullscreen !== "function") {
+      fallback("المتصفّح مانعها على هالصفحة");
+      return;
+    }
+    try {
+      const p = el.requestFullscreen();
+      /* ⚠️ الوعد كان رفضه **بيضيع بصمت** — بلا هالمسك ما في ولا أثر يدلّ. */
+      if (p && typeof p.catch === "function") p.catch((err) => fallback(err?.message || String(err)));
+    } catch (err) {
+      fallback(err?.message || String(err));
     }
   }
 
@@ -6244,6 +6694,7 @@ export default function ReplayClient({
       forminCandleStartRef.current = lastFresh.time;
       updateLivePrice(lastFresh.close);
       livePollFailCountRef.current = 0; // نجح التحديث - نصفّر عداد الفشل
+      reloadedWithoutSuccessRef.current = false; // نجاح فعلي — الملاذ الأخير رجع متاحاً
     } catch (e) {
       console.error("live poll failed:", e);
       handleLivePollFailure();
@@ -6267,6 +6718,25 @@ export default function ReplayClient({
     livePollFailCountRef.current += 1;
     if (livePollFailCountRef.current >= 10) {
       livePollFailCountRef.current = 0;
+      /* ═══════════════════════════════════════════════════════════════════
+         🔴 **إعادة التحميل كانت تتكرر للأبد لما يكون العطل دائماً.**
+         -------------------------------------------------------------------
+         الفكرة الأصلية سليمة: عشر فشلات متتالية = شبكة مقطوعة فعلاً، فمنعيد
+         التحميل الكامل كملاذ أخير. بس هي بتفترض إنّ الفشل **عابر**.
+
+         لما يكون دائماً — مفتاح مزوّد فاضي، أو رمز ميت عند المزوّد — ما في
+         ولا استطلاع بينجح أبداً، فبيصير: عشر فشلات → إعادة تحميل → عشر
+         فشلات → إعادة تحميل… كل ~٥٠ ثانية بلا نهاية. وكل وحدة `setData` على
+         الشارت كامل، يعني وميض وقفزة بصرية.
+         مقيس عند صاحب المنصّة: `TWELVE_DATA_API_KEY` فاضي و`XAUUSD=X` بيرجّع
+         404 — فالاستطلاع بيفشل بكل مرة. بلاغه: «بيضل يعمل ريفرش».
+
+         القاعدة: **ما بنعيد التحميل مرتين بلا ولا نجاح بينهن.** لو ما نجح
+         ولا استطلاع من آخر إعادة تحميل، فواضح إنها ما بتحل — فبنوقف. أول
+         نجاح بيرجّع الملاذ الأخير للخدمة (شوف تصفير العلم عند النجاح).
+         ═══════════════════════════════════════════════════════════════════ */
+      if (reloadedWithoutSuccessRef.current) return;
+      reloadedWithoutSuccessRef.current = true;
       loadData();
     }
   }
@@ -6448,57 +6918,278 @@ export default function ReplayClient({
   }, [isSyncFollower, syncBus]);
 
   /* ═══════════════════════════════════════════════════════════════════════════
-     مؤشر التقاطع — التابعة بتحط مؤشرها على **نفس عمود الوقت**.
+     مؤشر التقاطع — **نفس الموضع الأفقي، ووقت خاص بكل لوحة**.
      ---------------------------------------------------------------------------
-     ⚠️ السعر ما بينزامن: لوحة على الذهب (٤٥٠٠) ولوحة على ناسداك (٢٩٠٠٠) ما
-     إلهن سلّم مشترك. اللي بينزامن هو الوقت، والسعر بيتحدّد من شمعة اللوحة
-     نفسها عند ذاك الوقت — فبيطلع عمود واحد عابر للشارتات زي تريدنغ فيو.
+     السلسلة بتلات خطوات منفصلة، وهاد المقصود:
 
-     ⚠️ `setCrosshairPosition` بتطلق `subscribeCrosshairMove` من جديد، وهاد
-     **مقصود**: هيك ترويسة الـOHLC بالتابعة بتتحدّث على الشمعة الموقوف عليها.
-     الحارس بيمنع الجزء الخطر وبس — إعادة النشر.
+       ١ · القائدة: موضع الفأرة → نسبة   `frac = point.x / timeScale.width()`
+       ٢ · التابعة: النسبة → موضعها هي   `x = frac * timeScale.width()`
+                    ثم موضعها → وقتها هي `coordinateToLogical(x)` → شمعتها
+       ٣ · التابعة: ترسم مؤشرها على **شمعتها** عند ذاك الموضع
+
+     يعني النسبة هي الوحيدة اللي بتعبر بين اللوحات؛ الوقت **ما بيعبر أبداً**.
+     كل لوحة بتشتقّ وقتها من موضعها هي بمداها هي — فلوحة على ١٥ دقيقة ولوحة
+     على ٤ ساعات بيطلعوا على نفس العمود البصري وكل وحدة على شمعتها الصحيحة.
+
+     ⚠️ ولا لمسة للزوم أو نطاق العرض أو التحريك: `setCrosshairPosition` بترسم
+     وبس. وما إلها علاقة بقناة القص (`time`) — قناتان مستقلتان.
+
+     ⚠️ السعر ما بينزامن: ذهب ٤٥٠٠ وناسداك ٢٩٠٠٠ ما إلهن سلّم مشترك. بنمرّر
+     إغلاق شمعة اللوحة نفسها لأن الدالة بدها سعراً، والمهم عندنا العمود.
+
+     ⚠️ **ما بنستعمل `setCrosshairPosition` إطلاقاً.** هي بدها **وقت شمعة**،
+     فبتلزق الخط على أقرب عمود ويتحرّك بقفزات. قوله: «بتريدنغ فيو المؤشر عائم
+     مش مربوط بإشي فبيتحرك بكل أريحية». فمنخزّن النسبة ومنرسم الخط بنفسنا
+     بـ`drawOverlay` — عائم وبنعومة، وبلا ما نلمس مؤشر المكتبة باللوحة اللي
+     الفأرة فوقها (هي بتضل تعرضه عادي).
      ═══════════════════════════════════════════════════════════════════════════ */
   useEffect(() => {
-    if (!syncBus || !syncCrosshair || chromeActive) return;
-    const apply = (t) => {
-      const chart = chartRef.current, series = seriesRef.current;
-      if (!chart || !series) return;
-      applyingSyncRef.current = true;
-      try {
-        if (!Number.isFinite(t)) { chart.clearCrosshairPosition(); return; }
-        const arr = visibleCandlesRef.current;
-        if (!arr || !arr.length) return;
-        let lo = 0, hi = arr.length - 1, found = -1;
-        while (lo <= hi) {
-          const mid = (lo + hi) >> 1;
-          if (arr[mid].time <= t) { found = mid; lo = mid + 1; } else { hi = mid - 1; }
-        }
-        const bar = arr[found < 0 ? 0 : found];
-        if (bar) chart.setCrosshairPosition(bar.close, bar.time, series);
-      } catch { /* الشارت انفكّ أو الوقت برّا مداه */ } finally {
-        applyingSyncRef.current = false;
-      }
+    if (!syncBus || !syncCrosshair) return;
+    const apply = (msg) => {
+      if (msg && msg.src === paneId) return; /* رسالتي أنا */
+      /* بس بنخزّن النسبة ومنطلب رسمة — الخط بينرسم بطبقة الرسم عندنا،
+         **بلا التصاق بشمعة**، فبيتحرّك بنعومة زي تريدنغ فيو. شوف `drawOverlay`. */
+      const next = msg && Number.isFinite(msg.t) ? msg.t : null;
+      if (syncCursorRef.current === next) return;
+      syncCursorRef.current = next;
+      scheduleDraw();
     };
     return syncBus.subscribe("crosshair", apply);
-  }, [syncBus, syncCrosshair, chromeActive]);
+  }, [syncBus, syncCrosshair, paneId]);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     نشرة واحدة عند **استقرار** البيانات.
+     ---------------------------------------------------------------------------
+     🔴 حارس «ما ننشر ونحنا عم نحمّل» سدّ اللحظة العابرة، بس فتح فجوة أكبر:
+     كل تغيّرات المدى بتصير **أثناء** التحميل (تبديل البيانات ثم استرجاع
+     المدى)، وبعد ما يخلص ما بيتغيّر المدى فما في شي بينشر — فاللوحات بتضل
+     كل وحدة على نافذتها. مقيس بعد تبديل الرمزين: القائدة 1787777100 والتابعة
+     1787734800، يعني نافذتين مختلفتين والشموع مش مصطفّة.
+
+     الانتقال من «عم يحمّل» لـ«خلص» إشارة حقيقية للاستقرار — مش مؤقّت — فمنها
+     بتطلع نشرة وحدة بتصفّ الباقي.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  const wasLoadingRef = useRef(true);
+  useEffect(() => {
+    /* ═══════════════════════════════════════════════════════════════════════
+       🔴 **لازم تنشر عند الانتقال وبس — النشر المتكرر بيقفّز التابعة.**
+       -----------------------------------------------------------------------
+       أول نسخة من هالتأثير كانت تنشر كل ما تتغيّر تبعيّاتها، ومنها
+       `allCandles.length` — وهاي بتتغيّر **مع كل تِك من الاستطلاع الحي**
+       (كل ٥ ثواني لكل لوحة). فالقائدة كانت تعيد نشر مداها كل خمس ثواني،
+       والتابعة تطبّق `setVisibleRange` من جديد فتقفز لآخر شمعة.
+       بلاغه: «تحت بيضل يعمل لحاله زي ريفرش أو بيروح لآخر شمعة» — مرّة كل
+       خمس ثواني بالضبط.
+
+       الاستقرار **حدث لحظي** (تحميل → خلص)، مش حالة مستمرة. فبنمسك الحافة:
+       ننشر بس لما تكون كانت `loading` وصارت `false`. باقي التغيّرات بتمرق
+       بلا نشر، والمرجع بينتحدّث بكل تشغيل عشان الحافة الجاية تنمسك صح.
+       ═══════════════════════════════════════════════════════════════════════ */
+    const settled = wasLoadingRef.current && !loading;
+    wasLoadingRef.current = loading;
+    if (!settled) return;
+    if (!syncBus || !syncZoom || !chromeActive || !allCandles.length) return;
+    const chart = chartRef.current;
+    if (!chart) return;
+    /* نفس الفحص: لحظة الاستقرار بالذات هي اللي بيكون فيها المنظر مسحوباً بعد
+       نهاية البيانات، فمنها بالضبط كانت تطلع النافذة المنهارة. */
+    try {
+      const g = viewGeometry(chart);
+      if (g) syncBus.publish("zoom", { ...g, src: paneId });
+    } catch { /* المدى برّا البيانات — ما في شي ينتشر */ }
+  }, [syncBus, syncZoom, chromeActive, loading, allCandles.length]);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     الفريم — مشترك بين كل اللوحات.
+     ---------------------------------------------------------------------------
+     أي لوحة يبدّل فريمها بتنشره، والباقي بتتبع. مش مربوط باللوحة النشطة
+     لنفس سبب الزوم: التبديل ممكن يصير من أي لوحة.
+
+     ⚠️ الحلقة مقفولة بمرجع: لما نطبّق فريماً جاي من المزامنة بنعلّم، فتأثير
+     النشر بيتخطّى المرّة الجاية بدل ما يرجّع نفس الفريم للمصدر.
+     ⚠️ وما بننشر عند التركيب — القيمة الأولية مش تبديل من المستخدم، ولو
+     نشرناها كانت كل لوحة جديدة تفرض فريمها على الباقي.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  const applyingIntervalRef = useRef(false);
+  const intervalPublishReady = useRef(false);
+  useEffect(() => {
+    if (!syncBus || !syncTimeframe) return;
+    if (!intervalPublishReady.current) { intervalPublishReady.current = true; return; }
+    if (applyingIntervalRef.current) { applyingIntervalRef.current = false; return; }
+    syncBus.publish("interval", { interval, src: paneId });
+  }, [interval, syncBus, syncTimeframe, paneId]);
+
+  useEffect(() => {
+    if (!syncBus || !syncTimeframe) return;
+    return syncBus.subscribe("interval", (m) => {
+      if (!m || m.src === paneId || !m.interval) return;
+      if (m.interval === intervalRef.current) return;
+      applyingIntervalRef.current = true;
+      setIntervalValue(m.interval);
+    });
+  }, [syncBus, syncTimeframe, paneId]);
+
+  /* تبديل ظهور محور الزمن بيغيّر الارتفاع المتاح للشموع، فبنعيد القياس بعده. */
+  useEffect(() => {
+    const c = chartRef.current;
+    if (!c) return;
+    try { c.applyOptions({ timeScale: { visible: showTimeAxis } }); } catch {}
+    const t = setTimeout(() => chartRef.current?.__resize?.(), 0);
+    return () => clearTimeout(t);
+  }, [showTimeAxis]);
+
+  /* استقبال القص: كل لوحة بتلاقي شمعتيها هي عند نفس اللحظتين وبتمرق بنفس
+     مسار القص العادي — فبتاخد التغميق والوضع ونقطة البداية زي ما لو قصّها
+     المستخدم بإيده. */
+  useEffect(() => {
+    if (!syncBus || !syncTime) return;
+    return syncBus.subscribe("cut", (m) => {
+      if (!m || m.src === paneId) return;
+      if (!Number.isFinite(m.fromTime) || !Number.isFinite(m.toTime)) return;
+      const arr = allCandlesRef.current;
+      if (!arr || arr.length < 2) return;
+      const at = (t) => {
+        let lo = 0, hi = arr.length - 1, found = -1;
+        while (lo <= hi) { const mid = (lo + hi) >> 1; if (arr[mid].time <= t) { found = mid; lo = mid + 1; } else { hi = mid - 1; } }
+        return found < 0 ? 0 : found;
+      };
+      const fromIdx = at(m.fromTime);
+      const toIdx = Math.max(fromIdx, at(m.toTime));
+      const fromCandle = arr[fromIdx], toCandle = arr[toIdx];
+      if (!fromCandle || !toCandle) return;
+      applyingCutRef.current = true;
+      try { finalizeCut(fromCandle, toCandle, fromIdx, !!m.openEnded); }
+      finally { applyingCutRef.current = false; }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncBus, syncTime, paneId]);
+
+  /* الرجوع للمباشر: بينتقل للباقي فبترجع كلها بكبسة وحدة. */
+  useEffect(() => {
+    if (!syncBus || !syncTime) return;
+    return syncBus.subscribe("live", (m) => {
+      if (!m || m.src === paneId) return;
+      if (modeRef.current !== "training") return;
+      applyingCutRef.current = true;
+      try { switchModeRef.current?.("live"); } finally { applyingCutRef.current = false; }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncBus, syncTime, paneId]);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     تغميق التحديد — بينتقل **أثناء** السحب مش بعد التثبيت.
+     ---------------------------------------------------------------------------
+     قراره: «التعتيم لازم يصير فوق وتحت بنفس الوقت».
+
+     منطقة القص قيد التعديل محفوظة **بفهارس منطقية**، وهاي ما بتنتقل بين
+     اللوحات (فهارس كل لوحة إلها، وفريماتها ممكن تختلف). فبنبثّها **أوقاتاً**
+     وكل لوحة بترجّعها لفهارسها هي.
+
+     ⚠️ اللوحة المستقبِلة **ما بتدخل وضع القص ولا بتلمس `cutRegion` تبعها**:
+     التعتيم بيتخزّن بـref منفصل والرسم بيقراه. لأن `setCutRegion` بيشغّل
+     أزرار «تطبيق/تحريك/تعديل الحواف» بشريطها ويخلّي منطقتها تنبثّ بدورها
+     (حلقة صدى). التعتيم عرض بصري وبس — والتطبيق الفعلي بيمرق بقناة `cut`.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  useEffect(() => {
+    if (!syncBus || !syncTime) return;
+    const arr = allCandlesRef.current;
+    if (!cutMode || !cutRegion || !arr || !arr.length) {
+      syncBus.publish("cutPreview", { src: paneId, region: null });
+      return;
+    }
+    const f = arr[cutIndexForLogical(cutRegion.fromLogical)];
+    const t = arr[cutIndexForLogical(cutRegion.toLogical)];
+    if (!f || !t) return;
+    syncBus.publish("cutPreview", { src: paneId, region: { fromTime: f.time, toTime: t.time } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cutRegion, cutMode, syncBus, syncTime, paneId]);
+
+  useEffect(() => {
+    if (!syncBus || !syncTime) {
+      /* المزامنة انطفت وهي عم تعتّم: منمسح التعتيم فوراً مش عند أول حركة. */
+      if (syncedCutRegionRef.current) { syncedCutRegionRef.current = null; scheduleDraw(); }
+      return;
+    }
+    return syncBus.subscribe("cutPreview", (m) => {
+      if (!m || m.src === paneId) return;
+      const arr = allCandlesRef.current;
+      if (!m.region || !arr || arr.length < 2) {
+        syncedCutRegionRef.current = null;
+        scheduleDraw();
+        return;
+      }
+      const at = (tt) => {
+        let lo = 0, hi = arr.length - 1, found = -1;
+        while (lo <= hi) { const mid = (lo + hi) >> 1; if (arr[mid].time <= tt) { found = mid; lo = mid + 1; } else { hi = mid - 1; } }
+        return found < 0 ? 0 : found;
+      };
+      const fromLogical = at(m.region.fromTime);
+      const toLogical = Math.max(fromLogical, at(m.region.toTime));
+      syncedCutRegionRef.current = { fromLogical, toLogical };
+      scheduleDraw();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncBus, syncTime, paneId]);
 
   /* نافذة العرض — نفس المبدأ: بالوقت، والتابعة بتقصّها على مداها المتاح. */
   useEffect(() => {
-    if (!syncBus || !syncZoom || chromeActive) return;
+    if (!syncBus || !syncZoom) return;
     const apply = (r) => {
       const chart = chartRef.current;
-      if (!chart || !r || r.from == null || r.to == null) return;
+      if (!chart || !r) return;
+      if (r.src === paneId) return; /* رسالتي أنا — ما بلحق حالي */
+      /* ═══════════════════════════════════════════════════════════════════════
+         🔴 **النافذة بتنقصّ على بيانات هاللوحة قبل ما تنطبّق.**
+         -----------------------------------------------------------------------
+         نافذة القائدة ممكن تمتد لوقت ما عند التابعة بيانات فيه (رمز تاني،
+         عمق تاريخي تاني، أو القائدة حمّلت أقدم). تطبيقها كما هي بيطلّع
+         اللوحة نصّها فاضي — وهاد اللي بان بلقطته لما حرّك السفلية فالعلوية
+         صارت شموعها بالنص اليمين وشمالها فاضي.
+
+         اللوحة ما بتقدر تعرض وقتاً ما عندها — فبنقصّ الطلب على مدى بياناتها.
+         وبلا تقاطع أصلاً ما بنلمسها.
+
+         ⚠️ وحارس انهيار: لو طلع المدى المطبَّق أقل من شمعتين، بنرجّع اللي
+         كان. مدى بشمعة وحدة مش نتيجة مزامنة مشروعة بأي حال — هاد فحص حالة
+         فاسدة مش رقم معايرة.
+         ═══════════════════════════════════════════════════════════════════════ */
+      const arr = visibleCandlesRef.current;
+      if (!arr || arr.length < 3) return;
+      if (!Number.isFinite(r.anchorTime) || !(r.bars >= 3)) return;
+      /* فهرس **هاللوحة** لوقت المرساة: آخر شمعة وقتها ≤ المرساة. */
+      let lo = 0, hi = arr.length - 1, idx = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (arr[mid].time <= r.anchorTime) { idx = mid; lo = mid + 1; } else { hi = mid - 1; }
+      }
+      if (idx < 0) idx = 0;
+      const to = idx + (r.rightOffset || 0);
+      const from = to - r.bars;
+      if (!(to > from)) return;
+      const ts = chart.timeScale();
+      const before = ts.getVisibleLogicalRange();
       applyingSyncRef.current = true;
       try {
-        chart.timeScale().setVisibleRange({ from: r.from, to: r.to });
-      } catch { /* النافذة كلها برّا بيانات هاللوحة — بتضل مكانها */ } finally {
+        ts.setVisibleLogicalRange({ from, to });
+        const after = ts.getVisibleLogicalRange();
+        /* حارس انهيار: منظر بأقل من شمعتين مش نتيجة مزامنة مشروعة. */
+        if (after && after.to - after.from < 2 && before) {
+          ts.setVisibleLogicalRange(before);
+        } else {
+          /* بنسجّل الهندسة اللي صرنا عليها فعلاً — الناشر بيقارن فيها ليعرف
+             إنّ حدث النطاق الجاي صدى مزامنة مش تحريك مستخدم. */
+          lastAppliedGeomRef.current = viewGeometry(chart);
+        }
+      } catch {
+        if (before) { try { ts.setVisibleLogicalRange(before); } catch {} }
+      } finally {
         applyingSyncRef.current = false;
       }
     };
     const off = syncBus.subscribe("zoom", apply);
     apply(syncBus.peek("zoom"));
     return off;
-  }, [syncBus, syncZoom, chromeActive]);
+  }, [syncBus, syncZoom, paneId]);
 
   /* ===== حفظ جلسة القص/التدريب =====
      ⚠️ **كانت بتنكتب بمكان واحد بس: لحظة الضغط على «مباشر».**
@@ -6567,7 +7258,15 @@ export default function ReplayClient({
       setHasSavedSession(true);
     }
     setMode(m);
+    /* الرجوع للمباشر بينتقل للباقي كمان — «بكبسة وحدة». نفس حارس الصدى. */
+    if (m === "live" && !applyingCutRef.current && syncBus && syncTime) {
+      syncBus.publish("live", { src: paneId });
+    }
   }
+  /* المشترِك بقناة `live` بينسجّل مرة وحدة، فلو ناداها مباشرة بيمسك نسخة
+     `mode` من أول رسمة — وبتفوّت حفظ الجلسة الموقوفة. الـref بيضل محدَّثاً. */
+  const switchModeRef = useRef(null);
+  switchModeRef.current = switchMode;
 
   /* المستخدمة اختارت "قص جديد" من نافذة الاختيار: نرمي أي لقطة محفوظة
      ونكمل بالسلوك العادي (فتح وضع القص من الصفر). */
@@ -6753,6 +7452,24 @@ export default function ReplayClient({
   /* الجزء المشترك بين "تطبيق منطقة مسحوبة" و"قص فوري بكليك واحد" تحت -
      منحوّل شمعة البداية/النهاية لوقت حقيقي ومنثبّتها (بدون حذف ولا شمعة من
      allCandles، بس منعيّن من وين يبلّش الاستعراض). */
+  /* ═══════════════════════════════════════════════════════════════════════════
+     انتقال القص للوحات الباقية.
+     ---------------------------------------------------------------------------
+     قراره: «بدي القص يتزامن تلقائي مع اللي تحت — حالياً ما بيتزامن ولا بيغمّق».
+
+     كنت مانعها عمداً: قناة الوقت بتزامن **موضع** القص باللوحات اللي أصلاً
+     بوضع التدريب، وما بتدخّل لوحة مباشرة فيه — لأن الإدخال بيمرق بمسار
+     `finalizeCut` كامل (بيوقف الاستطلاع الحي وبيكتب منطقة قص) واعتبرتها
+     «قصّة ما طلبها».
+     وهو طلبها صراحةً، فصارت مقصودة.
+
+     ⚠️ اللي بينتقل **أوقات** لا فهارس: كل لوحة بتلاقي شمعتها هي عند نفس
+     اللحظة، فبتشتغل مع رموز وفريمات مختلفة.
+     ⚠️ والحلقة مقفولة بمرجع: اللوحة اللي بتطبّق قصاً جاي من المزامنة ما
+     بتعيد نشره.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  const applyingCutRef = useRef(false);
+
   function finalizeCut(fromCandle, toCandle, fromIdx, openEnded = false) {
     stopLivePoll();
     setMode("training");
@@ -6767,6 +7484,12 @@ export default function ReplayClient({
     // مشكلة "الشموع بتقف" يلي أبلغت عنها المستخدمة رغم إنها بس ضغطت قص مرة
     // وحدة بدون تحديد من-إلى).
     setAppliedCutRegion({ fromTime: fromCandle.time, toTime: toCandle.time, openEnded });
+    /* بنبثّ القص للوحات الباقية — إلا لما نكون إحنا اللي عم نطبّق قصاً جاي. */
+    if (!applyingCutRef.current && syncBus && syncTime) {
+      syncBus.publish("cut", {
+        fromTime: fromCandle.time, toTime: toCandle.time, openEnded, src: paneId,
+      });
+    }
     if (cutAutoSave) {
       try {
         localStorage.setItem(
@@ -6936,7 +7659,7 @@ export default function ReplayClient({
         <button onClick={() => setWatchlistPanelOpen((v) => !v)} className={iconBtnClass(watchlistPanelOpen)} style={iconBtn(watchlistPanelOpen)} title="قائمة المتابعة: أسعار لحظية لكل الأصول"><ClipboardList size={14} aria-hidden /></button>
         <button onClick={handleExportImage} className={iconBtnClass(false)} style={iconBtn(false)} title="تصدير كصورة"><ToolIcon id="camera" /></button>
         <button onClick={handleResetView} className={iconBtnClass(false)} style={iconBtn(false)} title="إعادة الزوم والسكرول لوضعهم الطبيعي"><ToolIcon id="resetzoom" /></button>
-        <button onClick={toggleFullscreen} className={iconBtnClass(isFullscreen)} style={iconBtn(isFullscreen)} title="شاشة كاملة"><ToolIcon id={isFullscreen ? "fullscreenExit" : "fullscreen"} /></button>
+        <button onClick={toggleFullscreen} className={iconBtnClass(isFullscreen || isMaximized)} style={iconBtn(isFullscreen || isMaximized)} title="شاشة كاملة"><ToolIcon id={(isFullscreen || isMaximized) ? "fullscreenExit" : "fullscreen"} /></button>
         <div style={{ width: 1, height: 22, background: "#1C1630" }} />
         <button onClick={() => setRandomChart((r) => !r)} className={iconBtnClass(randomChart)} style={iconBtn(randomChart)} title="حركة سعر مولّدة عشوائياً بدل السوق الحقيقي"><ToolIcon id="dice2" /></button>
         <button
@@ -9390,10 +10113,23 @@ export default function ReplayClient({
           <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
             {/* اللوحة الرئيسية - ارتفاعها الفعلي مضبوط مباشرة بالبكسل من JS (mainPaneRef)
                 عشان يضل مطابق تماماً لارتفاع الشارت نفسه (overflow:hidden هون بيمنعه
-                من "يفلت" ويسيب فراغ أسود تحت الشارت) */}
+                من "يفلت" ويسيب فراغ أسود تحت الشارت)
+
+                ⚠️ **إلا بوضع الشبكة — هناك CSS بتملك الارتفاع مش JS.**
+                الارتفاع بالبكسل بيتحسب لحظة النداء وبيتجمّد. بالشبكة الخليّة
+                بتتغيّر بعدين (الشريط السفلي المشترك بيتعبّى لما توصل الشموع
+                وبياخد ٤٦px من الشبكة = ٢٣ من كل صف)، فالرقم المجمّد بيصير
+                أكبر من خليّته وبيفيض على الصف تحته — مقيس ١٦px.
+                `flex:1` بتخلّي الصندوق **يتبع خليّته دايماً**، فالفيض بيصير
+                مستحيلاً بنيوياً بدل ما يعتمد على إعادة قياس بوقتها.
+                وهو الابن الوحيد لعموده، فـ`flex:1` بتعطيه المساحة كاملة. */}
             <div
               ref={mainPaneRef}
-              style={{ display: "flex", flexDirection: "column", flex: "0 0 auto", minHeight: 0, overflow: "hidden", position: "relative" }}
+              style={{
+                display: "flex", flexDirection: "column", minHeight: 0,
+                overflow: "hidden", position: "relative",
+                flex: fillContainer ? 1 : "0 0 auto",
+              }}
             >
               <div ref={chartAreaRef} style={{ position: "relative", width: "100%", height: "100%", flex: 1, minWidth: 0 }}>
                 {allCandles.length > 0 && !editDraft && chartSettings.ohlcVisible !== false && renderOHLCTicker()}
@@ -9421,6 +10157,11 @@ export default function ReplayClient({
                   ref={overlayCanvasRef}
                   style={{
                     position: "absolute", inset: 0, zIndex: 3,
+                    /* ⚠️ `<canvas>` عنصر مستبدَل، فـ`inset:0` **ما بتمدّده**:
+                       بلا مقاس صريح بياخد مقاسه الذاتي ٣٠٠×١٥٠ ويتجاهل
+                       `right`. والنسبة المئوية بتخليه يتبع أبيه دايماً —
+                       فما بيقدر يتجاوز لوحته مهما تأخّر أي قياس. */
+                    width: "100%", height: "100%",
                     pointerEvents: (activeTool === "cursor" && !cutMode) ? "none" : "auto",
                     cursor: cutMode ? "crosshair" : activeTool === "text" ? "text" : activeTool !== "cursor" ? "crosshair" : "default",
                   }}

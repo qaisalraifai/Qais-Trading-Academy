@@ -36,11 +36,25 @@ import ReplayClient from "./ReplayClient";
    مقيس محلياً: كل تبديل تخطيط كان يطلق إعادة تحميل.
    وتخطيط الشاشة تفضيل **جهاز** مش إعداد حساب — شاشة الموبايل ما بدها نفس
    تقسيم شاشة المكتب. فبيضل محلياً وبس. */
-const LAYOUT_KEY = "replayLayout_v1";
-/* v2: انضافت مزامنة المؤشر والزوم وصارت مشغّلة افتراضياً. المفتاح انبدّل
-   عشان القيمة المحفوظة القديمة (اللي فيها الاتنين مطفيين لأنهما ما كانوا
-   مبنيين) ما تلغي التشغيل. اللي بينحفظ هون أربع قيم منطقية وبس. */
-const SYNC_KEY = "replaySync_v2";
+/* v2: الافتراضي رجع **شارت واحد** بقراره — «الوضع الافتراضي المفروض يكون
+   شارت واحد فاتح وأنا إذا بدي أزيد بزيد». المفتاح انبدّل عشان أي تخطيط
+   متعدّد محفوظ من قبل (منه تخطيطات فحصي) ما يفتح لوحتين بوجهه من جديد.
+   الاختيار لسا بينحفظ — بس نقطة البداية صارت وحدة. */
+const LAYOUT_KEY = "replayLayout_v2";
+/* v5: **المؤشر ونافذة الوقت مشغّلين افتراضياً** — من صورة تريدنغ فيو اللي
+   بعتها: الشارتان بنفس نافذة الوقت والشموع مصطفّة ومحور زمن واحد.
+   بلا مزامنة النافذة، كل لوحة بتعرض مدى مختلف (قِسته: ٠٦:٠٠→١٥:٠٠ فوق
+   مقابل ٠٣:٠٠→١٢:٠٠ تحت) — فنفس العمود بيعطي وقتين مختلفين، وهاد اللي
+   خلّى المؤشر يبان «مش على نفس اللحظة».
+   ⚠️ اللحظة العابرة وقت التحميل (اللي طلّعت الزوم متطرّفاً) انسدّت بحارس
+   `loadingRef` عند النشر، مش بإطفاء الميزة.
+   اللي بينحفظ هون أربع قيم منطقية وبس. */
+/* v7: **المؤشر ونافذة الوقت مشغّلين** — «رجع مزامنة النافذة، بدي الشموع
+   تكون مصطفّة». الأعراض اللي ظهرت بجولة v5 (ريفرش كل ٥ ثواني · القفز لآخر
+   شمعة · نصف اللوحة فاضي) كانت تلات أسباب منفصلة انسدّت عند مصادرها:
+   نشرة الاستقرار صارت على الحافة · تغيّرات النطاق الناتجة عن وصول شمعة
+   ما بتنتشر · ونافذة القائدة بتنقصّ على مدى بيانات التابعة قبل ما تنطبّق. */
+const SYNC_KEY = "replaySync_v8";
 
 /* التخطيطات: `panes` عدد اللوحات · `css` شبكة CSS.
    ⚠️ الأسماء ثابتة لأنها بتنحفظ بالمتصفح — تغييرها بيفقد تخطيط المستخدم. */
@@ -51,13 +65,17 @@ const LAYOUTS = {
   three: { panes: 3, label: "تلاتة شارتات", Icon: LayoutGrid, cols: "1fr 1fr", rows: "1fr 1fr" },
   four: { panes: 4, label: "أربعة شارتات", Icon: Grid2x2, cols: "1fr 1fr", rows: "1fr 1fr" },
 };
+/* ⚠️ **محور الزمن بيظهر بآخر صف وبس** — «مؤشر زمن واحد زي تريدنغ فيو».
+   بتخطيط «تلاتة شارتات» اللوحة الأولى بتمتد على الصفّين فبتوصل للأسفل، فهي
+   وآخر لوحة بالعمود التاني هن اللي بيظهر محورهن. */
+const AXIS_PANES = { single: [0], cols2: [0, 1], rows2: [1], three: [0, 2], four: [2, 3] };
 const PANE_IDS = ["main", "B", "C", "D"];
 
 export default function ReplayWorkspace({ userId }) {
   const [layout, setLayout] = useState("single");
   const [menuOpen, setMenuOpen] = useState(false);
   const [activePane, setActivePane] = useState("main");
-  const [sync, setSync] = useState({ on: true, time: true, crosshair: true, zoom: true });
+  const [sync, setSync] = useState({ on: true, time: true, crosshair: true, zoom: true, timeframe: true });
   /* أضيق من هيك ما بتنقسم الشاشة — عمود شارت أقل من ~٤٢٠ بكسل بيصير غير
      مقروء، وطلبه صريح: «على الشاشات الصغيرة لا تحاول ضغط ٤ شارتات». */
   const [maxPanes, setMaxPanes] = useState(4);
@@ -163,6 +181,35 @@ export default function ReplayWorkspace({ userId }) {
      أعلاها بيتحرّك مع الهيدر والشريط العلوي.
      ═══════════════════════════════════════════════════════════════════════ */
   const [fitH, setFitH] = useState(0);
+  /* ⚠️ **بالشاشة الكاملة ما منستعمل الارتفاع المقيس إطلاقاً.**
+     العنصر المفتوح كتلته الحاوية هي الشاشة نفسها، فـ`height:100%` بتعطي
+     ارتفاعها بالضبط وبلحظة الانتقال — بينما الرقم المقيس بيتأخّر إطار أو
+     اتنين (`innerHeight` و`rect.top` بيرجّعوا قيم ما قبل الانتقال)، فبتطلع
+     شبكة بمقاس النافذة القديمة جوّا شاشة أكبر مع فراغ أسود حواليها. */
+  const [wsFullscreen, setWsFullscreen] = useState(false);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     🔴 **زر الشاشة الكاملة ما كان بيعمل شي عنده — والسبب برّا كودنا.**
+     -----------------------------------------------------------------------
+     `requestFullscreen` بترفض بصمت لما تكون الصفحة جوّا `iframe` بلا
+     `allow="fullscreen"` — وهاي حالة المتصفّح المدمج بالتطبيقات. فالزر
+     بينضغط وما بيصير إشي وبلا أي خطأ ظاهر، وهاد بالضبط وصفه: «ما عم تكبس».
+
+     الحل: وضع تكبير **بالـCSS** كبديل — `position:fixed; inset:0` بيملا
+     النافذة كلها بنفس النتيجة العملية (كل الشارتات ظاهرة، شريط واحد، بلا
+     تمرير)، وبيشتغل بأي متصفّح لأنه ما بيحتاج أي إذن.
+
+     الترتيب: منجرّب الأصلية أول (بتعطي شاشة كاملة حقيقية بلا شريط المتصفّح)،
+     وبس لما تنرفض أو تكون ممنوعة منوقع على البديل.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const [maximized, setMaximized] = useState(false);
+  const toggleMaximized = useCallback(() => setMaximized((v) => !v), []);
+  useEffect(() => {
+    if (!maximized) return;
+    const onKey = (e) => { if (e.key === "Escape") setMaximized(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [maximized]);
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
@@ -172,9 +219,22 @@ export default function ReplayWorkspace({ userId }) {
     };
     measure();
     window.addEventListener("resize", measure);
+    /* ⚠️ دخول الشاشة الكاملة **ما بيطلق `resize`** بكل المتصفّحات، مع إنّ
+       أعلى مساحة العمل بيصير صفر وارتفاع النافذة بيصير ارتفاع الشاشة. بلا
+       هالمستمع بتضل الشبكة على مقاس النافذة القديم جوّا شاشة كاملة أكبر.
+       والتأخير لأن القياس لحظة الحدث بيرجّع أبعاد ما قبل الانتقال. */
+    const onFs = () => {
+      setWsFullscreen(document.fullscreenElement === rootRef.current);
+      measure(); setTimeout(measure, 60);
+    };
+    document.addEventListener("fullscreenchange", onFs);
     /* تبديل التخطيط بيحرّك المحتوى بلا حدث نافذة — إطار واحد بيكفي ليستقر. */
     const t = requestAnimationFrame(measure);
-    return () => { window.removeEventListener("resize", measure); cancelAnimationFrame(t); };
+    return () => {
+      window.removeEventListener("resize", measure);
+      document.removeEventListener("fullscreenchange", onFs);
+      cancelAnimationFrame(t);
+    };
   }, [layout, maxPanes]);
 
   /* ⚠️ **الفتحات لازم تكون مراجع ثابتة الهوية.**
@@ -289,7 +349,12 @@ export default function ReplayWorkspace({ userId }) {
         display: "flex", flexDirection: "column", minHeight: 0, position: "relative",
         /* ⚠️ بالوضع المفرد بيضل `100%` بالضبط زي ما كان — صفر تغيير بالسلوك
            القديم. الارتفاع المقيس بينطبّق **بس** لما تنفتح شبكة. */
-        height: multi && fitH ? fitH : "100%",
+        height: (wsFullscreen || maximized) ? "100%" : (multi && fitH ? fitH : "100%"),
+        /* العنصر المفتوح بالشاشة الكاملة بينرسم فوق خلفية سوداء من المتصفّح،
+           وبلا لون خاص فيه بيبان الفراغ حواليه أسود مكسوراً عن هوية الأداة. */
+        ...(wsFullscreen ? { background: "#0A0614", padding: 6 } : null),
+        /* البديل: بيملا النافذة بلا أي إذن من المتصفّح. */
+        ...(maximized ? { position: "fixed", inset: 0, zIndex: 60, background: "#0A0614", padding: 6 } : null),
       }}
     >
       {/* شريط مشترك: اللوحة النشطة بتنقل شريطها لهون بـcreatePortal.
@@ -386,6 +451,7 @@ export default function ReplayWorkspace({ userId }) {
                 المؤشر والزوم»). كانوا اتنين منهن معطَّلين لأنهم ما كانوا
                 مبنيين — والمربّع اللي بينضغط وما بيعمل شي أسوأ من غيابه. */}
             {[
+              ["timeframe", "الفريم"],
               ["time", "الوقت ونقطة القص"],
               ["crosshair", "المؤشر"],
               ["zoom", "الزوم والتحريك"],
@@ -460,6 +526,15 @@ export default function ReplayWorkspace({ userId }) {
                 syncTime={multi && sync.on && sync.time && shown}
                 syncCrosshair={multi && sync.on && sync.crosshair && shown}
                 syncZoom={multi && sync.on && sync.zoom && shown}
+                /* الفريم مشترك دايماً بوضع الشبكة — مش مربوط بمربّعات القائمة. */
+                syncTimeframe={multi && sync.on && sync.timeframe !== false && shown}
+                showTimeAxis={!multi || (AXIS_PANES[layout] || [0]).includes(i)}
+                /* بوضع الشبكة الشاشة الكاملة بتاخد مساحة العمل كلها — الشريط
+                   المشترك جوّاها، ولو فتحنا لوحة وحدة بيختفي معها. */
+                fullscreenTargetRef={multi ? rootRef : null}
+                /* البديل لما يمنع المتصفّح الشاشة الكاملة الأصلية. */
+                onMaximizeToggle={toggleMaximized}
+                isMaximized={maximized}
               />
             </div>
           );
