@@ -344,6 +344,69 @@ function logicalToTimeForCandles(logical, candles, stepSecondsOverride) {
   const t1 = candles[i0 + 1].time;
   return t0 + (t1 - t0) * frac;
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   المعكوس **الكسري** لـ`logicalToTimeForCandles` — لمؤشر التقاطع وحده.
+   ---------------------------------------------------------------------------
+   ⚠️ مش نسخة من `timeToDrawingLogicalForCandles` تحت: هديك بترجّع **عدداً
+   صحيحاً عمداً** (`return lo`) لأنها للرسومات، واللي بينرسم لازم يلزق بعمود
+   الشمعة. المؤشر عكسها تماماً — قوله: «عائم مش مربوط بإشي».
+
+   خلط الاتنتين هو اللي طلّع الانحراف: اللوحة التابعة كانت تلزق على `lo`
+   (تقريب لتحت) ومؤشر المكتبة باللوحة اللي تحت الفأرة بيلزق على **أقرب**
+   عمود (تقريب لأقرب) — فبنص الشمعة الواحدة بيصيروا على عمودين مختلفين،
+   والفرق **عرض شمعة كاملة**. بيبان لما تكون الشموع عريضة (زوم داخل).
+   ═══════════════════════════════════════════════════════════════════════════ */
+function timeToFractionalLogicalForCandles(time, candles, stepSecondsOverride) {
+  if (!candles || candles.length === 0 || !Number.isFinite(time)) return null;
+  const n = candles.length;
+  if (n === 1) return 0;
+  const step = stepSecondsOverride || (candles[1].time - candles[0].time) || 60;
+  if (time <= candles[0].time) return (time - candles[0].time) / step;
+  if (time >= candles[n - 1].time) return (n - 1) + (time - candles[n - 1].time) / step;
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (candles[mid].time <= time) lo = mid; else hi = mid;
+  }
+  const span = candles[hi].time - candles[lo].time;
+  return span > 0 ? lo + (time - candles[lo].time) / span : lo;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   إحداثي من فهرس **كسري**.
+   ---------------------------------------------------------------------------
+   ⚠️ `logicalToCoordinate` بترجّع **صفر بصمت** لأي فهرس مش صحيح — مثبت
+   بمصدر المكتبة: `if (isEmpty() || !isInteger(index)) return 0;`
+   فالكسر ما بينفع يتمرّر لها مباشرة.
+
+   بس الدالة **خطّية** بالفهرس (`x = width - (Δ + 0.5)·barSpacing - 1`)،
+   فنقطتان صحيحتان بتعطونا الخط كله بلا ما نلمس داخلية المكتبة.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function coordinateFromFractionalLogical(timeScale, logical) {
+  if (!timeScale || !Number.isFinite(logical)) return null;
+  const i0 = Math.floor(logical);
+  const x0 = timeScale.logicalToCoordinate(i0);
+  if (x0 == null) return null;
+  const frac = logical - i0;
+  if (frac === 0) return x0;
+  const x1 = timeScale.logicalToCoordinate(i0 + 1);
+  if (x1 == null) return x0;
+  return x0 + (x1 - x0) * frac;
+}
+
+/* الاتجاه المعاكس: موضع الفأرة → فهرس **كسري**. `coordinateToLogical`
+   بترجّع الفهرس مقرَّباً لأقرب عمود، فبناخده كمرساة وبنكمّل بالكسر. */
+function fractionalLogicalFromCoordinate(timeScale, x) {
+  if (!timeScale || !Number.isFinite(x)) return null;
+  const i0 = timeScale.coordinateToLogical(x);
+  if (i0 == null) return null;
+  const x0 = timeScale.logicalToCoordinate(i0);
+  const x1 = timeScale.logicalToCoordinate(i0 + 1);
+  if (x0 == null || x1 == null) return i0;
+  const barSpacing = x1 - x0;
+  return barSpacing > 0 ? i0 + (x - x0) / barSpacing : i0;
+}
+
 function timeToLogicalForCandles(time, candles, stepSecondsOverride) {
   if (!candles || candles.length === 0 || !Number.isFinite(time)) return 0;
   const n = candles.length;
@@ -1655,7 +1718,8 @@ export default function ReplayClient({
         minimumWidth: PRICE_SCALE_WIDTH,
       },
       crosshair: {
-        vertLine: { color: chartSettings.crosshairColor },
+        /* بتضل مطفية عند أي تغيير إعدادات — نحنا بنرسم العمودي. */
+        vertLine: { visible: false, color: chartSettings.crosshairColor },
         horzLine: { color: chartSettings.crosshairColor },
       },
     });
@@ -1997,24 +2061,25 @@ export default function ReplayClient({
     ctx.textAlign = "left";
 
     /* ═══════════════════════════════════════════════════════════════════════
-       مؤشر المزامنة — **بالوقت، وكل لوحة بتحسب عمودها هي.**
+       مؤشر التقاطع — **بالوقت، وكل لوحة بتحسب عمودها هي.**
        -----------------------------------------------------------------------
        اللي بينتقل بين اللوحات هو **الطابع الزمني** وبس. كل لوحة بتحوّله لموضع
-       منطقي بمصفوفتها هي وخطوتها هي (`timeToDrawingLogicalForCandles`)، وبعدين
-       لبكسل بمحورها هي. فولا فهرس بينتشارك بين فريمات مختلفة — قراره الصريح.
+       منطقي بمصفوفتها هي وخطوتها هي، وبعدين لبكسل بمحورها هي. فولا فهرس
+       بينتشارك بين فريمات مختلفة — قراره الصريح.
 
-       ⚠️ ومش ملتصق بشمعة: الوقت بينحسب بكسر الشمعة عند الناشر، فالخط بيتحرّك
-       بنعومة زي مؤشر المكتبة، مش بقفزات بين الأعمدة.
-
-       ⚠️ واللوحة اللي الفأرة فوقها بتمسح خطها هاد (شوف `onPaneEnter`) عشان ما
-       يصير فيها خطّان — مؤشر المكتبة وهاد.
+       ⚠️ **وهاد بينرسم بكل اللوحات — حتى اللي تحت الفأرة.** خط المكتبة
+       العمودي مطفي (`vertLine.visible: false`) لأنه بيلزق على مركز العمود
+       دايماً مهما كان `CrosshairMode` — مثبت بمصدرها:
+       `this.__x = timeScale.indexToCoordinate(newIndex)`.
+       فلو تركناه للوحة القائدة، بتضل هي لازقة والتابعة عائمة = انحراف
+       بيوصل عرض شمعة كاملة. الحل إنه **الكل بنفس القاعدة** لا إنه الكل يلزق.
        ═══════════════════════════════════════════════════════════════════════ */
     if (syncCursorRef.current != null) {
-      const lgSync = timeToDrawingLogicalForCandles(
+      const lgSync = timeToFractionalLogicalForCandles(
         syncCursorRef.current, visibleCandlesRef.current, currentStepSeconds()
       );
       const rawX = Number.isFinite(lgSync)
-        ? chartRef.current?.timeScale?.().logicalToCoordinate?.(lgSync)
+        ? coordinateFromFractionalLogical(chartRef.current?.timeScale?.(), lgSync)
         : null;
       const cx = rawX == null ? null : Math.round(rawX) + 0.5;
       if (cx != null && cx >= 0 && cx <= w) {
@@ -4108,7 +4173,13 @@ export default function ReplayClient({
            بس بيقوّي التصاقه لما يكون قريب فعلاً من سعر شمعة، من غير ما يختفي أبداً. */
         crosshair: {
           mode: CrosshairMode.Normal,
-          vertLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#3D2F63" },
+          /* ⚠️ الخط العمودي **بنرسمه نحنا** بطبقة الرسم — شوف `drawOverlay`.
+             خط المكتبة بيلزق على مركز العمود دايماً، وهاد مش خاضع لـ
+             `CrosshairMode` أبداً: `__x = timeScale.indexToCoordinate(index)`
+             بمصدرها. تسميته الوصفية «Normal» بتخص السعر (y) وبس.
+             تسمية الوقت على المحور بتضل من المكتبة — بتتموضع على العمود،
+             وهاد صح لأنها بتسمّي شمعة. */
+          vertLine: { visible: false, color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#3D2F63" },
           horzLine: { color: savedSettings.crosshairColor, width: 1, style: 2, labelBackgroundColor: "#3D2F63" },
         },
       });
@@ -4697,11 +4768,17 @@ export default function ReplayClient({
       const containerEl = chartContainerRef.current;
       /* ⚠️ اللوحة اللي دخلتها الفأرة بتمسح خطها المتزامن: هي بتعرض مؤشر
          المكتبة الحقيقي، ولو ضل خطها القديم مرسوماً بيصير فيها **خطّان**. */
-      const onPaneEnter = () => {
-        hoveredRef.current = true;
+      /* ما عاد فيه مسح عند الدخول: كان لمنع خطّين (خط المكتبة وخطنا)، وخط
+         المكتبة العمودي انطفى. أول حركة فأرة بتضبط القيمة بنفسها. */
+      const onPaneEnter = () => { hoveredRef.current = true; };
+      const onPaneLeave = () => {
+        hoveredRef.current = false;
+        /* الخروج من الصندوق: منسكّر خطنا ومنعلم التابعات. حدث المكتبة لحاله
+           مش كافي — ممكن يجي بعد ما ينطفي `hovered` فينتجاهل. */
         if (syncCursorRef.current !== null) { syncCursorRef.current = null; scheduleDraw(); }
+        const s = syncRef.current;
+        if (s?.bus && s.crosshair) s.bus.publish("crosshair", { src: paneId });
       };
-      const onPaneLeave = () => { hoveredRef.current = false; };
       /* على **صندوق الشارت كله** مش على حاوية المكتبة: منزلق الزوم وأزراره
          جوّا الصندوق وبرّا الحاوية، ولو ربطناها بالحاوية بيصير الزوم بالأزرار
          ما بينتشر (الفأرة بتكون طلعت من الحاوية وقت الضغط). */
@@ -4874,21 +4951,31 @@ export default function ReplayClient({
            لوحة غير نشطة ما بيوصل لحدا (نفس علّة الزوم). والمرجع بيقفل الحلقة:
            `setCrosshairPosition` بالتابعة بتطلق نفس الحدث، بس الفأرة مش
            فوقها فما بتنشر. */
-        if (!s.bus || !s.crosshair || !hoveredRef.current) return;
         if (applyingSyncRef.current) return;
+        if (!hoveredRef.current) return; /* التابعة ما بتشتق مؤشرها من حالها */
         const x = param?.point?.x;
-        /* بلا نقطة = الفأرة برّا الشارت. منمرّر `null` عشان التابعات تسكّر
-           مؤشرها بدل ما تجمّده على آخر مكان. */
-        if (x == null) { s.bus.publish("crosshair", { src: paneId }); return; }
         /* ننشر **وقتاً** لا موضعاً: كل لوحة بتحوّله لعمودها هي بمعطياتها هي.
            الموضع المشترك بيصطف بالبكسل بس بيوقع على لحظتين مختلفتين لما
-           تختلف نافذة العرض أو الفريم. والوقت بينحسب بكسر الشمعة عشان يضل
-           الخط ناعماً مش لازقاً بالأعمدة. */
-        const lg = chart.timeScale().coordinateToLogical(x);
-        if (lg == null) return;
-        const t = logicalToTimeForCandles(lg, visibleCandlesRef.current, currentStepSeconds());
-        if (!Number.isFinite(t)) return;
-        s.bus.publish("crosshair", { t, src: paneId });
+           تختلف نافذة العرض أو الفريم.
+
+           ⚠️ والفهرس **كسري**: `coordinateToLogical` بترجّعه مقرَّباً لأقرب
+           عمود، فلو أخذناه كما هو بيصير الوقت وقت شمعة والخط لازق. */
+        let t = null;
+        if (x != null) {
+          const lg = fractionalLogicalFromCoordinate(chart.timeScale(), x);
+          if (lg != null) {
+            const tt = logicalToTimeForCandles(lg, visibleCandlesRef.current, currentStepSeconds());
+            if (Number.isFinite(tt)) t = tt;
+          }
+        }
+        /* ورسمة اللوحة نفسها من **نفس** القيمة — مش من مؤشر المكتبة. هيك
+           القائدة والتابعة بيمرقوا بنفس التحويل بالضبط، فما بينحرفوا. وهاد
+           بيشتغل بالشارت الواحد كمان حيث ما في ناقل أصلاً. */
+        if (syncCursorRef.current !== t) { syncCursorRef.current = t; scheduleDraw(); }
+        if (!s.bus || !s.crosshair) return;
+        /* بلا نقطة = الفأرة برّا الشارت. منمرّر `null` عشان التابعات تسكّر
+           مؤشرها بدل ما تجمّده على آخر مكان. */
+        s.bus.publish("crosshair", t == null ? { src: paneId } : { t, src: paneId });
       }
       chart.subscribeCrosshairMove(onMainCrosshairSync);
 
