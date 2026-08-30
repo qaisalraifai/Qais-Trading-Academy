@@ -1471,6 +1471,9 @@ export default function ReplayClient({
   const syncedCutRegionRef = useRef(null);
   /* ونقطة المعاينة (قبل ما تنسحب منطقة) من لوحة تانية — نفس المبدأ. */
   const syncedCutHoverRef = useRef(null);
+  /* مطبِّق موضع الاستعراض الجاي بالمزامنة — بينحفظ بمرجع عشان تأثير اللحاق
+     تحت يستعمل **نفس** المنطق ونفس الحارس بدل نسخة بتنحرف عنه. */
+  const applyTimeRef = useRef(null);
   const [appliedCutRegion, setAppliedCutRegion] = useState(null); // {fromTime, toTime} | null
   const appliedCutRegionRef = useRef(null);
   useEffect(() => { appliedCutRegionRef.current = appliedCutRegion; }, [appliedCutRegion]);
@@ -7121,7 +7124,31 @@ export default function ReplayClient({
   useEffect(() => {
     if (!isSyncLeader || mode !== "training") return;
     const list = allCandles;
-    const c = list[Math.min(revealCount, list.length) - 1];
+    /* ═══════════════════════════════════════════════════════════════════════
+       🔴 **كانت تنشر «الآن» وسط التحميل، فتقفز اللوحات لطرفها.**
+       -----------------------------------------------------------------------
+       `setAllCandles` و`setRevealCount` ما بينزلوا برندرة وحدة — بتصير رندرة
+       بمصفوفة **جديدة** ومكان كشف **قديم** (موثّق بالتفصيل عند مزامنة
+       المرساة). وبتبديل الفريم وهو بالتدريب، مكان الكشف القديم بيكون أكبر من
+       المصفوفة الجديدة، فـ`Math.min` بتقصّه لآخر شمعة — يعني بنّشر **وقت
+       آخر شمعة** كأنه موضع الاستعراض.
+
+       والتابعة بتلاقي آخر شمعة عندها ≤ ذاك الوقت = طرفها، فبتكشف كل شموعها
+       وبتطلع «خلصت الشموع». بلاغه: قصّ على ٤ ساعات وبدّل للساعة، فطلعت
+       اللوحتان `1027/1027` و`20447/20447`. والقيمة المسمومة بتضل بالناقل
+       (`peek`) فبتنطبّق من جديد مع كل نمو بيانات.
+
+       ⚠️ والفحص اللي حسمها: **شارت واحد ما فيه المشكلة** — فالجذر بطبقة
+       المزامنة مش بمحرّك الريبلاي.
+
+       الحارسان — نفس اللي بيحمي مزامنة المرساة:
+         · مكان الكشف أكبر من المصفوفة = حالة غير مستقرة، ما بننشر.
+         · و`expectedRevealRef` مضبوط ولسا ما وصلنا القيمة المتوقَّعة = التحميل
+           شغّال، ما بننشر.
+       ═══════════════════════════════════════════════════════════════════════ */
+    if (revealCount > list.length) return;
+    if (expectedRevealRef.current != null && revealCount !== expectedRevealRef.current) return;
+    const c = list[revealCount - 1];
     if (c) syncBus.publish("time", c.time);
   }, [isSyncLeader, syncBus, mode, revealCount, allCandles]);
 
@@ -7132,6 +7159,29 @@ export default function ReplayClient({
       if (modeRef.current !== "training") return;
       const arr = allCandlesRef.current;
       if (!arr || !arr.length) return;
+      /* ═══════════════════════════════════════════════════════════════════
+         🔴 **وقت القائدة برّا بياناتي = قفزة لآخر شمعة عندي، مش مزامنة.**
+         -------------------------------------------------------------------
+         البحث الثنائي بيرجّع «آخر شمعة وقتها ≤ الوقت المطلوب». لما يكون
+         الوقت **بعد** آخر شمعة عندي، هاد بيطلع آخر فهرس — فبتنكشف كل شموعي
+         دفعة وحدة وبتطلع «خلصت الشموع» على لوحة لسا بنص جلستها.
+
+         بلاغه: قصّ على ٤ ساعات وبدّل للساعة، فطلعت:
+             فوق 23114 / 33595   ·   تحت 21785 / 22000
+         نفس الرمز ونفس الفريم، بس المصفوفتان مختلفتان **بـ11,595 شمعة** —
+         لأن كل لوحة بتجيب نافذة حوالين نقطتها هي والتعميق بيشتغل لكل وحدة
+         باستقلال. فالسفلية ما عندها بيانات توصل لوقت القائدة، فانجرّت
+         لطرفها.
+
+         الحد المشروع: **آخر شمعة عندي + خطوة فريمي**. أبعد من هيك يعني
+         بياناتي فعلاً ما بتوصل — فبنوقف مكاننا بدل ما نقفز، ولما يوصل
+         العمق بنلحق (شوف التأثير تحت اللي بيعيد التطبيق مع نمو البيانات).
+
+         ⚠️ الخطوة من فريم اللوحة نفسها — مش رقم مخترع. وبفريمات مختلفة
+         الفرق الطبيعي أقل من خطوة وحدة، فالشرط ما بيعضّ عليها.
+         ═══════════════════════════════════════════════════════════════════ */
+      const lastCandle = arr[arr.length - 1];
+      if (t > lastCandle.time + currentStepSeconds()) return;
       /* بحث ثنائي: آخر شمعة وقتها ≤ وقت القائدة. */
       let lo = 0, hi = arr.length - 1, found = -1;
       while (lo <= hi) {
@@ -7141,10 +7191,29 @@ export default function ReplayClient({
       if (found < 0) return;
       setRevealCount((cur) => (cur === found + 1 ? cur : found + 1));
     };
+    applyTimeRef.current = apply;
     const off = syncBus.subscribe("time", apply);
     apply(syncBus.peek("time"));
-    return off;
+    return () => { off(); applyTimeRef.current = null; };
   }, [isSyncFollower, syncBus]);
+
+  /* لحاق بعد وصول العمق: الحارس فوق بيوقف اللوحة اللي بياناتها ما بتوصل
+     لوقت القائدة. والقائدة بتنشر عند التقدّم وبس — فلو كانت واقفة، اللوحة
+     بتضل ورا للأبد حتى بعد ما توصلها البيانات. فبنعيد تطبيق آخر وقت منشور
+     كل ما نمت مصفوفتنا.
+
+     ⚠️ **وبنفس حماية مزامنة نقطة القص بالضبط** — شوف الشرح المطوّل عند
+     التأثير اللي بيحدّث `currentTimestamp`. الكتابة على `revealCount` وسط
+     تحميل غير مستقر (مصفوفة جديدة ومكان كشف قديم) هي جذر عطلين مبلَّغين
+     سابقاً: «ارجع لمكان التوقف ما بيقص الشموع» و«بيحكيلي وصلت الهدف».
+     فهاد التأثير ما بيشتغل إلا واللوحة مستقرة فعلاً. */
+  useEffect(() => {
+    if (!isSyncFollower || !syncBus) return;
+    if (loadingRef.current) return;
+    if (pendingResumeRef.current) return;
+    if (expectedRevealRef.current != null) return;
+    applyTimeRef.current?.(syncBus.peek("time"));
+  }, [isSyncFollower, syncBus, allCandles.length]);
 
   /* ═══════════════════════════════════════════════════════════════════════════
      مؤشر التقاطع — **نفس الموضع الأفقي، ووقت خاص بكل لوحة**.
