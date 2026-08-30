@@ -3,7 +3,7 @@
 // الأسعار/الاشتراك/الصفقات تضل حديثة دايماً وما تنكاش نسخة قديمة بالغلط.
 // بس الملفات الثابتة (أيقونات، صور، خطوط) بتتخزن (cache-first) لتحميل أسرع.
 
-const CACHE_VERSION = "qta-v2";
+const CACHE_VERSION = "qta-v3"; // v3: آخر محاولة بترجّع Response بدل ما ترمي
 const STATIC_CACHE = `qta-static-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [
@@ -62,15 +62,39 @@ self.addEventListener("fetch", (event) => {
       })
     );
   } else {
-    // network-first لكل باقي الصفحات — لو النت مقطوع، نرجع آخر نسخة محفوظة
-    // إذا موجودة، وإلا منسيب الطلب يفشل بشكل طبيعي (respondWith لازم ياخد
-    // Response دايماً — رجوع undefined هون كان يسبب "Failed to convert
-    // value to 'Response'" ويكسر الصفحة بشكل إضافي فوق أي خطأ أصلي).
+    /* network-first لكل باقي الصفحات — لو النت مقطوع، نرجع آخر نسخة محفوظة
+       إذا موجودة، وإلا منسيب الطلب يفشل بشكل طبيعي (respondWith لازم ياخد
+       Response دايماً — رجوع undefined هون كان يسبب "Failed to convert
+       value to 'Response'" ويكسر الصفحة بشكل إضافي فوق أي خطأ أصلي).
+
+       🔴 **وآخر محاولة كانت `return fetch(...)` — وهي بترمي هي كمان.**
+       ---------------------------------------------------------------------
+       لما تفشل الشبكة وما يكون في نسخة محفوظة، كانت تعيد نفس الطلب الفاشل
+       فيرجع الوعد **مرفوضاً** — فبيطلع بالكونسول:
+           The FetchEvent for "…/replay" resulted in a network error response
+           Uncaught (in promise) TypeError: Failed to fetch  at sw.js:73
+       ومتصفّح المستخدم بيعرض صفحة مكسورة بدل خطأ نظيف. مقيس على الإنتاج
+       أثناء نافذة نشر.
+
+       الصح: `respondWith` **لازم** ياخد `Response` بكل المسارات. فبنبني
+       واحدة نظيفة (503) بدل ما نرمي — المتصفّح بيعرض خطأ الشبكة العادي،
+       والصفحة ما بتنكسر فوقه. */
     event.respondWith(
       fetch(event.request).catch(async () => {
         const cached = await caches.match(event.request);
         if (cached) return cached;
-        return fetch(event.request);
+        try {
+          return await fetch(event.request);
+        } catch (err) {
+          return new Response(
+            "تعذّر الوصول للخادم. تأكد من الاتصال وأعد المحاولة.",
+            {
+              status: 503,
+              statusText: "Service Unavailable",
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            }
+          );
+        }
       })
     );
   }

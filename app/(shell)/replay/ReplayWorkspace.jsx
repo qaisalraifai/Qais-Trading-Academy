@@ -59,12 +59,28 @@ const SYNC_KEY = "replaySync_v8";
 /* التخطيطات: `panes` عدد اللوحات · `css` شبكة CSS.
    ⚠️ الأسماء ثابتة لأنها بتنحفظ بالمتصفح — تغييرها بيفقد تخطيط المستخدم. */
 const LAYOUTS = {
-  single: { panes: 1, label: "شارت واحد", Icon: Square, cols: "1fr", rows: "1fr" },
-  cols2: { panes: 2, label: "شارتين أفقي", Icon: Columns2, cols: "1fr 1fr", rows: "1fr" },
-  rows2: { panes: 2, label: "شارتين عمودي", Icon: Rows2, cols: "1fr", rows: "1fr 1fr" },
-  three: { panes: 3, label: "تلاتة شارتات", Icon: LayoutGrid, cols: "1fr 1fr", rows: "1fr 1fr" },
-  four: { panes: 4, label: "أربعة شارتات", Icon: Grid2x2, cols: "1fr 1fr", rows: "1fr 1fr" },
+  single: { panes: 1, cols2n: 1, label: "شارت واحد", Icon: Square, cols: "1fr", rows: "1fr" },
+  cols2: { panes: 2, cols2n: 2, label: "شارتين أفقي", Icon: Columns2, cols: "1fr 1fr", rows: "1fr" },
+  rows2: { panes: 2, cols2n: 1, label: "شارتين عمودي", Icon: Rows2, cols: "1fr", rows: "1fr 1fr" },
+  three: { panes: 3, cols2n: 2, label: "تلاتة شارتات", Icon: LayoutGrid, cols: "1fr 1fr", rows: "1fr 1fr" },
+  four: { panes: 4, cols2n: 2, label: "أربعة شارتات", Icon: Grid2x2, cols: "1fr 1fr", rows: "1fr 1fr" },
 };
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔴 **الحدّ كان بيقيس العرض الكلي بدرجات ثابتة — مش عرض العمود.**
+   ---------------------------------------------------------------------------
+   كان: `w < 900 ? 1 : w < 1400 ? 2 : 4`. فنافذة ١٢١٠ بكسل (شاشة مع DevTools
+   مفتوحة مثلاً) بتقع تحت ١٤٠٠ فبينعطّل خيارا التلاتة والأربعة — مع إنّ
+   أربع لوحات هناك بتعطي عمودين بعرض **٦٠٥ بكسل** لكل وحدة، وهاد أوسع بكتير
+   من الحدّ المقروء. بلاغه: «بكبس عليهم بس ما بتغيّروا الشارتات» — والفحص
+   طلّع `disabled: true` على الاتنين.
+
+   القاعدة المكتوبة أصلاً هي **عرض العمود** («عمود شارت أقل من ~٤٢٠ بكسل
+   بيصير غير مقروء»)، وعدد الأعمدة بأربع لوحات **اتنان** مش أربعة. فالحدّ
+   صار يطبّق القاعدة نفسها: بنقسم العرض على أعمدة التخطيط، ولو طلع العمود
+   ≥ ٤٢٠ بنسمح فيه. والصفوف ما بتدخل — ارتفاع الشارت بينضغط بلا ما يصير
+   غير مقروء، بعكس العرض.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const MIN_COL_PX = 420;
 /* ⚠️ **محور الزمن بيظهر بآخر صف وبس** — «مؤشر زمن واحد زي تريدنغ فيو».
    بتخطيط «تلاتة شارتات» اللوحة الأولى بتمتد على الصفّين فبتوصل للأسفل، فهي
    وآخر لوحة بالعمود التاني هن اللي بيظهر محورهن. */
@@ -76,9 +92,18 @@ export default function ReplayWorkspace({ userId }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activePane, setActivePane] = useState("main");
   const [sync, setSync] = useState({ on: true, time: true, crosshair: true, zoom: true, timeframe: true });
-  /* أضيق من هيك ما بتنقسم الشاشة — عمود شارت أقل من ~٤٢٠ بكسل بيصير غير
-     مقروء، وطلبه صريح: «على الشاشات الصغيرة لا تحاول ضغط ٤ شارتات». */
-  const [maxPanes, setMaxPanes] = useState(4);
+  /* عرض مساحة العمل المقيس. القرار بيتحسب منه لكل تخطيط حسب أعمدته —
+     شوف `MIN_COL_PX` فوق. طلبه: «على الشاشات الصغيرة لا تحاول ضغط ٤ شارتات».
+     ⚠️ القيمة الأولية كبيرة عمداً حتى ما تنعطّل الخيارات قبل أول قياس. */
+  const [availWidth, setAvailWidth] = useState(9999);
+  const layoutAllowed = useCallback(
+    (key) => availWidth / ((LAYOUTS[key] || LAYOUTS.single).cols2n || 1) >= MIN_COL_PX,
+    [availWidth]
+  );
+  /* أكبر عدد لوحات مسموح بالتخطيطات المتاحة — للقصّ عند التصغير. */
+  const maxPanes = Object.entries(LAYOUTS)
+    .filter(([k]) => layoutAllowed(k))
+    .reduce((m, [, c]) => Math.max(m, c.panes), 1);
 
   /* ═══════════════════════════════════════════════════════════════════════
      🔴 **الكتابة عند الإقلاع كانت تعمل حلقة إعادة تحميل لا نهائية.**
@@ -145,7 +170,8 @@ export default function ReplayWorkspace({ userId }) {
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
-    const apply = (w) => setMaxPanes(w < 900 ? 1 : w < 1400 ? 2 : 4);
+    /* العرض المتاح بيتخزّن كما هو، والقرار لكل تخطيط بيتحسب من أعمدته. */
+    const apply = (w) => setAvailWidth(w || 0);
     const measure = () => apply(el.clientWidth || window.innerWidth);
     measure();
     /* ⚠️ **مصدران للقياس عمداً.** `ResizeObserver` بيمسك تغيّر الحاوية اللي
@@ -204,6 +230,27 @@ export default function ReplayWorkspace({ userId }) {
      ═══════════════════════════════════════════════════════════════════════ */
   const [maximized, setMaximized] = useState(false);
   const toggleMaximized = useCallback(() => setMaximized((v) => !v), []);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     تكبير لوحة وحدة بالدبل كليك.
+     ---------------------------------------------------------------------------
+     قراره: «دبل كليك على شارت بيعمل إله فل سكرين، ودبل كليك تاني بيرجّعه».
+
+     ⚠️ مش `maximized` القائم — هداك بيكبّر **الشبكة كلها** (الشريط المشترك
+     جوّاها) وبيضل كل الشارتات ظاهرة. هون المطلوب شارت واحد ياخد المساحة.
+
+     ⚠️ والمكبَّرة **ما بتنفكّ ولا وحدة معها**: نفس آلية `everShown` — الباقي
+     بينخفي بـ`display:none` وبس، فالرسومات ونقطة القص والزوم بتضل مكانها لما
+     ترجع. وهاد كمان بيخلّي الرجعة فورية بلا إعادة تحميل.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  const [soloPane, setSoloPane] = useState(null);
+  const toggleSolo = useCallback((id) => setSoloPane((p) => (p === id ? null : id)), []);
+  useEffect(() => {
+    if (!soloPane) return;
+    const onKey = (e) => { if (e.key === "Escape") setSoloPane(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [soloPane]);
   useEffect(() => {
     if (!maximized) return;
     const onKey = (e) => { if (e.key === "Escape") setMaximized(false); };
@@ -235,7 +282,7 @@ export default function ReplayWorkspace({ userId }) {
       document.removeEventListener("fullscreenchange", onFs);
       cancelAnimationFrame(t);
     };
-  }, [layout, maxPanes]);
+  }, [layout, availWidth]);
 
   /* ⚠️ **الفتحات لازم تكون مراجع ثابتة الهوية.**
      أول تنفيذ استعمل `ref={(n) => setSlot("top", n)}` — دالة جديدة كل رندر،
@@ -290,7 +337,8 @@ export default function ReplayWorkspace({ userId }) {
   }
 
   const conf = LAYOUTS[layout] || LAYOUTS.single;
-  const paneCount = Math.min(conf.panes, maxPanes);
+  /* التخطيط الحالي ما بيسعه العرض؟ منقصّ عدد لوحاته لأكبر عدد مسموح. */
+  const paneCount = layoutAllowed(layout) ? conf.panes : Math.min(conf.panes, maxPanes);
   const multi = paneCount > 1;
   const ids = PANE_IDS.slice(0, paneCount);
 
@@ -324,6 +372,14 @@ export default function ReplayWorkspace({ userId }) {
   const rendered = PANE_IDS.filter((id) => everShown.has(id));
   /* اللوحة النشطة لازم تكون موجودة فعلاً — بعد التصغير ممكن تختفي. */
   const active = ids.includes(activePane) ? activePane : "main";
+  /* ونفس الشي للمكبَّرة: رجعنا لشارت واحد أو اختفت؟ منلغي التكبير حتى ما
+     تعلق الشبكة على لوحة مش معروضة أصلاً. */
+  useEffect(() => {
+    if (soloPane && !ids.includes(soloPane)) setSoloPane(null);
+  }, [soloPane, ids.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* اللوحة المكبَّرة فعلياً — بس بوضع الشبكة. */
+  const solo = multi && soloPane && ids.includes(soloPane) ? soloPane : null;
+
 
   const menuRef = useRef(null);
   /* ⚠️ **زر الفتح لازم ينستثنى من مستمع الإغلاق.**
@@ -332,6 +388,122 @@ export default function ReplayWorkspace({ userId }) {
      فالنتيجة إنها ما بتفتح أبداً. مقيس بالفحص المحلي: ضغطتان متتاليتان
      وما ظهرت ولا مرة. */
   const btnRef = useRef(null);
+
+  /* زرّ التخطيط كعنصر — بينرسم جوّا شريط الشارت بدل صفّ لحاله.
+     ⚠️ المقاس والستايل مطابقين لأزرار الشريط (٣٠ ارتفاع، زوايا ٣) حتى ما
+     يبان غريباً بينهن. والقائمة **معه** مش بمساحة العمل — السبب تحت. */
+  const layoutBtn = (
+    <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+      <button
+        type="button"
+        ref={btnRef}
+        onClick={() => setMenuOpen((v) => !v)}
+        title="تخطيط الشارتات"
+        style={{
+          display: "flex", alignItems: "center", gap: 5, height: 30,
+          padding: "0 8px", borderRadius: 3, cursor: "pointer", flexShrink: 0,
+          border: `1px solid ${menuOpen ? "#6D4AFF" : "transparent"}`,
+          background: menuOpen ? "#1A1230" : "transparent",
+          color: menuOpen ? "#C9BEFF" : "#A79FC4",
+          fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
+        }}
+        className="tv-btn"
+      >
+        <LayoutGrid size={15} strokeWidth={1.9} aria-hidden />
+        تخطيط
+      </button>
+      {/* ⚠️ القائمة **جوّا** الزر مش بمساحة العمل: بالشاشة الكاملة العنصر
+          المفتوح هو صندوق الشارت، وأي شقيق برّاه ما بينرسم أصلاً — فكانت
+          تضوي وما بتطلع خيارات. بلاغه. */}
+        {menuOpen && (
+          <div
+            ref={menuRef}
+            style={{
+              /* بالنسبة للزر نفسه هلق — تحته مباشرة.
+                 ⚠️ `left` صريحة مش `insetInlineEnd`: شريط الشارت مثبَّت على
+                 `direction: ltr`، فالمنطقية كانت تصير «يمين» والقائمة تمتد
+                 لليسار من زر قريب من الحافة — مقيس `x = -109`، نصّها برّا
+                 الشاشة. و`rtl` جوّاها عشان محتواها عربي. */
+              position: "absolute", top: 34, left: 0, zIndex: 40, width: 232,
+              direction: "rtl",
+              background: "#0F0B1C", border: "1px solid #2A2145", borderRadius: 6,
+              padding: "0.7rem", boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: "#C9BEFF" }}>تخطيط الشارت</span>
+              <button type="button" onClick={() => setMenuOpen(false)} style={{ background: "none", border: "none", color: "#6E6690", cursor: "pointer", padding: 2 }}>
+                <X size={14} aria-hidden />
+              </button>
+            </div>
+  
+            {Object.entries(LAYOUTS).map(([key, c]) => {
+              /* القرار بعرض العمود مش بعدد اللوحات — شوف MIN_COL_PX. */
+              const blocked = !layoutAllowed(key);
+              const on = key === layout;
+              const Icon = c.Icon;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={blocked}
+                  onClick={() => { setLayout(key); setMenuOpen(false); }}
+                  title={blocked ? "الشاشة أضيق من أن تعرض هالعدد بشكل مقروء" : c.label}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 9,
+                    padding: "0.45rem 0.5rem", marginBottom: 2, borderRadius: 4,
+                    border: `1px solid ${on ? "#6D4AFF" : "transparent"}`,
+                    background: on ? "#191130" : "transparent",
+                    color: blocked ? "#4A4363" : on ? "#C9BEFF" : "#A79FC4",
+                    cursor: blocked ? "not-allowed" : "pointer", fontSize: 12.5,
+                    textAlign: "start", transition: "background 0.12s ease",
+                  }}
+                >
+                  <Icon size={16} strokeWidth={1.8} aria-hidden />
+                  {c.label}
+                </button>
+              );
+            })}
+  
+            <div style={{ height: 1, background: "#1C1630", margin: "0.6rem 0" }} />
+  
+            <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", fontSize: 12.5, color: "#C9BEFF", fontWeight: 700 }}>
+              مزامنة الشارتات
+              <input
+                type="checkbox"
+                checked={sync.on}
+                onChange={(e) => setSync((p) => ({ ...p, on: e.target.checked }))}
+                style={{ accentColor: "#6D4AFF", width: 15, height: 15, cursor: "pointer" }}
+              />
+            </label>
+  
+            {/* ⚠️ ولا مزامنة إجبارية: الرمز والفريم بيضلوا مستقلين تماماً —
+                طلبه الصريح. المزامنة بس على الزمن/المؤشر/الزوم. */}
+            <div style={{ marginTop: 6, opacity: sync.on ? 1 : 0.45, pointerEvents: sync.on ? "auto" : "none" }}>
+              {/* ✅ التلاتة موصولات بالمحرّك (٢٠٢٦-٠٨-٢٨، قراره: «شغل مزامنة
+                  المؤشر والزوم»). كانوا اتنين منهن معطَّلين لأنهم ما كانوا
+                  مبنيين — والمربّع اللي بينضغط وما بيعمل شي أسوأ من غيابه. */}
+              {[
+                ["timeframe", "الفريم"],
+                ["time", "الوقت ونقطة القص"],
+                ["crosshair", "المؤشر"],
+                ["zoom", "الزوم والتحريك"],
+              ].map(([k, label]) => (
+                <label key={k} style={{ display: "flex", alignItems: "center", gap: 7, padding: "0.25rem 0", cursor: "pointer", fontSize: 12, color: "#A79FC4" }}>
+                  <input
+                    type="checkbox"
+                    checked={!!sync[k]}
+                    onChange={(e) => setSync((p) => ({ ...p, [k]: e.target.checked }))}
+                    style={{ accentColor: "#6D4AFF", width: 14, height: 14, cursor: "pointer" }}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+    </div>
+  );
   useEffect(() => {
     if (!menuOpen) return;
     const onDown = (e) => {
@@ -362,113 +534,18 @@ export default function ReplayWorkspace({ userId }) {
       {/* ⚠️ الفتحة بترسم **بس** بوضع الشارتات المتعددة. بالوضع المفرد الشريط
           بيضل جوّا الشارت زي ما كان، والفتحة الفاضية كانت بتاخد صفاً كامل
           وبتزحّ الشارت لتحت — بان بالفحص المحلي. */}
-      {/* صف نحيف: الزر ببدايته (يمين بالـRTL)، والشريط المشترك بيملا الباقي.
-          ⚠️ جرّبت أخلّي الزر طبقة مطلقة فوق الشريط — بيغطّي أزراره. والصف
-          النحيف أوضح، وبالوضع المفرد بياخد ارتفاع الزر وبس. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: multi ? 4 : 0 }}>
-        <button
-          type="button"
-          ref={btnRef}
-          onClick={() => setMenuOpen((v) => !v)}
-          title="تخطيط الشارتات"
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "0.4rem 0.7rem", borderRadius: 4, cursor: "pointer",
-            border: `1px solid ${menuOpen ? "#6D4AFF" : "#2A2145"}`,
-            background: menuOpen ? "#1A1230" : "transparent",
-            color: menuOpen ? "#C9BEFF" : "#A79FC4",
-            fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap",
-            transition: "background 0.12s ease, border-color 0.12s ease",
-          }}
-        >
-          <LayoutGrid size={15} strokeWidth={1.9} aria-hidden />
-          تخطيط
-        </button>
-        {/* ⚠️ الفتحة بترسم **بس** بوضع الشارتات المتعددة — بالوضع المفرد
-            الشريط بيضل جوّا الشارت زي ما كان بالضبط. */}
-        {multi && <div ref={setTopSlot} style={{ flex: 1, minWidth: 0 }} />}
-      </div>
-
-      {menuOpen && (
-        <div
-          ref={menuRef}
-          style={{
-            position: "absolute", top: 42, insetInlineEnd: 0, zIndex: 40, width: 232,
-            background: "#0F0B1C", border: "1px solid #2A2145", borderRadius: 6,
-            padding: "0.7rem", boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: "#C9BEFF" }}>تخطيط الشارت</span>
-            <button type="button" onClick={() => setMenuOpen(false)} style={{ background: "none", border: "none", color: "#6E6690", cursor: "pointer", padding: 2 }}>
-              <X size={14} aria-hidden />
-            </button>
-          </div>
-
-          {Object.entries(LAYOUTS).map(([key, c]) => {
-            const blocked = c.panes > maxPanes;
-            const on = key === layout;
-            const Icon = c.Icon;
-            return (
-              <button
-                key={key}
-                type="button"
-                disabled={blocked}
-                onClick={() => { setLayout(key); setMenuOpen(false); }}
-                title={blocked ? "الشاشة أضيق من أن تعرض هالعدد بشكل مقروء" : c.label}
-                style={{
-                  width: "100%", display: "flex", alignItems: "center", gap: 9,
-                  padding: "0.45rem 0.5rem", marginBottom: 2, borderRadius: 4,
-                  border: `1px solid ${on ? "#6D4AFF" : "transparent"}`,
-                  background: on ? "#191130" : "transparent",
-                  color: blocked ? "#4A4363" : on ? "#C9BEFF" : "#A79FC4",
-                  cursor: blocked ? "not-allowed" : "pointer", fontSize: 12.5,
-                  textAlign: "start", transition: "background 0.12s ease",
-                }}
-              >
-                <Icon size={16} strokeWidth={1.8} aria-hidden />
-                {c.label}
-              </button>
-            );
-          })}
-
-          <div style={{ height: 1, background: "#1C1630", margin: "0.6rem 0" }} />
-
-          <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", fontSize: 12.5, color: "#C9BEFF", fontWeight: 700 }}>
-            مزامنة الشارتات
-            <input
-              type="checkbox"
-              checked={sync.on}
-              onChange={(e) => setSync((p) => ({ ...p, on: e.target.checked }))}
-              style={{ accentColor: "#6D4AFF", width: 15, height: 15, cursor: "pointer" }}
-            />
-          </label>
-
-          {/* ⚠️ ولا مزامنة إجبارية: الرمز والفريم بيضلوا مستقلين تماماً —
-              طلبه الصريح. المزامنة بس على الزمن/المؤشر/الزوم. */}
-          <div style={{ marginTop: 6, opacity: sync.on ? 1 : 0.45, pointerEvents: sync.on ? "auto" : "none" }}>
-            {/* ✅ التلاتة موصولات بالمحرّك (٢٠٢٦-٠٨-٢٨، قراره: «شغل مزامنة
-                المؤشر والزوم»). كانوا اتنين منهن معطَّلين لأنهم ما كانوا
-                مبنيين — والمربّع اللي بينضغط وما بيعمل شي أسوأ من غيابه. */}
-            {[
-              ["timeframe", "الفريم"],
-              ["time", "الوقت ونقطة القص"],
-              ["crosshair", "المؤشر"],
-              ["zoom", "الزوم والتحريك"],
-            ].map(([k, label]) => (
-              <label key={k} style={{ display: "flex", alignItems: "center", gap: 7, padding: "0.25rem 0", cursor: "pointer", fontSize: 12, color: "#A79FC4" }}>
-                <input
-                  type="checkbox"
-                  checked={!!sync[k]}
-                  onChange={(e) => setSync((p) => ({ ...p, [k]: e.target.checked }))}
-                  style={{ accentColor: "#6D4AFF", width: 14, height: 14, cursor: "pointer" }}
-                />
-                {label}
-              </label>
-            ))}
-          </div>
+      {/* ⚠️ **الزر ما عاد بصفّ لحاله.** كان صفاً نحيفاً فوق الشارت — بياكل
+          ارتفاعاً، وبالشاشة الكاملة بيضل برّا العنصر المفتوح فما بتقدر
+          تبدّل التخطيط. بلاغه على الاتنين. صار بينمرَّر لـ`ReplayClient`
+          وبينرسم **جوّا شريط الشارت** (`layoutBtn` تحت)، فما بياخد ولا بكسل
+          زيادة وبيروح مع الشارت للشاشة الكاملة.
+          الفتحة المشتركة بتضل صفّها بوضع الشبكة وحده. */}
+      {multi && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div ref={setTopSlot} style={{ flex: 1, minWidth: 0 }} />
         </div>
       )}
+
 
       {/* ═════════════════════════════════════════════════════════════════════
           الهيكل المشترك: شريط علوي واحد · عمود أدوات واحد · شريط سفلي واحد.
@@ -485,16 +562,17 @@ export default function ReplayWorkspace({ userId }) {
       <div
         style={{
           flex: 1, minWidth: 0, minHeight: 0, display: "grid", gap: multi ? 6 : 0,
-          gridTemplateColumns: paneCount === 1 ? "1fr" : conf.cols,
-          gridTemplateRows: paneCount === 1 ? "1fr" : conf.rows,
+          /* لوحة مكبَّرة = خليّة وحدة تاخد كل المساحة. */
+          gridTemplateColumns: (paneCount === 1 || solo) ? "1fr" : conf.cols,
+          gridTemplateRows: (paneCount === 1 || solo) ? "1fr" : conf.rows,
         }}
       >
         {rendered.map((id) => {
           const i = ids.indexOf(id);
-          const shown = i !== -1;
-          const isActive = shown && id === active;
-          /* تلات شارتات: الأول بياخد العمود كامل. */
-          const span = shown && conf.panes === 3 && i === 0 ? { gridRow: "1 / span 2" } : null;
+          const shown = solo ? id === solo : i !== -1;
+          const isActive = shown && (solo ? true : id === active);
+          /* تلات شارتات: الأول بياخد العمود كامل — ما إلها معنى وقت التكبير. */
+          const span = !solo && shown && conf.panes === 3 && i === 0 ? { gridRow: "1 / span 2" } : null;
           return (
             <div
               key={id}
@@ -528,13 +606,30 @@ export default function ReplayWorkspace({ userId }) {
                 syncZoom={multi && sync.on && sync.zoom && shown}
                 /* الفريم مشترك دايماً بوضع الشبكة — مش مربوط بمربّعات القائمة. */
                 syncTimeframe={multi && sync.on && sync.timeframe !== false && shown}
-                showTimeAxis={!multi || (AXIS_PANES[layout] || [0]).includes(i)}
-                /* بوضع الشبكة الشاشة الكاملة بتاخد مساحة العمل كلها — الشريط
-                   المشترك جوّاها، ولو فتحنا لوحة وحدة بيختفي معها. */
-                fullscreenTargetRef={multi ? rootRef : null}
+                /* المكبَّرة لازم تعرض محورها — ممكن تكون وحدة ما بتملكه بالشبكة. */
+                showTimeAxis={!multi || solo === id || (!solo && (AXIS_PANES[layout] || [0]).includes(i))}
+                /* ═══════════════════════════════════════════════════════════
+                   الشاشة الكاملة بتاخد **مساحة العمل** بالحالتين.
+                   -----------------------------------------------------------
+                   لازم تكون الشبكة جوّا العنصر المفتوح: لو كانت على صندوق
+                   الشارت الواحد، تبديل التخطيط بينفّذ فعلاً (مقيس: التخزين
+                   `rows2 → four` و١٦ كانفس صاروا ٣٢) بس **ما بيبان** — لأنّ
+                   اللوحات بتنرسم برّا العنصر المفتوح. بلاغه.
+
+                   ⚠️ وما بتكلّف ارتفاعاً: صفّ زرّ التخطيط انشال، والزر صار
+                   جوّا شريط الشارت (`layoutButton`) — فالجذر ما فيه إلا
+                   الشبكة نفسها.
+                   ═══════════════════════════════════════════════════════════ */
+                fullscreenTargetRef={rootRef}
+                /* الزر بينرسم جوّا شريط الشارت — بالمفرد بشريطه هو، وبالشبكة
+                   بالشريط المشترك (مهيّأ من اللوحة النشطة، فنسخة وحدة). */
+                layoutButton={layoutBtn}
                 /* البديل لما يمنع المتصفّح الشاشة الكاملة الأصلية. */
                 onMaximizeToggle={toggleMaximized}
                 isMaximized={maximized}
+                /* دبل كليك على الشارت بيكبّره لحاله ويرجّعه. */
+                onSoloToggle={multi ? () => toggleSolo(id) : null}
+                isSolo={solo === id}
               />
             </div>
           );
