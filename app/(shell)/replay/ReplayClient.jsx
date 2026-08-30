@@ -50,6 +50,9 @@ const TEXT_CAPABLE_TYPES = new Set([...LINE_TEXT_TYPES, ...AREA_TEXT_TYPES, "rec
 // بنفس المحاذاة بالبكسل بين اللوحتين حتى لو كانت الفترة الزمنية متطابقة 100%
 // (هاي كانت سبب مشكلة "آخر شمعة فوق مش طالعة فوق آخر شمعة تحت بالضبط").
 const PRICE_SCALE_WIDTH = 78;
+/* الفراغ اللي بيحطّه الشارت بعد آخر شمعة. كان مكتوباً بالإعدادات بلا اسم،
+   وصار إله اسم لأنه حارس الانجراف تحت بيتّكل عليه كـ«الحد المشروع». */
+const CHART_RIGHT_OFFSET_BARS = 6;
 
 /* ===== أدوات مساعدة لمحرك تنفيذ الصفقات (TP/SL) =====
    بنستخدم تسامح نسبي صغير (epsilon) بدل المقارنة المباشرة (<=, >=) عشان
@@ -184,6 +187,72 @@ function isMarketClosedForAsset(assetInfo) {
   if (/-USD$/.test(assetInfo.yahoo)) return false; // كريبتو: 24/7 دايماً مفتوح
   const dow = new Date().getUTCDay(); // 0=أحد، 6=سبت
   return dow === 0 || dow === 6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   التحميل الأول — تحمّل التعثّر اللحظي.
+   ---------------------------------------------------------------------------
+   🔴 كان **طلباً واحداً بلا أي إعادة محاولة**، بينما نفس الملف بيعيد مرتين
+   بالتعميق الخلفي (`RETRY_WAITS = [20000, 45000]`) وموثّق هناك ليش: «الرفض
+   متقطّع، فجولة فاشلة وحدة ما بتوقف التعميق» — مقيس (٢٠٠٦ ✗ · ٢٠١٠ ✗ ·
+   ٢٠١٤ ✓ · ٢٠٢٠ ✗ · ٢٠٢٦ ✓). نفس المنطق بينطبق على التحميل الأول وما كان
+   مطبَّقاً، فأي تعثّر لحظة واحدة كان بيوصل للشاشة كبانر أحمر.
+
+   بلاغه: 502 بالإنتاج مرتين، الاتنين مباشرة بعد نشر.
+
+   ⚠️ **والإعادة ضيّقة عمداً — الشرط هو شكل الجسم مش الستاتوس:**
+
+     جسم JSON      = الراوت ردّ وحكم. حتى لو خطأ («فشل التلاتة»)، هاد **حكم
+                     نهائي** وما بينعاد. لأن حد Dukascopy **بعدد ملفات
+                     الأرشيف مش بالسرعة** (مقيس) — فإعادة بعد ثانية ما
+                     بتنفع، وبس بتحرق حصة العمق.
+     جسم مش JSON   = العطل صار **قبل** ما يوصل للراوت (نافذة نشر · انهيار
+                     نسخة · صفحة خطأ من الحافة). هاد وحده اللي بينعاد.
+
+   فالنتيجة: **صفر طلبات إضافية على المزوّدين**، وصفر أثر على العمق.
+
+   ⚠️ وفواصلها قصيرة (١ ثم ٣ ثواني) مش زي التعميق (٢٠ و٤٥) — هناك الصبر
+   مجاني لأنه بالخلفية، وهون المستخدم واقف مستني.
+
+   ⚠️ وبنعرض **نص الجسم** لما ما يكون JSON بدل ما نرميه: نص Vercel فيه كود
+   العطل حرفياً (`FUNCTION_INVOCATION_FAILED` مثلاً). قبل هيك كان بيتكتب
+   «رد غير صالح (HTTP 502)» وبس — فضاع علينا السبب مرتين.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const RESILIENT_RETRY_WAITS_MS = [1000, 3000];
+
+function describeNonJsonBody(status, text) {
+  const gist = String(text || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+  return gist ? `رد غير صالح (HTTP ${status}) — ${gist}` : `رد غير صالح (HTTP ${status})`;
+}
+
+async function fetchCandlesResilient(url, isStale) {
+  let lastTransient = null;
+  for (let attempt = 0; attempt <= RESILIENT_RETRY_WAITS_MS.length; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, RESILIENT_RETRY_WAITS_MS[attempt - 1]));
+      /* بدّل الرمز/الفريم وإحنا مستنيين؟ ما في داعي نكمّل — الحارس عند
+         المُستدعي بيرمي النتيجة أصلاً، فهاي بتوفّر الطلبات وبس. */
+      if (isStale && isStale()) return { error: "ملغى" };
+    }
+    let res;
+    try {
+      res = await fetch(url);
+    } catch (e) {
+      lastTransient = `تعذّر الوصول للخادم — ${e?.message || "خطأ شبكة"}`;
+      continue;
+    }
+    let text = "";
+    try { text = await res.text(); } catch {}
+    let parsed = null;
+    try { parsed = JSON.parse(text); } catch {}
+    if (parsed && typeof parsed === "object") return parsed;
+    lastTransient = describeNonJsonBody(res.status, text);
+  }
+  return { error: lastTransient || "تعذّر جلب البيانات" };
 }
 
 /* تصفية أي شمعة فاسدة (وقت/سعر مش رقمي أو تكرار بنفس الوقت) قبل ما توصل لمكتبة الشارت -
@@ -1196,6 +1265,9 @@ export default function ReplayClient({
   syncRef.current.leader = !!syncBus && chromeActive;
   syncRef.current.crosshair = !!syncCrosshair;
   syncRef.current.zoom = !!syncZoom;
+  /* معالِجات القص بتنبنى جوّا تأثير، فبتمسك القيمة القديمة — المرجع بيقرأ
+     وقت الحدث. شوف نشر `cutHover`. */
+  syncRef.current.time = !!syncTime;
   /* حارس ارتداد: لما التابعة تطبّق قيمة جاية من الناقل، الشارت بيطلق نفس
      الحدث تاني — وبلا الحارس بيرجع ينشر ويصير رنين بين اللوحات. */
   const applyingSyncRef = useRef(false);
@@ -1233,6 +1305,7 @@ export default function ReplayClient({
   /* مفتاح تخزين خاص باللوحة. `"main"` بيرجّع المفتاح كما هو — شرط أساسي
      عشان ما تضيع جلسات المستخدمين القائمة. */
   const paneKey = (base) => (paneId === "main" ? base : `${base}__${paneId}`);
+
 
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
@@ -1318,14 +1391,21 @@ export default function ReplayClient({
      المدى على كل عرضها، وتطلع مزحزحة عن القائدة. مقيس بمتصفّحه على **نفس
      الرمز ونفس الفريم**: المؤشر على نفس العمود بس ٠٥:٤٥ فوق و٠٢:٣٠ تحت.
 
-     فبنّشر الهندسة كاملة بدل المدى:
-       `anchorTime`   وقت الشمعة عند الحافة اليمنى للمنظر
-       `bars`         كم شمعة بيسعها المنظر
-       `rightOffset`  كم شمعة فاضية بعد شمعة المرساة
+     🔴 وبديلها — الهندسة (`anchorTime` + `bars` + `rightOffset`) — صلّحت
+     ذاك وفتحت أكبر منه: `bars` **عدد**، فالطرف الأيمن بيتحاذى بالوقت
+     والأيسر بالعدد. رمزان بكثافة مختلفة = نافذتان زمنيتان مختلفتان.
 
-     التابعة بتلاقي **فهرسها هي** لوقت المرساة وبتعيد بناء نفس الهندسة. فلو
-     الرمزان متطابقان بينطبقوا تماماً، ولو مختلفين بينحاذوا على لحظة المرساة
-     مع نفس عدد الشموع ونفس الهامش.
+     ✅ الشكل القائم: **`{ fromTime, toTime }` وبس** — طرفا المنظر بالوقت
+     الحقيقي، مشتقّان من **المدى المنطقي** (فالهامش الفاضي محفوظ) عبر
+     `logicalToTimeForCandles` اللي بتستقرئ برّا الطرفين بخطوة الفريم.
+     وكل لوحة بترجّعهن لفهارسها هي بـ`timeToFractionalLogicalForCandles`.
+     ولا فهرس بينتشارك.
+
+     مقيس — وهو اللي حسم الشكل (نفس النافذة · نفس الفريم ١٥ دقيقة · ٣٠ يوم):
+         الذهب 2138 شمعة · ناسداك 1984 — فرق **7.2٪**
+         وآخر شمعة: ذهب 23:45 · ناسداك 20:00 — فرق ٤ ساعات
+     فبلاغه «رجعت مشكلة المؤشر» ما كان بالمؤشر: المؤشر بيقع على **وقته
+     الصحيح** بكل لوحة، بس اللوحتان كانتا تعرضا نافذتين زمنيتين مختلفتين.
 
      ⚠️ الفهارس من `visibleCandlesRef` مش `allCandles`: هي اللي الشارت مبني
      عليها فعلاً (بوضع التدريب المكشوف أقل من الكل)، فالفهرس بيطابق.
@@ -1335,10 +1415,13 @@ export default function ReplayClient({
     if (!arr || arr.length < 3) return null;
     const lr = chart.timeScale().getVisibleLogicalRange();
     if (!lr) return null;
-    const bars = lr.to - lr.from;
-    if (!(bars >= 3)) return null;
-    const rightIdx = Math.max(0, Math.min(Math.floor(lr.to), arr.length - 1));
-    return { anchorTime: arr[rightIdx].time, bars, rightOffset: lr.to - rightIdx };
+    if (!(lr.to > lr.from)) return null;
+    const step = currentStepSeconds();
+    const fromTime = logicalToTimeForCandles(lr.from, arr, step);
+    const toTime = logicalToTimeForCandles(lr.to, arr, step);
+    if (!Number.isFinite(fromTime) || !Number.isFinite(toTime)) return null;
+    if (!(toTime > fromTime)) return null;
+    return { fromTime, toTime };
   }
   const [error, setError] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1386,6 +1469,8 @@ export default function ReplayClient({
   /* منطقة قص **لوحة تانية** عم تتحدد هلق — للتعتيم وبس. مش حالة قص محلية:
      ما بتفعّل أزرار القص ولا بتنبثّ من جديد. شوف قناة `cutPreview` تحت. */
   const syncedCutRegionRef = useRef(null);
+  /* ونقطة المعاينة (قبل ما تنسحب منطقة) من لوحة تانية — نفس المبدأ. */
+  const syncedCutHoverRef = useRef(null);
   const [appliedCutRegion, setAppliedCutRegion] = useState(null); // {fromTime, toTime} | null
   const appliedCutRegionRef = useRef(null);
   useEffect(() => { appliedCutRegionRef.current = appliedCutRegion; }, [appliedCutRegion]);
@@ -2167,6 +2252,25 @@ export default function ReplayClient({
         paintRegion(sr.fromLogical, sr.toLogical, {
           dim: dimOutside, fill: true, color: GOLD_LIGHT, dash: [5, 4],
         });
+      } else if (!cm && syncedCutHoverRef.current != null) {
+        /* ولوحة تانية عم تعاين نقطة قص (لسا ما سحبت منطقة): نفس الخط ونفس
+           التعتيم يمينه. بلا تلميح التاريخ — التلميح بيخصّ اللوحة اللي
+           تحت الفأرة، وتكراره بأربع لوحات عجقة. */
+        const hx = coordinateFromFractionalLogical(ts0, syncedCutHoverRef.current);
+        if (hx != null) {
+          ctx.save();
+          ctx.fillStyle = "rgba(8,9,12,0.4)";
+          ctx.fillRect(hx, 0, Math.max(0, w - hx), h);
+          ctx.strokeStyle = GOLD_LIGHT;
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(hx, 0);
+          ctx.lineTo(hx, h);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
       } else if (cm && region) {
         paintRegion(region.fromLogical, region.toLogical, {
           dim: dimOutside, fill: true, color: GOLD_LIGHT,
@@ -4148,7 +4252,7 @@ export default function ReplayClient({
           borderColor: "#2A2145",
           timeVisible: true,
           secondsVisible: false,
-          rightOffset: 6,
+          rightOffset: CHART_RIGHT_OFFSET_BARS,
           barSpacing: 7,
           // رجّعناها لقيمتها الأصلية: 0.05 هي يلي بتسمح بزوم-أوت واسع (لغاية
           // 4000 شمعة بمدى واحد حسب ZOOM_MAX_BARS تحت). القيمة 2 كانت تكسر
@@ -5059,10 +5163,12 @@ export default function ReplayClient({
              الحالية بآخر وحدة انطبّقت من المزامنة — لو نفسها، هاد صدى مش
              تحريك مستخدم. التسامح نص شمعة لأن الفهارس بتتقرّب.
              ═══════════════════════════════════════════════════════════════ */
+          /* التسامح **نص شمعة من فريم هاللوحة** — التحويل وقت↔فهرس بيمرق
+             بتقريب، فمقارنة بالثانية بتعتبر كل صدى تحريكاً جديداً. */
           const la = lastAppliedGeomRef.current;
-          if (la && la.anchorTime === g.anchorTime &&
-              Math.abs(la.bars - g.bars) < 0.5 &&
-              Math.abs(la.rightOffset - g.rightOffset) < 0.5) return;
+          const tol = Math.max(1, currentStepSeconds() / 2);
+          if (la && Math.abs(la.fromTime - g.fromTime) < tol &&
+              Math.abs(la.toTime - g.toTime) < tol) return;
           s.bus.publish("zoom", { ...g, src: paneId });
         } catch { /* المدى برّا البيانات — ما في شي ينتشر */ }
       }
@@ -5559,8 +5665,10 @@ export default function ReplayClient({
         if (myRequestId !== loadRequestIdRef.current) return;
       }
 
-      const res = await fetch(urlFor(effCount, effAnchor));
-      const data = await res.json().catch(() => ({ error: `رد غير صالح (HTTP ${res.status})` }));
+      const data = await fetchCandlesResilient(
+        urlFor(effCount, effAnchor),
+        () => myRequestId !== loadRequestIdRef.current
+      );
       // طلب أحدث صار وخلص قبل ما هاد يوصل جوابه - نتجاهل هاد الجواب "القديم"
       // نهائياً (ما منكمل ولا حتى ما بعد try/catch/finally) عشان ما يفسد
       // allCandles/pendingReprojectRef يلي أصلاً محدَّثين بالطلب الأحدث.
@@ -6483,6 +6591,40 @@ export default function ReplayClient({
       }
     }
 
+    /* ═══════════════════════════════════════════════════════════════════════
+       🔴 **انجراف المنظر لبعد نهاية البيانات — «الزوم أول ما افتح بيكون عالآخر».**
+       -----------------------------------------------------------------------
+       مقيس بمسبار على أربع لوحات:
+
+           البيانات  20330 شمعة
+           المنظر    from 20328 → to 20410   (span 82 · barSpacing 7)
+
+       يعني المنظر واقف **٨١ شمعة بعد آخر شمعة**: ٩٧٪ منه فراغ وشمعتان
+       ظاهرتان عالشمال. مش «زوم» ولا نقص بيانات — انجراف موضع.
+
+       من وين: أول `setData` بيصير والمصفوفة لسا صغيرة، فالمنظر الافتراضي
+       (عرض/barSpacing ≈ ٨٢ خانة) بيطلع معظمه فراغ. وبعدها كل جولة تعميق
+       بتضيف شموع **قبل** الموجودة، وزحزحة `pendingPrependRef` بتحافظ على
+       موضع المنظر بأمانة — فبتحافظ على الفراغ كمان. عشرين ألف شمعة بتنضاف
+       والمنظر بيضل بره البيانات.
+
+       الحارس: الزحزحة إلها معنى بس لو المنظر **على شموع**. الفراغ المشروع
+       بعد آخر شمعة معرَّف بالتطبيق نفسه (`CHART_RIGHT_OFFSET_BARS`) — فأي
+       منظر بيتجاوزه بينزحزح ليلمس الذيل، **والزوم (`span`) ما بينلمس**.
+
+       ⚠️ ما بيمسّ العمق ولا الجلب: المدى المرئي وبس. وما بيعضّ على الحالة
+       العادية — المستخدم اللي واقف على تاريخ قديم يمينه بعيد عن النهاية،
+       فالشرط ما بينطبق عليه أصلاً.
+       ═══════════════════════════════════════════════════════════════════════ */
+    if (restoreVisibleRange) {
+      const lastIdx = (mode === "training" ? revealCount : allCandles.length) - 1;
+      const maxTo = lastIdx + CHART_RIGHT_OFFSET_BARS;
+      if (Number.isFinite(lastIdx) && lastIdx >= 0 && restoreVisibleRange.to > maxTo) {
+        const span = restoreVisibleRange.to - restoreVisibleRange.from;
+        restoreVisibleRange = { from: maxTo - span, to: maxTo };
+      }
+    }
+
     // وضع التدريب: خطوة وحدة للأمام (تشغيل تلقائي / الشمعة التالية) بنفس مصفوفة الشموع
     const trainingStep = !forceFullReload && mode === "training" && allCandles.length === prevLen && revealCount === prevReveal + 1;
     // وضع السوق الحي: كل بولينغ (كل 5 ثواني) إما بيحدّث آخر شمعة أو بيضيف شمعة جديدة بس
@@ -7079,7 +7221,17 @@ export default function ReplayClient({
     const chart = chartRef.current;
     if (!chart) return;
     /* نفس الفحص: لحظة الاستقرار بالذات هي اللي بيكون فيها المنظر مسحوباً بعد
-       نهاية البيانات، فمنها بالضبط كانت تطلع النافذة المنهارة. */
+       نهاية البيانات، فمنها بالضبط كانت تطلع النافذة المنهارة.
+
+       ⚠️ **جُرّب هون «تتبنّى النافذة القائمة» بدل «تنشر نافذتها» — وانشال.**
+       الفكرة كانت تسدّ ثغرة: لوحة تبدّل رمزها أو فريمها بتضل على نافذتها هي
+       (مقيس: مؤشرها عند 0.99458 والباقي 0.64079)، وبتتصحّح عند أول سحب.
+       بس التبنّي كسر **القص**: بعد القص كل اللوحات بتعيد التحميل، فصارت
+       تتبنّى نافذة **ما قبل القص** بدل النافذة الجديدة — واللوحة اللي قصّ
+       عليها بتضل على نافذتها الصح لأن ضبطها بيجي بعد الاستقرار.
+       مقيس بمتصفّحه: اللوحة المقصوصة على 3960–4100 والتلاتة على 4250–5750.
+       النشر يخصّ **نيّة** المستخدم، والتبنّي بيلغيها. فرجع النشر كما كان،
+       وثغرة إعادة التحميل موثّقة كما هي: بتتصحّح عند أول سحب. */
     try {
       const g = viewGeometry(chart);
       if (g) syncBus.publish("zoom", { ...g, src: paneId });
@@ -7146,6 +7298,19 @@ export default function ReplayClient({
       if (!fromCandle || !toCandle) return;
       applyingCutRef.current = true;
       try { finalizeCut(fromCandle, toCandle, fromIdx, !!m.openEnded); }
+      finally { applyingCutRef.current = false; }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncBus, syncTime, paneId]);
+
+  /* استقبال «الرجوع لمكان التوقف» — القرار عند المستقبِلة، شوف الشرح عند
+     `resumeFromSyncRef`. الحلقة مقفولة بنفس مرجع القص. */
+  useEffect(() => {
+    if (!syncBus || !syncTime) return;
+    return syncBus.subscribe("resume", (m) => {
+      if (!m || m.src === paneId) return;
+      applyingCutRef.current = true;
+      try { resumeFromSyncRef.current?.(m); }
       finally { applyingCutRef.current = false; }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -7218,6 +7383,25 @@ export default function ReplayClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncBus, syncTime, paneId]);
 
+  /* نقطة معاينة القص من لوحة تانية — خط وتعتيم يمينه، نفس شكل المحلي. */
+  useEffect(() => {
+    if (!syncBus || !syncTime) {
+      if (syncedCutHoverRef.current != null) { syncedCutHoverRef.current = null; scheduleDraw(); }
+      return;
+    }
+    return syncBus.subscribe("cutHover", (m) => {
+      if (!m || m.src === paneId) return;
+      const next = Number.isFinite(m.t)
+        ? timeToFractionalLogicalForCandles(m.t, visibleCandlesRef.current, currentStepSeconds())
+        : null;
+      const val = Number.isFinite(next) ? next : null;
+      if (syncedCutHoverRef.current === val) return;
+      syncedCutHoverRef.current = val;
+      scheduleDraw();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncBus, syncTime, paneId]);
+
   /* نافذة العرض — نفس المبدأ: بالوقت، والتابعة بتقصّها على مداها المتاح. */
   useEffect(() => {
     if (!syncBus || !syncZoom) return;
@@ -7226,41 +7410,38 @@ export default function ReplayClient({
       if (!chart || !r) return;
       if (r.src === paneId) return; /* رسالتي أنا — ما بلحق حالي */
       /* ═══════════════════════════════════════════════════════════════════════
-         🔴 **النافذة بتنقصّ على بيانات هاللوحة قبل ما تنطبّق.**
+         **نفس النافذة الزمنية بالضبط — وكل لوحة بتحوّلها لفهارسها هي.**
          -----------------------------------------------------------------------
-         نافذة القائدة ممكن تمتد لوقت ما عند التابعة بيانات فيه (رمز تاني،
-         عمق تاريخي تاني، أو القائدة حمّلت أقدم). تطبيقها كما هي بيطلّع
-         اللوحة نصّها فاضي — وهاد اللي بان بلقطته لما حرّك السفلية فالعلوية
-         صارت شموعها بالنص اليمين وشمالها فاضي.
+         قراره (٢٠٢٦-٠٨-٢٩): «اختار ب — المزامنة بالوقت… لا تستخدم نفس
+         bar index بين اللوحات».
 
-         اللوحة ما بتقدر تعرض وقتاً ما عندها — فبنقصّ الطلب على مدى بياناتها.
-         وبلا تقاطع أصلاً ما بنلمسها.
+         ⚠️ **وما بنقصّ النافذة على مدى بيانات هاللوحة.** القص كان بيرجّع
+         نفس العلّة من الباب التاني: لوحة تاريخها أقصر بتنزحزح نافذتها
+         فبتنكسر المحاذاة الزمنية اللي هي كل الهدف. نصّه صريح: «اترك الفراغ
+         طبيعياً إلى أن يصل التاريخ بالتعميق، ولا تلفّ أو تغيّر المدى بالقوة».
+         والفهرس السالب مقبول عند المكتبة — بترسم فراغاً وبس.
 
-         ⚠️ وحارس انهيار: لو طلع المدى المطبَّق أقل من شمعتين، بنرجّع اللي
-         كان. مدى بشمعة وحدة مش نتيجة مزامنة مشروعة بأي حال — هاد فحص حالة
-         فاسدة مش رقم معايرة.
+         ⚠️ وحارس الانهيار صار **فحص صلاحية** بلا رقم: `to > from` وبس.
+         كان `< 2` شمعة، وهاد بيرفض نافذة مشروعة لما تكون اللوحة على فريم
+         أكبر (نافذة ١٠٠ دقيقة على أربع ساعات = أقل من شمعة). والانهيار
+         القديم كان مصدره نشر `getVisibleRange()` وانحل عند الناشر.
          ═══════════════════════════════════════════════════════════════════════ */
       const arr = visibleCandlesRef.current;
       if (!arr || arr.length < 3) return;
-      if (!Number.isFinite(r.anchorTime) || !(r.bars >= 3)) return;
-      /* فهرس **هاللوحة** لوقت المرساة: آخر شمعة وقتها ≤ المرساة. */
-      let lo = 0, hi = arr.length - 1, idx = -1;
-      while (lo <= hi) {
-        const mid = (lo + hi) >> 1;
-        if (arr[mid].time <= r.anchorTime) { idx = mid; lo = mid + 1; } else { hi = mid - 1; }
-      }
-      if (idx < 0) idx = 0;
-      const to = idx + (r.rightOffset || 0);
-      const from = to - r.bars;
-      if (!(to > from)) return;
+      if (!Number.isFinite(r.fromTime) || !Number.isFinite(r.toTime)) return;
+      if (!(r.toTime > r.fromTime)) return;
+      const step = currentStepSeconds();
+      const from = timeToFractionalLogicalForCandles(r.fromTime, arr, step);
+      const to = timeToFractionalLogicalForCandles(r.toTime, arr, step);
+      if (!Number.isFinite(from) || !Number.isFinite(to) || !(to > from)) return;
       const ts = chart.timeScale();
       const before = ts.getVisibleLogicalRange();
       applyingSyncRef.current = true;
       try {
         ts.setVisibleLogicalRange({ from, to });
         const after = ts.getVisibleLogicalRange();
-        /* حارس انهيار: منظر بأقل من شمعتين مش نتيجة مزامنة مشروعة. */
-        if (after && after.to - after.from < 2 && before) {
+        /* فحص صلاحية: مدى مش صاعد = حالة فاسدة، بنرجّع اللي كان. */
+        if (before && after && !(after.to > after.from)) {
           ts.setVisibleLogicalRange(before);
         } else {
           /* بنسجّل الهندسة اللي صرنا عليها فعلاً — الناشر بيقارن فيها ليعرف
@@ -7395,7 +7576,52 @@ export default function ReplayClient({
     setAppliedCutRegion(s.appliedCutRegion);
     drawingsRef.current = s.drawings.map((d) => ({ ...d }));
     setMode("training");
+    /* ═══════════════════════════════════════════════════════════════════════
+       الرجوع لمكان التوقف بينتقل للباقي — **أوقاتاً وبس**.
+       -----------------------------------------------------------------------
+       اللي بينتشر: لحظة القص (`fromTime`/`toTime`) ولحظة التوقف
+       (`currentTime`). **ولا رسمة ولا رمز ولا فريم بيعبر** — هدول ملك اللوحة
+       وبيضلوا عندها. اللوحة المستقبِلة بتقرّر لحالها:
+         · عندها جلستها هي بنفس الرمز والفريم؟ بترجّعها — برسوماتها هي.
+         · ما عندها؟ بتدخل التدريب على **منطقة** القائدة عبر نفس مسار القص،
+           وبرسوماتها الحالية زي ما هي.
+       وبالحالتين موضع الاستعراض بينضبط من قناة `time` القائمة (بتنشر وقت
+       الشمعة المكشوفة)، فما في منطق موضع جديد.
+       ═══════════════════════════════════════════════════════════════════════ */
+    if (!applyingCutRef.current && syncBus && syncTime) {
+      syncBus.publish("resume", {
+        src: paneId,
+        region: s.appliedCutRegion || null,
+        currentTime: s.replayState?.currentTimestamp ?? null,
+      });
+    }
   }
+  /* مرجع حيّ: المشترِك بينسجّل مرة وحدة، وبدونه بيمسك رمز وفريم أول رسمة. */
+  const resumeFromSyncRef = useRef(null);
+  resumeFromSyncRef.current = (m) => {
+    const mine = savedSessionRef.current;
+    /* جلستي أنا — بترجع كاملة برسوماتها. ما بنخلط جلسة لوحة بلوحة. */
+    if (mine && mine.assetValue === assetValue && mine.interval === interval) {
+      resumeSavedSession();
+      return;
+    }
+    /* ما عندي جلسة محفوظة لهاد السياق: بدخل التدريب على منطقة القائدة
+       بالأوقات، عبر نفس مسار القص — بلا لمس رسوماتي. */
+    const region = m?.region;
+    if (!region || !Number.isFinite(region.fromTime)) return;
+    const arr = allCandlesRef.current;
+    if (!arr || arr.length < 2) return;
+    const at = (t) => {
+      let lo = 0, hi = arr.length - 1, found = -1;
+      while (lo <= hi) { const mid = (lo + hi) >> 1; if (arr[mid].time <= t) { found = mid; lo = mid + 1; } else { hi = mid - 1; } }
+      return found < 0 ? 0 : found;
+    };
+    const fromIdx = at(region.fromTime);
+    const toIdx = Math.max(fromIdx, Number.isFinite(region.toTime) ? at(region.toTime) : fromIdx);
+    const fromCandle = arr[fromIdx], toCandle = arr[toIdx];
+    if (!fromCandle || !toCandle) return;
+    finalizeCut(fromCandle, toCandle, fromIdx, !!region.openEnded);
+  };
 
   /* ===================== أداة القص الجديدة: سحب لتحديد منطقة كاملة =====================
      3 أوضاع فرعية (cutSubMode) بتتحكم بمعنى السحب على الشارت وإحنا بوضع القص:
@@ -7472,6 +7698,17 @@ export default function ReplayClient({
       if (!drag) {
         cutHoverLogicalRef.current = logical;
         scheduleDraw();
+        /* معاينة نقطة القص (الخط + التعتيم يمينه) بتنتقل للوحات الباقية —
+           **بالوقت**، زي كل شي تاني. بلاغه: «ليه مش معتم من الجهتين».
+           بتنبثّ من اللوحة اللي تحت الفأرة وبس (`hoveredRef`) وإلا صار
+           تراشق: كل لوحة بتستقبل بتحدّث وبتعيد النشر. */
+        const sHover = syncRef.current;
+        if (sHover?.bus && sHover.time && hoveredRef.current) {
+          const t = logical == null
+            ? null
+            : logicalToTimeForCandles(logical, allCandlesRef.current, currentStepSeconds());
+          sHover.bus.publish("cutHover", { src: paneId, t: Number.isFinite(t) ? t : null });
+        }
         return;
       }
       if (logical == null) return;
@@ -7525,6 +7762,9 @@ export default function ReplayClient({
       window.removeEventListener("mouseup", onUp);
       cutHoverLogicalRef.current = null;
       cutDragRef.current = null;
+      /* خرجنا من وضع القص: منطفي المعاينة عند الباقي كمان. */
+      const sEnd = syncRef.current;
+      if (sEnd?.bus && sEnd.time) sEnd.bus.publish("cutHover", { src: paneId, t: null });
     };
   }, [cutMode, allCandles, cutPrecision]);
 
