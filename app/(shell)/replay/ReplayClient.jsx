@@ -1307,6 +1307,7 @@ export default function ReplayClient({
   const paneKey = (base) => (paneId === "main" ? base : `${base}__${paneId}`);
 
 
+
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
@@ -5946,8 +5947,11 @@ export default function ReplayClient({
       olog.state = `✓ +${added} · أقدم ${new Date(merged[0].time * 1000).toISOString().slice(0, 10)}`;
 
       /* الزحزحة بتصير جوّا تأثير رسم الشارت — هناك بينقرا المدى قبل `setData`.
-         شوف `pendingPrependRef` هناك للسبب الكامل. */
+         شوف `pendingPrependRef` هناك للسبب الكامل.
+         ⚠️ والمرجع بينتحدّث **فوراً** مش بانتظار رندرة React: جولة تانية
+         ممكن تبلّش قبلها فتبني على لقطة قديمة وتكتب فوق الجديدة. */
       pendingPrependRef.current += added;
+      allCandlesRef.current = merged;
       setAllCandles(merged);
       setRevealCount((rc) => rc + added);
     } catch (e) {
@@ -6183,19 +6187,48 @@ export default function ReplayClient({
           log.oldestNow = new Date(oldest * 1000).toISOString().slice(0, 10);
           log.rounds.push(`${round}:+${older.length}`);
 
-          setAllCandles((prev) => {
-            if (!prev.length) return prev;
-            const merged = mergeCandles(older, prev);
-            const added = merged.length - prev.length;
-            total = merged.length;
-            /* ⚠️ الفهارس انزاحت — نقطة الكشف **والمنظر** لازم ينزاحوا معها.
-               بلا الزحزحة الشارت بيقفز لآخر الشموع مع كل جولة تعميق. */
-            if (added > 0) {
-              pendingPrependRef.current += added;
-              setRevealCount((rc) => rc + added);
+          /* ═══════════════════════════════════════════════════════════════
+             🔴 **الزحزحة كانت جوّا دالة التحديث — فبتنعدّ مرتين.**
+             ---------------------------------------------------------------
+             كان: `setAllCandles(prev => { …; setRevealCount(rc => rc + added);
+             pendingPrependRef.current += added; return merged; })`.
+
+             دالة تحديث الحالة لازم تكون **نقيّة**، وReact بـStrictMode
+             (مشغّل افتراضياً بـNext 14 بالتطوير) بيناديها **مرّتين** عمداً
+             ليكشف الآثار الجانبية. فالزيادة كانت تنطبّق مرتين والمصفوفة مرة.
+
+             مقيس بمسبار على متصفّحه، تلات جولات ورا بعض:
+                 18238/18238 → 19836/19037 → 21434/19836 → 23032/20635
+                 المصفوفة +799  ·  موضع الكشف +1598   ← الضعف بالضبط
+
+             ومن هون طلع صنفان:
+               · `revealCount` أكبر من المصفوفة (٣٥٣٤ فرق مقيس) — وهي
+                 الحالة المتناقضة اللي بتسمّم نشر موضع الاستعراض.
+               · `pendingPrependRef` مضاعف — فالمنظر بينزاح ضعف ما نمت
+                 البيانات، وهاد جذر انجراف «الزوم عالآخر» اللي عالجته
+                 بحارس `CHART_RIGHT_OFFSET_BARS`.
+
+             ⚠️ وبيفسّر «المشكلة بس بالمحاكي عالأصلية ما في»: بناء الإنتاج
+             ما بيضاعف نداء الدوال، فالعطل **بالتطوير وحده**.
+
+             الحل: الدمج والحساب برّا الدالة من المرجع، وتحديث المرجع فوراً
+             حتى الجولة الجاية تبني على الأحدث — نفس ما بيمنع السباق اللي
+             كانت الدالة موجودة لأجله.
+             ═══════════════════════════════════════════════════════════════ */
+          {
+            const base = allCandlesRef.current || [];
+            if (base.length) {
+              const merged = mergeCandles(older, base);
+              const added = merged.length - base.length;
+              total = merged.length;
+              if (added > 0) {
+                pendingPrependRef.current += added;
+                allCandlesRef.current = merged;
+                setAllCandles(merged);
+                setRevealCount((rc) => rc + added);
+              }
             }
-            return merged;
-          });
+          }
           /* ⚠️ **الربح الصغير ما بيوقف التعميق** — كان بيوقفه، وهاد كان
              بيمنع الوصول لـ٢٠٠٣.
              السبب: الخادم بيقلّص المدى عند الضغط فبترجع الجولة ١٥ شمعة بدل
