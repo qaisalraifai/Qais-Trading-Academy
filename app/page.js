@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Logo from "./components/brand/Logo";
 import Starfield from "./components/brand/Starfield";
-import OrbitDiagram from "./components/brand/OrbitDiagram";
+import OrbitBackdrop from "./components/brand/OrbitBackdrop";
 
 /* ============================================================================
    الصفحة الرئيسية — ما قبل تسجيل الدخول.
@@ -128,7 +128,10 @@ export default function HomePage() {
 
       {/* ═══════════ البطل ═══════════ */}
       <section className="relative overflow-hidden border-b border-edge">
+        {/* ⚠️ **الترتيب مقصود**: النجوم والشهب الطبقة الأعمق، والشعار المكبَّر
+            فوقهن. قراره: «ما بدنا نتخلّى عن النجوم والشهب». */}
         <Starfield density={1.1} className="opacity-90" />
+        <OrbitBackdrop />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
@@ -206,9 +209,12 @@ export default function HomePage() {
             </Reveal>
           </div>
 
-          <Reveal delay={250} className="flex justify-center lg:justify-start">
-            <OrbitDiagram size={400} />
-          </Reveal>
+          {/* ⚠️ **العمود التاني انفضى عمداً.** كان فيه `OrbitDiagram` بمقاس
+              ٤٠٠px محصور بخليّة الشبكة. صار الشعار خلفية للقسم كله
+              (`OrbitBackdrop` فوق) — طلبه: «بدي إشي كبير يغطي مساحة كبيرة من
+              الخلفية». والخليّة بتضل موجودة عشان النص يبقى بنصف العرض على
+              الشاشات الكبيرة بدل ما يتمدّد ويمرق فوق المدارات. */}
+          <div aria-hidden />
         </div>
       </section>
 
