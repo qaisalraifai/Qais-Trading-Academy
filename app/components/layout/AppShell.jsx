@@ -231,7 +231,10 @@ export default function AppShell({
               balanceLabel={balanceLabel}
             />
           )}
-          <div className="animate-fade-in">{children}</div>
+          {/* ⚠️ `key={pathname}` ضروري: بلاها React بيعيد استعمال نفس العنصر
+              بين الصفحات فالحركة بتشتغل **مرة وحدة** بأول تحميل وبعدها ولا
+              انتقال بيتحرّك. المفتاح بيجبره يركّب عنصراً جديداً كل مسار. */}
+          <div key={pathname} className="animate-warp-in motion-reduce:animate-none">{children}</div>
         </main>
       </div>
 

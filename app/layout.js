@@ -3,6 +3,7 @@ import { IBM_Plex_Sans_Arabic, Archivo, IBM_Plex_Mono } from "next/font/google";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import { getServerLocale } from "@/lib/i18n/get-server-locale";
 import { dirFor } from "@/lib/i18n/config";
+import SpaceBackdrop from "./components/brand/SpaceBackdrop";
 
 /* ============================================================================
    ORBIT — نظام الخطوط
@@ -74,7 +75,13 @@ export default function RootLayout({ children }) {
       dir={dirFor(locale)}
       className={`${locale === "ar" ? "lang-ar" : "lang-en"} ${plexArabic.variable} ${archivo.variable} ${plexMono.variable}`}
     >
+      {/* ⚠️ `isolation: isolate` **ممنوعة** على الجسم هون: `SpaceBackdrop`
+         بتقعد على `z-index: -10`، وهي بترسم فوق خلفية الجسم لأنّ الأبناء
+         سالبي الترتيب بينرسموا **بعد** خلفية أبيهم — بس هاد بيصير بس لو
+         الجسم ما عامل سياق تراص. أي `isolate` أو `transform` هون بتخفي
+         الطبقة كلياً. */}
       <body style={{ margin: 0 }}>
+        <SpaceBackdrop />
         <LocaleProvider initialLocale={locale}>{children}</LocaleProvider>
       </body>
     </html>

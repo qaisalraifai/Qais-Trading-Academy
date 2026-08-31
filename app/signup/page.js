@@ -151,7 +151,12 @@ useEffect(() => {
 
   return (
     <div style={s.page}>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+      {/* ⚠️ **انشال `<link>` لخطوط جوجل** (Inter + JetBrains Mono).
+          كان محقوناً جوّا الجسم — مكان غير صالح للوسم — وبيجيب خطّين
+          المنصّة ما بتستعملهم: الواجهة على IBM Plex Sans Arabic والأحادي
+          على IBM Plex Mono، الاتنين محمّلين أصلاً من `app/layout.js` عبر
+          `next/font` (بلا طلب خارجي وقت التصفّح).
+          فالنتيجة كانت: طلب شبكي زايد + خط غريب عن الهوية بخمس مواضع. */}
       <style>{`@keyframes qta-spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Floating background orbs */}
@@ -294,7 +299,10 @@ onChange={(e) => f.set(e.target.value)}
 
 const gold = "#DCD4F7";
 const s = {
-  page: { backgroundColor: "#0A0614", minHeight: "100vh", direction: "rtl", fontFamily: "'Inter', sans-serif", color: "#F5F3FF", overflowX: "hidden", position: "relative" },
+  /* ⚠️ **بلا `backgroundColor` ولا خط مفروض.** `#0A0614` كانت بترسم فوق طبقة
+     الفضاء فتحجبها (وهي نفس لون الجسم أصلاً، فما بتضيف إشي)، و`'Inter'` مش
+     خط المنصّة — الخط بينورث من الجسم والخلفية بتجي من `SpaceBackdrop`. */
+  page: { minHeight: "100vh", direction: "rtl", color: "#F5F3FF", overflowX: "hidden", position: "relative" },
   orb: { position: "fixed", borderRadius: "50%", pointerEvents: "none", filter: "blur(80px)", zIndex: 0 },
 
   header: { position: "relative", zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 3rem", borderBottom: "1px solid #0E0A1A" },
@@ -305,7 +313,7 @@ const s = {
 
   hero: { position: "relative", zIndex: 1, maxWidth: "680px", margin: "0 auto", padding: "5rem 3rem 3rem", textAlign: "center" },
   heroLogo: { width: "100px", height: "100px", objectFit: "cover", borderRadius: "50%", border: `2px solid ${gold}44`, boxShadow: `0 0 40px ${gold}33` },
-  eyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1.25rem" },
+  eyebrow: { fontFamily: "var(--font-mono), 'IBM Plex Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1.25rem" },
   heroTitle: { fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 900, lineHeight: 1.2, marginBottom: "1.25rem", letterSpacing: "-0.5px" },
   heroGold: { color: gold, fontStyle: "italic" },
   heroSub: { color: "#6E6690", fontSize: "1rem", lineHeight: 1.85, marginBottom: "2.5rem" },
@@ -315,9 +323,9 @@ const s = {
   featureDot: { color: gold, fontSize: "0.5rem", flexShrink: 0 },
 
   priceCard: { backgroundColor: "#0E0A1A", border: `1px solid ${gold}44`, borderRadius: "3px", padding: "2rem 2.5rem", display: "inline-block", textAlign: "center" },
-  priceLabel: { fontFamily: "'JetBrains Mono', monospace", color: "#4A4368", fontSize: "0.72rem", letterSpacing: "2px", marginBottom: "0.75rem" },
+  priceLabel: { fontFamily: "var(--font-mono), 'IBM Plex Mono', monospace", color: "#4A4368", fontSize: "0.72rem", letterSpacing: "2px", marginBottom: "0.75rem" },
   priceRow: { display: "flex", alignItems: "baseline", gap: "0.5rem", justifyContent: "center", marginBottom: "0.75rem" },
-  priceNum: { fontFamily: "'JetBrains Mono', monospace", fontSize: "3.5rem", fontWeight: 700, color: gold },
+  priceNum: { fontFamily: "var(--font-mono), 'IBM Plex Mono', monospace", fontSize: "3.5rem", fontWeight: 700, color: gold },
   priceCurrency: { color: "#6E6690", fontSize: "1.1rem" },
   priceNote: { color: "#4A4368", fontSize: "0.78rem" },
   pricePeriod: { color: "#6E6690", fontSize: "0.85rem" },
@@ -325,7 +333,7 @@ const s = {
 
   formSection: { position: "relative", zIndex: 1, padding: "3rem", display: "flex", justifyContent: "center" },
   card: { backgroundColor: "#0E0A1A", border: "1px solid #241C3E", borderRadius: "3px", padding: "3rem 2.5rem", width: "100%", maxWidth: "500px" },
-  formEyebrow: { fontFamily: "'JetBrains Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1rem", textAlign: "center" },
+  formEyebrow: { fontFamily: "var(--font-mono), 'IBM Plex Mono', monospace", color: gold, fontSize: "0.72rem", letterSpacing: "3px", marginBottom: "1rem", textAlign: "center" },
   formTitle: { fontSize: "1.6rem", fontWeight: 800, color: "#F5F3FF", textAlign: "center", marginBottom: "0.4rem" },
   formSub: { color: "#4A4368", fontSize: "0.88rem", textAlign: "center", marginBottom: "2rem" },
 
@@ -342,5 +350,5 @@ const s = {
   linkText: { color: "#4A4368", fontSize: "0.85rem", textAlign: "center", marginTop: "1.5rem" },
   link: { color: gold, textDecoration: "none" },
 
-  footer: { position: "relative", zIndex: 1, textAlign: "center", padding: "2rem", color: "#1E1836", fontSize: "0.8rem", fontFamily: "'JetBrains Mono', monospace", borderTop: "1px solid #141024", marginTop: "2rem" },
+  footer: { position: "relative", zIndex: 1, textAlign: "center", padding: "2rem", color: "#1E1836", fontSize: "0.8rem", fontFamily: "var(--font-mono), 'IBM Plex Mono', monospace", borderTop: "1px solid #141024", marginTop: "2rem" },
 };

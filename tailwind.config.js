@@ -166,6 +166,23 @@ module.exports = {
         "orbit-spin": "orbSpin 600ms cubic-bezier(0.16, 1, 0.3, 1)",
         "pulse-soft": "orbPulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "sweep": "orbSweep 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        /* انتقال الصفحات جوّا المنصّة — بديل `fade-in` المجرّد.
+           ⚠️ الفرق مقصود: `fade-in` تلاشٍ ٢٢٠ms بلا حركة، فالصفحة «بتظهر»
+           مكانها. هون في اقتراب طفيف (٠.٩٩٤→١ و١٠px) بيقرأ كـ«وصلنا» —
+           وهاد بالضبط طلبه: «من صفحة لصفحة… مستوحى من الفضاء».
+           ٤٢٠ms: أطول من التلاشي بما يكفي ليُحسّ، وأقصر من أن ينتظره أحد.
+
+           🔴 **بلا `forwards` — وهاد شرط صحة مش أسلوب.**
+           باقي الحركات هون بتنتهي على حالة **مختلفة** عن الطبيعية فبتلزمها.
+           هاي بتنتهي على الحالة الطبيعية بالضبط (ظاهر · بلا إزاحة)، و`forwards`
+           بتثبّت آخر إطار للأبد — يعني `transform` بيضل مطبَّقاً. وأي تحويل،
+           **حتى مصفوفة الهوية**، بيخلّي العنصر حاوية لكل `position: fixed`
+           جوّاه: كل نافذة منبثقة بالمنصّة بتتموضع بالنسبة لهالصندوق بدل
+           الشاشة.
+           ⚠️ جرّبت أول `transform: none` بآخر إطار وما كفت — القيمة المحسوبة
+           طلعت `matrix(1, 0, 0, 1, 0, 0)` مش `none`. بلا `forwards` العنصر
+           بيرجع لحالته الطبيعية فالتحويل بينتهي فعلاً. */
+        "warp-in": "orbWarpIn 420ms cubic-bezier(0.16, 1, 0.3, 1)",
       },
 
       keyframes: {
@@ -181,6 +198,10 @@ module.exports = {
         orbScaleIn: {
           "0%": { opacity: "0", transform: "scale(0.97)" },
           "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        orbWarpIn: {
+          "0%": { opacity: "0", transform: "translateY(10px) scale(0.994)" },
+          "100%": { opacity: "1", transform: "none" },
         },
         orbSpin: { "0%": { transform: "rotate(0deg)" }, "100%": { transform: "rotate(360deg)" } },
         orbPulse: { "0%, 100%": { opacity: "0.45" }, "50%": { opacity: "1" } },

@@ -148,6 +148,34 @@
     border-radius: 3px;
   }
 
+  /* ══════════════════════════════════════════════════════════════════════
+     🔴 **التعبئة التلقائية كانت تطلّع الحقول بيضا على واجهة معتمة.**
+     ----------------------------------------------------------------------
+     المتصفّح بيحقن ستايلاً داخلياً (`-internal-autofill-selected`) بخلفية
+     فاتحة ثابتة، وأولويته أعلى من أي `background` منّا — فالحقل المعبّأ
+     تلقائياً بيطلع أبيض بنص واجهة سوداء. مقيس بصورته على `/login`.
+
+     الخلفية ما بتنغيّر مباشرة، بس `box-shadow` داخلي بملء الحقل بيغطّيها،
+     و`-webkit-text-fill-color` بيتحكّم بلون النص (اللون العادي ما بيمشي).
+
+     ⚠️ `transition ... 9999s` حيلة مقصودة: المتصفّح بيطبّق خلفيته بانتقال،
+     وتأجيله لمدة عمليّاً لا نهائية بيمنعها من الظهور أصلاً.
+
+     ⚠️ عام على المنصّة كلها — التسجيل والإعدادات وأي نموذج، مش صفحة الدخول
+     وحدها.
+     ══════════════════════════════════════════════════════════════════════ */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: var(--text-primary);
+    -webkit-box-shadow: 0 0 0 1000px var(--space-0) inset;
+    box-shadow: 0 0 0 1000px var(--space-0) inset;
+    caret-color: var(--text-primary);
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
   /* الحركات المستخدمة مباشرة بالـCSS — معرّفة هون عشان تنطبع دايماً،
      مش بس لما تنستدعى عبر utility من Tailwind. */
   @keyframes orbSpin {

@@ -6,8 +6,26 @@ import { createClient } from "@/lib/supabase-client";
 
 export default function ChoosePage() {
   const [logoY, setLogoY] = useState(0);
+  const [username, setUsername] = useState("");
   const router = useRouter();
   const supabase = createClient();
+
+  /* اسم المستخدم للتحية. ⚠️ الفشل بينتجاهل بصمت عن قصد: التحية زينة،
+     وما بتستاهل تعطّل الصفحة ولا تطلّع خطأ. بلا اسم بتصير «مرحباً بك». */
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase
+          .from("profiles").select("username").eq("id", user.id).single();
+        if (alive && profile?.username) setUsername(profile.username);
+      } catch { /* التحية بلا اسم */ }
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let frame;
@@ -29,9 +47,11 @@ export default function ChoosePage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at top, #120B24 0%, #0E0A1A 60%)",
+      /* ⚠️ **بلا خلفية ولا خط مفروض.** كانت `radial-gradient(ellipse at
+         top…)` معتمة بترسم فوق طبقة الفضاء فتحجبها بالكامل، و`Segoe UI`
+         مش خط المنصّة — فكانت الصفحة تقطع الرحلة البصرية مرتين.
+         الخط بينورث من الجسم، والخلفية بتجي من `SpaceBackdrop`. */
       direction: "rtl",
-      fontFamily: "'Segoe UI', sans-serif",
       color: "#fff",
       overflowX: "hidden",
     }}>
@@ -68,12 +88,22 @@ export default function ChoosePage() {
         </div>
 
         <p style={{ color: "#DCD4F7", letterSpacing: 4, fontSize: 11, margin: "0 0 12px" }}>QAIS TRADING ACADEMY</p>
-        <h1 style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", fontWeight: 900, margin: "0 0 8px" }}>بك مرحبياً Samer
+        {/* ═══════════════════════════════════════════════════════════════
+            🔴 **كان مكتوباً: «بك مرحبياً Samer»** — اسم ثابت بالكود بيظهر
+            لكل مستخدم، وكلمتان مقلوبتان («بك مرحبياً» بدل «مرحباً بك»).
+            الصفحة ما بتجيب بروفايل أصلاً فما كان في مصدر للاسم.
+            صار بينجلب من `profiles` زي باقي المنصّة، وبيرجع لتحية بلا اسم
+            لو ما وصل — أحسن من اسم غلط.
+            ═══════════════════════════════════════════════════════════════ */}
+        <h1 style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", fontWeight: 900, margin: "0 0 8px" }}>
+          {username ? `مرحباً بك ${username}` : "مرحباً بك"}
         </h1>
         <p style={{ color: "#4A4368", fontSize: 15, margin: "0 0 3rem" }}>من أين تبدأ جلستك اليوم؟</p>
 
         {/* Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+        {/* ⚠️ كان `"1fr 1fr"` ثابتاً — عمودان مهما ضاقت الشاشة، فبينضغط
+            الكرتان على الموبايل. `auto-fit` بينزّل لعمود واحد لحاله. */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.5rem" }}>
           
           {/* Backtest */}
           <div onClick={() => router.push("/backtest")} style={{
@@ -84,7 +114,10 @@ export default function ChoosePage() {
             boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             transition: "border-color 0.3s",
           }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}><BarChart3 size={14} aria-hidden /></div>
+            {/* ⚠️ كان `fontSize: 48` على الغلاف و`size={14}` على الأيقونة —
+                والأيقونة SVG فما بيمسّها حجم الخط. فطلعت ٤ مرات أصغر من
+                المقصود. الحجم صار على الأيقونة نفسها. */}
+            <div style={{ marginBottom: 16, color: "#DCD4F7" }}><BarChart3 size={34} strokeWidth={1.7} aria-hidden /></div>
             <h2 style={{ fontSize: 22, fontWeight: 800, color: "#DCD4F7", margin: "0 0 12px" }}>Backtest</h2>
             <p style={{ color: "#4A4368", fontSize: 14, lineHeight: 1.75, margin: "0 0 20px" }}>
               اختبر استراتيجياتك على بيانات تاريخية حقيقية وقِس أداءك بدقة.
@@ -101,7 +134,7 @@ export default function ChoosePage() {
             boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             transition: "border-color 0.3s",
           }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}><GraduationCap size={14} aria-hidden /></div>
+            <div style={{ marginBottom: 16, color: "#DCD4F7" }}><GraduationCap size={34} strokeWidth={1.7} aria-hidden /></div>
             <h2 style={{ fontSize: 22, fontWeight: 800, color: "#DCD4F7", margin: "0 0 12px" }}>المحاضرات</h2>
             <p style={{ color: "#4A4368", fontSize: 14, lineHeight: 1.75, margin: "0 0 20px" }}>
               وصول كامل لمكتبة المحاضرات المسجلة، الكورسات المرتبة، والاختبارات.
