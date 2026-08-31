@@ -1570,7 +1570,6 @@ export default function ReplayClient({
   const cutHoverLogicalRef = useRef(null); // موقع تحويم الماوس أثناء اختيار نقطة بداية الـ Replay (لمعاينة Blur/شعاع حي)
   const [isFullscreen, setIsFullscreen] = useState(false);
   const chartWrapperRef = useRef(null);
-  const headerRef = useRef(null);
 
   /* ⚠️ `playTimerRef` انشال — التشغيل صار على `requestAnimationFrame` وما عاد
      في مؤقّت ينحفظ. تركه كان بيوهم إنّ في مؤقّت شغّال لازم ينوقف. */
@@ -4354,27 +4353,15 @@ export default function ReplayClient({
 
       const handleResize = () => {
         if (!chartContainerRef.current) return;
-        /* ⚠️ محلي مش عالمي — نفس سبب `handleFsChange` تحت. لما تكون مساحة
-           العمل كلها بالشاشة الكاملة، اللوحة لازم تضل تقيس **خليّتها**
-           بالشبكة، مش ارتفاع الشاشة كلها. */
-        const isFs = document.fullscreenElement === chartWrapperRef.current;
+        /* ⚠️ **انشال فرع «صندوق الشارت هو العنصر المفتوح»** — صار ما بينوصله.
+           الهدف المفتوح دايماً مساحة العمل (`fullscreenTargetRef={rootRef}`)،
+           فـ`fullscreenElement` ما بيساوي الصندوق أبداً. وكان الفرع الوحيد
+           اللي بيقرا `headerRef`، والشريط اللي كان بيكتبه انشال معه — فتركه
+           يعني قراءة ميتة بترجّع ارتفاعاً غلط بصمت.
+           الفرع العام تحت بيغطّي الحالة صح أصلاً: بالشاشة الكاملة `rect.top`
+           بيصير قريب من الصفر فالشارت بيملا الشاشة. */
         let totalHeight = 480;
-        if (isFs) {
-          const headerH = headerRef.current?.offsetHeight || 0;
-          // نحسب الارتفاع من المساحة الفعلية المتبقية بالشاشة (بدل رقم ثابت تخميني):
-          // نقيس فعلياً الـ margin تحت الهيدر + الـ padding الفوقي/التحتي لصندوق الشارت
-          // عشان ما يضل فراغ أو يطلع أي جزء برا الشاشة أياً كان حجم الهيدر.
-          const headerMarginBottom = headerRef.current
-            ? parseFloat(window.getComputedStyle(headerRef.current).marginBottom) || 0
-            : 0;
-          let padTop = 0, padBottom = 0;
-          if (chartWrapperRef.current) {
-            const cs = window.getComputedStyle(chartWrapperRef.current);
-            padTop = parseFloat(cs.paddingTop) || 0;
-            padBottom = parseFloat(cs.paddingBottom) || 0;
-          }
-          totalHeight = Math.max(320, window.innerHeight - headerH - headerMarginBottom - padTop - padBottom - 4);
-        } else if (fillContainerRef.current && chartWrapperRef.current) {
+        if (fillContainerRef.current && chartWrapperRef.current) {
           /* ═══════════════════════════════════════════════════════════════
              🔴 **بوضع الشارتات المتعددة القياس من النافذة بيكسر الشبكة.**
              ---------------------------------------------------------------
@@ -4423,7 +4410,12 @@ export default function ReplayClient({
            تصغر الخليّة لـ٣٩٩.٦ — وهاد كان مصدر الفيض ١٦px بالضبط.
            ═══════════════════════════════════════════════════════════════════ */
         if (mainPaneRef.current) {
-          if (fillContainerRef.current && !isFs) {
+          /* ⚠️ كان `&& !isFs` — و`isFs` انشال لأنه ما عاد بينوصله (الهدف
+             المفتوح صار مساحة العمل مش الصندوق). تركه هون كان بيرمي
+             `ReferenceError` جوّا `handleResize` **كل نداء**، فالشارت ما
+             بياخد قياسه أبداً وبيضل على مقاس قديم. والبناء ما بيمسك
+             المعرّفات غير المعرَّفة — بيطلع وقت التشغيل وبس. */
+          if (fillContainerRef.current) {
             mainPaneRef.current.style.height = "";
             const boxH = mainPaneRef.current.clientHeight;
             if (boxH > 0) totalHeight = boxH;
@@ -5321,7 +5313,10 @@ export default function ReplayClient({
      وطلبه صريح: «أكثر من chart ظاهرين معًا». فبوضع الشبكة الهدف هو **مساحة
      العمل كلها** — بتضم الشبكة والشريط المشترك سوا.
 
-     ⚠️ بالشارت المفرد الهدف ضل صندوق الشارت نفسه — ولا تغيير بالسلوك القديم.
+     ⚠️ **والهدف صار مساحة العمل بكل الأوضاع** — المُستدعي الوحيد بيمرّر
+     `fullscreenTargetRef={rootRef}` دايماً، حتى بشارت واحد. ونتيجة مقصودة:
+     الشريط بيضل بمكانه الطبيعي جوّا العنصر المفتوح، فما عاد في داعي لنسخة
+     تانية منه جوّا الصندوق — وتلك النسخة كانت هي اللي بتكسّر زرّ التخطيط.
      ═══════════════════════════════════════════════════════════════════════════ */
   function toggleFullscreen() {
     /* الخروج أولاً — أياً كان الوضع اللي إحنا فيه. */
@@ -6032,6 +6027,40 @@ export default function ReplayClient({
         : null,
     });
   }, []);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     سجل **مفهرس باللوحة** — `__qtaDeepen` فوق بيتكتب فوق بعضه.
+     ---------------------------------------------------------------------------
+     كل نسخة بتسجّل نفس الاسم العالمي، فآخر لوحة تركّب بتخفي التلاتة الباقية.
+     وهاد بالضبط اللي ما بينفع بعطل متعدد اللوحات: السؤال «ليش هاي اللوحة
+     بتعرض نافذة تانية عن جارتها» ما بينجاوب من سجل واحد.
+     `__qtaPanes()` بترجّع صفاً لكل لوحة: مداها الزمني المعروض فعلياً، وعدد
+     شموعها، وعرض سلّم الزمن — والأخير هو المشتبه فيه لما يكون المحور مخفياً.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const reg = (window.__qtaPaneReg = window.__qtaPaneReg || {});
+    reg[paneId] = () => {
+      const chart = chartRef.current;
+      const arr = visibleCandlesRef.current || [];
+      const ts = chart?.timeScale?.();
+      const lr = ts?.getVisibleLogicalRange?.() || null;
+      const step = currentStepSeconds();
+      const iso = (t) => (Number.isFinite(t) ? new Date(t * 1000).toISOString().slice(0, 16).replace("T", " ") : null);
+      return {
+        pane: paneId,
+        axis: !!showTimeAxisRef.current,
+        bars: arr.length,
+        tsWidth: (() => { try { return Math.round(ts?.width?.() ?? -1); } catch { return -1; } })(),
+        logical: lr ? { from: +lr.from.toFixed(2), to: +lr.to.toFixed(2) } : null,
+        window: lr ? [iso(logicalToTimeForCandles(lr.from, arr, step)), iso(logicalToTimeForCandles(lr.to, arr, step))] : null,
+      };
+    };
+    if (!window.__qtaPanes) {
+      window.__qtaPanes = () => Object.values(window.__qtaPaneReg).map((f) => { try { return f(); } catch (e) { return { err: String(e) }; } });
+    }
+    return () => { delete reg[paneId]; };
+  }, [paneId]);
 
   useEffect(() => {
     const log = deepenLogRef.current;
@@ -10711,9 +10740,13 @@ export default function ReplayClient({
       {/* ⚠️ بوضع الشارتات المتعددة الشريط بينتقل لفتحة مشتركة بدل ما يتكرر مع
           كل شارت. `chromeActive` بتضمن إنّ **اللوحة النشطة وحدها** بترسم
           فيها — وإلا شارتان بيكتبوا بنفس الفتحة ويتصارعوا عليها. */}
+      {/* ⚠️ **ولا شرط شاشة كاملة هون.** الهدف المفتوح دايماً هو **مساحة العمل**
+          (`fullscreenTargetRef={rootRef}` — المُستدعي الوحيد)، وهي بتضم هالشريط
+          بمكانه الطبيعي. فالشريط بينرسم مرة وحدة بكل الأوضاع. السبب تحت عند
+          الصندوق. */}
       {chromeSlots
         ? (chromeActive && chromeSlots.top ? createPortal(renderTopBar(), chromeSlots.top) : null)
-        : (!isFullscreen && renderTopBar())}
+        : renderTopBar()}
 
       {!supported && !error && (
         <div style={{ color: "#F0A13C", fontSize: 13, marginBottom: "1rem" }}>هذا الأصل غير مدعوم حالياً بعرض الشموع، اختاري أصل آخر من القائمة.
@@ -10721,7 +10754,7 @@ export default function ReplayClient({
       )}
       {error && <div style={{ color: RED, fontSize: 13, marginBottom: "1rem" }}>{error}</div>}
 
-      {!isFullscreen && renderLiveBadge()}
+      {renderLiveBadge()}
 
       <div
         ref={chartWrapperRef}
@@ -10734,19 +10767,42 @@ export default function ReplayClient({
           display: "flex",
           flexDirection: "column",
           /* بوضع الشبكة الحاوية لازم تتقيّد بالخليّة، وإلا `clientHeight`
-             تبعها بيساوي محتواها فالقياس فوق بيدور بحاله. */
-          ...(fillContainer && !isFullscreen
+             تبعها بيساوي محتواها فالقياس فوق بيدور بحاله.
+
+             🔴 **كان مشروطاً بـ`!isFullscreen` — وهاد كسر الشبكة بالشاشة
+             الكاملة.** الشرط منطقي وقت ما كان `isFullscreen` يعني «أنا
+             العنصر المفتوح» (شارت مفرد، فما في خليّة أصلاً). بعد ما صار
+             الهدف مساحة العمل، **كل لوحة** بترفعه وهي جوّا خليّتها — فبتفقد
+             `flex:1` و`minHeight:0` وبتتمدّد بطول محتواها.
+             مقيس بصوره: العمود الأيمن نزل تحت حافة الشاشة، ومزلقتا الزوم
+             تراكبتا بأسفل العمود.
+             القاعدة: **وجود خليّة بيحكم، مش الشاشة الكاملة.** */
+          ...(fillContainer
             ? { flex: 1, minHeight: 0, padding: "0.45rem", borderRadius: 4 }
             : null),
         }}
       >
-        {isFullscreen && (
-          <div ref={headerRef} style={{ marginBottom: "0.5rem" }}>
-            {renderTopBar()}
-            {renderLiveBadge()}
-          </div>
-        )}
+        {/* ═══════════════════════════════════════════════════════════════════
+            🔴 **كان هون نسخة تانية من الشريط — وهي أصل العطل، انشالت.**
+            -------------------------------------------------------------------
+            بُنيت لما كان هدف الشاشة الكاملة **صندوق الشارت نفسه**: وقتها
+            الشريط بمكانه الطبيعي بيقع برّا العنصر المفتوح فما بينرسم، فكان
+            لازم ينتسخ جوّا الصندوق.
 
+            بس الهدف صار **مساحة العمل** (طلبه: «أكثر من chart ظاهرين معًا»)،
+            والشريط جوّاها أصلاً. فالنسخة صارت زايدة — وأسوأ: بوضع الشبكة كل
+            لوحة بتعتبر حالها بالشاشة الكاملة فترسم نسختها.
+            مقيس بمتصفّحه: `toolbars: 3 · insideGrid: [false, true, true]`.
+
+            وما وقف عند الشكل. زرّ التخطيط بيجي من مساحة العمل بمرجع `ref`
+            **واحد** لقائمته، فآخر نسخة تركّب بتخطف المرجع. مستمع الإغلاق كان
+            يقارن الكبسة مع ذاك المرجع، فالكبسة على نسخة تانية بتطلع «برّا
+            القائمة»: `pointerdown` بيسكّر → العنصر بينشال → حدث `click` ما
+            بيوصل. بالضبط وصفه: «ما بيكبسوا».
+
+            المستمع صار يمشي على الشجرة الفعلية (`closest`) بدل المرجع، وهاد
+            الفرع انشال — فما ضل ولا نسخة زايدة أصلاً.
+            ═══════════════════════════════════════════════════════════════════ */}
         {loading && allCandles.length === 0 && (
           <div style={{
             position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
