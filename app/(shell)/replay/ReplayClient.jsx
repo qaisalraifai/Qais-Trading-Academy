@@ -738,33 +738,10 @@ function styleForNewDrawing(type) {
    الرجوع للمباشر - بادئة "qta_" عشان تنحفظ تلقائياً بحساب الطالب كمان
    (شوفي lib/user-settings-sync.js)، مش بس محلياً بهاد المتصفح. */
 const PAUSED_SESSION_KEY = "qta_paused_replay_session_v1";
-/* بناء سيريز لوحة المقارنة حسب النوع المختار (منطقة/خط/شموع) وألوانه
-   (تحويل اللون لـ rgba بيصير عن طريق hexToRgba المعرّفة تحت بنفس الملف) */
-function buildCompareSeries(chart, settings) {
-  if (settings.type === "line") {
-    return chart.addLineSeries({
-      color: settings.lineColor,
-      lineWidth: settings.lineWidth,
-      priceLineVisible: false,
-      lastValueVisible: true,
-    });
-  }
-  if (settings.type === "candles") {
-    return chart.addCandlestickSeries({
-      upColor: settings.up, downColor: settings.down, borderVisible: false,
-      wickUpColor: settings.up, wickDownColor: settings.down,
-      priceLineVisible: false, lastValueVisible: true,
-    });
-  }
-  return chart.addAreaSeries({
-    lineColor: settings.lineColor,
-    topColor: hexToRgba(settings.fillColor, 0.28),
-    bottomColor: hexToRgba(settings.fillColor, 0.02),
-    lineWidth: settings.lineWidth,
-    priceLineVisible: false,
-    lastValueVisible: true,
-  });
-}
+/* ⚠️ `buildCompareSeries` انشالت — آخر بقايا لوحة المقارنة.
+   اللوحة انحذفت لما انستبدلت بشارتات مستقلة (قراره ٢٠٢٦-٠٨-٢٧: «الخيار
+   الخامس بالكامل ونحذف الشغل القديم»)، بس الدالة ضلّت معرَّفة بلا أي
+   مستدعي. متحقَّق بمسح المشروع كله: صفر استعمالات. */
 
 /* تحويل صفقة الاستعراض التاريخي لصف جدول trades (نفس شكل أداة الباك تيست بالظبط عشان تظهر فيها وبلوحة التحكم) */
 function tradeToRow(trade, userId) {
@@ -1383,6 +1360,43 @@ export default function ReplayClient({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     رمز اللوحة وفريمها بيضلّوا بعد التحديث — **لكل لوحة على حدة**.
+     ---------------------------------------------------------------------------
+     كانوا `useState("XAUUSD")` و`useState("15m")` بلا أي حفظ، فأي تحديث
+     بيرجّع الأربع لوحات لنفس الرمز والفريم مهما رتّبها المستخدم. بلاغه.
+
+     ⚠️ **المفتاح بلا بادئة `qta_` عمداً.** `lib/user-settings-sync.js` بيراقب
+     كل مفتاح بهالبادئة وبيزامنه مع الخادم، ولما يلاقي فرقاً **بيعمل reload** —
+     وحارسه بينصفّر مع كل reload. نفس السبب اللي خلّى `replayLayout_v2` بلا
+     بادئة (الحلقة اللانهائية موثّقة بـ`ReplayWorkspace`).
+
+     ⚠️ **وما بنكتب عند الإقلاع.** القيمة الافتراضية مش اختيار المستخدم؛
+     والحارس بينرفع بتأثير **مصرَّح بعد** تأثير الحفظ، وإلا على أول تركيبة
+     بينكتب الافتراضي فوق المحفوظ قبل ما تنطبّق القراءة (نفس العطل المقيس
+     بالتخطيط: بدّل لأربعة، حدّث، رجع واحد).
+
+     ⚠️ ورابط `?asset=` من الرادار **بيغلب المحفوظ** — هو نيّة صريحة لحظتها.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  const paneStateKey = `replayPane_${paneId || "main"}`;
+  const paneStateHydrated = useRef(false);
+  useEffect(() => {
+    if (radarSearchParams.get("asset")) return;
+    try {
+      const raw = localStorage.getItem(paneStateKey);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (s?.asset && getAssetByValue(s.asset)) setAssetValue(s.asset);
+      if (s?.interval && INTERVALS.some((i) => i.value === s.interval)) setIntervalValue(s.interval);
+    } catch { /* تخزين معطّل — الافتراضي بيكفي */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paneStateKey]);
+  useEffect(() => {
+    if (!paneStateHydrated.current) return;
+    try { localStorage.setItem(paneStateKey, JSON.stringify({ asset: assetValue, interval })); } catch {}
+  }, [assetValue, interval, paneStateKey]);
+  useEffect(() => { paneStateHydrated.current = true; }, []);
 
 
   const [allCandles, setAllCandles] = useState([]);
@@ -4473,6 +4487,25 @@ export default function ReplayClient({
         paneRO.observe(chartWrapperRef.current);
       }
       /* ═══════════════════════════════════════════════════════════════════════
+         🔴 **الرسم بعد `applyOptions` مباشرةً بيقرا هندسة قديمة.**
+         -----------------------------------------------------------------------
+         `handleResize` بينهي بـ`scheduleDraw()`، بس `applyOptions({width})`
+         ما بتحدّث سلّم الزمن **فوراً** — المكتبة بتعيد الحساب بدورتها. فالمؤشر
+         المتزامن بينرسم بعرض/تباعد ما قبل التبديل، وبيطلع منزاح لحد ١٢px —
+         وبيتصلّح لحاله بأول تحريك لأنه وقتها الهندسة صارت جديدة. بلاغه.
+
+         `subscribeSizeChange` بينده **بعد** ما تعيد المكتبة حسابها، فالرسم
+         بيقرا الهندسة الصح. ⚠️ مش مؤقّتاً ولا تأخيراً مصطنعاً — حدث من
+         المكتبة نفسها، وهاد شرطه الصريح.
+         ═══════════════════════════════════════════════════════════════════════ */
+      let offSize = null;
+      try {
+        const ts = chart.timeScale();
+        const onSize = () => scheduleDraw();
+        ts.subscribeSizeChange(onSize);
+        offSize = () => { try { ts.unsubscribeSizeChange(onSize); } catch {} };
+      } catch { /* نسخة مكتبة بلا الحدث — الرسم بيضل يتصلّح بأول تحريك */ }
+      /* ═══════════════════════════════════════════════════════════════════════
          🔴 **كان بيسأل «في شاشة كاملة؟» بدل «أنا الشاشة الكاملة؟»**
          -----------------------------------------------------------------------
          `!!document.fullscreenElement` قيمة **عالمية**: كل نسخة من الكومبوننت
@@ -5232,6 +5265,7 @@ export default function ReplayClient({
       chart.__cleanup = () => {
         window.removeEventListener("resize", handleResize);
         paneRO?.disconnect();
+        offSize?.();
         document.removeEventListener("fullscreenchange", handleFsChange);
         hoverEl?.removeEventListener("mouseenter", onPaneEnter);
         hoverEl?.removeEventListener("mouseleave", onPaneLeave);
