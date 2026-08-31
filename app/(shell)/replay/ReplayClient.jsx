@@ -5375,12 +5375,48 @@ export default function ReplayClient({
       fallback("المتصفّح مانعها على هالصفحة");
       return;
     }
+    /* ═══════════════════════════════════════════════════════════════════════
+       🔴 **الوعد ممكن ما يستقر أبداً — لا بينجح ولا بينرفض.**
+       -----------------------------------------------------------------------
+       كان الاتّكال على الرفض ليوقع على البديل. مقيس بالتشغيل على متصفّح
+       مدمج: `requestFullscreen()` انندهت، والوعد ضل **معلّقاً**،
+       و`fullscreenElement` ضل `null`، وولا تحذير طلع. فالزر ما بيعمل ولا
+       إشي — وهاد بالضبط بلاغه الأول: «كبسة الفل سكرين مش شغالة».
+
+       فصرنا نتأكد من **النتيجة** بدل ما نصدّق الوعد: لو ما صار العنصر هو
+       المفتوح خلال نافذة قصيرة، منوقع على البديل.
+
+       ⚠️ **مش تأخيراً مصطنعاً**: عقد الـAPI إنّ الوعد يستقر، والبيئة بتخالفه.
+       فحص النتيجة هو الردّ الصح، مش حيلة. والنافذة **سقف** لحالة الصمت —
+       لو نجحت الشاشة الكاملة، `fullscreenchange` بيلغي الفحص فوراً وما
+       بيستنى النافذة أصلاً.
+
+       ⚠️ و`settled` بتضمن إنّ البديل بينفتح **مرة وحدة**: لو انرفض الوعد
+       والفحص انطلق سوا، بلا الحارس بينفتح التكبير وبينسكّر بنفس اللحظة.
+       ═══════════════════════════════════════════════════════════════════════ */
+    let settled = false;
+    let verifyTimer = null;
+    const onFsSettle = () => {
+      settled = true;
+      clearTimeout(verifyTimer);
+      document.removeEventListener("fullscreenchange", onFsSettle);
+    };
+    const once = (why) => {
+      if (settled) return;
+      onFsSettle();
+      fallback(why);
+    };
+
     try {
       const p = el.requestFullscreen();
-      /* ⚠️ الوعد كان رفضه **بيضيع بصمت** — بلا هالمسك ما في ولا أثر يدلّ. */
-      if (p && typeof p.catch === "function") p.catch((err) => fallback(err?.message || String(err)));
+      /* ⚠️ الرفض كان **بيضيع بصمت** — بلا هالمسك ما في ولا أثر يدلّ. */
+      if (p && typeof p.catch === "function") p.catch((err) => once(err?.message || String(err)));
+      document.addEventListener("fullscreenchange", onFsSettle);
+      verifyTimer = setTimeout(() => {
+        if (document.fullscreenElement !== el) once("المتصفّح تجاهل الطلب بصمت");
+      }, 700);
     } catch (err) {
-      fallback(err?.message || String(err));
+      once(err?.message || String(err));
     }
   }
 
@@ -10551,7 +10587,7 @@ export default function ReplayClient({
   }
 
   /* أداة الزوم العائمة (شبيهة بتريدنغ فيو): زر تصغير + شريط انزلاق + زر تكبير،
-     ثابتة بأسفل يسار الشارت فوق محور الوقت. الشريط بيتحدّث بشكل تصاعدي/تنازلي
+     ثابتة بأسفل يسار الشارت. الشريط بيتحدّث بشكل تصاعدي/تنازلي
      تلقائياً مع أي بان/زوم عادي (بالماوس أو العجلة) عن طريق drawOverlay فوق
      (zoomSliderRef) - مش بس لما يُسحب هو نفسه. */
   function renderZoomControl() {
@@ -10560,7 +10596,17 @@ export default function ReplayClient({
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         style={{
-          position: "absolute", bottom: 8, left: 10, zIndex: 8,
+          /* ═══════════════════════════════════════════════════════════════
+             🔴 **كانت `bottom: 8` — فوق محور الزمن، وبتخفي تسميته.**
+             ---------------------------------------------------------------
+             مقيس بالتشغيل: المزلقة `y=743 h=27` والمحور `y=750 h=28` —
+             تداخل **١٥٦×٢٠ بكسل** بكل لوحة. يعني لما يكون المؤشر بأول
+             ١٥٦ بكسل من اليسار، تسمية وقته بتوقع تحت المزلقة وبتختفي.
+             بلاغه: «كأنه في مشكلة بالمؤشر».
+
+             المحور ٢٨ بكسل مقيسة + ٨ فراغ = ٣٦. ولما يكون مخفي بترجع ٨.
+             ═══════════════════════════════════════════════════════════════ */
+          position: "absolute", bottom: showTimeAxis ? 36 : 8, left: 10, zIndex: 8,
           display: "flex", alignItems: "center", gap: 6,
           background: "rgba(13,13,10,0.72)", backdropFilter: "blur(2px)",
           border: `1px solid #2A2145`, borderRadius: 3,
