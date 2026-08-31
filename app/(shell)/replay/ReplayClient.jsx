@@ -1253,6 +1253,13 @@ export default function ReplayClient({
   const applyingSyncRef = useRef(false);
   /* هل الفأرة فوق هاللوحة الآن — بينضبط من مستمعي الحاوية تحت. */
   const hoveredRef = useRef(false);
+  /* ⚠️ **هل لمس المستخدم هاللوحة ولو مرة.** حارس التراشق بالناشر بيشترط
+     `hovered` — منطقي أثناء السحب، بس قبل أول لمسة ما في فأرة فوق ولا لوحة،
+     فولا وحدة بتنشر منظرها الأولي والشارتات بتفضى على مديين مختلفين.
+     فقبل أول لمسة، اللوحة **النشطة** مسموح إلها تنشر. */
+  const everHoveredRef = useRef(false);
+  const chromeActiveRef = useRef(false);
+  chromeActiveRef.current = !!chromeActive;
   /* **الطابع الزمني** لمؤشر المزامنة — `null` يعني ما في مؤشر. */
   const syncCursorRef = useRef(null);
   /* ═══════════════════════════════════════════════════════════════════════════
@@ -4962,7 +4969,7 @@ export default function ReplayClient({
          المكتبة الحقيقي، ولو ضل خطها القديم مرسوماً بيصير فيها **خطّان**. */
       /* ما عاد فيه مسح عند الدخول: كان لمنع خطّين (خط المكتبة وخطنا)، وخط
          المكتبة العمودي انطفى. أول حركة فأرة بتضبط القيمة بنفسها. */
-      const onPaneEnter = () => { hoveredRef.current = true; };
+      const onPaneEnter = () => { hoveredRef.current = true; everHoveredRef.current = true; };
       const onPaneLeave = () => {
         hoveredRef.current = false;
         /* الخروج من الصندوق: منسكّر خطنا ومنعلم التابعات. حدث المكتبة لحاله
@@ -5207,8 +5214,17 @@ export default function ReplayClient({
 
            اللي بيحرّك فعلاً هو اللوحة اللي **الفأرة فوقها**. فهي وحدها بتنشر،
            والباقي بتستقبل وبس. وهيك بيضل أي شارت تسحبه بيسحب الباقي، بلا
-           حلقة — نفس مبدأ المؤشر. */
-        if (!hoveredRef.current) return;
+           حلقة — نفس مبدأ المؤشر.
+
+           ⚠️ **باستثناء ما قبل أول لمسة.** الشرط حارس تراشق **أثناء السحب**،
+           بس عند التحميل ما في فأرة فوق ولا لوحة — فولا وحدة بتنشر منظرها
+           الأولي، والشارتات بتفضى على مديين زمنيين مختلفين. ونشرة الاستقرار
+           وحدها ما كفت: منظر النشطة **بيتغيّر بعدها** (استرجاع المدى
+           والتعميق)، فالتابعة بتضل على النافذة القديمة — مقيس، الحافة اليمنى
+           بتتطابق واليسرى لأ.
+           فقبل أول لمسة اللوحة النشطة بتنشر تغيّراتها كمان، وبعدها بيرجع
+           الحارس كما هو. والتراشق ما بيصير إلا بالسحب أصلاً. */
+        if (!hoveredRef.current && !(chromeActiveRef.current && !everHoveredRef.current)) return;
         /* ⚠️ **ما بننشر ونحنا لسا عم نحمّل.** نطاق العرض بيتغيّر **برمجياً**
            أثناء التحميل (أول دفعة صغيرة، ثم تبديل البيانات، ثم استرجاع
            المدى) — ولحظة عابرة من هدول لو انتشرت بتعلق عند التابعات حتى بعد
@@ -6119,6 +6135,9 @@ export default function ReplayClient({
       const iso = (t) => (Number.isFinite(t) ? new Date(t * 1000).toISOString().slice(0, 16).replace("T", " ") : null);
       return {
         pane: paneId,
+        active: !!chromeActive,
+        نشر: publishedInitialViewRef.current,
+        تبنّى: adoptedInitialViewRef.current,
         axis: !!showTimeAxisRef.current,
         bars: arr.length,
         tsWidth: (() => { try { return Math.round(ts?.width?.() ?? -1); } catch { return -1; } })(),
@@ -7803,6 +7822,10 @@ export default function ReplayClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncBus, syncTime, paneId]);
 
+  /* مستقبِل رسائل الزوم بمرجع — عشان تأثير الاستقرار تحت ينادي **نفسه**
+     بدل ما يبني مساراً تانياً بتحويل مستقل. */
+  const applyZoomMsgRef = useRef(null);
+
   /* نافذة العرض — نفس المبدأ: بالوقت، والتابعة بتقصّها على مداها المتاح. */
   useEffect(() => {
     if (!syncBus || !syncZoom) return;
@@ -7855,10 +7878,70 @@ export default function ReplayClient({
         applyingSyncRef.current = false;
       }
     };
+    applyZoomMsgRef.current = apply;
     const off = syncBus.subscribe("zoom", apply);
     apply(syncBus.peek("zoom"));
     return off;
   }, [syncBus, syncZoom, paneId]);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     🔴 **المزامنة ما كانت تبلّش لحالها — بس بعد أول تفاعل.**
+     ---------------------------------------------------------------------------
+     الناشر فوق بيشترط `hoveredRef.current` (اللوحة اللي الفأرة فوقها وحدها
+     تنشر — حارس التراشق). وعند التحميل ما في فأرة فوق ولا وحدة، فولا لوحة
+     بتنشر: كل وحدة بتضبط منظرها لحالها على **نفس عدد الشموع**، والوقت بيطلع
+     مختلف لأن كثافة الشموع بتفرق بين الرموز.
+
+     مقيس بالتشغيل (ذهب مقابل ناسداك، نفس الفريم):
+
+         عند التحميل   main 04:36→14:47  ·  B 04:21→12:45   ← مختلفتان
+         بعد أول زوم   main 06:04→17:13  ·  B 06:04→17:13   ← متطابقتان
+
+     يعني المزامنة سليمة، بس بتنطفي لحد أول تفاعل. والمستخدم بيشوف شارتين
+     على مديين زمنيين مختلفين، فمؤشر التقاطع بيوقع بموقع نسبي مختلف بكل
+     وحدة — بلاغه: «مشكلة مؤشر التقاطع».
+
+     الحل: **اللوحة النشطة وحدها** تنشر منظرها **مرة** بعد ما تستقر بياناتها.
+     ⚠️ نشر مش تبنّي: التبنّي عند الاستقرار جُرّب قبل و**كسر القص** (اللوحات
+     تبنّت النافذة القديمة ما قبل القص). النشر بيمرق بنفس مسار سحب المستخدم
+     العادي، وهو مسار متحقَّق.
+
+     ⚠️ ومرة وحدة لكل سلسلة (رمز|فريم): الاستطلاع الحي بيضيف شمعة كل بضع
+     ثوانٍ، وبلا الحارس بتنعاد النشرة مع كل تِك فترجع اللوحات لآخر شمعة —
+     وهاد عطل موثّق سابقاً («بيعمل زي ريفرش وبيرجع عند آخر شمعة»).
+     ═══════════════════════════════════════════════════════════════════════════ */
+  const publishedInitialViewRef = useRef(null);
+  const adoptedInitialViewRef = useRef(null);
+  useEffect(() => {
+    if (!syncBus || !syncZoom) return;
+    if (loading || !allCandles.length) return;
+    const key = `${assetValue}|${interval}|${mode}`;
+
+    if (chromeActive) {
+      if (publishedInitialViewRef.current === key) return;
+      const chart = chartRef.current;
+      if (!chart) return;
+      try {
+        const g = viewGeometry(chart);
+        if (!g) return;
+        publishedInitialViewRef.current = key;
+        syncBus.publish("zoom", { ...g, src: paneId });
+      } catch { /* المدى لسا برّا البيانات — بتنعاد مع الرندر الجاي */ }
+      return;
+    }
+
+    /* ⚠️ **والتابعة لازم تتبنّى لما تجهز هي كمان.** النشرة بتنطلق أول ما
+       تستقر بيانات النشطة، والتابعة وقتها غالباً لسا بتحمّل — فالمستقبِل
+       بيرفضها (`arr.length < 3`) وبتضيع. مقيس: بعد إضافة النشر وحده ضلّت
+       اللوحتان على مديين مختلفين.
+       فبتنادي **نفس** مستقبِل الرسائل على آخر قيمة بالقناة — مش مسار جديد.
+
+       ⚠️ ومرة وحدة لكل سلسلة: بلا الحارس بينعاد التبنّي مع كل شمعة حية
+       فبترجع اللوحة لنافذة قديمة كل بضع ثوانٍ. */
+    if (adoptedInitialViewRef.current === key) return;
+    adoptedInitialViewRef.current = key;
+    applyZoomMsgRef.current?.(syncBus.peek("zoom"));
+  }, [syncBus, syncZoom, chromeActive, loading, allCandles.length, assetValue, interval, mode, paneId]);
 
   /* ===== حفظ جلسة القص/التدريب =====
      ⚠️ **كانت بتنكتب بمكان واحد بس: لحظة الضغط على «مباشر».**
