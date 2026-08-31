@@ -2186,16 +2186,32 @@ export default function ReplayClient({
        بينتشارك بين فريمات مختلفة — قراره الصريح.
 
        ⚠️ **وهاد بينرسم بكل اللوحات — حتى اللي تحت الفأرة.** خط المكتبة
-       العمودي مطفي (`vertLine.visible: false`) لأنه بيلزق على مركز العمود
-       دايماً مهما كان `CrosshairMode` — مثبت بمصدرها:
-       `this.__x = timeScale.indexToCoordinate(newIndex)`.
-       فلو تركناه للوحة القائدة، بتضل هي لازقة والتابعة عائمة = انحراف
-       بيوصل عرض شمعة كاملة. الحل إنه **الكل بنفس القاعدة** لا إنه الكل يلزق.
+       العمودي مطفي (`vertLine.visible: false`) عشان يضل مصدر واحد للخط
+       بالقائدة والتابعة، فما ينحرفوا عن بعض.
+
+       ═══════════════════════════════════════════════════════════════════════
+       🔴 **الخط بيلزق بالشمعة — مش عائم.**
+       -----------------------------------------------------------------------
+       كان عائماً على الموضع الكسري بناءً على طلب سابق («عائم بالكامل، مش
+       مربوط بمركز الشمعة»). بس هو رجع صحّح بعد ما راقب TradingView:
+       «بس تنقل مؤشر التقاطع من شمعة لشمعة، المؤشر بينط للشمعة يلي نقلته
+       عليها — ما بتحرك بشكل عشوائي».
+
+       وهاد فعلاً سلوك TradingView: `this.__x = timeScale.indexToCoordinate(i)`
+       بمصدر المكتبة — الخط بيلزق بمركز العمود مهما كان `CrosshairMode`.
+
+       فبنقرّب الموضع الكسري لأقرب عمود. والتسمية أصلاً بتستعمل نفس التقريب،
+       فصار الاتنان على نفس الشمعة — الخط ما عاد يكذب على تسميته.
+
+       ⚠️ **والالتصاق بيوحّد اللوحات كمان**: كل لوحة بتلزق على شمعتها هي
+       لنفس اللحظة، فبدل انحراف كسري عشوائي بيصير كل خط على مركز شمعة.
+       ⚠️ الرسومات ما إلها علاقة — إلها مغناطيسها المنفصل.
        ═══════════════════════════════════════════════════════════════════════ */
     if (syncCursorRef.current != null) {
-      const lgSync = timeToFractionalLogicalForCandles(
+      const lgRaw = timeToFractionalLogicalForCandles(
         syncCursorRef.current, visibleCandlesRef.current, currentStepSeconds()
       );
+      const lgSync = Number.isFinite(lgRaw) ? Math.round(lgRaw) : lgRaw;
       const rawX = Number.isFinite(lgSync)
         ? coordinateFromFractionalLogical(chartRef.current?.timeScale?.(), lgSync)
         : null;
@@ -4323,7 +4339,15 @@ export default function ReplayClient({
           ? { visible: true, text: savedSettings.watermarkText, color: "rgba(201,162,75,0.12)", fontSize: 48, horzAlign: "center", vertAlign: "center" }
           : { visible: false },
         timeScale: {
-          visible: showTimeAxisRef.current,
+          /* ⚠️ **المحور موجود دايماً — والإخفاء بالقص مش بالإطفاء.**
+             `visible: false` بتخلّي `timeScale().width()` يرجّع **صفر**،
+             والمكتبة بتشتق منه تباعد الشموع — فاللوحة بتستقبل النافذة صح
+             وترسم بمقياس غلط. مقيس: محور مخفي `tsWidth 0` · محور ظاهر
+             `tsWidth 820`.
+             فبيضل ظاهراً للمكتبة، وبينقصّ بصرياً من الحاوية (شوف
+             `TIME_AXIS_H` بـ`handleResize`) — هيك بيضل محور واحد تحت زي
+             تريدنغ فيو، والمقياس سليم بكل اللوحات. */
+          visible: true,
           borderColor: "#2A2145",
           timeVisible: true,
           secondsVisible: false,
@@ -4448,9 +4472,24 @@ export default function ReplayClient({
             mainPaneRef.current.style.height = `${totalHeight}px`;
           }
         }
+        /* ═══════════════════════════════════════════════════════════════════
+           **محور زمن واحد للمنصّة كلها — بالقص مش بالإطفاء.**
+           -------------------------------------------------------------------
+           طلبه: «بدي شريط زمني واحد وبس». والإطفاء (`timeScale.visible:false`)
+           بيكسر المقياس: `width()` بيصير صفر والمكتبة بتشتق منه تباعد الشموع.
+
+           فالشارت بينرسم محوره دايماً، بس منزيد ارتفاعه بمقدار المحور
+           باللوحات اللي مش صاحبة المحور — والحاوية `overflow:hidden` فبيوقع
+           المحور تحت الحافة وينقصّ. النتيجة: محور واحد بالأسفل، وكل لوحة
+           بمقياس صحيح.
+
+           ⚠️ `TIME_AXIS_H` **مقيس مش مخمَّن**: صف المحور بالجدول الداخلي
+           `h=28` بالتشغيل. لو تغيّر خط المحور لازم يتعاد القياس.
+           ═══════════════════════════════════════════════════════════════════ */
+        const TIME_AXIS_H = 28;
         chart.applyOptions({
           width: chartContainerRef.current.clientWidth,
-          height: totalHeight,
+          height: totalHeight + (showTimeAxisRef.current ? 0 : TIME_AXIS_H),
         });
         /* ═══════════════════════════════════════════════════════════════════
            🔴 **طبقة الرسم كانت تتمدّد خارج لوحتها.**
@@ -6918,10 +6957,42 @@ export default function ReplayClient({
 
            ⚠️ والنشطة ما بتتبنّى — هي مصدر النافذة، وإلا صارت حلقة.
            ═══════════════════════════════════════════════════════════════════ */
+        /* ═══════════════════════════════════════════════════════════════════
+           🔴 **القائدة بتطبّق منظرها مرات كتير أثناء التحميل — وبتنشر مرة.**
+           -------------------------------------------------------------------
+           أثر تشخيصي على تحميل كامل:
+
+               7625  B     تبنّى نافذة main   ✓
+               9437  B     تبنّى نافذة main   ✓
+               9695  main  طبّق منظره المحلي  ← آخر حدث، وما نشره
+
+           التعميق بيجيب الشموع على دفعات، وكل دفعة بتعيد ضبط منظر القائدة —
+           **خمس مرات** بالقياس. والنشر كان مرة وحدة (محروس بالسلسلة)، فالتابعة
+           بتلحق نسخة قديمة والقائدة بتكمّل تتحرّك بعدها.
+
+           بلاغه: «بس أغيّر الفريم بيصير هيك، لحتى أحرّك الشارت بيرجع يظبط» —
+           التحريك بيوقظ الناشر العادي فبتنضبط.
+
+           ⚠️ والناشر العادي ما بيمسك هالحالة: بيتخطّى أول حدث نطاق بعد أي
+           تغيّر بعدد الشموع (حارس «تغيّر بيانات مش تحريك مستخدم») — وهاي
+           بالضبط لحظة التعميق. فالنشر لازم يصير من هون.
+
+           ⚠️ ومن جوّا `onSettled` مش قبله: `viewGeometry` قبل الاستقرار
+           بترجّع قيماً وسيطة.
+           ═══════════════════════════════════════════════════════════════════ */
         waitForChartSettleAndRedraw(restoreVisibleRange, 30, () => {
-          if (chromeActiveRef.current) return;
           const s = syncRef.current;
           if (!s?.bus || !s.zoom) return;
+          if (chromeActiveRef.current) {
+            try {
+              const g = viewGeometry(chartRef.current);
+              if (g) {
+                lastAppliedGeomRef.current = g;
+                s.bus.publish("zoom", { ...g, src: paneId });
+              }
+            } catch { /* المدى لسا برّا البيانات */ }
+            return;
+          }
           const shared = s.bus.peek("zoom");
           if (shared && shared.src !== paneId) applyZoomMsgRef.current?.(shared);
         });
@@ -7615,7 +7686,8 @@ export default function ReplayClient({
   useEffect(() => {
     const c = chartRef.current;
     if (!c) return;
-    try { c.applyOptions({ timeScale: { visible: showTimeAxis } }); } catch {}
+    /* المحور بيضل ظاهراً للمكتبة دايماً — الإخفاء بالقص. شوف `TIME_AXIS_H`. */
+    try { c.applyOptions({ timeScale: { visible: true } }); } catch {}
     const t = setTimeout(() => chartRef.current?.__resize?.(), 0);
     return () => clearTimeout(t);
   }, [showTimeAxis]);
