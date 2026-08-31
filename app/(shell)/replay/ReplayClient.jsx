@@ -3070,7 +3070,10 @@ export default function ReplayClient({
      قيم مختلفة منطقية مش صفر/متطابقة لطرفي مدى معروفين) بدل ما نخمّن رقم -
      ومنعيد المحاولة لحد ما تستقر أو نوصل حد أقصى أمان (يمنع لوب لا نهائي لو
      صار خطأ تاني غير متوقع). */
-  function waitForChartSettleAndRedraw(targetRange, attemptsLeft = 30) {
+  /* ⚠️ `onSettled` انضاف عشان يكون في **لحظة معرَّفة بعد استقرار المنظر
+     المحلي**. بلاها ما كان في مكان يتبنّى فيه التابع النافذة المشتركة بلا
+     ما يتسابق مع الاسترجاع — شوف نداءها بـ`loadData`. */
+  function waitForChartSettleAndRedraw(targetRange, attemptsLeft = 30, onSettled = null) {
     const ts = chartRef.current?.timeScale();
     if (!ts) { scheduleDraw(); return; }
     requestAnimationFrame(() => {
@@ -3096,9 +3099,10 @@ export default function ReplayClient({
       }
       if (settled || attemptsLeft <= 0) {
         suppressRangeChangeDrawRef.current = false;
+        try { onSettled?.(); } catch { /* التبنّي زينة — ما بيوقف الرسم */ }
         scheduleDraw();
       } else {
-        waitForChartSettleAndRedraw(targetRange, attemptsLeft - 1);
+        waitForChartSettleAndRedraw(targetRange, attemptsLeft - 1, onSettled);
       }
     });
   }
@@ -6895,7 +6899,32 @@ export default function ReplayClient({
            (شوفي suppressRangeChangeDrawRef فوق جنب scheduleDraw)، ومنستنى
            فعلياً لحد ما تستقر مساحة الإحداثيات وبعدين نرسم الأوفرلاي. */
         suppressRangeChangeDrawRef.current = true;
-        waitForChartSettleAndRedraw(restoreVisibleRange);
+        /* ═══════════════════════════════════════════════════════════════════
+           🔴 **التابعة كانت تتبنّى النافذة المشتركة، وبعدها يدوس عليها
+           منظرها المحلي.**
+           -------------------------------------------------------------------
+           التبنّي كان معلّقاً على انتهاء التحميل، وهو بينفّذ **قبل** ما
+           يطبّق هالمسار `restoreVisibleRange`. مقيس بالسجل: التابعة
+           `تبنّى: XAUUSD|15m|live` — يعني التبنّي صار فعلاً — ونافذتها
+           بالنهاية نافذتها هي:
+               main 05:34→15:29   ·   B 05:19→13:30
+
+           فصار التبنّي هون: **بعد استقرار المنظر المحلي**، فهو آخر كلمة
+           وما في سباق.
+
+           ⚠️ وما بنلمس `restoreVisibleRange` نفسه: جرّبت أستبدله بالنافذة
+           المشتركة قبل التطبيق و**انهار العرض** (النافذة صارت دقيقة وحدة)،
+           لأنه بينمرَّر كهدف لفحص الاستقرار فوق. التبنّي بعده أأمن.
+
+           ⚠️ والنشطة ما بتتبنّى — هي مصدر النافذة، وإلا صارت حلقة.
+           ═══════════════════════════════════════════════════════════════════ */
+        waitForChartSettleAndRedraw(restoreVisibleRange, 30, () => {
+          if (chromeActiveRef.current) return;
+          const s = syncRef.current;
+          if (!s?.bus || !s.zoom) return;
+          const shared = s.bus.peek("zoom");
+          if (shared && shared.src !== paneId) applyZoomMsgRef.current?.(shared);
+        });
       }
     } catch (err) {
       // بيانات فاسدة وصلت رغم التصفية (مصدر خارجي غير متوقع) - نعرض رسالة بدل ما نكسر الصفحة
@@ -7938,9 +7967,25 @@ export default function ReplayClient({
 
        ⚠️ ومرة وحدة لكل سلسلة: بلا الحارس بينعاد التبنّي مع كل شمعة حية
        فبترجع اللوحة لنافذة قديمة كل بضع ثوانٍ. */
-    if (adoptedInitialViewRef.current === key) return;
+    /* ═══════════════════════════════════════════════════════════════════════
+       🔴 **الحارس كان بينرفع حتى لو ما في نافذة منشورة.**
+       -----------------------------------------------------------------------
+       اللوحة اللي بتخلص تحميلها **أول** بتلاقي القناة فاضية (التانية لسا
+       عم تحمّل فما نشرت)، وبرغم هيك بتسجّل «تبنّيت» — فما بتتبنّى أبداً بعدها.
+       ولأنه ترتيب انتهاء التحميل بيختلف من مرة لمرة، الشارتات بتتطابق مرة
+       وبتفترق مرة: **سباق**، مش عطل ثابت. وهاد اللي خلّاها تبان محلولة
+       عندي ومكسورة عنده.
+
+       مقيس بالسجل: التابعة `تبنّى: "XAUUSD|15m|live"` ونافذتها نافذتها هي،
+       والنشطة `نشر: "NAS100|15m|live"` — يعني في نافذة منشورة وما انتبنّت.
+
+       فالحارس ما بينرفع إلا لو في **شي انتبنّى فعلاً**؛ وإلا بتضل اللوحة
+       مستنية، وبتلتقطها أول ما تنشر التانية عبر الاشتراك العادي.
+       ═══════════════════════════════════════════════════════════════════════ */
+    const shared = syncBus.peek("zoom");
+    if (!shared || shared.src === paneId) return;
     adoptedInitialViewRef.current = key;
-    applyZoomMsgRef.current?.(syncBus.peek("zoom"));
+    applyZoomMsgRef.current?.(shared);
   }, [syncBus, syncZoom, chromeActive, loading, allCandles.length, assetValue, interval, mode, paneId]);
 
   /* ===== حفظ جلسة القص/التدريب =====
