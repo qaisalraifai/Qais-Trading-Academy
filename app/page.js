@@ -5,10 +5,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   BookOpen,
+  CalendarDays,
   Check,
+  Dna,
+  FileText,
   GraduationCap,
   LineChart,
+  Radar,
   Radio,
   Repeat,
   Target,
@@ -109,6 +114,22 @@ const CURRICULUM = [
   { code: "SK", Icon: Radio, k: "sk" },
   { code: "DEMO", Icon: GraduationCap, k: "demo" },
   { code: "BT", Icon: Repeat, k: "bt" },
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   الأدوات — كل بند منهن **موجود بقائمة تنقّل الأعضاء** (`navigation.js`).
+   ---------------------------------------------------------------------------
+   القسم انضاف لأنّ الصفحة كانت تبيع محاضرات وبس، بينما المنصّة صار فيها
+   أدوات تحليل كاملة ما كانت مذكورة ولا مرة — لا بالصفحة ولا بوصف جوجل.
+   ⚠️ ولا بند مكتوب على نيّة: أي إشي مش موجود بالتنقّل ما بينكتب هون.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const TOOLS = [
+  { k: "replay", Icon: Target },
+  { k: "radar", Icon: Radar },
+  { k: "journal", Icon: BarChart3 },
+  { k: "reports", Icon: FileText },
+  { k: "dna", Icon: Dna },
+  { k: "calendar", Icon: CalendarDays },
 ];
 
 function SectionHead({ eyebrow, title, isRtl, align = "center" }) {
@@ -287,6 +308,35 @@ export default function HomePage() {
               </article>
             </Reveal>
           ))}
+        </div>
+      </section>
+
+      {/* ═══════════ الأدوات ═══════════ */}
+      <section className="border-t border-edge bg-space-2/40">
+        <div className="mx-auto max-w-6xl px-5 py-20">
+          <SectionHead
+            isRtl={isRtl}
+            eyebrow={t("landing.tools.eyebrow")}
+            title={t("landing.tools.title")}
+          />
+
+          <div className="mt-12 grid gap-px border border-edge bg-edge sm:grid-cols-2 lg:grid-cols-3">
+            {TOOLS.map((tool, i) => (
+              <Reveal key={tool.k} delay={i * 70}>
+                <article className="group h-full bg-module-1 p-6 transition-colors duration-base hover:bg-module-2">
+                  <span className="mb-4 grid h-9 w-9 place-items-center border border-edge-lit text-cyan-100 transition-colors duration-base group-hover:border-cyan-200">
+                    <tool.Icon className="h-4 w-4" aria-hidden />
+                  </span>
+                  <h3 className="mb-2 text-lg font-semibold text-text-primary">
+                    {t(`landing.tools.${tool.k}Title`)}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-text-muted">
+                    {t(`landing.tools.${tool.k}Desc`)}
+                  </p>
+                </article>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 

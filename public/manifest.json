@@ -1,7 +1,7 @@
 {
   "name": "Qais Trading Academy",
   "short_name": "QTA",
-  "description": "أكاديمية Qais Trading Academy لتعليم التداول من الأساسيات حتى الاحترافية",
+  "description": "منهج تداول كامل من الأساسيات حتى ICT وSK، محاضرات مباشرة ومسجّلة، وأدوات تطبّق مفاهيم المنهج على السوق الحقيقي.",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

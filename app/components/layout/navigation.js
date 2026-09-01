@@ -43,7 +43,7 @@ export const NAV_ITEMS = [
   /* --- التداول --- */
   { key: "radar", group: "trading", label: "Trading Radar", labelKey: "nav.radar", icon: Radar, href: "/trading-radar" },
   { key: "ai-trades", group: "trading", label: "صفقات QAIS AI", labelKey: "nav.aiTrades", icon: Bot, href: "/ai-trades" },
-  { key: "replay", group: "trading", label: "Replay التدريب", labelKey: "nav.replay", icon: Target, href: "/replay" },
+  { key: "replay", group: "trading", label: "استعراض التدريب", labelKey: "nav.replay", icon: Target, href: "/replay" },
   { key: "trades", group: "trading", label: "الصفقات", labelKey: "nav.trades", icon: BarChart3, href: "/backtest" },
   { key: "calendar", group: "trading", label: "التقويم الاقتصادي", labelKey: "nav.calendar", icon: Calendar, href: "/economic-calendar" },
 
@@ -54,7 +54,7 @@ export const NAV_ITEMS = [
   { key: "reports", group: "learning", label: "التقارير", labelKey: "nav.reports", icon: FileText, href: "/reports" },
 
   /* --- الشبكة --- */
-  { key: "affiliate", group: "network", label: "العمولة والشبكة (Affiliate)", labelKey: "nav.affiliateNetwork", icon: Handshake, href: "/affiliate" },
+  { key: "affiliate", group: "network", label: "العمولة والشبكة", labelKey: "nav.affiliateNetwork", icon: Handshake, href: "/affiliate" },
 
   /* --- الإدارة --- */
   { key: "accounts", group: "admin", label: "إدارة الحسابات", labelKey: "nav.accounts", icon: Users, href: "/accounts", adminOnly: true },
