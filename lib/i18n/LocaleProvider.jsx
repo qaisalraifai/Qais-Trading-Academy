@@ -20,7 +20,9 @@ function applyDocumentLocale(locale) {
 // أول رندر، منقارن مع localStorage (ولو المستخدم مسجّل دخول ومحفوظ إله لغة
 // بالبروفايل، هاي بتوصل بنفس initialLocale لأنه login flow بيزامنها بالكوكي).
 // ============================================================================
-export function LocaleProvider({ initialLocale, children }) {
+export function LocaleProvider({ initialLocale, initialGender = null, children }) {
+  /* صيغة المخاطبة بتجي جاهزة من الخادم (كوكي) — ما بتتغيّر بالجلسة إلا لما
+     يعدّلها المستخدم من الإعدادات، وهناك بينعاد تحميل الصفحة. فما إلها حالة. */
   const [locale, setLocaleState] = useState(isSupportedLocale(initialLocale) ? initialLocale : DEFAULT_LOCALE);
 
   // مزامنة أول تحميل مع localStorage (تغطي حالة كوكي غير موجود بعد، مثلاً أول
@@ -80,11 +82,12 @@ export function LocaleProvider({ initialLocale, children }) {
       locale,
       dir: dirFor(locale),
       meta: LOCALE_META[locale],
-      t: createTranslator(locale),
+      t: createTranslator(locale, initialGender),
+      gender: initialGender,
       raw: (key) => lookupRaw(locale, key),
       setLocale,
     }),
-    [locale, setLocale]
+    [locale, setLocale, initialGender]
   );
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;

@@ -2,6 +2,7 @@ import "./globals.css";
 import { IBM_Plex_Sans_Arabic, Archivo, IBM_Plex_Mono } from "next/font/google";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import { getServerLocale } from "@/lib/i18n/get-server-locale";
+import { getServerGender } from "@/lib/get-server-gender";
 import { dirFor } from "@/lib/i18n/config";
 import SpaceBackdrop from "./components/brand/SpaceBackdrop";
 
@@ -201,6 +202,7 @@ function StructuredData() {
 
 export default function RootLayout({ children }) {
   const locale = getServerLocale();
+  const gender = getServerGender();
 
   return (
     <html
@@ -216,7 +218,7 @@ export default function RootLayout({ children }) {
       <body style={{ margin: 0 }}>
         <StructuredData />
         <SpaceBackdrop />
-        <LocaleProvider initialLocale={locale}>{children}</LocaleProvider>
+        <LocaleProvider initialLocale={locale} initialGender={gender}>{children}</LocaleProvider>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import Link from "next/link";
+import { isValidGender } from "@/lib/gender";
 
 function useReveal() {
   const ref = useRef(null);
@@ -40,6 +41,9 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [country, setCountry] = useState("");
+  /* ⚠️ القيمة الأولية `null` مش `""` — عشان تتميّز «ما اختار بعد» عن «اختار
+     قيمة فاضية»، والزرّان يبيّنوا إنه لسا ما انحدّد شي. */
+  const [gender, setGender] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [waitingConfirm, setWaitingConfirm] = useState(false);
@@ -79,6 +83,7 @@ useEffect(() => {
     e.preventDefault();
     setError("");
     if (!fullName.trim()) { setError("الرجاء إدخال الاسم"); return; }
+    if (!isValidGender(gender)) { setError("الرجاء اختيار الجنس"); return; }
     if (password !== confirmPassword) { setError("كلمتا المرور غير متطابقتين"); return; }
     setLoading(true);
 
@@ -109,7 +114,7 @@ useEffect(() => {
     const createProfileRes = await fetch("/api/create-profile", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: newUserId, username: fullName.trim(), ref: refCodeRef.current }),
+      body: JSON.stringify({ userId: newUserId, username: fullName.trim(), gender, ref: refCodeRef.current }),
     });
 
     if (!createProfileRes.ok) {
@@ -277,6 +282,47 @@ onChange={(e) => f.set(e.target.value)}
                 </div>
               ))}
 
+              {/* ═══════════════════════════════════════════════════════════
+                  صيغة المخاطبة — **إلزامية** بقراره.
+                  ---------------------------------------------------------
+                  ⚠️ **مش `<select>`**: خياران وبس، والقائمة المنسدلة بتخبّيهن
+                  خلف كبسة وبتفتح لوحة النظام على الموبايل. زرّان ظاهران
+                  بيخلّوا الاختيار كبسة وحدة وبيبيّنوا إنه ما انختار بعد.
+
+                  ⚠️ ولا قيمة أوّلية: `null` بيخلّي المستخدم **يقرّر** بدل ما
+                  يمرق على قيمة اخترناها إله ويبعتها بلا ما ينتبه.
+                  ⚠️ والفحص هون **تجربة استخدام مش حماية** — البوابة الحقيقية
+                  بـ`/api/create-profile`، لأنّ أي حدا بيقدر ينده المسار
+                  مباشرةً ويتخطّى الواجهة كلها.
+                  ═══════════════════════════════════════════════════════════ */}
+              <div style={s.field}>
+                <label style={s.label}>الجنس</label>
+                <div style={s.genderRow}>
+                  {[
+                    { v: "male", t: "ذكر" },
+                    { v: "female", t: "أنثى" },
+                  ].map((g) => {
+                    const on = gender === g.v;
+                    return (
+                      <button
+                        key={g.v}
+                        type="button"
+                        onClick={() => setGender(g.v)}
+                        aria-pressed={on}
+                        style={{
+                          ...s.genderBtn,
+                          borderColor: on ? gold : "#141024",
+                          color: on ? "#F5F3FF" : "#6E6690",
+                          backgroundColor: on ? "#141024" : "#0A0614",
+                        }}
+                      >
+                        {g.t}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {error && <p style={s.error}>{error}</p>}
 
               <button onClick={handleSignup} disabled={loading} style={{ ...s.btn, opacity: loading ? 0.7 : 1 }}>
@@ -342,6 +388,8 @@ const s = {
   label: { color: "#6E6690", fontSize: "0.8rem" },
   input: { backgroundColor: "#0A0614", border: "1px solid #141024", color: "#F5F3FF", padding: "0.8rem 1rem", borderRadius: "3px", fontSize: "0.95rem", outline: "none", direction: "ltr", textAlign: "right" },
   btn: { backgroundColor: gold, color: "#0E0A1A", padding: "1rem", borderRadius: "3px", border: "none", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer", marginTop: "0.5rem" },
+  genderRow: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" },
+  genderBtn: { padding: "0.8rem 1rem", borderRadius: "3px", border: "1px solid", fontSize: "0.95rem", cursor: "pointer", transition: "border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease" },
   error: { color: "#FF453A", fontSize: "0.85rem", textAlign: "center" },
   waitBox: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem", padding: "1.5rem 0" },
   spinner: { width: "38px", height: "38px", borderRadius: "50%", border: "3px solid #141024", borderTopColor: gold, animation: "qta-spin 0.8s linear infinite" },

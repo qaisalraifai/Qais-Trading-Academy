@@ -5,6 +5,14 @@ import { optionalUserId } from "@/lib/api-auth";
 import { signupOwnershipVerdict, SIGNUP_VERDICT } from "@/lib/signup-guard";
 import { createNotification } from "@/lib/notifications";
 import { checkFraudBeforeSignup, recordSignupFingerprint } from "@/lib/fraud-checks";
+import { isValidGender, GENDER_COOKIE } from "@/lib/gender";
+
+/* بيثبّت صيغة المخاطبة بكوكي مع الرد — عشان الجذر يقراها بأول رسمة بلا
+   استعلام. العمود بـprofiles بيضل مصدر الحقيقة، وهاي نسخة سريعة وبس. */
+function withGenderCookie(res, gender) {
+  res.cookies.set(GENDER_COOKIE, gender, { path: "/", maxAge: 31536000, sameSite: "lax" });
+  return res;
+}
 
 // ينشئ صف profiles مباشرة بعد supabase.auth.signUp()، باستخدام Service Role
 // (يتجاوز RLS تماماً) — لأنه بلحظة التسجيل المستخدم لسا ممكن يكون بدون
@@ -14,11 +22,28 @@ export async function POST(request) {
   const limited = checkRateLimit(request, "createProfile");
   if (limited) return limited;
 
-  const { userId, username, ref, deviceFingerprint } = await request.json();
+  const { userId, username, gender, ref, deviceFingerprint } = await request.json();
 
   if (!userId || !username) {
     return NextResponse.json(
       { error: "بيانات ناقصة" },
+      { status: 400 }
+    );
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     صيغة المخاطبة **إلزامية** — والفرض هون مش بالواجهة.
+     ---------------------------------------------------------------------
+     ⚠️ فحص صفحة التسجيل تجربة استخدام وبس: المسار مكشوف، وأي حدا بيقدر
+     ينده POST مباشرةً بلا الحقل. فلو الفرض كان بالواجهة لحالها، كانت
+     تنكتب صفوف بلا صيغة وما بنعرف إلا لما نلاقيهن.
+     ⚠️ و`isValidGender` بترفض `null` عمداً — بعكس عمود القاعدة اللي بيقبلها
+     للحسابات القديمة. المكانان مختلفان بالقصد: **الجديد لازم يحدّد** قيمة،
+     و**القديم بيضل شغّالاً** بلا ما نلمسه.
+     ═══════════════════════════════════════════════════════════════════ */
+  if (!isValidGender(gender)) {
+    return NextResponse.json(
+      { error: "الرجاء اختيار الجنس", code: "GENDER_REQUIRED" },
       { status: 400 }
     );
   }
@@ -155,6 +180,7 @@ export async function POST(request) {
       const { error: rootProfileError } = await supabase.from("profiles").insert({
         id: userId,
         username: username.trim(),
+        gender,
         role: "admin",
         subscription_status: "inactive",
         referred_by: null,
@@ -170,7 +196,7 @@ export async function POST(request) {
         );
       }
       if (rootProfileError?.code === "23505") {
-        return NextResponse.json({ success: true });
+        return withGenderCookie(NextResponse.json({ success: true }), gender);
       }
 
       await recordSignupFingerprint(supabase, userId, {
@@ -209,6 +235,7 @@ export async function POST(request) {
     .insert({
       id: userId,
       username: username.trim(),
+      gender,
       role: "student",
       subscription_status: "inactive",
       referred_by: referredBy,
@@ -236,7 +263,7 @@ export async function POST(request) {
 
      الرجوع بنجاح مقصود: الغاية (وجود البروفايل) محقَّقة، وما بدنا نكشف
      للمنادي إذا الحساب موجود أو لأ. */
-  if (alreadyExists) return NextResponse.json({ success: true });
+  if (alreadyExists) return withGenderCookie(NextResponse.json({ success: true }), gender);
 
   await recordSignupFingerprint(supabase, userId, {
     deviceFingerprint,
@@ -269,5 +296,5 @@ export async function POST(request) {
     });
   }
 
-  return NextResponse.json({ success: true });
+  return withGenderCookie(NextResponse.json({ success: true }), gender);
 }
