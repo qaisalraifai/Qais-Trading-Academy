@@ -20,6 +20,6 @@ export default async function SettingsPage() {
 
 
   return (
-    <SettingsView username={shellProfile.username} />
+    <SettingsView username={shellProfile.username} gender={shellProfile.gender} />
   );
 }

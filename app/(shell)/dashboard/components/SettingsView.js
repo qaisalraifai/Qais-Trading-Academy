@@ -43,8 +43,39 @@ function SectionCard({ title, icon: Icon, children, style }) {
   );
 }
 
-export default function SettingsView({ username }) {
+export default function SettingsView({ username, gender = null }) {
   const { t, locale } = useLocale();
+  /* ⚠️ القيمة الأوّلية من الخادم — فحساب قديم بلا قيمة بيبان بلا اختيار،
+     وهاد بالضبط اللي بيخلّيه ينتبه إنه لازم يحدّدها. */
+  const [genderValue, setGenderValue] = useState(gender);
+  const [genderBusy, setGenderBusy] = useState(false);
+  const [genderMsg, setGenderMsg] = useState(null);
+
+  async function saveGender(next) {
+    if (genderBusy || next === genderValue) return;
+    setGenderBusy(true);
+    setGenderMsg(null);
+    /* ⚠️ **بلا تفاؤل بالعرض.** لو حطّينا القيمة قبل ما يردّ الخادم وفشل
+       الطلب، بيضل شايف اختياره الجديد وهو ما انحفظ. الانتظار هون رخيص —
+       طلب واحد صغير. */
+    try {
+      const res = await fetch("/api/user/gender", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gender: next }),
+      });
+      if (!res.ok) throw new Error("save failed");
+      setGenderValue(next);
+      setGenderMsg({ ok: true, text: t("settings.genderSaved") });
+      /* الجذر بيقرا الصيغة من كوكي وقت الرسم على الخادم — فبلا إعادة تحميل
+         بتضل الصفحة على الصيغة القديمة. */
+      setTimeout(() => window.location.reload(), 600);
+    } catch {
+      setGenderMsg({ ok: false, text: t("settings.genderError") });
+      setGenderBusy(false);
+    }
+  }
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -193,6 +224,61 @@ export default function SettingsView({ username }) {
               />
             </div>
           </div>
+        )}
+      </SectionCard>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          1.5 صيغة المخاطبة
+          -----------------------------------------------------------------
+          الحقل صار **إلزامياً بالتسجيل**، بس الحسابات اللي انفتحت قبله ما
+          عندها قيمة — فبلا هالقسم بيضلّوا يتخاطبوا بالمذكّر للأبد بلا أي
+          طريقة يغيّروها. يعني هاد مش «إعداد إضافي»، هو **الباب الوحيد**
+          للقدام.
+
+          ⚠️ الحفظ بيعيد تحميل الصفحة عمداً: الصيغة بتوصل الواجهة من كوكي
+          بيقراه الجذر (Server Component)، فتغييرها بلا إعادة تحميل بيخلّي
+          الصفحة تعرض الصيغة القديمة لحد أول تنقّل — والمستخدم بيحسّها ما
+          انحفظت.
+          ═══════════════════════════════════════════════════════════════════ */}
+      <SectionCard title={t("settings.genderTitle")} icon={Sparkles}>
+        <p style={{ margin: "0 0 0.9rem", fontSize: 12.5, color: "#6E6690", lineHeight: 1.7 }}>
+          {t("settings.genderHint")}
+        </p>
+        <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+          {[
+            { v: "male", label: t("settings.genderMale") },
+            { v: "female", label: t("settings.genderFemale") },
+          ].map((g) => {
+            const on = genderValue === g.v;
+            return (
+              <button
+                key={g.v}
+                type="button"
+                onClick={() => saveGender(g.v)}
+                disabled={genderBusy}
+                aria-pressed={on}
+                style={{
+                  padding: "0.6rem 1.4rem",
+                  borderRadius: 3,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: genderBusy ? "wait" : "pointer",
+                  border: `1px solid ${on ? GOLD : "#2A2145"}`,
+                  background: on ? "#241C3E" : "transparent",
+                  color: on ? "#fff" : "#6E6690",
+                  opacity: genderBusy ? 0.6 : 1,
+                  transition: "border-color 0.18s ease, background 0.18s ease, color 0.18s ease",
+                }}
+              >
+                {g.label}
+              </button>
+            );
+          })}
+        </div>
+        {genderMsg && (
+          <p style={{ margin: "0.8rem 0 0", fontSize: 12.5, color: genderMsg.ok ? "#10E5A0" : "#FF453A" }}>
+            {genderMsg.text}
+          </p>
         )}
       </SectionCard>
 
