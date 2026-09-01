@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  ArrowRight,
   BookOpen,
   Check,
   GraduationCap,
@@ -16,6 +17,8 @@ import {
 import Logo from "./components/brand/Logo";
 import Starfield from "./components/brand/Starfield";
 import OrbitBackdrop from "./components/brand/OrbitBackdrop";
+import LanguageSwitcher from "./components/layout/LanguageSwitcher";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 /* ============================================================================
    الصفحة الرئيسية — ما قبل تسجيل الدخول.
@@ -23,7 +26,41 @@ import OrbitBackdrop from "./components/brand/OrbitBackdrop";
    مبنية على نظام NEBULA بالكامل: صفر style={{ }}، كل شي بتوكنز الهوية.
    الفضاء بيدخل عبر حقل نجوم حقيقي + مخطّط مداري + حواف إيريدسنت — مش صور
    جاهزة ولا كواكب كرتونية.
+
+   ═══ اللغة ═══
+   نصوص الصفحة كانت **مكتوبة بالكود مباشرة**، فما كان إلها نسخة تانية أصلاً —
+   وهاد اللي منع وضع زرّ اللغة عليها مع إنّ النظام (`LocaleProvider`) شغّال
+   بباقي المنصّة من زمان. انتقلت كلها لنطاق `landing` بالقاموسين.
+
+   ⚠️ و`dir` كان **مثبّتاً `"rtl"`** على الجذر — يعني حتى لو انبدلت اللغة،
+   الصفحة بتضل تترتّب من اليمين. صار من `useLocale()`.
    ============================================================================ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   عنوان القسم الصغير — **تنسيقه بيتبدّل مع اللغة، مش بس نصّه.**
+   ---------------------------------------------------------------------------
+   التنسيق اللاتيني (`font-mono` · `uppercase` · `tracking-[0.28em]`) بيكسر
+   العربي بتلات طرق:
+     · `font-mono` = IBM Plex Mono، و**ما فيه حروف عربية** — فبيقع على خط
+       النظام الاحتياطي، وبيبان غريباً عن باقي الصفحة.
+     · `tracking-[0.28em]` بيباعد الحروف، والعربي **متّصل** — فالكلمة بتنفك
+       لحروف مقطّعة. هاد أوضح خطأ طباعي بيصير لما ينترجم نص لاتيني بحرفه.
+     · `uppercase` بلا معنى بالعربي (ما في حالة أحرف).
+   فالعربي بياخد خط الواجهة بلا تباعد ولا تكبير، واللاتيني بيضل كما صُمِّم.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function Eyebrow({ children, isRtl }) {
+  return (
+    <p
+      className={
+        isRtl
+          ? "mb-3 text-caption font-semibold text-violet-100"
+          : "mb-3 font-mono text-[0.66rem] uppercase tracking-[0.28em] text-violet-100"
+      }
+    >
+      {children}
+    </p>
+  );
+}
 
 /* ظهور تدريجي بالسكرول — بيشتغل مرة وحدة لكل عنصر وبعدها بيفصل المراقب */
 function Reveal({ children, delay = 0, className = "" }) {
@@ -63,38 +100,27 @@ function Reveal({ children, delay = 0, className = "" }) {
   );
 }
 
+/* الرمز والأيقونة ثابتان — النص بيجي من القاموس. الرمز (`FND`/`ICT`…)
+   **معرّف مش نص**: بيضل لاتينياً بالحالتين زي ما هو بالتصميم. */
 const CURRICULUM = [
-  { code: "FND", Icon: BookOpen, title: "أساسيات التداول", desc: "فهم الأسواق، أنواع الأدوات المالية، وإدارة رأس المال من الصفر." },
-  { code: "FUN", Icon: LineChart, title: "التحليل الأساسي", desc: "قراءة الأخبار الاقتصادية والمؤشرات وتأثيرها المباشر على حركة السعر." },
-  { code: "ICT", Icon: Target, title: "ICT", desc: "مفاهيم Inner Circle Trader لفهم سلوك السيولة وأثر المؤسسات الكبرى." },
-  { code: "SK", Icon: Radio, title: "SK", desc: "منهجية SK المشتقة من التحليل الموجي (Elliott Wave) لقراءة دورات السعر." },
-  { code: "DEMO", Icon: GraduationCap, title: "تدريب 6 أشهر ديمو", desc: "تطبيق عملي يومي على حساب تجريبي لصقل المهارة قبل رأس المال الحقيقي." },
-  { code: "BT", Icon: Repeat, title: "Backtest مستمر", desc: "اختبار كل استراتيجية على بيانات تاريخية فعلية لقياس جدواها وتطويرها." },
+  { code: "FND", Icon: BookOpen, k: "fnd" },
+  { code: "FUN", Icon: LineChart, k: "fun" },
+  { code: "ICT", Icon: Target, k: "ict" },
+  { code: "SK", Icon: Radio, k: "sk" },
+  { code: "DEMO", Icon: GraduationCap, k: "demo" },
+  { code: "BT", Icon: Repeat, k: "bt" },
 ];
 
-const LEARNING = [
-  "محاضرات مباشرة أسبوعية",
-  "مكتبة محاضرات مسجّلة منظّمة",
-  "اختبارات لقياس التقدّم",
-  "دعم مباشر من المدرّب",
-];
-
-const PLAN_FEATURES = [
-  "وصول فوري لجميع المحاضرات المسجّلة والمباشرة",
-  "تدريب 6 أشهر على حساب ديمو",
-  "دعم مباشر من المدرّب",
-];
-
-function SectionHead({ eyebrow, title, align = "center" }) {
+function SectionHead({ eyebrow, title, isRtl, align = "center" }) {
   return (
     <div className={align === "center" ? "text-center" : ""}>
       <Reveal>
-        <p className="mb-3 font-mono text-[0.66rem] uppercase tracking-[0.28em] text-violet-100">
-          {eyebrow}
-        </p>
+        <Eyebrow isRtl={isRtl}>{eyebrow}</Eyebrow>
       </Reveal>
       <Reveal delay={90}>
-        <h2 className="mx-auto max-w-[22ch] text-balance text-2xl font-bold leading-tight tracking-tight text-text-primary md:text-3xl">
+        {/* `\n` بالقاموس = كسر سطر مقصود بالعنوان. الترجمتان بتحطّاه بمكانه
+            الطبيعي بلغتها، فما بينفرض كسر إنجليزي على العربي ولا العكس. */}
+        <h2 className="mx-auto max-w-[22ch] whitespace-pre-line text-balance text-2xl font-bold leading-tight tracking-tight text-text-primary md:text-3xl">
           {title}
         </h2>
       </Reveal>
@@ -103,24 +129,38 @@ function SectionHead({ eyebrow, title, align = "center" }) {
 }
 
 export default function HomePage() {
+  const { t, dir } = useLocale();
+  const isRtl = dir === "rtl";
+  /* ⚠️ **السهم بينقلب مع اللغة.** كان `ArrowLeft` مثبَّتاً — وهو صحيح بالعربي
+     (اتجاه القراءة لليسار) وبيصير **معكوساً** بالإنجليزي: زرّ «ابدأ» بيشاور
+     لورا. والحركة عند المرور لازم تتبعه كمان. */
+  const Arrow = isRtl ? ArrowLeft : ArrowRight;
+  const arrowHover = isRtl
+    ? "transition-transform duration-base group-hover:-translate-x-1"
+    : "transition-transform duration-base group-hover:translate-x-1";
+
   return (
-    <div className="min-h-screen bg-space-1 font-sans text-text-primary" dir="rtl">
+    <div className="min-h-screen bg-space-1 font-sans text-text-primary" dir={dir}>
       {/* ═══════════ الشريط العلوي ═══════════ */}
       <header className="glass sticky top-0 z-header border-b border-edge">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-5">
           <Logo size={28} withWordmark />
           <nav className="flex items-center gap-2">
+            {/* ⚠️ **نفس مكوّن الشِل** — مش نسخة تانية. اللغة بتنحفظ بالكوكي
+                وبالتخزين المحلي وبحساب المستخدم لو مسجّل دخول، فاختياره هون
+                بيرافقه بعد ما يفوت. */}
+            <LanguageSwitcher className="me-1" />
             <Link
               href="/login"
               className="px-3 py-2 text-caption text-text-secondary transition-colors duration-base hover:text-text-primary"
             >
-              تسجيل الدخول
+              {t("landing.nav.login")}
             </Link>
             <Link
               href="/signup"
               className="rounded-sm bg-violet-200 px-4 py-2 text-caption font-semibold text-space-0 transition-colors duration-base hover:bg-violet-100"
             >
-              اشترك الآن
+              {t("landing.nav.signup")}
             </Link>
           </nav>
         </div>
@@ -131,7 +171,9 @@ export default function HomePage() {
         {/* ⚠️ **الترتيب مقصود**: النجوم والشهب الطبقة الأعمق، والشعار المكبَّر
             فوقهن. قراره: «ما بدنا نتخلّى عن النجوم والشهب». */}
         <Starfield density={1.1} className="opacity-90" />
-        <OrbitBackdrop />
+        {/* ⚠️ الشعار بيقعد **مقابل** النص — والنص بجهة بداية القراءة. بلا
+            هاد، الإنجليزية بتحط الاتنين على اليسار فيتراكبوا (مقيس). */}
+        <OrbitBackdrop side={isRtl ? "start" : "end"} />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
@@ -146,27 +188,26 @@ export default function HomePage() {
             <Reveal>
               <span className="inline-flex items-center gap-2 rounded-pill border border-edge-lit bg-module-1/70 px-3 py-1 text-micro text-text-secondary">
                 <span className="h-1.5 w-1.5 rounded-full bg-cyan-200" aria-hidden />
-                أكاديمية تداول متكاملة
+                {t("landing.hero.badge")}
               </span>
             </Reveal>
 
             <Reveal delay={100}>
               <h1 className="mt-5 text-balance text-4xl font-extrabold leading-[1.12] tracking-tight md:text-[3.25rem]">
-                السوق يكافئ
+                {t("landing.hero.titleTop")}
                 <br />
                 <span
                   className="bg-clip-text text-transparent"
                   style={{ backgroundImage: "linear-gradient(115deg,#C4B0FF 0%,#7C4DFF 45%,#22D3EE 100%)" }}
                 >
-                  من يفهمه
+                  {t("landing.hero.titleAccent")}
                 </span>
               </h1>
             </Reveal>
 
             <Reveal delay={200}>
               <p className="mt-5 max-w-[46ch] text-base leading-relaxed text-text-secondary">
-                منهج تداول كامل من الأساسيات حتى الاحترافية — محاضرات مباشرة ومسجّلة،
-                وتدريب عملي مستمر على حساب ديمو لمدة ستة أشهر.
+                {t("landing.hero.subtitle")}
               </p>
             </Reveal>
 
@@ -176,17 +217,14 @@ export default function HomePage() {
                   href="/signup"
                   className="group inline-flex items-center gap-2 rounded-sm bg-violet-200 px-6 py-3 text-sm font-semibold text-space-0 shadow-glow-violet transition-colors duration-base hover:bg-violet-100"
                 >
-                  ابدأ رحلتك الآن
-                  <ArrowLeft
-                    className="h-4 w-4 transition-transform duration-base group-hover:-translate-x-1"
-                    aria-hidden
-                  />
+                  {t("landing.hero.ctaPrimary")}
+                  <Arrow className={`h-4 w-4 ${arrowHover}`} aria-hidden />
                 </Link>
                 <Link
                   href="/login"
                   className="rounded-sm border border-edge-lit px-6 py-3 text-sm text-text-secondary transition-colors duration-base hover:border-violet-300 hover:text-text-primary"
                 >
-                  تسجيل الدخول
+                  {t("landing.hero.ctaSecondary")}
                 </Link>
               </div>
             </Reveal>
@@ -194,9 +232,9 @@ export default function HomePage() {
             <Reveal delay={400}>
               <dl className="mt-10 grid max-w-md grid-cols-3 gap-px border border-edge bg-edge">
                 {[
-                  ["6", "أشهر تدريب ديمو"],
-                  ["4", "منهجيات تحليل"],
-                  ["∞", "Backtest مستمر"],
+                  ["6", t("landing.hero.statDemo")],
+                  ["4", t("landing.hero.statMethods")],
+                  ["∞", t("landing.hero.statBacktest")],
                 ].map(([num, label]) => (
                   <div key={label} className="bg-module-1 px-3 py-3.5 text-center">
                     <dt className="font-num text-2xl font-bold leading-none text-text-primary">
@@ -220,7 +258,11 @@ export default function HomePage() {
 
       {/* ═══════════ المنهج ═══════════ */}
       <section className="mx-auto max-w-6xl px-5 py-20">
-        <SectionHead eyebrow="Curriculum" title="ست ركائز تبني متداولاً كاملاً" />
+        <SectionHead
+          isRtl={isRtl}
+          eyebrow={t("landing.curriculum.eyebrow")}
+          title={t("landing.curriculum.title")}
+        />
 
         <div className="mt-12 grid gap-px border border-edge bg-edge sm:grid-cols-2 lg:grid-cols-3">
           {CURRICULUM.map((item, i) => (
@@ -230,12 +272,18 @@ export default function HomePage() {
                   <span className="grid h-9 w-9 place-items-center border border-edge-lit text-violet-100 transition-colors duration-base group-hover:border-violet-300">
                     <item.Icon className="h-4 w-4" aria-hidden />
                   </span>
-                  <span className="font-mono text-micro tracking-[0.18em] text-text-faint">
+                  {/* الرمز **معرّف** مش نص — بيضل لاتينياً بالحالتين، فبيحتفظ
+                      بالتباعد المصمَّم إله بلا ما يمسّ العربي. */}
+                  <span className="font-mono text-micro tracking-[0.18em] text-text-faint" dir="ltr">
                     {item.code}
                   </span>
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-text-primary">{item.title}</h3>
-                <p className="text-sm leading-relaxed text-text-muted">{item.desc}</p>
+                <h3 className="mb-2 text-lg font-semibold text-text-primary">
+                  {t(`landing.curriculum.${item.k}Title`)}
+                </h3>
+                <p className="text-sm leading-relaxed text-text-muted">
+                  {t(`landing.curriculum.${item.k}Desc`)}
+                </p>
               </article>
             </Reveal>
           ))}
@@ -247,17 +295,12 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-20 lg:grid-cols-2">
           <div>
             <Reveal>
-              <p className="mb-3 font-mono text-[0.66rem] uppercase tracking-[0.28em] text-violet-100">
-                How it works
-              </p>
-              <h2 className="text-balance text-2xl font-bold leading-tight tracking-tight md:text-3xl">
-                محاضرات مباشرة ومسجّلة،
-                <br />
-                منظّمة بالكامل
+              <Eyebrow isRtl={isRtl}>{t("landing.how.eyebrow")}</Eyebrow>
+              <h2 className="whitespace-pre-line text-balance text-2xl font-bold leading-tight tracking-tight md:text-3xl">
+                {t("landing.how.title")}
               </h2>
               <p className="mt-4 max-w-[48ch] text-sm leading-relaxed text-text-secondary">
-                محاضرات حيّة تفاعلية أسبوعية،
-                ومكتبة كاملة من المحاضرات المسجّلة مرتّبة حسب التسلسل التعليمي.
+                {t("landing.how.body")}
               </p>
             </Reveal>
           </div>
@@ -266,12 +309,12 @@ export default function HomePage() {
             <div className="mod mod-lit shadow-module">
               <div className="mod-in p-6">
                 <ul className="flex flex-col gap-3">
-                  {LEARNING.map((f) => (
-                    <li key={f} className="flex items-start gap-3 border-b border-edge pb-3 last:border-b-0 last:pb-0">
+                  {["f1", "f2", "f3", "f4"].map((k) => (
+                    <li key={k} className="flex items-start gap-3 border-b border-edge pb-3 last:border-b-0 last:pb-0">
                       <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-sm bg-violet-200/15 text-violet-100">
                         <Check className="h-3 w-3" aria-hidden />
                       </span>
-                      <span className="text-sm text-text-secondary">{f}</span>
+                      <span className="text-sm text-text-secondary">{t(`landing.how.${k}`)}</span>
                     </li>
                   ))}
                 </ul>
@@ -283,13 +326,17 @@ export default function HomePage() {
 
       {/* ═══════════ السعر ═══════════ */}
       <section id="pricing" className="mx-auto max-w-6xl px-5 py-20">
-        <SectionHead eyebrow="Pricing" title="سعر واضح، بدون مفاجآت" />
+        <SectionHead
+          isRtl={isRtl}
+          eyebrow={t("landing.pricing.eyebrow")}
+          title={t("landing.pricing.title")}
+        />
 
         <Reveal delay={150}>
           <div className="mod mod-iri mx-auto mt-12 max-w-lg shadow-glow-violet">
             <div className="mod-in p-8">
               <h3 className="text-center text-lg font-semibold text-text-primary">
-                عضوية Qais Trading Academy
+                {t("landing.pricing.planName")}
               </h3>
 
               <div className="mt-6 flex items-end justify-center gap-1.5" dir="ltr">
@@ -298,20 +345,25 @@ export default function HomePage() {
                   300
                 </span>
               </div>
-              <p className="mt-2 text-center text-caption text-text-muted">عند التسجيل</p>
-
-              <p className="mt-4 text-center text-caption text-text-secondary">
-                ثم <strong className="font-num font-semibold text-text-primary">$100</strong> شهرياً
-                تلقائياً حتى تلغي الاشتراك
+              <p className="mt-2 text-center text-caption text-text-muted">
+                {t("landing.pricing.atSignup")}
               </p>
 
+              {/* ⚠️ المبلغ جوّا الجملة، وموقعه بيختلف بين اللغتين — فالنص
+                  بالقاموس فيه `<b>` وبينحقن هون. المحتوى **ثابت بالقاموسين**
+                  وما بيجي من مستخدم ولا من قاعدة بيانات، فما في مدخل حقن. */}
+              <p
+                className="mt-4 text-center text-caption text-text-secondary [&>b]:font-num [&>b]:font-semibold [&>b]:text-text-primary"
+                dangerouslySetInnerHTML={{ __html: t("landing.pricing.thenMonthly") }}
+              />
+
               <ul className="mt-7 flex flex-col gap-3 border-y border-edge py-6">
-                {PLAN_FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-3">
+                {["f1", "f2", "f3"].map((k) => (
+                  <li key={k} className="flex items-start gap-3">
                     <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-sm bg-cyan-200/15 text-cyan-100">
                       <Check className="h-3 w-3" aria-hidden />
                     </span>
-                    <span className="text-sm text-text-secondary">{f}</span>
+                    <span className="text-sm text-text-secondary">{t(`landing.pricing.${k}`)}</span>
                   </li>
                 ))}
               </ul>
@@ -320,12 +372,11 @@ export default function HomePage() {
                 href="/signup"
                 className="mt-7 block rounded-sm bg-violet-200 py-3.5 text-center text-sm font-semibold text-space-0 transition-colors duration-base hover:bg-violet-100"
               >
-                اشترك الآن — $300
+                {t("landing.pricing.cta")}
               </Link>
 
               <p className="mt-4 text-center text-micro leading-relaxed text-text-faint">
-                الأسعار بالدولار الأمريكي (USD) وقابلة لتطبيق ضرائب حسب موقعك — بيتم
-                احتسابها وعرضها بوضوح قبل إتمام الدفع.
+                {t("landing.pricing.taxNote")}
               </p>
             </div>
           </div>
@@ -349,12 +400,12 @@ export default function HomePage() {
           </Reveal>
           <Reveal delay={100}>
             <h2 className="text-balance text-3xl font-bold tracking-tight md:text-4xl">
-              جاهز تبدأ؟
+              {t("landing.final.title")}
             </h2>
           </Reveal>
           <Reveal delay={200}>
             <p className="mx-auto mt-4 max-w-[42ch] text-base text-text-secondary">
-              انضم الآن وابدأ رحلتك في عالم التداول الاحترافي.
+              {t("landing.final.body")}
             </p>
           </Reveal>
           <Reveal delay={300}>
@@ -362,11 +413,8 @@ export default function HomePage() {
               href="/signup"
               className="group mt-8 inline-flex items-center gap-2 rounded-sm bg-violet-200 px-7 py-3.5 text-sm font-semibold text-space-0 shadow-glow-violet transition-colors duration-base hover:bg-violet-100"
             >
-              عرض خطط الاشتراك
-              <ArrowLeft
-                className="h-4 w-4 transition-transform duration-base group-hover:-translate-x-1"
-                aria-hidden
-              />
+              {t("landing.final.cta")}
+              <Arrow className={`h-4 w-4 ${arrowHover}`} aria-hidden />
             </Link>
           </Reveal>
         </div>
@@ -377,9 +425,9 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 px-5 py-10">
           <nav className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2 text-caption">
             {[
-              ["/terms", "الشروط والأحكام"],
-              ["/privacy", "سياسة الخصوصية"],
-              ["/refund-policy", "سياسة الاسترجاع"],
+              ["/terms", t("landing.footer.terms")],
+              ["/privacy", t("landing.footer.privacy")],
+              ["/refund-policy", t("landing.footer.refund")],
             ].map(([href, label], i) => (
               <span key={href} className="flex items-center gap-2">
                 {i > 0 && <span className="text-text-faint" aria-hidden>·</span>}
@@ -396,7 +444,7 @@ export default function HomePage() {
               href="mailto:qaisalraifai@gmail.com"
               className="text-text-muted transition-colors duration-base hover:text-text-secondary"
             >
-              تواصل معنا
+              {t("landing.footer.contact")}
             </a>
           </nav>
 
