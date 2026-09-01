@@ -123,8 +123,13 @@ const CURRICULUM = [
    أدوات تحليل كاملة ما كانت مذكورة ولا مرة — لا بالصفحة ولا بوصف جوجل.
    ⚠️ ولا بند مكتوب على نيّة: أي إشي مش موجود بالتنقّل ما بينكتب هون.
    ═══════════════════════════════════════════════════════════════════════════ */
+/* ⚠️ **`featured` قرار بصري مش محتوى.** الاستعراض التاريخي هو أكبر أداة
+   بالمنصّة فعلياً (شارتات متزامنة · قص · رسم · إعادة تشغيل)، فأخذه للمساحة
+   الأكبر بيعكس الواقع بدل ما يوزّع الأهمية بالتساوي على ستّة متشابهين.
+   الترتيب هون بيحدّد مكان الخليّة بالشبكة: البطل بياخد ٢×٢ والباقي بيلتفّ
+   حواليه (٣ أعمدة × ٣ صفوف = ٩ خلايا = ٤ + ٥). */
 const TOOLS = [
-  { k: "replay", Icon: Target },
+  { k: "replay", Icon: Target, featured: true },
   { k: "radar", Icon: Radar },
   { k: "journal", Icon: BarChart3 },
   { k: "reports", Icon: FileText },
@@ -133,18 +138,213 @@ const TOOLS = [
 ];
 
 function SectionHead({ eyebrow, title, isRtl, align = "center" }) {
+  const centered = align === "center";
   return (
-    <div className={align === "center" ? "text-center" : ""}>
+    <div className={centered ? "text-center" : ""}>
       <Reveal>
         <Eyebrow isRtl={isRtl}>{eyebrow}</Eyebrow>
       </Reveal>
       <Reveal delay={90}>
         {/* `\n` بالقاموس = كسر سطر مقصود بالعنوان. الترجمتان بتحطّاه بمكانه
             الطبيعي بلغتها، فما بينفرض كسر إنجليزي على العربي ولا العكس. */}
-        <h2 className="mx-auto max-w-[22ch] whitespace-pre-line text-balance text-2xl font-bold leading-tight tracking-tight text-text-primary md:text-3xl">
+        <h2
+          className={`whitespace-pre-line text-balance text-2xl font-bold leading-tight tracking-tight text-text-primary md:text-3xl ${
+            centered ? "mx-auto max-w-[22ch]" : "max-w-[26ch]"
+          }`}
+        >
           {title}
         </h2>
       </Reveal>
+      {/* خط تدرّج بيمتدّ من العنوان — عنصر هندسي بيفصل العنوان عن المحتوى
+          بلا ما يضيف صندوقاً. بالمحاذاة للبداية بيمتدّ باتجاه القراءة. */}
+      <Reveal delay={160}>
+        <span
+          aria-hidden
+          className={`mt-6 block h-px ${centered ? "mx-auto w-24" : "w-40"}`}
+          style={{
+            backgroundImage: `linear-gradient(to ${isRtl ? "left" : "right"}, #7C4DFF, rgba(124,77,255,0))`,
+          }}
+        />
+      </Reveal>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   صفّ المسار — بديل بطاقة المنهج
+   ---------------------------------------------------------------------------
+   🔴 **الشبكة كانت تخفي أهم خاصية بالمحتوى.** المنهج **متسلسل** («من
+   الأساسيات حتى الاحترافية»)، وستّ بطاقات متساوية بشبكة `gap-px` بتعرضهن
+   كخيارات متوازية — يعني الشكل بيناقض المعنى، وبيعطي إحساس جدول.
+
+   الصف بيعيد التسلسل: رقم مرحلة كبير، عمود فقري بيربطهن، وعقدة بتضوي مع
+   المرور. والأيقونة صارت **علامة مائية جوّا الصف نفسه** بدل مربّع ٩×٩
+   معزول — وهاد بالضبط نمط بطاقة SaaS اللي طلب شيله.
+   ⚠️ ولا لون جديد: البنفسجي للتفاعل و`edge` للمعدن، زي ما هي قواعد البالِت.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function TrackRow({ index, code, Icon, title, desc, isRtl }) {
+  return (
+    <li className="group relative isolate">
+      {/* التوهّج المحيطي — بيدخل من جهة البداية وبيخفت، فبيقرأ كضوء ماشي
+          على العمود مش كخلفية بطاقة. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 -inset-x-5 -z-10 opacity-0 transition-opacity duration-slow ease-orbit group-hover:opacity-100"
+        style={{
+          backgroundImage: `linear-gradient(to ${isRtl ? "left" : "right"}, rgba(124,77,255,0.10), rgba(124,77,255,0) 58%)`,
+        }}
+      />
+      {/* العمود الفقري: خط معدني ثابت، وفوقه ضوء بينزل مع المرور */}
+      <span aria-hidden className="absolute inset-y-0 start-0 w-px bg-edge" />
+      <span
+        aria-hidden
+        className="absolute inset-y-0 start-0 w-px origin-top scale-y-0 bg-gradient-to-b from-violet-200 via-violet-200/35 to-transparent transition-transform duration-slow ease-orbit group-hover:scale-y-100"
+      />
+      {/* العقدة — معيّن صغير على الخط. مركزها بيتعدّل مع الاتجاه. */}
+      <span
+        aria-hidden
+        className={`absolute start-0 top-[2.1rem] h-1.5 w-1.5 rotate-45 bg-edge-bright transition-colors duration-base ease-orbit group-hover:bg-violet-200 ${
+          isRtl ? "translate-x-1/2" : "-translate-x-1/2"
+        }`}
+      />
+
+      <div className="relative flex items-start gap-5 py-7 ps-7 sm:gap-7 sm:ps-9">
+        <span
+          aria-hidden
+          className="font-num text-2xl font-bold leading-none text-edge-bright transition-colors duration-slow ease-orbit group-hover:text-violet-100 sm:text-3xl"
+        >
+          {String(index + 1).padStart(2, "0")}
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
+            {/* الرمز **معرّف** مش نص — بيضل لاتينياً بالحالتين، فبيحتفظ
+                بالتباعد المصمَّم إله بلا ما يمسّ العربي. */}
+            <span className="font-mono text-micro tracking-[0.18em] text-text-faint" dir="ltr">
+              {code}
+            </span>
+          </div>
+          <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-text-muted">{desc}</p>
+        </div>
+
+        {/* العلامة المائية — كبيرة وخافتة، جزء من الصف مش صندوق جنبه */}
+        <Icon
+          aria-hidden
+          className="pointer-events-none absolute end-0 top-1/2 hidden h-20 w-20 -translate-y-1/2 text-violet-200/[0.055] transition-all duration-slow ease-orbit group-hover:scale-105 group-hover:text-violet-200/[0.12] md:block"
+        />
+      </div>
+    </li>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   بطاقة أداة — تكوين غير متماثل (bento)
+   ---------------------------------------------------------------------------
+   🔴 القسم كان **نسخة حرفية** من شبكة المنهج: نفس `gap-px`، نفس المربّع
+   ٩×٩، نفس المقاسات. فالصفحة كانت تقرأ «عنوان ← شبكة ← عنوان ← شبكة».
+
+   هون البطاقة الأولى **بطل** (عمودان × صفّان) وفيها زخرفة شموع — وهي حرفياً
+   شغل الأداة نفسها. والباقي بمقاسات أصغر، فصار في تدرّج هرمي فعلي.
+
+   ⚠️ الأيقونة صارت **طبقتين**: شبح كبير بيخرج من ركن البطاقة (جزء من
+   التكوين)، وأيقونة صغيرة ملاصقة للعنوان (وظيفة). ما عاد في مربّع محدود.
+   ⚠️ والحواف قائمة عمداً — `borderRadius.DEFAULT = 3px` بنظام ORBIT،
+   و«الانحناء بس للعناصر الصغيرة اللمسية». التدوير هون بيحوّلها لقالب SaaS.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function ToolCard({ Icon, title, desc, featured = false, className = "" }) {
+  return (
+    <article
+      className={`group relative isolate overflow-hidden border border-edge bg-module-1 shadow-edge transition-[transform,border-color,background-color] duration-slow ease-orbit hover:-translate-y-0.5 hover:border-edge-lit hover:bg-module-2 ${
+        featured ? "p-7 sm:p-8" : "p-6"
+      } ${className}`}
+    >
+      {/* توهّج محيطي محسوب — بيطلع من أسفل البطاقة عند المرور وبس */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 opacity-0 transition-opacity duration-slow ease-orbit group-hover:opacity-100"
+        style={{
+          backgroundImage: featured
+            ? "radial-gradient(110% 80% at 50% 118%, rgba(124,77,255,0.20), transparent 62%)"
+            : "radial-gradient(120% 90% at 50% 122%, rgba(124,77,255,0.14), transparent 60%)",
+        }}
+      />
+      {/* لمعة الحافة العليا — عمق بلا ظل ثقيل */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px opacity-60 transition-opacity duration-slow ease-orbit group-hover:opacity-100"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, transparent, rgba(196,176,255,0.34), transparent)",
+        }}
+      />
+
+      {/* شبح الأيقونة — بيطلع من الركن، فبيصير جزء من هندسة البطاقة */}
+      <span aria-hidden className="pointer-events-none absolute inset-0 flex items-start justify-end">
+        <Icon
+          className={`-me-5 -mt-5 text-violet-200/[0.05] transition-all duration-slow ease-orbit group-hover:-translate-y-1 group-hover:text-violet-200/[0.10] ${
+            featured ? "h-40 w-40" : "h-24 w-24"
+          }`}
+        />
+      </span>
+
+      <div className="relative flex h-full flex-col">
+        <h3
+          className={`flex items-center gap-2.5 font-semibold text-text-primary ${
+            featured ? "text-xl" : "text-lg"
+          }`}
+        >
+          <Icon
+            aria-hidden
+            className={`shrink-0 text-violet-100 transition-colors duration-base ease-orbit group-hover:text-cyan-100 ${
+              featured ? "h-5 w-5" : "h-4 w-4"
+            }`}
+          />
+          {title}
+        </h3>
+        <p
+          className={`mt-2.5 leading-relaxed text-text-muted ${
+            featured ? "max-w-[46ch] text-base" : "text-sm"
+          }`}
+        >
+          {desc}
+        </p>
+
+        {featured && <CandleMotif />}
+      </div>
+    </article>
+  );
+}
+
+/* زخرفة الشموع — تحت البطاقة البطل. بتوصف الأداة نفسها (شارت مقصوص عند
+   لحظة) بدل صورة عامة. بألوان البالِت وبشفافية منخفضة حتى تضل خلفية. */
+function CandleMotif() {
+  const CANDLES = [
+    [4, 26, 12, 1], [20, 18, 16, 1], [36, 22, 10, 0], [52, 12, 20, 1],
+    [68, 20, 12, 0], [84, 8, 22, 1], [100, 16, 14, 1], [116, 24, 10, 0],
+    [132, 10, 18, 1], [148, 18, 14, 1],
+  ];
+  return (
+    <div aria-hidden className="pointer-events-none mt-auto pt-8">
+      <svg viewBox="0 0 168 44" className="h-16 w-full max-w-[19rem]" fill="none">
+        {CANDLES.map(([x, y, h, up], i) => (
+          <g key={i} className="transition-opacity duration-slow ease-orbit">
+            <line
+              x1={x + 4} y1={y - 5} x2={x + 4} y2={y + h + 5}
+              stroke={up ? "#7C4DFF" : "#3D2F63"} strokeWidth="1"
+              opacity={0.45}
+            />
+            <rect
+              x={x} y={y} width="8" height={h}
+              fill={up ? "#7C4DFF" : "#241C3E"}
+              stroke={up ? "#C4B0FF" : "#3D2F63"} strokeWidth="0.6"
+              opacity={0.55}
+            />
+          </g>
+        ))}
+        {/* خط القص — قلب أداة الاستعراض */}
+        <line x1="112" y1="0" x2="112" y2="44" stroke="#22D3EE" strokeWidth="1" strokeDasharray="3 3" opacity="0.75" />
+      </svg>
     </div>
   );
 }
@@ -277,63 +477,75 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ المنهج ═══════════ */}
-      <section className="mx-auto max-w-6xl px-5 py-20">
-        <SectionHead
-          isRtl={isRtl}
-          eyebrow={t("landing.curriculum.eyebrow")}
-          title={t("landing.curriculum.title")}
-        />
+      {/* ═══════════ المنهج — مسار مرقَّم بعنوان لاصق ═══════════ */}
+      {/* ⚠️ **تكوين عمودَين بعنوان لاصق** مش «عنوان فوق ← محتوى تحت».
+          العنوان بيضل ثابتاً وانت بتمرّ على المراحل، فبتحسّ إنك بتمشي **جوّا**
+          القسم مش بتقرأ قائمة تانية. وهاد بيحلّ مشكلتين مع بعض: بيكسر تكرار
+          «عنوان ← شبكة»، وبيضيّق عمود النص فبتصير العلامة المائية ملاصقة
+          للصف بدل ما تطوف بطرف الصفحة (كانت تبعد ٤٠٠px عن النص). */}
+      <section className="mx-auto max-w-6xl px-5 py-24">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:gap-16">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <SectionHead
+              isRtl={isRtl}
+              align="start"
+              eyebrow={t("landing.curriculum.eyebrow")}
+              title={t("landing.curriculum.title")}
+            />
+          </div>
 
-        <div className="mt-12 grid gap-px border border-edge bg-edge sm:grid-cols-2 lg:grid-cols-3">
-          {CURRICULUM.map((item, i) => (
-            <Reveal key={item.code} delay={i * 70}>
-              <article className="group h-full bg-module-1 p-6 transition-colors duration-base hover:bg-module-2">
-                <div className="mb-4 flex items-center gap-3">
-                  <span className="grid h-9 w-9 place-items-center border border-edge-lit text-violet-100 transition-colors duration-base group-hover:border-violet-300">
-                    <item.Icon className="h-4 w-4" aria-hidden />
-                  </span>
-                  {/* الرمز **معرّف** مش نص — بيضل لاتينياً بالحالتين، فبيحتفظ
-                      بالتباعد المصمَّم إله بلا ما يمسّ العربي. */}
-                  <span className="font-mono text-micro tracking-[0.18em] text-text-faint" dir="ltr">
-                    {item.code}
-                  </span>
-                </div>
-                <h3 className="mb-2 text-lg font-semibold text-text-primary">
-                  {t(`landing.curriculum.${item.k}Title`)}
-                </h3>
-                <p className="text-sm leading-relaxed text-text-muted">
-                  {t(`landing.curriculum.${item.k}Desc`)}
-                </p>
-              </article>
-            </Reveal>
-          ))}
+          <ol>
+            {CURRICULUM.map((item, i) => (
+              <Reveal key={item.code} delay={i * 60}>
+                <TrackRow
+                  index={i}
+                  code={item.code}
+                  Icon={item.Icon}
+                  isRtl={isRtl}
+                  title={t(`landing.curriculum.${item.k}Title`)}
+                  desc={t(`landing.curriculum.${item.k}Desc`)}
+                />
+              </Reveal>
+            ))}
+          </ol>
         </div>
       </section>
 
-      {/* ═══════════ الأدوات ═══════════ */}
-      <section className="border-t border-edge bg-space-2/40">
-        <div className="mx-auto max-w-6xl px-5 py-20">
+      {/* ═══════════ الأدوات — تكوين غير متماثل ═══════════ */}
+      <section className="relative overflow-hidden border-y border-edge bg-space-2/40">
+        {/* توهّج محيطي خافت جداً — بيعطي القسم عمقاً بلا ما يضيف عنصراً */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(65% 45% at 50% 0%, rgba(124,77,255,0.13), transparent 62%)",
+          }}
+        />
+        <div className="relative mx-auto max-w-6xl px-5 py-24">
           <SectionHead
             isRtl={isRtl}
             eyebrow={t("landing.tools.eyebrow")}
             title={t("landing.tools.title")}
           />
 
-          <div className="mt-12 grid gap-px border border-edge bg-edge sm:grid-cols-2 lg:grid-cols-3">
+          {/* ⚠️ **مش `gap-px`.** الفراغ الحقيقي بيخلّي كل بطاقة كتلة قائمة
+              بذاتها بدل خليّة بجدول — وهاد أكبر فرق بين «شبكة» و«تكوين».
+              البطاقة الأولى بتاخد عمودين وصفّين، فالشبكة بتنبني حواليها. */}
+          <div className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-3">
             {TOOLS.map((tool, i) => (
-              <Reveal key={tool.k} delay={i * 70}>
-                <article className="group h-full bg-module-1 p-6 transition-colors duration-base hover:bg-module-2">
-                  <span className="mb-4 grid h-9 w-9 place-items-center border border-edge-lit text-cyan-100 transition-colors duration-base group-hover:border-cyan-200">
-                    <tool.Icon className="h-4 w-4" aria-hidden />
-                  </span>
-                  <h3 className="mb-2 text-lg font-semibold text-text-primary">
-                    {t(`landing.tools.${tool.k}Title`)}
-                  </h3>
-                  <p className="text-sm leading-relaxed text-text-muted">
-                    {t(`landing.tools.${tool.k}Desc`)}
-                  </p>
-                </article>
+              <Reveal
+                key={tool.k}
+                delay={i * 60}
+                className={tool.featured ? "sm:col-span-2 lg:row-span-2" : ""}
+              >
+                <ToolCard
+                  Icon={tool.Icon}
+                  featured={tool.featured}
+                  className="h-full"
+                  title={t(`landing.tools.${tool.k}Title`)}
+                  desc={t(`landing.tools.${tool.k}Desc`)}
+                />
               </Reveal>
             ))}
           </div>
@@ -355,27 +567,52 @@ export default function HomePage() {
             </Reveal>
           </div>
 
+          {/* ═══════════════════════════════════════════════════════════════
+              🔴 **قائمة صحّات = تعداد، مش عملية.**
+              -------------------------------------------------------------
+              القسم اسمه «آلية التعلّم» — يعني بيوصف **مساراً**، وأربع علامات
+              صح بصفوف متطابقة بتعرضه كقائمة مزايا. الدرج بيربطهن بخط واحد
+              وبيعطي كل مرحلة عقدة، فالشكل بيوافق المعنى.
+              ⚠️ النصوص الأربعة كما هي حرفياً — التغيير بالتقديم وبس.
+              ═══════════════════════════════════════════════════════════════ */}
           <Reveal delay={150}>
-            <div className="mod mod-lit shadow-module">
-              <div className="mod-in p-6">
-                <ul className="flex flex-col gap-3">
-                  {["f1", "f2", "f3", "f4"].map((k) => (
-                    <li key={k} className="flex items-start gap-3 border-b border-edge pb-3 last:border-b-0 last:pb-0">
-                      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-sm bg-violet-200/15 text-violet-100">
-                        <Check className="h-3 w-3" aria-hidden />
-                      </span>
-                      <span className="text-sm text-text-secondary">{t(`landing.how.${k}`)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            <div className="relative border border-edge bg-module-1 p-7 shadow-module sm:p-8">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-0 h-px"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to right, transparent, rgba(196,176,255,0.4), transparent)",
+                }}
+              />
+              <ol className="relative">
+                {["f1", "f2", "f3", "f4"].map((k, i, arr) => (
+                  <li key={k} className="group relative flex gap-4 pb-6 last:pb-0">
+                    {/* الخط الواصل — بيوقف عند آخر مرحلة. `start-` منطقية
+                        فبتتبع الاتجاه، ومركزها على منتصف العقدة (١٤px ÷ ٢). */}
+                    {i < arr.length - 1 && (
+                      <span
+                        aria-hidden
+                        className="absolute bottom-0 start-[7px] top-5 w-px bg-edge"
+                      />
+                    )}
+                    <span
+                      aria-hidden
+                      className="relative mt-1 grid h-3.5 w-3.5 shrink-0 rotate-45 place-items-center border border-edge-lit bg-module-1 transition-colors duration-base ease-orbit group-hover:border-violet-200 group-hover:bg-violet-300/25"
+                    />
+                    <span className="text-sm leading-relaxed text-text-secondary transition-colors duration-base ease-orbit group-hover:text-text-primary">
+                      {t(`landing.how.${k}`)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
             </div>
           </Reveal>
         </div>
       </section>
 
       {/* ═══════════ السعر ═══════════ */}
-      <section id="pricing" className="mx-auto max-w-6xl px-5 py-20">
+      <section id="pricing" className="mx-auto max-w-6xl px-5 py-24">
         <SectionHead
           isRtl={isRtl}
           eyebrow={t("landing.pricing.eyebrow")}
@@ -384,18 +621,49 @@ export default function HomePage() {
 
         <Reveal delay={150}>
           <div className="mod mod-iri mx-auto mt-12 max-w-lg shadow-glow-violet">
-            <div className="mod-in p-8">
-              <h3 className="text-center text-lg font-semibold text-text-primary">
+            <div className="relative overflow-hidden mod-in p-8">
+              <h3 className="relative text-center text-lg font-semibold text-text-primary">
                 {t("landing.pricing.planName")}
               </h3>
 
-              <div className="mt-6 flex items-end justify-center gap-1.5" dir="ltr">
+              {/* ═══════════════════════════════════════════════════════════
+                  حلقة مدارية خلف الرقم — نفس هندسة الشعار.
+                  ---------------------------------------------------------
+                  الرقم كان طايفاً على خلفية مسطّحة. الحلقة بتعطيه مركزاً
+                  ولحظة عمق، وبتربط البطاقة بالهوية بدل ما تبان بطاقة تسعير
+                  عامة. ⚠️ شفافية منخفضة عمداً — العنصر البطل هو **الرقم**.
+                  ═══════════════════════════════════════════════════════════ */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-16 flex justify-center"
+              >
+                {/* ⚠️ المقاس مضبوط على **الرقم** مش على البطاقة: بحلقة أوسع
+                    كانت المنقّطة تمرق فوق سطر «ثم $100 شهرياً» فتزحمه. */}
+                <svg viewBox="0 0 220 220" className="h-44 w-44" fill="none">
+                  <circle cx="110" cy="110" r="74" stroke="#3D2F63" strokeWidth="1.2" opacity="0.65" />
+                  <ellipse
+                    cx="110" cy="110" rx="74" ry="27"
+                    stroke="#7C4DFF" strokeWidth="1.2" opacity="0.4"
+                    transform="rotate(-28 110 110)"
+                  />
+                  <circle
+                    cx="110" cy="110" r="96"
+                    stroke="#C4B0FF" strokeWidth="4" strokeOpacity="0.10"
+                    strokeDasharray="1.5 10"
+                  />
+                  <circle cx="36" cy="110" r="2.5" fill="#22D3EE" opacity="0.45" />
+                </svg>
+              </div>
+
+              <div className="relative mt-6 flex items-end justify-center gap-1.5" dir="ltr">
                 <span className="mb-2 font-num text-xl text-text-muted">$</span>
                 <span className="font-num text-6xl font-extrabold leading-none tracking-tighter text-text-primary">
                   300
                 </span>
               </div>
-              <p className="mt-2 text-center text-caption text-text-muted">
+              {/* ⚠️ `relative` على كل اللي بعد الحلقة: العنصر المطلَق بينرسم
+                  **فوق** إخوته الساكنين، فبلاها الحلقة بتغطّي القائمة والزر. */}
+              <p className="relative mt-2 text-center text-caption text-text-muted">
                 {t("landing.pricing.atSignup")}
               </p>
 
@@ -403,11 +671,11 @@ export default function HomePage() {
                   بالقاموس فيه `<b>` وبينحقن هون. المحتوى **ثابت بالقاموسين**
                   وما بيجي من مستخدم ولا من قاعدة بيانات، فما في مدخل حقن. */}
               <p
-                className="mt-4 text-center text-caption text-text-secondary [&>b]:font-num [&>b]:font-semibold [&>b]:text-text-primary"
+                className="relative mt-4 text-center text-caption text-text-secondary [&>b]:font-num [&>b]:font-semibold [&>b]:text-text-primary"
                 dangerouslySetInnerHTML={{ __html: t("landing.pricing.thenMonthly") }}
               />
 
-              <ul className="mt-7 flex flex-col gap-3 border-y border-edge py-6">
+              <ul className="relative mt-7 flex flex-col gap-3 border-y border-edge py-6">
                 {["f1", "f2", "f3"].map((k) => (
                   <li key={k} className="flex items-start gap-3">
                     <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-sm bg-cyan-200/15 text-cyan-100">
@@ -420,12 +688,12 @@ export default function HomePage() {
 
               <Link
                 href="/signup"
-                className="mt-7 block rounded-sm bg-violet-200 py-3.5 text-center text-sm font-semibold text-space-0 transition-colors duration-base hover:bg-violet-100"
+                className="relative mt-7 block rounded-sm bg-violet-200 py-3.5 text-center text-sm font-semibold text-space-0 transition-colors duration-base hover:bg-violet-100"
               >
                 {t("landing.pricing.cta")}
               </Link>
 
-              <p className="mt-4 text-center text-micro leading-relaxed text-text-faint">
+              <p className="relative mt-4 text-center text-micro leading-relaxed text-text-faint">
                 {t("landing.pricing.taxNote")}
               </p>
             </div>
