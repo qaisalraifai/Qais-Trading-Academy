@@ -1,8 +1,11 @@
 import LegalPage from "@/app/components/legal/LegalPage";
 
 export const metadata = {
-  title: "الشروط والأحكام | Qais Trading Academy",
+  title: "الشروط والأحكام",
   description: "الشروط والأحكام الخاصة باستخدام منصة وعضوية Qais Trading Academy.",
+  /* صريح: `alternates` بينورث من الجذر، وبلاه بتعلن هالصفحة إنها
+     نسخة من الصفحة الأولى. */
+  alternates: { canonical: "/terms" },
 };
 
 const sectionsAr = [

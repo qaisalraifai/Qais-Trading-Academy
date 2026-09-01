@@ -1,7 +1,7 @@
 import ShellPreview from "./ShellPreview";
 
 export const metadata = {
-  title: "ORBIT — الغلاف والتنقّل | QTA",
+  title: "ORBIT — الغلاف والتنقّل",
   robots: { index: false, follow: false },
 };
 

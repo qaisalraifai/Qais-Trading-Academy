@@ -1,7 +1,7 @@
 import GalleryClient from "./GalleryClient";
 
 export const metadata = {
-  title: "ORBIT — نظام التصميم | QTA",
+  title: "ORBIT — نظام التصميم",
   robots: { index: false, follow: false },
 };
 

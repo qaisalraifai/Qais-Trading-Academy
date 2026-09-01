@@ -1,8 +1,11 @@
 import LegalPage from "@/app/components/legal/LegalPage";
 
 export const metadata = {
-  title: "سياسة الاسترجاع | Qais Trading Academy",
+  title: "سياسة الاسترجاع",
   description: "سياسة الاسترجاع الخاصة بمنصة وعضوية Qais Trading Academy.",
+  /* صريح: `alternates` بينورث من الجذر، وبلاه بتعلن هالصفحة إنها
+     نسخة من الصفحة الأولى. */
+  alternates: { canonical: "/refund-policy" },
 };
 
 const sectionsAr = [

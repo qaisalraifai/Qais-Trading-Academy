@@ -1,8 +1,11 @@
 import LegalPage from "@/app/components/legal/LegalPage";
 
 export const metadata = {
-  title: "سياسة الخصوصية | Qais Trading Academy",
+  title: "سياسة الخصوصية",
   description: "سياسة الخصوصية الخاصة بمنصة وعضوية Qais Trading Academy.",
+  /* صريح: `alternates` بينورث من الجذر، وبلاه بتعلن هالصفحة إنها
+     نسخة من الصفحة الأولى. */
+  alternates: { canonical: "/privacy" },
 };
 
 const sectionsAr = [
