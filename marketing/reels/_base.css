@@ -74,6 +74,11 @@ body{font-family:var(--ui);color:var(--text)}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes riseIn{from{opacity:0;transform:translateY(46px)}to{opacity:1;transform:none}}
 @keyframes popIn{from{opacity:0;transform:translateY(28px) scale(.94)}to{opacity:1;transform:none}}
+/* ⚠️ **`pop` كانت ناقصة وسبّبت شارتاً فاضياً.** الشموع بتستعملها، وبما إنّ
+   القاعدة `.c{opacity:0}` بتخبّيها، إشارة لحركة **غير معرَّفة** بتخلّيها
+   مخفية للأبد بلا أي خطأ بالكونسول. مقيس على الحلقة ٠١ وريل ٠٤: الشاشة
+   طلعت فاضية تماماً. */
+@keyframes pop{from{opacity:0;transform:translateY(16px) scaleY(.6)}to{opacity:1;transform:none}}
 @keyframes markIn{from{opacity:0;transform:scale(.82) rotate(-8deg)}to{opacity:1;transform:none}}
 @keyframes widen{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes pulse{0%,100%{box-shadow:0 0 60px -12px rgba(124,77,255,.75)}

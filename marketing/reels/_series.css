@@ -1,0 +1,73 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   الأساس البصري للمسلسل — يُستورد بعد `_base.css`
+   ---------------------------------------------------------------------------
+   ⚠️ **أسلوب الظلال واللقطات الجزئية.** الشخصيات بتظهر كظلال بضوء حافة من
+   الشاشة، والشارت هو بطل الكادر. تلات أسباب:
+
+     ١) بيتفادى «الكرتون الرخيص» — وهو حرفياً بقائمة ممنوعاته
+     ٢) بينتنتج بالكود بلا رسّام، فالموسم كله ٢٤ حلقة ممكن عملياً
+     ٣) بيخلّي التركيز على **الحوار والواجهة** — وهن جوهر القصة
+
+   ⚠️ **ضوء الشاشة هو مصدر الإضاءة الوحيد.** ولا مصباح سقف — هاد اللي بيربط
+   عالم المسلسل بهوية المنصّة (`bible/03-characters-world.md`).
+
+   ⚠️ **الحوار بأسلوب الترجمة السينمائية مش فقاعات كلام.** الفقاعة بتقول
+   «كوميك للأطفال»؛ السطر السفلي باسم المتحدّث بيقول «فيلم».
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── الغرفة ── */
+.room{position:absolute;inset:0;overflow:hidden}
+/* ⚠️ الغرفة **أعتم** من خلفية الريلز العادية: هون في مصدر ضوء واحد،
+   فالتباين بين الشاشة والعتمة هو اللي بيصنع العمق. */
+.room .dark{position:absolute;inset:0;background:#030207}
+.room .screenGlow{position:absolute;inset:0;
+  background:radial-gradient(46% 26% at 50% 40%, rgba(124,77,255,.26), transparent 66%)}
+/* نافذة بعيدة خارج التركيز — بتقول «ليل» بلا ما تسرق النظر */
+.room .window{position:absolute;top:120px;left:-40px;width:300px;height:420px;
+  background:linear-gradient(160deg, rgba(34,211,238,.05), transparent 70%);
+  filter:blur(28px)}
+
+/* ── الظل ──
+   ⚠️ **الارتفاع ٦٢٠ مش ٧٦٠.** بـ٧٦٠ كان الرأس يوقع عند ١٦١٢px — يعني
+   **تحت سطر الحوار مباشرة**، فالنص كان ينطبع فوق الوجه (مقيس على الحلقة ٠١
+   بالإطار t=17). */
+.figure{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  width:1080px;height:620px}
+.figure svg{width:100%;height:100%;display:block}
+
+/* ⚠️ **الظل لازم ضوءاً وراه.** أول نسخة كانت `#020106` على غرفة `#030207`
+   — فرق غير مرئي عملياً، والشكل اختفى. الظل بيُقرأ **بالتباين مع اللي
+   وراه** مش بلونه هو. فالهالة تحت بتعطي أرضية مضوّية والشكل بينقصّ منها. */
+.figureGlow{position:absolute;left:0;right:0;bottom:0;height:620px;
+  background:radial-gradient(58% 62% at 50% 22%, rgba(124,77,255,.20), transparent 70%);
+  pointer-events:none}
+
+/* ── الشاشة ── */
+.monitor{position:absolute;left:50%;transform:translateX(-50%);
+  top:430px;width:800px;height:500px;
+  border:1px solid var(--edge-lit);background:rgba(8,5,16,.96);
+  box-shadow:0 0 120px -20px rgba(124,77,255,.45), inset 0 1px 0 rgba(255,255,255,.07)}
+.monitor svg{position:absolute;inset:0;width:100%;height:100%}
+.monitor .bezel{position:absolute;inset:-1px;pointer-events:none;
+  box-shadow:inset 0 0 60px rgba(124,77,255,.10)}
+
+/* ── الحوار ──
+   ⚠️ موقعه فوق آخر ٣٠٠px: تيك توك وريلز بيغطّوا هناك. */
+.line{position:absolute;left:0;right:0;bottom:430px;padding:0 96px;text-align:center;
+  opacity:0}
+.line .who{display:block;font-size:34px;font-weight:700;letter-spacing:.05em;
+  margin-bottom:18px}
+.line.adam .who{color:var(--violet-100)}
+.line.ryan .who{color:var(--cyan-100)}
+.line .txt{display:block;font-size:64px;font-weight:600;line-height:1.4;
+  color:var(--text)}
+
+/* ── تسمية على الشاشة ── */
+.note{position:absolute;font-family:var(--display);font-size:30px;font-weight:700;
+  letter-spacing:.12em;opacity:0}
+
+/* ── الختام ── */
+.tbc{font-family:var(--display);font-size:52px;font-weight:700;letter-spacing:.18em;
+  color:var(--muted)}
+
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>QTA — ريل ٠٤: DON'T TRADE YET</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Archivo:wght@600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_base.css" />
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ريل ٠٤ — DON'T TRADE YET  ·  1080×1920  ·  ٢٦ ثانية
+   ---------------------------------------------------------------------------
+   المصدر: بنك السيناريوهات `#54` — «السعر يندفع، تظهر WAIT، ثم Structure،
+   ثم NOW». من الـ١٢ سينمائية المختارة بـ`bible/04-content-map.md`.
+
+   🔴 **الذهب انشال من السيناريو الأصلي.** نصّه كان: «تفاصيل ذهبية دقيقة»
+   (نفس السطر بالـ٣٩ سيناريو السينمائي). البديل violet-200 للهيكل و
+   cyan-200 للحظة القرار — شوف `bible/00-audit.md`.
+
+   ⚠️ **قاعدة زمن القراءة مطبَّقة من أول سطر** مش بعد الفشل:
+       الزمن اللازم = 0.6 + (الكلمات ÷ 2)   ·   الحد الأدنى ٢.٠ث
+
+   ⚠️ **هاد الريل نصّه قليل عمداً** — الصورة هي اللي بتحكي. الاندفاع ثم
+   التجمّد ثم البناء ثم القرار. النص خمس كلمات بالفيديو كله.
+
+   ⚠️ **المصطلحات من المنهجية حرفياً**: BOS · OB · SMT.
+   ولا CHOCH (مش من المنهجية — `CLAUDE.md`).
+
+   التوقيت:
+     0.0 –  3.2   الاندفاع (بلا نص — الحركة هي الخطّاف)
+     3.2 –  7.0   التجمّد + WAIT
+     7.0 – 15.4   الهيكل بينبني: BOS → OB → SMT
+    15.4 – 19.0   NOW
+    19.0 – 26.0   الختام
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.frame{position:relative;width:940px;height:1180px;
+  border:1px solid var(--edge);background:rgba(10,6,20,.86);
+  box-shadow:0 40px 110px -40px #000, inset 0 1px 0 rgba(255,255,255,.06)}
+.frame svg{position:absolute;inset:0;width:100%;height:100%}
+.frame .glow{position:absolute;inset:-1px;pointer-events:none;
+  background:radial-gradient(80% 55% at 50% 118%, rgba(124,77,255,.20), transparent 62%)}
+
+/* الشموع بتندفع — العين بتتبع الحركة قبل ما يظهر أي نص */
+.c{opacity:0;animation:pop .3s both var(--orbit)}
+
+/* ═══ التجمّد ═══
+   ⚠️ التجمّد **هو** الخطّاف: حركة سريعة ثم توقف مفاجئ بيوقف العين.
+   الشمعة الأخيرة بتضل نص حركة — ما بتكمّل. */
+.freeze{position:absolute;inset:0;background:rgba(5,3,8,.55);opacity:0;
+  animation:fadeIn .25s 3.2s both}
+.wait{position:absolute;inset:0;display:grid;place-items:center;opacity:0;
+  font-family:var(--display);font-size:160px;font-weight:800;letter-spacing:.06em;
+  color:var(--violet-100);text-shadow:0 0 80px rgba(124,77,255,.65);
+  animation:fadeIn .3s 3.45s both, fadeOut .4s 6.6s forwards}
+
+/* ═══ الهيكل بينبني ═══ */
+.lvl{position:absolute;left:0;right:0;height:2px;opacity:0;transform-origin:left;
+  animation:growLine .7s both var(--orbit)}
+.tag{position:absolute;font-family:var(--display);font-size:34px;font-weight:700;
+  letter-spacing:.14em;opacity:0;animation:riseIn .6s both var(--orbit)}
+
+#l1{top:38%;background:linear-gradient(90deg,transparent,#7C4DFF,transparent);animation-delay:7.2s}
+#t1{top:calc(38% - 52px);right:60px;color:#C4B0FF;animation-delay:7.5s}
+#l2{top:56%;background:linear-gradient(90deg,transparent,#7C4DFF,transparent);animation-delay:9.9s}
+#t2{top:calc(56% - 52px);right:60px;color:#C4B0FF;animation-delay:10.2s}
+#l3{top:72%;background:linear-gradient(90deg,transparent,#22D3EE,transparent);animation-delay:12.6s}
+#t3{top:calc(72% - 52px);right:60px;color:#8FEEFF;animation-delay:12.9s}
+
+/* ═══ NOW ═══ */
+.now{position:absolute;inset:0;display:grid;place-items:center;opacity:0;
+  font-family:var(--display);font-size:184px;font-weight:800;letter-spacing:.05em;
+  color:var(--cyan-100);text-shadow:0 0 100px rgba(34,211,238,.7);
+  animation:popIn .5s 15.6s both var(--orbit), fadeOut .4s 18.6s forwards}
+.entry{position:absolute;left:0;right:0;top:72%;height:5px;opacity:0;
+  background:var(--cyan-200);box-shadow:0 0 40px 6px rgba(34,211,238,.55);
+  animation:fadeIn .3s 15.6s both}
+
+/* ═══ المشاهد ═══ */
+#s1{animation:sceneIn .5s 0s both, sceneOut .5s 18.6s both}
+#s2{animation:sceneIn .8s 19.2s both}
+#s2 .mark{animation:markIn 1.1s 19.5s both var(--orbit)}
+#s2 .brand{animation:riseIn .8s 20.2s both var(--orbit)}
+#s2 .brandsub{animation:riseIn .8s 20.5s both var(--orbit)}
+#s2 .tag2{margin-top:60px;font-family:var(--display);font-size:46px;font-weight:700;
+  letter-spacing:.05em;line-height:1.4;color:var(--text);
+  animation:riseIn .9s 21.2s both var(--orbit)}
+#s2 .url{animation:riseIn .8s 22.4s both var(--orbit)}
+#s2 .disc{animation:fadeIn .9s 23.0s both}
+
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes growLine{from{opacity:0;transform:scaleX(0)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="bg">
+    <div class="neb a"></div><div class="neb b"></div>
+    <svg width="1080" height="1920" id="stars"></svg>
+  </div>
+
+  <section class="scene" id="s1">
+    <div class="frame">
+      <div class="glow"></div>
+      <svg viewBox="0 0 940 1180" preserveAspectRatio="none" id="chart"></svg>
+
+      <div class="lvl" id="l1"></div><div class="tag" id="t1">BOS</div>
+      <div class="lvl" id="l2"></div><div class="tag" id="t2">OB</div>
+      <div class="lvl" id="l3"></div><div class="tag" id="t3">SMT</div>
+      <div class="entry"></div>
+
+      <div class="freeze"></div>
+      <div class="wait">WAIT</div>
+      <div class="now">NOW</div>
+    </div>
+  </section>
+
+  <section class="scene" id="s2">
+    <svg class="mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="q" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#7C4DFF"/><stop offset=".45" stop-color="#9F6CFF"/><stop offset="1" stop-color="#22D3EE"/>
+        </linearGradient>
+        <linearGradient id="qc" x1="18" y1="18" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#C4B0FF"/><stop offset="1" stop-color="#22D3EE"/>
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="14.5" stroke="url(#q)" stroke-width="2.6"/>
+      <path d="M28 28 L38 38" stroke="url(#q)" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="24" cy="24" rx="14.5" ry="5.4" stroke="url(#q)" stroke-width="1.2" opacity=".5" transform="rotate(-28 24 24)"/>
+      <circle cx="24" cy="24" r="4.2" fill="url(#qc)"/>
+    </svg>
+    <div class="brand">QAIS TRADING</div>
+    <div class="brandsub">A C A D E M Y</div>
+    <div class="tag2">PATIENCE IS<br />PART OF THE EDGE</div>
+    <div class="url">qta-academy.store</div>
+    <div class="disc">محتوى تعليمي فقط — لا يُعدّ نصيحة استثمارية، ولا نقدّم توصيات أو إشارات تداول.</div>
+  </section>
+</div>
+
+<script>
+let seed = 20260905;
+const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+
+(() => {
+  let s = "";
+  for (let i = 0; i < 300; i++) {
+    const br = rnd() < .06;
+    const x = (rnd()*1080).toFixed(1), y = (rnd()*1920).toFixed(1);
+    const r = (br ? rnd()*2.1+1.6 : rnd()*1.1+.4).toFixed(2);
+    const a = (br ? rnd()*.4+.5 : rnd()*.32+.1).toFixed(2);
+    const t = rnd()<.13 ? (rnd()<.5?"124,77,255":"34,211,238") : "226,222,255";
+    s += `<circle cx="${x}" cy="${y}" r="${r}" fill="rgba(${t},${a})"/>`;
+    if (br) s += `<circle cx="${x}" cy="${y}" r="${(r*3.4).toFixed(2)}" fill="rgba(${t},${(a*.13).toFixed(3)})"/>`;
+  }
+  document.getElementById("stars").innerHTML = s;
+})();
+
+/* ═══ الشارت: اندفاع صاعد ثم تجمّد ═══
+   ⚠️ **نفس مبدأ ريل ٠١**: الشموع بتتولّد أول وبعدين بتنسقط على الإطار حسب
+   مداها الفعلي. تعيين مدى ثابت بيخلّيهن محشورات بشريط ضيّق (مقيس هناك).
+
+   ⚠️ والاندفاع **مش عشوائياً**: أول ١٤ شمعة عرضية هادية، وبعدها ٨ شمعات
+   صاعدة بقوة. هاد بيصنع «الاندفاع» اللي بيوقف العين — وهو الخطّاف. */
+(() => {
+  const W = 940, H = 1180, N = 22, PAD = 30;
+  const cw = (W - PAD*2) / N;
+  const bars = [];
+  let p = 300;
+  for (let i = 0; i < N; i++) {
+    const surge = i >= 14;                     /* الاندفاع بيبلّش هون */
+    const drift = surge ? rnd()*46 + 16 : (rnd()-0.5)*26;
+    const open = p, close = p + drift;
+    bars.push({ open, close,
+      hi: Math.max(open,close) + rnd()*(surge?20:14),
+      lo: Math.min(open,close) - rnd()*(surge?12:14) });
+    p = close;
+  }
+  const min = Math.min(...bars.map(b=>b.lo)), max = Math.max(...bars.map(b=>b.hi));
+  const TOP = 90, BOT = 90;
+  const y = v => TOP + (1 - (v-min)/(max-min)) * (H-TOP-BOT);
+
+  /* الشموع بتظهر بإيقاع متسارع: الهادية كل ١٢٠ms، والاندفاع كل ٧٠ms.
+     التسارع نفسه بيقول «في شي عم بيصير» بلا ولا كلمة. */
+  let t = 0.35, out = "";
+  bars.forEach((b, i) => {
+    const up = b.close >= b.open;
+    const cx = PAD + i*cw + cw/2, bw = cw*0.58;
+    const yT = y(Math.max(b.open,b.close)), yB = y(Math.min(b.open,b.close));
+    out += `<g class="c" style="animation-delay:${t.toFixed(2)}s">
+      <line x1="${cx}" y1="${y(b.hi)}" x2="${cx}" y2="${y(b.lo)}"
+        stroke="${up?'#C4B0FF':'#8A7CB8'}" stroke-width="2.6" opacity=".85"/>
+      <rect x="${cx-bw/2}" y="${yT}" width="${bw}" height="${Math.max(5,yB-yT)}"
+        fill="${up?'#7C4DFF':'#141024'}" stroke="${up?'#C4B0FF':'#8A7CB8'}" stroke-width="2"/></g>`;
+    t += i >= 14 ? 0.07 : 0.12;
+  });
+  document.getElementById("chart").innerHTML = out;
+})();
+</script>
+</body>
+</html>

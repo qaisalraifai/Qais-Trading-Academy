@@ -8,11 +8,11 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Archivo:wght@600;700&display=swap" rel="stylesheet" />
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
-   ريل ٠١ — «درّب عينك قبل ما تخاطر»  ·  1080×1920  ·  ٢٤ ثانية
+   ريل ٠١ — «درّب عينك قبل ما تخاطر»  ·  1080×1920  ·  ٤٠ ثانية
    ---------------------------------------------------------------------------
    ⚠️ **مش صفحة ويب — هو إطار فيديو.** المقاس ثابت `1080×1920` بالبكسل
-   (مش نسبي)، لأنه بينتسجّل بـOBS Browser Source بنفس المقاس بالضبط. أي وحدة
-   نسبية هون بتخلّي المشهد يختلف بين شاشة وشاشة.
+   (مش نسبي)، لأنّ كروم بيصوّره بهالمقاس بالضبط. أي وحدة نسبية هون بتخلّي
+   المشهد يختلف بين شاشة وشاشة.
 
    ⚠️ **البالِت من `tailwind.config.js` حرفياً** — ولا لون جديد:
      space-0 #050308 · violet-200 #7C4DFF · violet-100 #C4B0FF
@@ -25,11 +25,21 @@
    ⚠️ **النجوم مولَّدة بالـHTML مش بجافاسكربت.** OBS بيلتقط أول إطار أحياناً
    قبل ما يشتغل السكربت، فبتطلع خلفية فاضية. وبذرة ثابتة = نفس المشهد كل مرة.
 
+   🔴 **انعاد توقيته بعد حكمه: «كثير سريع، مش مفهوم إشي».**
+   القياس أكّده — «درّب عينك على السوق الحقيقي» ٥ كلمات، كانت ظاهرة ٢.٣ث
+   وبتحتاج ٣.١. والقاعدة (`bible/02-motion-sound.md`):
+
+       الزمن اللازم = 0.6 + (الكلمات ÷ 2)   ·   الحد الأدنى ٢.٠ث
+
+   المدة ٢٤ → ٤٠ ثانية. وتباعد الشموع ٠.١٢ → ٠.١٧ث: الكشف صار **يُقرأ**
+   كاستعراض شمعة بشمعة بدل ما يبان وميضاً.
+   ⚠️ ريلز وتيك توك بيسمحوا ٩٠ ثانية — ٤٠ مفهومة أفضل من ٢٤ مضغوطة.
+
    التوقيت (ثواني):
-     0.0 – 3.5   الخطّاف
-     3.5 – 8.5   المشكلة
-     8.5 – 17.0  الأداة (شارت بينكشف شمعة بشمعة + خط القص)
-    17.0 – 24.0  الشعار والدعوة
+     0.0 –  9.0   الخطّاف
+     9.0 – 17.6   المشكلة
+    17.6 – 33.6   الأداة (شارت بينكشف شمعة بشمعة + خط القص)
+    33.6 – 40.0   الشعار والدعوة
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root{
@@ -65,35 +75,35 @@ body{font-family:var(--ui);color:var(--text)}
 .ease{animation-timing-function:cubic-bezier(.16,1,.3,1)}
 
 /* ═══ ١ · الخطّاف — 0 → 3.5 ═══ */
-#s1{animation:sceneIn .7s .15s both, sceneOut .5s 3.2s both}
+#s1{animation:sceneIn .7s .2s both, sceneOut .5s 8.6s both}
 #s1 .l1{font-size:74px;font-weight:600;color:var(--muted);letter-spacing:-.01em;
-  animation:riseIn .8s .35s both cubic-bezier(.16,1,.3,1)}
+  animation:riseIn .9s .5s both cubic-bezier(.16,1,.3,1)}
 #s1 .l2{margin-top:26px;font-size:104px;font-weight:700;line-height:1.15;
   letter-spacing:-.02em;
   background:linear-gradient(115deg,#C4B0FF 0%,#7C4DFF 46%,#22D3EE 100%);
   -webkit-background-clip:text;background-clip:text;color:transparent;
-  animation:riseIn .9s .85s both cubic-bezier(.16,1,.3,1)}
+  animation:riseIn .9s 3.9s both cubic-bezier(.16,1,.3,1)}
 
 /* ═══ ٢ · المشكلة — 3.5 → 8.5 ═══ */
-#s2{animation:sceneIn .7s 3.6s both, sceneOut .5s 8.2s both}
+#s2{animation:sceneIn .7s 9.2s both, sceneOut .5s 17.2s both}
 #s2 .k{font-size:80px;font-weight:700;line-height:1.3;letter-spacing:-.015em}
 #s2 .k .dim{color:#6E6690;font-weight:500}
-#s2 .a{animation:riseIn .8s 3.9s both cubic-bezier(.16,1,.3,1)}
-#s2 .b{margin-top:34px;animation:riseIn .8s 5.1s both cubic-bezier(.16,1,.3,1)}
+#s2 .a{animation:riseIn .9s 9.5s both cubic-bezier(.16,1,.3,1)}
+#s2 .b{margin-top:38px;animation:riseIn .9s 13.0s both cubic-bezier(.16,1,.3,1)}
 #s2 .rule{width:180px;height:2px;margin:52px auto 0;
   background:linear-gradient(90deg,transparent,var(--violet-200),transparent);
-  animation:widen .9s 6.0s both cubic-bezier(.16,1,.3,1)}
+  animation:widen .9s 15.6s both cubic-bezier(.16,1,.3,1)}
 
 /* ═══ ٣ · الأداة — 8.5 → 17.0 ═══ */
-#s3{justify-content:center;animation:sceneIn .7s 8.6s both, sceneOut .5s 16.6s both}
+#s3{justify-content:center;animation:sceneIn .7s 17.8s both, sceneOut .5s 33.4s both}
 #s3 .eyebrow{font-size:34px;font-weight:600;color:var(--violet-100);
-  letter-spacing:.06em;animation:riseIn .7s 8.9s both cubic-bezier(.16,1,.3,1)}
+  letter-spacing:.06em;animation:riseIn .8s 18.1s both cubic-bezier(.16,1,.3,1)}
 #s3 .title{margin-top:22px;font-size:78px;font-weight:700;line-height:1.25;
-  letter-spacing:-.02em;animation:riseIn .8s 9.2s both cubic-bezier(.16,1,.3,1)}
+  letter-spacing:-.02em;animation:riseIn .9s 18.6s both cubic-bezier(.16,1,.3,1)}
 .chartbox{position:relative;width:860px;height:520px;margin-top:66px;
   border:1px solid var(--edge);background:rgba(20,16,36,.72);
   box-shadow:0 30px 80px -30px #000, inset 0 1px 0 rgba(255,255,255,.05);
-  animation:riseIn .9s 9.8s both cubic-bezier(.16,1,.3,1)}
+  animation:riseIn .9s 22.4s both cubic-bezier(.16,1,.3,1)}
 .chartbox .glow{position:absolute;inset:-1px;
   background:radial-gradient(80% 60% at 50% 120%, rgba(124,77,255,.22), transparent 62%);
   pointer-events:none}
@@ -101,29 +111,29 @@ body{font-family:var(--ui);color:var(--text)}
 /* كل شمعة بتظهر بدورها — هاد بالضبط اللي بتعمله أداة الاستعراض */
 .candle{opacity:0;animation:pop .34s both cubic-bezier(.16,1,.3,1)}
 /* خط القص بيمشي — قلب الأداة */
-.cut{opacity:0;animation:cutIn .5s 14.3s both}
+.cut{opacity:0;animation:cutIn .6s 29.0s both}
 #s3 .cap{margin-top:44px;font-size:40px;font-weight:500;color:var(--muted);
-  line-height:1.6;animation:riseIn .8s 15.0s both cubic-bezier(.16,1,.3,1)}
+  line-height:1.6;animation:riseIn .9s 29.0s both cubic-bezier(.16,1,.3,1)}
 
 /* ═══ ٤ · الشعار والدعوة — 17.0 → 24.0 ═══ */
-#s4{animation:sceneIn .8s 17.0s both}
+#s4{animation:sceneIn .8s 33.6s both}
 #s4 .mark{width:250px;height:250px;filter:drop-shadow(0 0 64px rgba(124,77,255,.5));
-  animation:markIn 1.1s 17.2s both cubic-bezier(.16,1,.3,1)}
+  animation:markIn 1.1s 33.9s both cubic-bezier(.16,1,.3,1)}
 #s4 .name{margin-top:44px;font-family:var(--display);font-weight:700;
   font-size:66px;letter-spacing:.15em;color:var(--text);
-  animation:riseIn .8s 17.9s both cubic-bezier(.16,1,.3,1)}
+  animation:riseIn .8s 34.6s both cubic-bezier(.16,1,.3,1)}
 #s4 .sub{margin-top:16px;font-family:var(--display);font-weight:600;
   font-size:28px;letter-spacing:.34em;color:#9E93C9;
-  animation:riseIn .8s 18.2s both cubic-bezier(.16,1,.3,1)}
+  animation:riseIn .8s 34.9s both cubic-bezier(.16,1,.3,1)}
 #s4 .tag{margin-top:56px;font-size:52px;font-weight:600;line-height:1.5;
-  color:var(--text);animation:riseIn .8s 18.8s both cubic-bezier(.16,1,.3,1)}
+  color:var(--text);animation:riseIn .8s 35.5s both cubic-bezier(.16,1,.3,1)}
 #s4 .cta{margin-top:52px;padding:30px 74px;border-radius:4px;
   background:var(--violet-200);color:#0A0614;font-size:44px;font-weight:700;
   box-shadow:0 0 60px -12px rgba(124,77,255,.75);
-  animation:riseIn .8s 19.4s both cubic-bezier(.16,1,.3,1), pulse 2.4s 20.4s infinite}
+  animation:riseIn .8s 36.4s both cubic-bezier(.16,1,.3,1), pulse 2.4s 37.4s infinite}
 #s4 .url{margin-top:40px;font-family:var(--display);font-size:34px;
   letter-spacing:.06em;color:var(--muted);direction:ltr;
-  animation:riseIn .8s 19.9s both cubic-bezier(.16,1,.3,1)}
+  animation:riseIn .8s 36.9s both cubic-bezier(.16,1,.3,1)}
 /* ═══ إخلاء المسؤولية ═══
    ⚠️ **لازم يكون مقروءاً فعلاً.** أول نسخة كانت `#4A4368` بحجم ٢٤ على
    خلفية سوداء — يعني مخفي عملياً (مقيس على الإطار t=21)، وإخلاء مسؤولية
@@ -132,7 +142,7 @@ body{font-family:var(--ui);color:var(--text)}
    والوصف على آخر ~٢٠٠px، فأي نص هناك بينتغطّى. */
 #s4 .disc{position:absolute;bottom:150px;left:0;right:0;font-size:27px;
   color:#8A82AE;line-height:1.75;padding:0 110px;
-  animation:fadeIn .9s 20.4s both}
+  animation:fadeIn .9s 37.6s both}
 
 /* ── الحركات ── */
 @keyframes sceneIn{from{opacity:0}to{opacity:1}}
@@ -235,7 +245,7 @@ const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7ffffff
 (() => {
   const W = 860, H = 520, N = 34, PAD = 28;
   const cw = (W - PAD * 2) / N;
-  const START = 10.2, STEP = 0.12;
+  const START = 23.0, STEP = 0.17;
 
   /* ⚠️ **الشموع بتتولّد أول، وبعدين بتنسقط على الإطار.**
      أول نسخة عيّنت مدى سعر ثابت (٧٠→٤٥٠) ورسمت عليه مباشرة — والمشية
