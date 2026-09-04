@@ -90,31 +90,61 @@ console.log(`المشهد : ${path.basename(HTML)}`);
 console.log(`الإطارات: ${total} (${DUR}s × ${FPS}fps)  ·  المخرج: ${path.basename(OUT)}`);
 console.log(`ffmpeg  : ${FFMPEG === "ffmpeg" ? "من PATH" : FFMPEG}\n`);
 
-const t0 = Date.now();
-for (let i = 0; i < total; i++) {
-  const ms = Math.round((i / FPS) * 1000);
-  const dest = path.join(TMP, `f${String(i).padStart(5, "0")}.png`);
-  execFileSync(CHROME, [
-    "--headless=new", "--disable-gpu", "--hide-scrollbars",
-    `--screenshot=${dest}`,
-    "--window-size=1080,1920",
-    /* ⚠️ الحد الأدنى ١٢٠٠ms: الخطوط بتنجلب من الشبكة والميزانية بتشملها.
-       أقل من هيك بتطلع أول الإطارات بخط النظام الاحتياطي — يعني أول ثانية
-       بالفيديو بخط غلط. فالإطارات الأولى بتنرسم عند ١٢٠٠ms «افتراضية»،
-       والحركة عندها لسا ببدايتها فما في فرق بصري. */
-    `--virtual-time-budget=${Math.max(ms, 1200)}`,
-    "--default-background-color=050308",
-    url,
-  ], { stdio: "ignore" });
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔴 **كان بيرسم إطاراً واحداً كل مرة — على جهاز فيه ٢٠ نواة.**
+   ---------------------------------------------------------------------------
+   كل إطار تشغيل كروم مستقل، والتشغيل الواحد بيستعمل نواة تقريباً. فالنسخة
+   الأولى كانت تستهلك **١/٢٠ من الجهاز** وتاخد ~١٨ دقيقة للريل.
 
-  if (i % 30 === 0 || i === total - 1) {
-    const pct = (((i + 1) / total) * 100).toFixed(0);
-    const el = (Date.now() - t0) / 1000;
-    const eta = el / (i + 1) * (total - i - 1);
-    process.stdout.write(`\r  ${pct}%  ${i + 1}/${total}  ·  باقي ~${Math.round(eta / 60)} دقيقة   `);
-  }
-}
-console.log("\n\nالتخييط...");
+   والإطارات **مستقلة تماماً عن بعضها** — كل واحد بينرسم من الصفر بساعة
+   افتراضية خاصة فيه، ولا واحد بيقرا مخرج التاني. يعني التوازي هون مجاني
+   بالكامل: ولا سباق ولا ترتيب لازم ينحفظ (الملفات مرقّمة، وffmpeg بيقراهن
+   بالاسم).
+
+   عدد المهام الافتراضي = نصف الأنوية: يخلّي الجهاز يتنفّس، والذاكرة كمان
+   (كل كروم ~٢٠٠–٣٠٠ ميجا).
+   ═══════════════════════════════════════════════════════════════════════════ */
+const JOBS = Math.max(1, Number(opt("jobs", Math.max(2, Math.floor(os.cpus().length / 2)))));
+
+const { execFile } = require("child_process");
+const renderFrame = (i) =>
+  new Promise((resolve, reject) => {
+    const ms = Math.round((i / FPS) * 1000);
+    const dest = path.join(TMP, `f${String(i).padStart(5, "0")}.png`);
+    execFile(CHROME, [
+      "--headless=new", "--disable-gpu", "--hide-scrollbars",
+      `--screenshot=${dest}`,
+      "--window-size=1080,1920",
+      /* ⚠️ الحد الأدنى ١٢٠٠ms: الخطوط بتنجلب من الشبكة والميزانية بتشملها.
+         أقل من هيك بتطلع أول الإطارات بخط النظام الاحتياطي — يعني أول ثانية
+         بالفيديو بخط غلط. والحركة عند ١٢٠٠ms لسا ببدايتها فما في فرق بصري. */
+      `--virtual-time-budget=${Math.max(ms, 1200)}`,
+      "--default-background-color=050308",
+      url,
+    ], (err) => (err ? reject(err) : resolve()));
+  });
+
+console.log(`بالتوازي: ${JOBS} مهمة على ${os.cpus().length} نواة\n`);
+
+(async () => {
+  const t0 = Date.now();
+  let next = 0, done = 0;
+  const worker = async () => {
+    while (true) {
+      const i = next++;
+      if (i >= total) return;
+      await renderFrame(i);
+      done++;
+      if (done % 20 === 0 || done === total) {
+        const pct = ((done / total) * 100).toFixed(0);
+        const el = (Date.now() - t0) / 1000;
+        const eta = (el / done) * (total - done);
+        process.stdout.write(`\r  ${pct}%  ${done}/${total}  ·  باقي ~${Math.max(1, Math.round(eta / 60))} دقيقة   `);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: JOBS }, worker));
+  console.log("\n\nالتخييط...");
 
 execFileSync(FFMPEG, [
   "-y", "-framerate", String(FPS),
@@ -127,6 +157,8 @@ execFileSync(FFMPEG, [
   OUT,
 ], { stdio: ["ignore", "ignore", "inherit"] });
 
-fs.rmSync(TMP, { recursive: true, force: true });
-const kb = (fs.statSync(OUT).size / 1024 / 1024).toFixed(1);
-console.log(`\n✓ ${OUT}\n  ${kb} MB  ·  ${DUR}s  ·  1080×1920  ·  ${FPS}fps`);
+  fs.rmSync(TMP, { recursive: true, force: true });
+  const mb = (fs.statSync(OUT).size / 1024 / 1024).toFixed(1);
+  const mins = ((Date.now() - t0) / 60000).toFixed(1);
+  console.log(`\n✓ ${OUT}\n  ${mb} MB  ·  ${DUR}s  ·  1080×1920  ·  ${FPS}fps  ·  استغرق ${mins} دقيقة`);
+})().catch((e) => { console.error("\nفشل:", e.message); process.exit(1); });
