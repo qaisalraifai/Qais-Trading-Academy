@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>QTA — ريل ٠٢: مش محاضرات وبس</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Archivo:wght@600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_base.css" />
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ريل ٠٢ — «مش محاضرات وبس»  ·  1080×1920  ·  ٢٢ ثانية
+   ---------------------------------------------------------------------------
+   الزاوية: **التمييز**. كل أكاديمية تداول بتبيع محاضرات — الفرق إنّ هون في
+   أدوات بتشتغل على السوق الحقيقي. وهاد اللي ما حدا غيره بيقدر يقوله.
+
+   ⚠️ الستّ أدوات المعروضة **موجودة فعلاً بقائمة تنقّل الأعضاء**
+   (`app/components/layout/navigation.js`) — ولا وحدة مكتوبة على نيّة.
+
+   ⚠️ ولا وعد ربح: شروط المنصّة بتمنع، ومنصّات الإعلانات بترفض.
+
+   التوقيت:
+     0.0 – 4.0   الخطّاف (قلب التوقّع)
+     4.0 – 15.5  الأدوات الستّة بتتوالى
+    15.5 – 22.0  الختام
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══ ١ · الخطّاف ═══ */
+#s1{animation:sceneIn .6s .1s both, sceneOut .45s 3.75s both}
+#s1 .a{font-size:72px;font-weight:600;color:var(--muted);line-height:1.35;
+  animation:riseIn .8s .3s both var(--orbit)}
+/* الشطب بيمشي على «محاضرات» — الحركة هي اللي بتحمل المعنى مش النص */
+#s1 .strike{position:relative;display:inline-block}
+#s1 .strike::after{content:"";position:absolute;left:-6px;right:-6px;top:52%;height:6px;
+  background:var(--violet-200);border-radius:3px;transform-origin:right;
+  animation:strike .5s 1.45s both var(--orbit)}
+#s1 .b{margin-top:44px;font-size:100px;font-weight:700;line-height:1.2;
+  letter-spacing:-.02em;animation:riseIn .9s 2.0s both var(--orbit)}
+
+/* ═══ ٢ · الأدوات ═══ */
+#s2{justify-content:center;animation:sceneIn .6s 4.1s both, sceneOut .45s 15.2s both}
+#s2 .eyebrow{animation:riseIn .7s 4.3s both var(--orbit)}
+#s2 .head{margin-top:20px;font-size:66px;font-weight:700;line-height:1.3;
+  letter-spacing:-.015em;animation:riseIn .8s 4.55s both var(--orbit)}
+.tools{margin-top:64px;display:flex;flex-direction:column;gap:20px;width:860px}
+.tool{display:flex;align-items:center;gap:26px;padding:30px 34px;
+  border:1px solid var(--edge);background:rgba(20,16,36,.8);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  opacity:0;animation:popIn .55s both var(--orbit)}
+.tool .ic{width:56px;height:56px;flex:0 0 56px;color:var(--violet-100)}
+.tool .ic svg{width:100%;height:100%}
+/* ⚠️ `block` مطلوبة: العناصر السطرية ما بتاخد `margin-top` ولا بتكسر سطراً،
+   فالعنوان والوصف كانوا بينطبعوا بسطر واحد ملزوقين. */
+.tool .tx{text-align:right;flex:1;min-width:0}
+.tool .t{display:block;font-size:44px;font-weight:700;line-height:1.2}
+.tool .d{display:block;margin-top:8px;font-size:31px;color:var(--faint);line-height:1.45}
+
+/* ═══ ٣ · الختام ═══ */
+#s3{animation:sceneIn .7s 15.4s both}
+#s3 .mark{animation:markIn 1.1s 15.6s both var(--orbit)}
+#s3 .brand{animation:riseIn .8s 16.2s both var(--orbit)}
+#s3 .brandsub{animation:riseIn .8s 16.45s both var(--orbit)}
+#s3 .line{margin-top:56px;font-size:52px;font-weight:600;line-height:1.5;
+  animation:riseIn .8s 16.9s both var(--orbit)}
+#s3 .cta{animation:riseIn .8s 17.5s both var(--orbit), pulse 2.4s 18.5s infinite}
+#s3 .url{animation:riseIn .8s 17.9s both var(--orbit)}
+#s3 .disc{animation:fadeIn .9s 18.6s both}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="bg">
+    <div class="neb a"></div><div class="neb b"></div>
+    <svg width="1080" height="1920" id="stars"></svg>
+  </div>
+
+  <!-- ١ · قلب التوقّع -->
+  <section class="scene" id="s1">
+    <div class="a">كل أكاديمية تداول<br />بتعطيك <span class="strike">محاضرات</span></div>
+    <div class="b grad">إحنا بنعطيك<br />أدوات</div>
+  </section>
+
+  <!-- ٢ · الأدوات -->
+  <section class="scene" id="s2">
+    <div class="eyebrow">داخل المنصّة</div>
+    <div class="head">ستّ أدوات بتشتغل<br />على السوق الحقيقي</div>
+    <div class="tools" id="tools"></div>
+  </section>
+
+  <!-- ٣ · الختام -->
+  <section class="scene" id="s3">
+    <svg class="mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="q" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#7C4DFF"/><stop offset=".45" stop-color="#9F6CFF"/><stop offset="1" stop-color="#22D3EE"/>
+        </linearGradient>
+        <linearGradient id="qc" x1="18" y1="18" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#C4B0FF"/><stop offset="1" stop-color="#22D3EE"/>
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="14.5" stroke="url(#q)" stroke-width="2.6"/>
+      <path d="M28 28 L38 38" stroke="url(#q)" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="24" cy="24" rx="14.5" ry="5.4" stroke="url(#q)" stroke-width="1.2" opacity=".5" transform="rotate(-28 24 24)"/>
+      <circle cx="24" cy="24" r="4.2" fill="url(#qc)"/>
+    </svg>
+    <div class="brand">QAIS TRADING</div>
+    <div class="brandsub">A C A D E M Y</div>
+    <div class="line">المنهج والأدوات<br />بنفس الاشتراك</div>
+    <div class="cta">ابدأ رحلتك</div>
+    <div class="url">qta-academy.store</div>
+    <div class="disc">محتوى تعليمي فقط — لا يُعدّ نصيحة استثمارية، ولا نقدّم توصيات أو إشارات تداول.</div>
+  </section>
+</div>
+
+<script>
+/* بذرة ثابتة — نفس المشهد كل تشغيل، فإعادة الإنتاج بتعطي نفس الفيديو. */
+let seed = 20260903;
+const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+(() => {
+  let s = "";
+  for (let i = 0; i < 300; i++) {
+    const br = rnd() < .06;
+    const x = (rnd()*1080).toFixed(1), y = (rnd()*1920).toFixed(1);
+    const r = (br ? rnd()*2.1+1.6 : rnd()*1.1+.4).toFixed(2);
+    const a = (br ? rnd()*.4+.5 : rnd()*.32+.1).toFixed(2);
+    const t = rnd()<.13 ? (rnd()<.5?"124,77,255":"34,211,238") : "226,222,255";
+    s += `<circle cx="${x}" cy="${y}" r="${r}" fill="rgba(${t},${a})"/>`;
+    if (br) s += `<circle cx="${x}" cy="${y}" r="${(r*3.4).toFixed(2)}" fill="rgba(${t},${(a*.13).toFixed(3)})"/>`;
+  }
+  document.getElementById("stars").innerHTML = s;
+})();
+
+/* الأدوات الستّة — كلهن من `navigation.js`، ولا وحدة مكتوبة على نيّة.
+   الأيقونات من lucide (نفس مجموعة المنصّة) مرسومة كمسارات مباشرة. */
+(() => {
+  const P = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const TOOLS = [
+    ["استعراض تاريخي", "اقصّ الشارت وتدرّب شمعة بشمعة",
+     P('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>')],
+    ["رادار الفرص", "فحص مستمر على مفاهيم المنهج",
+     P('<path d="M19.07 4.93A10 10 0 1 1 12 2v10z"/><path d="M12 12 2.5 7"/>')],
+    ["سجل الصفقات", "من الفكرة حتى الإغلاق",
+     P('<path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7"/><rect x="13" y="6" width="3" height="11"/>')],
+    ["تقارير الأداء", "أداؤك بالأرقام مش بالإحساس",
+     P('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/>')],
+    /* ⚠️ الأقواس المتراكبة كانت تنقرأ **واي فاي** مش بصمة (مقيس على الإطار
+       t=14). شكل الحمض النووي مميّز ولا بيلتبس، وهو نفس أيقونة المنصّة. */
+    ["بصمتك كمتداول", "نقاط قوتك وأخطاؤك المتكرّرة",
+     P('<path d="M2 15c6.7-6 13.3 0 20-6"/><path d="M9 22c1.8-2 2.5-4 2.8-6"/><path d="M15 2c-1.8 2-2.5 4-2.8 6"/><path d="M17 6l-2.5-2.5"/><path d="M14 8l-1-1"/><path d="M7 18l2.5 2.5"/><path d="M10 16l1 1"/>')],
+    ["التقويم الاقتصادي", "الأخبار المؤثّرة أول بأول",
+     P('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>')],
+  ];
+  const START = 5.4, STEP = 0.62;
+  document.getElementById("tools").innerHTML = TOOLS.map(([t, d, ic], i) =>
+    `<div class="tool" style="animation-delay:${(START + i*STEP).toFixed(2)}s">
+      <span class="ic">${ic}</span>
+      <span class="tx"><span class="t">${t}</span><span class="d">${d}</span></span>
+    </div>`).join("");
+})();
+</script>
+</body>
+</html>

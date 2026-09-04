@@ -10,3 +10,6 @@ node_modules
 
 # أدوات التسمية مولّدة من القالب — شغّل build-*-tool.cjs
 lib/qais/**/fixtures/*-label.html
+
+# مخرجات فيديو التسويق — بتتولّد من ملفات المشاهد، وحجمها بيضخّم الريبو
+marketing/reels/*.mp4

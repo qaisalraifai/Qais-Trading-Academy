@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>QTA — ريل ٠٣: ليش يوتيوب ما كفّى</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Archivo:wght@600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_base.css" />
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ريل ٠٣ — «سنة يوتيوب وما وصلت»  ·  1080×1920  ·  ٢٤ ثانية
+   ---------------------------------------------------------------------------
+   الزاوية: **الاعتراض**. الجمهور البارد سؤاله الأول «ليش أدفع وفي محتوى
+   مجاني؟» — فالإعلان بيجاوبه بدل ما يتجاهله. وهاد بيشتغل أقوى من الخطّاف
+   الترويجي لأنه بيبلّش من كلام هو قايله لحاله.
+
+   ⚠️ **ما بنهاجم المحتوى المجاني.** الرسالة إنه ينقصه **الترتيب والتطبيق
+   والمتابعة** — مش إنه سيّئ. مهاجمته بتخسّر الناس اللي استفادوا منه.
+
+   ⚠️ ولا وعد ربح ولا رقم أداء — شروط المنصّة وسياسات الإعلانات.
+   ⚠️ ولا اسم منافس ولا منصّة — تجنّباً لأي نزاع.
+
+   التوقيت:
+     0.0 – 4.5   الخطّاف (سؤاله هو)
+     4.5 – 13.0  الأسباب التلاتة
+    13.0 – 18.0  المقابل
+    18.0 – 24.0  الختام
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══ ١ · الخطّاف ═══ */
+#s1{animation:sceneIn .6s .1s both, sceneOut .45s 4.25s both}
+#s1 .a{font-size:86px;font-weight:700;line-height:1.28;letter-spacing:-.015em;
+  animation:riseIn .8s .3s both var(--orbit)}
+#s1 .b{margin-top:40px;font-size:64px;font-weight:600;color:var(--muted);
+  line-height:1.4;animation:riseIn .9s 1.9s both var(--orbit)}
+
+/* ═══ ٢ · الأسباب ═══ */
+#s2{animation:sceneIn .6s 4.6s both, sceneOut .45s 12.7s both}
+#s2 .head{font-size:62px;font-weight:700;line-height:1.35;letter-spacing:-.01em;
+  animation:riseIn .8s 4.8s both var(--orbit)}
+.gaps{margin-top:70px;display:flex;flex-direction:column;gap:34px;width:840px}
+.gap{display:flex;align-items:center;gap:28px;text-align:right;
+  opacity:0;animation:popIn .6s both var(--orbit)}
+/* علامة × — بتقول «ناقص» بلا كلمة */
+.gap .x{position:relative;width:66px;height:66px;flex:0 0 66px;
+  border:2px solid #4A4368;border-radius:4px}
+.gap .x::before,.gap .x::after{content:"";position:absolute;left:16px;right:16px;top:31px;
+  height:3px;background:#8A82AE;border-radius:2px}
+.gap .x::before{transform:rotate(45deg)}
+.gap .x::after{transform:rotate(-45deg)}
+.gap .t{font-size:52px;font-weight:600;line-height:1.35;color:var(--text)}
+
+/* ═══ ٣ · المقابل ═══ */
+#s3{animation:sceneIn .6s 13.1s both, sceneOut .45s 17.7s both}
+#s3 .eyebrow{animation:riseIn .7s 13.3s both var(--orbit)}
+#s3 .head{margin-top:22px;font-size:74px;font-weight:700;line-height:1.3;
+  letter-spacing:-.02em;animation:riseIn .8s 13.55s both var(--orbit)}
+.steps{margin-top:64px;display:flex;flex-direction:column;gap:26px;width:820px}
+.step{display:flex;align-items:center;gap:26px;text-align:right;
+  opacity:0;animation:popIn .55s both var(--orbit)}
+.step .n{width:64px;height:64px;flex:0 0 64px;display:grid;place-items:center;
+  border:1px solid var(--violet-300);background:rgba(124,77,255,.14);
+  font-family:var(--display);font-size:32px;font-weight:700;color:var(--violet-100)}
+.step .t{font-size:50px;font-weight:600;line-height:1.35}
+
+/* ═══ ٤ · الختام ═══ */
+#s4{animation:sceneIn .7s 17.9s both}
+#s4 .mark{animation:markIn 1.1s 18.1s both var(--orbit)}
+#s4 .brand{animation:riseIn .8s 18.7s both var(--orbit)}
+#s4 .brandsub{animation:riseIn .8s 18.95s both var(--orbit)}
+#s4 .line{margin-top:56px;font-size:52px;font-weight:600;line-height:1.5;
+  animation:riseIn .8s 19.4s both var(--orbit)}
+#s4 .cta{animation:riseIn .8s 20.0s both var(--orbit), pulse 2.4s 21.0s infinite}
+#s4 .url{animation:riseIn .8s 20.4s both var(--orbit)}
+#s4 .disc{animation:fadeIn .9s 21.0s both}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="bg">
+    <div class="neb a"></div><div class="neb b"></div>
+    <svg width="1080" height="1920" id="stars"></svg>
+  </div>
+
+  <!-- ١ · سؤاله هو -->
+  <section class="scene" id="s1">
+    <div class="a">سنة كاملة<br />فيديوهات مجانية</div>
+    <div class="b">ولسا بتفتح الشارت<br />وما بتعرف تبلّش من وين؟</div>
+  </section>
+
+  <!-- ٢ · الأسباب -->
+  <section class="scene" id="s2">
+    <div class="head">المحتوى المجاني مش سيّئ —<br />بس ناقصه تلات أشياء</div>
+    <div class="gaps">
+      <div class="gap" style="animation-delay:5.8s"><span class="x"></span><span class="t">ترتيب: تبدأ من وين وتنتهي وين</span></div>
+      <div class="gap" style="animation-delay:7.0s"><span class="x"></span><span class="t">تطبيق: مكان تجرّب فيه بلا خسارة</span></div>
+      <div class="gap" style="animation-delay:8.2s"><span class="x"></span><span class="t">متابعة: حدا يشوف غلطك ويصحّحه</span></div>
+    </div>
+  </section>
+
+  <!-- ٣ · المقابل -->
+  <section class="scene" id="s3">
+    <div class="eyebrow">اللي بتاخده هون</div>
+    <div class="head">نفس التلاتة<br />بمكان واحد</div>
+    <div class="steps">
+      <div class="step" style="animation-delay:14.3s"><span class="n">01</span><span class="t">منهج مرتّب — ست ركائز بالتسلسل</span></div>
+      <div class="step" style="animation-delay:15.1s"><span class="n">02</span><span class="t">تدريب ٦ أشهر على حساب تجريبي</span></div>
+      <div class="step" style="animation-delay:15.9s"><span class="n">03</span><span class="t">محاضرات مباشرة ودعم من المدرّب</span></div>
+    </div>
+  </section>
+
+  <!-- ٤ · الختام -->
+  <section class="scene" id="s4">
+    <svg class="mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="q" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#7C4DFF"/><stop offset=".45" stop-color="#9F6CFF"/><stop offset="1" stop-color="#22D3EE"/>
+        </linearGradient>
+        <linearGradient id="qc" x1="18" y1="18" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#C4B0FF"/><stop offset="1" stop-color="#22D3EE"/>
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="14.5" stroke="url(#q)" stroke-width="2.6"/>
+      <path d="M28 28 L38 38" stroke="url(#q)" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="24" cy="24" rx="14.5" ry="5.4" stroke="url(#q)" stroke-width="1.2" opacity=".5" transform="rotate(-28 24 24)"/>
+      <circle cx="24" cy="24" r="4.2" fill="url(#qc)"/>
+    </svg>
+    <div class="brand">QAIS TRADING</div>
+    <div class="brandsub">A C A D E M Y</div>
+    <div class="line">من الأساسيات<br />حتى الاحترافية</div>
+    <div class="cta">ابدأ رحلتك</div>
+    <div class="url">qta-academy.store</div>
+    <div class="disc">محتوى تعليمي فقط — لا يُعدّ نصيحة استثمارية، ولا نقدّم توصيات أو إشارات تداول.</div>
+  </section>
+</div>
+
+<script>
+let seed = 20260904;
+const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+(() => {
+  let s = "";
+  for (let i = 0; i < 300; i++) {
+    const br = rnd() < .06;
+    const x = (rnd()*1080).toFixed(1), y = (rnd()*1920).toFixed(1);
+    const r = (br ? rnd()*2.1+1.6 : rnd()*1.1+.4).toFixed(2);
+    const a = (br ? rnd()*.4+.5 : rnd()*.32+.1).toFixed(2);
+    const t = rnd()<.13 ? (rnd()<.5?"124,77,255":"34,211,238") : "226,222,255";
+    s += `<circle cx="${x}" cy="${y}" r="${r}" fill="rgba(${t},${a})"/>`;
+    if (br) s += `<circle cx="${x}" cy="${y}" r="${(r*3.4).toFixed(2)}" fill="rgba(${t},${(a*.13).toFixed(3)})"/>`;
+  }
+  document.getElementById("stars").innerHTML = s;
+})();
+</script>
+</body>
+</html>
