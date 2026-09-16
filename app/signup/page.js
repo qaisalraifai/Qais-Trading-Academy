@@ -87,6 +87,11 @@ useEffect(() => {
     if (password !== confirmPassword) { setError("كلمتا المرور غير متطابقتين"); return; }
     setLoading(true);
 
+    // نصفّي أي جلسة قديمة (متل تجربة سابقة بنفس المتصفح) قبل التسجيل — وإلا
+    // create-profile رح يرفض بـSESSION_MISMATCH لأنّ الجلسة القديمة بتخالف
+    // معرّف الحساب الجديد يلي طالع من signUp().
+    await supabase.auth.signOut();
+
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email, password,
       options: {

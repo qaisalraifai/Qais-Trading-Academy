@@ -53,6 +53,12 @@ export default function ParticipantTile({ room, participant, big = false, source
 
   const isSpeaking = participant.isSpeaking && source === Track.Source.Camera;
 
+  /* Mirror بصري بس للمعاينة المحلية (شو ما بيشوفه المستخدم عن حاله بكاميراه)،
+     عشان يحس طبيعي متل المرآة — نفس سلوك زوم/ميت. ما بيأثر على الفيديو يلي
+     فعلياً بينبعث للمشاهدين (CSS transform محلي بالمتصفح بس)، وما بينطبق على
+     مشاركة الشاشة (screen share) ولا على فيديو المشاركين التانين. */
+  const isMirrored = participant.isLocal && source === Track.Source.Camera;
+
   return (
     <div
       className={`relative w-full h-full rounded-xl overflow-hidden bg-surface-1 border transition-shadow ${
@@ -60,7 +66,13 @@ export default function ParticipantTile({ room, participant, big = false, source
       }`}
     >
       {hasVideo ? (
-        <video ref={videoRef} autoPlay playsInline muted={participant.isLocal} className="w-full h-full object-cover" />
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={participant.isLocal}
+          className={`w-full h-full object-cover ${isMirrored ? "-scale-x-100" : ""}`}
+        />
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-surface-2 to-surface-0">
           <div
