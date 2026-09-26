@@ -348,6 +348,8 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
      طويل — هلأ الشارت والتحليل ثابتين فوق، والباقي بتبويبات. الاختيار
      بينحفظ محلياً حتى ما يرجع للأول كل مرة تفتح الصفحة. */
   const [dataTab, setDataTab] = useState(DATA_TABS[0].key);
+  const [showPreviousTrades, setShowPreviousTrades] = useState(false);
+  const [expandedTradeDetails, setExpandedTradeDetails] = useState({});
 
   useEffect(() => {
     try {
@@ -860,14 +862,13 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
        الفرق مقيس: القديم كان بيبني الساق على سوينغ كل ٤.٨ شمعة فتطلع
        أهداف ضئيلة — صفقة ذهب أعطت TP5 على بُعد ٩٦.٨ نقطة بينما السعر
        تحرّك ٥١٨. والستوب عنده من نقطة التصحيح مش من نقطة الـSMT. */
-    const drawn = r.skV2?.chartTrade ?? r.lastTrade;
-    if (drawn && drawn.displayTF === renderedTF) {
-      /* ⚠️ لما `drawProjection` تكون رسمت نفس الصفقة، تسمياتها بتغني عن
-         تسميات الصندوق: الدخول والستوب كانوا بينكتبوا **مرتين** بنفس
-         السعر — مرة بصندوق على الحافة اليمين ومرة كنص جنب الصندوق. */
-      const sameAsLive =
-        r.tradeValid && r.entry != null && Math.abs((drawn.entry?.price ?? NaN) - r.entry) < 1e-6;
-      drawLastTrade(ctx, drawn, timeToXSafe, priceToY, plotW, h, ease, timeSet, !sameAsLive);
+    const chartTrades = chartTradesToDraw.filter((trade) => trade && trade.displayTF === renderedTF);
+    if (chartTrades.length) {
+      for (const drawn of chartTrades) {
+        const sameAsLive =
+          r.tradeValid && r.entry != null && Math.abs((drawn.entry?.price ?? NaN) - r.entry) < 1e-6;
+        drawLastTrade(ctx, drawn, timeToXSafe, priceToY, plotW, h, ease, timeSet, !sameAsLive);
+      }
     }
   }
 
@@ -960,6 +961,23 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
   const signal = result?.signal ?? null;
   const biasLabel = result?.direction === "up" ? "Bullish" : result?.direction === "down" ? "Bearish" : "—";
   const biasColor = result?.direction === "up" ? GREEN : result?.direction === "down" ? RED : "#6E6690";
+
+  const activeChartTrade = result?.chartTrade ?? result?.lastTrade ?? null;
+  const historicalChartTrades = Array.isArray(result?.historicalTrades)
+    ? result.historicalTrades.filter((trade) => trade && trade !== activeChartTrade)
+    : [];
+  const chartTradesToDraw = showPreviousTrades
+    ? [activeChartTrade, ...historicalChartTrades].filter(Boolean)
+    : activeChartTrade
+      ? [activeChartTrade]
+      : [];
+
+  const toggleTradeDetails = (key) => {
+    setExpandedTradeDetails((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
   /* -------- Chart Info Bar — كل القيم مشتقة من نفس الشموع المحمّلة فعلاً بالشارت -------- */
   const dailyCandles = allCandles.daily;
@@ -1169,7 +1187,36 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
 
       {/* تناقض بين الفريمات — لازم يبان قبل أي قراءة للتحليل */}
       <DataQualityBanner quality={result?.dataQuality} />
-      <SkV2Panel sk={result?.skV2} />
+
+      {result?.skV2 && (
+        <div className="qmi-anim" style={{ ...glass, padding: "0.5rem 0.75rem", borderColor: "#2A2145" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 11.5, color: "#A79FC4", fontWeight: 700 }}>عرض الصفقات على الشارت</div>
+            <button
+              type="button"
+              onClick={() => setShowPreviousTrades((prev) => !prev)}
+              style={{
+                background: showPreviousTrades ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.02)",
+                border: `1px solid ${showPreviousTrades ? "#34D399" : "#3D2F63"}`,
+                color: showPreviousTrades ? "#34D399" : "#C4B5FD",
+                borderRadius: 999,
+                padding: "0.45rem 0.8rem",
+                fontSize: 11.5,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              {showPreviousTrades ? "إخفاء الصفقات السابقة" : "عرض الصفقات السابقة"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <SkV2Panel
+        sk={result?.skV2}
+        expandedTradeDetails={expandedTradeDetails}
+        onToggleTradeDetails={toggleTradeDetails}
+      />
       <MatryoshkaPanel m={result?.matryoshka} />
 
       {/* ================= TOP TOOLBAR ================= */}
@@ -1493,7 +1540,7 @@ function MatryoshkaPanel({ m }) {
   );
 }
 
-function SkV2Panel({ sk }) {
+function SkV2Panel({ sk, expandedTradeDetails = {}, onToggleTradeDetails }) {
   if (!sk) return null;
 
   if (sk.ok === false) {
@@ -1511,6 +1558,52 @@ function SkV2Panel({ sk }) {
   const withTrade = (sk.setups || []).filter((s) => s.readiness?.status === "trade");
   const waiting = (sk.setups || []).filter((s) => s.readiness?.status !== "trade");
   const ordered = [...withTrade, ...waiting].slice(0, 10);
+
+  const renderTradeSummary = (setup, readiness) => {
+    const t = setup?.setup;
+    if (!t?.ok) return null;
+
+    const directionLabel = setup.direction === "up" ? "شراء" : "بيع";
+    const rr = t.rr && t.rr.length ? t.rr[t.rr.length - 1]?.r ?? null : null;
+    const targets = Array.isArray(t.targets) && t.targets.length ? t.targets : [];
+
+    return (
+      <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: "#F5F3FF" }}>{directionLabel}</span>
+            <span style={{ fontSize: 11, color: "#9CA3AF" }}>Entry {Number(t.entry).toFixed(2)}</span>
+          </div>
+          <span style={{ fontSize: 11, color: "#34D399", fontWeight: 700 }}>
+            RR {rr != null ? rr.toFixed(2) : "—"}
+          </span>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
+          <div style={{ background: "rgba(20,16,36,0.8)", border: "1px solid #201A2F", borderRadius: 6, padding: "0.5rem 0.6rem" }}>
+            <div style={{ fontSize: 9.5, color: "#6E6690" }}>Entry</div>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: "#F5F3FF", fontFamily: "ui-monospace, monospace" }}>{Number(t.entry).toFixed(2)}</div>
+          </div>
+          <div style={{ background: "rgba(20,16,36,0.8)", border: "1px solid #201A2F", borderRadius: 6, padding: "0.5rem 0.6rem" }}>
+            <div style={{ fontSize: 9.5, color: "#6E6690" }}>Stop</div>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: "#F87171", fontFamily: "ui-monospace, monospace" }}>{Number(t.stop).toFixed(2)}</div>
+          </div>
+          <div style={{ background: "rgba(20,16,36,0.8)", border: "1px solid #201A2F", borderRadius: 6, padding: "0.5rem 0.6rem" }}>
+            <div style={{ fontSize: 9.5, color: "#6E6690" }}>Targets</div>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: "#34D399", fontFamily: "ui-monospace, monospace" }}>
+              {targets.length ? targets.map((target) => target.key || "TP").join(" · ") : "—"}
+            </div>
+          </div>
+        </div>
+
+        {targets.length > 0 && (
+          <div style={{ fontSize: 11, color: "#A79FC4", fontFamily: "ui-monospace, monospace", overflowX: "auto", whiteSpace: "nowrap" }}>
+            {targets.map((target) => `${target.key ?? "TP"} ${Number(target.price).toFixed(2)}`).join("  ·  ")}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="qmi-anim" style={{ ...glass, padding: "0.85rem 1rem", borderColor: withTrade.length ? "#34D399" : "#4B5563" }}>
@@ -1531,34 +1624,75 @@ function SkV2Panel({ sk }) {
         {ordered.map((s, i) => {
           const R = s.readiness;
           const isTrade = R.status === "trade";
+          const key = `${s.blockId ?? i}-${isTrade ? "trade" : "waiting"}`;
+          const detailsOpen = !!expandedTradeDetails[key];
           const t = s.setup;
-          return (
-            <details key={i} open={isTrade} style={{ border: "1px solid #23233A", borderRadius: 8, padding: "0.5rem 0.7rem", background: "rgba(255,255,255,0.02)" }}>
-              <summary style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: isTrade ? "#34D399" : "#C4B5FD" }}>{R.headline}</span>
-                <span style={{ fontSize: 11.5, color: "#9CA3AF", fontFamily: "ui-monospace, monospace" }}>
-                  {s.direction === "up" ? "طلب" : "عرض"} MT {Number(s.levels.mt).toFixed(2)}
-                </span>
-                <span style={{ fontSize: 11, color: "#6B7280" }}>{R.metCount}/{R.totalCount} شرط</span>
-              </summary>
 
-              {isTrade && t?.ok && (
-                <div style={{ fontSize: 12, color: "#E5E7EB", fontFamily: "ui-monospace, monospace", margin: "6px 0" }}>
-                  دخول {t.entry.toFixed(2)} · ستوب {t.stop.toFixed(2)} · مخاطرة {t.risk.toFixed(2)}
+          return (
+            <div key={key} style={{ border: "1px solid #23233A", borderRadius: 8, background: "rgba(255,255,255,0.02)", overflow: "hidden" }}>
+              <div style={{ padding: "0.55rem 0.7rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: isTrade ? "#34D399" : "#C4B5FD" }}>{R.headline}</span>
+                  <span style={{ fontSize: 11.5, color: "#9CA3AF", fontFamily: "ui-monospace, monospace" }}>
+                    {s.direction === "up" ? "طلب" : "عرض"} MT {Number(s.levels.mt).toFixed(2)}
+                  </span>
+                  <span style={{ fontSize: 11, color: "#6B7280" }}>{R.metCount}/{R.totalCount} شرط</span>
+                </div>
+
+                {isTrade && renderTradeSummary(s, R)}
+
+                {isTrade && t?.ok && (
+                  <div style={{ marginTop: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => onToggleTradeDetails?.(key)}
+                      style={{
+                        background: "rgba(255,255,255,0.02)",
+                        border: "1px solid #3D2F63",
+                        color: "#C4B5FD",
+                        borderRadius: 999,
+                        padding: "0.38rem 0.7rem",
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {detailsOpen ? "إخفاء التفاصيل" : "التفاصيل الكاملة"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {isTrade && detailsOpen && (
+                <div style={{ borderTop: "1px solid #23233A", padding: "0.55rem 0.7rem 0.65rem" }}>
+                  <div style={{ display: "grid", gap: 2 }}>
+                    {R.rows.map((x, j) => (
+                      <div key={j} style={{ display: "flex", gap: 6, fontSize: 11.5, alignItems: "baseline" }}>
+                        <span style={{ color: COLOR[x.state], width: 12, flexShrink: 0 }}>{MARK[x.state]}</span>
+                        <span style={{ color: "#6B7280", width: 34, flexShrink: 0, fontFamily: "ui-monospace, monospace" }}>{x.id}</span>
+                        <span style={{ color: "#C4B5FD", minWidth: 92, flexShrink: 0 }}>{x.label}</span>
+                        <span style={{ color: "#9CA3AF", minWidth: 0 }}>{x.note || x.detail}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <div style={{ display: "grid", gap: 2, marginTop: 6 }}>
-                {R.rows.map((x, j) => (
-                  <div key={j} style={{ display: "flex", gap: 6, fontSize: 11.5, alignItems: "baseline" }}>
-                    <span style={{ color: COLOR[x.state], width: 12, flexShrink: 0 }}>{MARK[x.state]}</span>
-                    <span style={{ color: "#6B7280", width: 34, flexShrink: 0, fontFamily: "ui-monospace, monospace" }}>{x.id}</span>
-                    <span style={{ color: "#C4B5FD", minWidth: 92, flexShrink: 0 }}>{x.label}</span>
-                    <span style={{ color: "#9CA3AF", minWidth: 0 }}>{x.note || x.detail}</span>
+              {!isTrade && (
+                <div style={{ borderTop: "1px solid #23233A", padding: "0.55rem 0.7rem 0.65rem" }}>
+                  <div style={{ display: "grid", gap: 2 }}>
+                    {R.rows.map((x, j) => (
+                      <div key={j} style={{ display: "flex", gap: 6, fontSize: 11.5, alignItems: "baseline" }}>
+                        <span style={{ color: COLOR[x.state], width: 12, flexShrink: 0 }}>{MARK[x.state]}</span>
+                        <span style={{ color: "#6B7280", width: 34, flexShrink: 0, fontFamily: "ui-monospace, monospace" }}>{x.id}</span>
+                        <span style={{ color: "#C4B5FD", minWidth: 92, flexShrink: 0 }}>{x.label}</span>
+                        <span style={{ color: "#9CA3AF", minWidth: 0 }}>{x.note || x.detail}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </details>
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
