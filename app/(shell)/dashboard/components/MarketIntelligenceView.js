@@ -1074,325 +1074,130 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <style>{`
         @keyframes qmiFadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
-        .qmi-anim { animation: qmiFadeIn 0.4s ease both; }
-        @keyframes qmiPulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
-        .qmi-dot { animation: qmiPulse 1.8s ease-in-out infinite; }
+        .qmi-anim { animation: qmiFadeIn 0.2s ease both; }
         .qmi-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .qmi-scroll::-webkit-scrollbar-thumb { background: #2A2145; border-radius: 3px; }
-        .qmi-concept-card { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
-        .qmi-concept-card:hover { transform: translateY(-2px); background: #141024; }
-        .qmi-briefing-card { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
-        .qmi-briefing-card:hover { transform: translateY(-2px); background: #141024; }
-        @keyframes qmiBarGrow { from { width: 0%; } }
-        .qmi-conf-bar { animation: qmiBarGrow 0.9s ease both; }
-
-        .qmi-summary-card { transition: box-shadow .25s ease, transform .25s ease; }
-        .qmi-summary-card:hover { box-shadow: 0 10px 34px rgba(212,175,55,0.14); }
-
-        .qmi-wstat { transition: transform .18s ease, background .18s ease, box-shadow .18s ease; border: 1px solid transparent; }
-        .qmi-wstat:hover { transform: translateY(-2px); background: #141024; border-color: #2A2145; box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
-
-        /* شريط التبويبات — بيلزق فوق وقت السكرول حتى تقدر تبدّل بأي لحظة */
-        .qmi-tabbar {
-          position: sticky;
-          top: 0;
-          z-index: 5;
-          background: #0E0A1A;
-        }
+        .tv-shell { background: #0b0f18; border: 1px solid rgba(148,163,184,0.12); border-radius: 14px; }
+        .tv-topbar { background: #0d1220; border: 1px solid rgba(148,163,184,0.12); border-radius: 12px; padding: 10px 12px; }
+        .tv-chip { display:inline-flex; align-items:center; gap:6px; background: rgba(255,255,255,0.02); border: 1px solid rgba(148,163,184,0.12); border-radius: 999px; color: #dfe7ff; font-size: 11px; padding: 6px 10px; font-weight: 700; }
+        .tv-box { background: #0d1220; border: 1px solid rgba(148,163,184,0.12); border-radius: 12px; }
+        .tv-stat { background: rgba(255,255,255,0.02); border: 1px solid rgba(148,163,184,0.1); border-radius: 10px; padding: 10px 12px; }
+        .tv-stat-label { color: #7e87a4; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
+        .tv-stat-value { color: #f5f7ff; font-size: 14px; font-weight: 800; margin-top: 4px; }
+        .qmi-tabbar { position: sticky; top: 0; z-index: 5; background: #0E0A1A; }
         .qmi-tabbar::-webkit-scrollbar { height: 0; }
-        .qmi-tabpanel { animation: qmiFadeIn 0.28s ease both; }
-
-        .qmi-liq-row {
-          display: grid;
-          grid-template-columns: 1.1fr 0.8fr 0.7fr 1.6fr 1.3fr 0.8fr 1.2fr;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 12px;
-          font-size: 11.5px;
-        }
-        .qmi-liq-head { color: #6E6690; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; padding: 0 12px; }
-        .qmi-liq-body {
-          width: 100%;
-          text-align: right;
-          cursor: pointer;
-          border-radius: 3px;
-          transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
-        }
-        .qmi-liq-body:hover { transform: translateY(-2px); border-color: #3D2F63 !important; box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
-        .qmi-liq-body span[data-label] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-        @media (max-width: 900px) {
-          .qmi-liq-head { display: none; }
-          .qmi-liq-row {
-            grid-template-columns: 1fr 1fr;
-            row-gap: 8px;
-          }
-          .qmi-liq-body span[data-label] {
-            white-space: normal;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-          }
-          .qmi-liq-body span[data-label]::before {
-            content: attr(data-label);
-            font-size: 8.5px;
-            font-weight: 700;
-            color: #6E6690;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-          }
-        }
-
-        /* الكوكبيت: شارت + لوحة الذكاء الاصطناعي جنب بعض، وبينزلوا فوق بعض
-           على الشاشات الضيّقة بدل ما ينضغط الشارت لعرض غير مقروء. */
+        .qmi-tabpanel { animation: qmiFadeIn 0.18s ease both; }
         @media (max-width: 1100px) {
           .qmi-cockpit { grid-template-columns: minmax(0, 1fr) !important; }
-          .qmi-two-col { grid-template-columns: minmax(0, 1fr) !important; }
-        }
-        @media (max-width: 640px) {
-          .qmi-tabbar button { padding: 9px 11px !important; font-size: 11.5px !important; }
         }
       `}</style>
 
-      {/* ================= HEADER ================= */}
-      <div className="qmi-anim" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Crown size={19} strokeWidth={1.75} color={GOLD} aria-hidden />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 19, fontWeight: 800, color: "#F5F3FF" }}>Qais Market Intelligence — Full Analysis</div>
-          <div style={{ fontSize: 11.5, color: "#6E6690" }}>{t("radar.poweredBy")}</div>
-        </div>
-        {embedded && onClose && (
-          <button
-            onClick={onClose}
-            style={{
-              background: "#141024",
-              border: `1px solid #3D2F63`,
-              color: "#A79FC4",
-              borderRadius: 3,
-              width: 34,
-              height: 34,
-              cursor: "pointer",
-              fontSize: 16,
-              lineHeight: 1,
-            }}
-            title={t("radar.close")}
-          >
-            ✕
-          </button>
-        )}
-      </div>
-
-      {/* ================= LIVE MARKET STATUS (شريط رفيع — بيضل بالكوكبيت) ================= */}
-      <LiveMarketStatusBar status={marketStatus} />
-
-      {/* تناقض بين الفريمات — لازم يبان قبل أي قراءة للتحليل */}
-      <DataQualityBanner quality={result?.dataQuality} />
-
-      <div className="qmi-anim" style={{
-        ...glass,
-        borderRadius: 18,
-        padding: "0.9rem 1rem",
-        background: "linear-gradient(135deg, rgba(20,16,36,0.96) 0%, rgba(26,20,43,0.98) 100%)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 12, height: 12, borderRadius: "50%", background: result?.tradeValid ? "#34D399" : "#7C4DFF", boxShadow: result?.tradeValid ? "0 0 14px rgba(52,211,153,.8)" : "0 0 14px rgba(124,77,255,.75)" }} />
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#F5F3FF", letterSpacing: "0.06em", textTransform: "uppercase" }}>Radar control</div>
-              <div style={{ fontSize: 11.5, color: "#A79FC4" }}>عرض الصفقة الحالية + قائمة الحالت</div>
-            </div>
+      <div className="tv-topbar qmi-anim" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(124,77,255,0.12)", border: "1px solid rgba(124,77,255,0.25)", color: GOLD, fontWeight: 900 }}>Q</div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#F5F3FF" }}>{asset?.label || symbol}</div>
+            <div style={{ fontSize: 11, color: "#8B84A8" }}>{t("radar.poweredBy")}</div>
           </div>
+        </div>
 
-          {result?.skV2 && (
-            <button
-              type="button"
-              onClick={() => setShowPreviousTrades((prev) => !prev)}
-              style={{
-                background: showPreviousTrades ? "linear-gradient(135deg, rgba(16,229,160,0.18), rgba(16,229,160,0.08))" : "rgba(255,255,255,0.02)",
-                border: `1px solid ${showPreviousTrades ? "#34D399" : "#3D2F63"}`,
-                color: showPreviousTrades ? "#34D399" : "#C4B5FD",
-                borderRadius: 999,
-                padding: "0.5rem 0.9rem",
-                fontSize: 11.5,
-                fontWeight: 800,
-                cursor: "pointer",
-                boxShadow: showPreviousTrades ? "0 0 0 1px rgba(52,211,153,0.12) inset" : "none",
-              }}
-            >
-              {showPreviousTrades ? "إخفاء الصفقات السابقة" : "عرض الصفقات السابقة"}
-            </button>
-          )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <select value={symbol} onChange={(e) => setSymbol(e.target.value)} style={{ background: "#0b0f18", color: "#f5f7ff", border: "1px solid rgba(148,163,184,0.18)", borderRadius: 8, fontSize: 12.5, padding: "7px 10px", fontWeight: 700, minWidth: 120, outline: "none" }}>
+            {ASSETS.flatMap((g) => g.items.filter((i) => i.yahoo).map((i) => (
+              <option key={i.v} value={i.v}>{i.label}</option>
+            )))}
+          </select>
+          <div style={{ display: "flex", gap: 4, background: "rgba(148,163,184,0.04)", borderRadius: 8, padding: 3 }}>
+            {TF_TOOLBAR_ORDER.filter((tf) => allCandles[tf]?.length).map((tf) => (
+              <button key={tf} onClick={() => setDisplayTF(tf)} style={{ background: displayTF === tf ? "#1c2436" : "transparent", border: displayTF === tf ? "1px solid rgba(148,163,184,0.22)" : "1px solid transparent", color: displayTF === tf ? "#f5f7ff" : "#8aa0bf", borderRadius: 7, padding: "6px 9px", fontSize: 12, fontWeight: 700, cursor: "pointer", minWidth: 34 }}>
+                {TF_LABELS[tf]}
+              </button>
+            ))}
+          </div>
+          <button onClick={runAnalysis} disabled={loading} style={{ display: "flex", alignItems: "center", gap: 6, background: loading ? "rgba(255,255,255,0.06)" : "#e5e7eb", border: "none", color: loading ? "#8aa0bf" : "#0b0f18", fontWeight: 800, borderRadius: 8, padding: "7px 12px", fontSize: 12, cursor: loading ? "not-allowed" : "pointer" }}>
+            <Zap size={12} fill={loading ? "#8aa0bf" : "#0b0f18"} /> {loading ? t("radar.analyzing") : t("radar.aiAnalyze")}
+          </button>
         </div>
       </div>
 
-      <SkV2Panel
-        sk={result?.skV2}
-        expandedTradeDetails={expandedTradeDetails}
-        onToggleTradeDetails={toggleTradeDetails}
-      />
-      <MatryoshkaPanel m={result?.matryoshka} />
-
-      {/* ================= TOP TOOLBAR ================= */}
-      <div className="qmi-anim" style={{
-        ...glass,
-        padding: "0.6rem 0.8rem",
-        display: "flex",
-        alignItems: "center",
-        gap: "0.7rem",
-        flexWrap: "wrap",
-        background: "#0d1220",
-        borderRadius: 10,
-      }}>
-        <select
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value)}
-          style={{
-            background: "#0b0f18",
-            color: "#f5f7ff",
-            border: "1px solid rgba(148,163,184,0.18)",
-            borderRadius: 8,
-            fontSize: 13,
-            padding: "7px 10px",
-            fontWeight: 700,
-            minWidth: 140,
-            outline: "none",
-          }}
-        >
-          {ASSETS.map((g) => (
-            <optgroup key={g.group} label={g.group}>
-              {g.items.filter((i) => i.yahoo).map((i) => (
-                <option key={i.v} value={i.v}>{i.label}</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-
-        <div style={{ display: "flex", gap: 4, background: "rgba(148,163,184,0.04)", borderRadius: 8, padding: 3 }}>
-          {TF_TOOLBAR_ORDER.filter((tf) => allCandles[tf]?.length).map((tf) => (
-            <button
-              key={tf}
-              onClick={() => setDisplayTF(tf)}
-              style={{
-                background: displayTF === tf ? "#1c2436" : "transparent",
-                border: displayTF === tf ? "1px solid rgba(148,163,184,0.22)" : "1px solid transparent",
-                color: displayTF === tf ? "#f5f7ff" : "#8aa0bf",
-                borderRadius: 7,
-                padding: "6px 10px",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-                minWidth: 36,
-              }}
-            >
-              {TF_LABELS[tf]}
-            </button>
-          ))}
+      <div className="tv-shell qmi-anim" style={{ padding: "0.75rem 0.9rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 10, height: 10, borderRadius: "50%", display: "inline-block", background: result?.tradeValid ? "#34D399" : "#7C4DFF", boxShadow: result?.tradeValid ? "0 0 12px rgba(52,211,153,.8)" : "0 0 12px rgba(124,77,255,.75)" }} />
+          <span style={{ fontSize: 12, color: "#F5F3FF", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Live</span>
         </div>
-
-        <button
-          onClick={runAnalysis}
-          disabled={loading}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            background: "#e5e7eb",
-            border: "none",
-            color: "#0b0f18",
-            fontWeight: 800,
-            borderRadius: 8,
-            padding: "7px 12px",
-            fontSize: 12,
-            cursor: "pointer",
-          }}
-        >
-          <Zap size={12} fill="#0b0f18" />
-          {loading ? t("radar.analyzing") : t("radar.aiAnalyze")}
-        </button>
-
-        <div style={{ marginRight: "auto", display: "flex", alignItems: "center", gap: 8, color: "#aab7c9" }}>
-          <span style={{ fontSize: 11.5 }}>{t("radar.conditions")}</span>
-          <span style={{ fontSize: 12.5, fontWeight: 800, color: GREEN }}>
-            {result?.readiness?.metCount != null ? `${result.readiness.metCount}/${result.readiness.totalCount}` : "—"}
-          </span>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#aab7c9" }}>
-          <Radio size={11} color={BLUE} />
-          <span style={{ fontSize: 11.5 }}>{primarySession}</span>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: biasColor }}>
-          <span style={{ fontSize: 11.5, color: "#aab7c9" }}>{t("radar.marketBiasLabel")}</span>
-          <b style={{ fontSize: 12.5 }}>{biasLabel}</b>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span className="tv-chip"><Target size={12} /> {t("radar.marketBiasLabel")}: <b style={{ color: biasColor }}>{biasLabel}</b></span>
+          <span className="tv-chip"><Radio size={12} /> {primarySession}</span>
+          <span className="tv-chip"><Brain size={12} /> {result?.readiness?.metCount != null ? `${result.readiness.metCount}/${result.readiness.totalCount}` : "—"}</span>
         </div>
       </div>
 
+      <DataQualityBanner quality={result?.dataQuality} />
       {error && <div style={{ ...glass, padding: "0.7rem 1rem", color: RED, fontSize: 12.5 }}>{error}</div>}
 
-      {(result?.entryStatus === "Ready" || syncedTrade) && (
-        <AITradeCard
-          result={result}
-          symbol={symbol}
-          asset={asset}
-          timeframeLabel={TF_LABELS[displayTF] || "M15"}
-          executedTrade={executedTrade}
-          executing={executing}
-          executeError={executeError}
-          onExecute={handleExecuteTrade}
-          syncedTrade={syncedTrade}
-          syncLoading={syncLoading}
-          onCheckSynced={handleCheckSyncedTrade}
-        />
-      )}
-
-      {/* ================= MAIN: CHART (≈70%) + AI PANEL (≈30%) ================= */}
-      <div className="qmi-anim qmi-cockpit" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.7fr) minmax(360px, 0.95fr)", gap: "1rem", alignItems: "stretch" }}>
-        <div
-          ref={chartCardRef}
-          style={{
-            ...glass,
-            padding: "0.7rem",
-            borderRadius: 18,
-            background: "linear-gradient(180deg, rgba(15,12,24,0.98), rgba(18,14,29,0.96))",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.2rem 0.45rem 0.7rem" }}>
+      <div className="qmi-anim qmi-cockpit" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.9fr) minmax(290px,0.8fr)", gap: "1rem", alignItems: "stretch" }}>
+        <div className="tv-shell" style={{ padding: "0.65rem" }} ref={chartCardRef}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "0.1rem 0.2rem 0.7rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 900, color: "#F5F3FF", letterSpacing: "0.04em" }}>{asset?.label || symbol}</span>
+              <span style={{ fontSize: 13, fontWeight: 900, color: "#F5F3FF" }}>{asset?.label || symbol}</span>
               {result?.price != null && <span style={{ fontSize: 12.5, color: "#A79FC4" }}>{fmt(result.price)}</span>}
             </div>
-            <button
-              onClick={resetChart}
-              title={t("radar.resetChartTitle")}
-              style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.02)", border: "1px solid #2A2145", color: "#aaa", borderRadius: 10, padding: "5px 9px", fontSize: 11, cursor: "pointer" }}
-            >
-              <RotateCcw size={11} />
-              {t("radar.resetChart")}
+            <button onClick={resetChart} title={t("radar.resetChartTitle")} style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.02)", border: "1px solid #2A2145", color: "#aaa", borderRadius: 10, padding: "5px 9px", fontSize: 11, cursor: "pointer" }}>
+              <RotateCcw size={11} /> {t("radar.resetChart")}
             </button>
           </div>
 
-          <ChartInfoBar
-            price={result?.price}
-            dailyChange={chartDailyChange}
-            atr={chartATR}
-            volume={chartVolume}
-            lastUpdateAt={lastUpdateAt}
-            nowTick={nowTick}
-          />
+          <ChartInfoBar price={result?.price} dailyChange={chartDailyChange} atr={chartATR} volume={chartVolume} lastUpdateAt={lastUpdateAt} nowTick={nowTick} />
 
-          <div ref={wrapRef} style={{ position: "relative", width: "100%", height: CHART_H, borderRadius: 16, overflow: "hidden", border: "1px solid rgba(124,77,255,0.18)", background: "#0B0913" }}>
+          <div ref={wrapRef} style={{ position: "relative", width: "100%", height: CHART_H, borderRadius: 12, overflow: "hidden", border: "1px solid rgba(124,77,255,0.18)", background: "#0B0913" }}>
             <div ref={containerRef} style={{ width: "100%", height: CHART_H }} />
             <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
           </div>
         </div>
 
-        <div style={{ position: "relative" }}>
-          <AIPanel result={result} signal={signal} tab={tab} setTab={setTab} primarySession={primarySession} />
+        <div className="tv-shell" style={{ padding: "0.9rem", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: "#F5F3FF", letterSpacing: "0.08em", textTransform: "uppercase" }}>{t("radar.skAnalysis")}</div>
+            <span style={{ fontSize: 11, color: signal === "BUY" ? GREEN : signal === "SELL" ? RED : "#8B84A8", fontWeight: 800, border: "1px solid rgba(148,163,184,0.12)", borderRadius: 999, padding: "5px 8px" }}>{signal || "WAIT"}</span>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div className="tv-stat">
+              <div className="tv-stat-label">Status</div>
+              <div className="tv-stat-value" style={{ color: result?.tradeValid ? GREEN : GOLD_LIGHT }}>{result?.entryStatus || t("radar.monitoring")}</div>
+            </div>
+            <div className="tv-stat">
+              <div className="tv-stat-label">Conditions</div>
+              <div className="tv-stat-value" style={{ color: result?.readiness?.metCount != null ? GREEN : "#f7f8ff" }}>{result?.readiness?.metCount != null ? `${result.readiness.metCount}/${result.readiness.totalCount}` : "—"}</div>
+            </div>
+            <div className="tv-stat">
+              <div className="tv-stat-label">Entry</div>
+              <div className="tv-stat-value" style={{ color: GOLD_LIGHT }}>{fmt(result?.entry)}</div>
+            </div>
+            <div className="tv-stat">
+              <div className="tv-stat-label">Stop</div>
+              <div className="tv-stat-value" style={{ color: RED }}>{fmt(result?.stopLoss)}</div>
+            </div>
+          </div>
+
+          <div style={{ borderTop: "1px solid rgba(148,163,184,0.12)", paddingTop: 10 }}>
+            <div style={{ fontSize: 11.5, color: "#8B84A8", marginBottom: 8 }}>{t("radar.conditionsMap")}</div>
+            <div style={{ display: "grid", gap: 6 }}>
+              {(result?.readiness?.rows || []).slice(0, 5).map((row) => (
+                <div key={row.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5, color: "#dfe7ff", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(148,163,184,0.08)", borderRadius: 8, padding: "5px 7px" }}>
+                  <span style={{ color: row.state === "met" ? GREEN : row.state === "pending" ? GOLD : "#6E6690", width: 12, flexShrink: 0 }}>{row.state === "met" ? "✓" : row.state === "pending" ? "•" : "?"}</span>
+                  <span style={{ minWidth: 0, flex: 1, color: "#c7cfe8" }}>{row.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ================= لوح البيانات — تبويبات بدل تسعة أقسام فوق بعض ================= */}
+      {(result?.entryStatus === "Ready" || syncedTrade) && (
+        <AITradeCard result={result} symbol={symbol} asset={asset} timeframeLabel={TF_LABELS[displayTF] || "M15"} executedTrade={executedTrade} executing={executing} executeError={executeError} onExecute={handleExecuteTrade} syncedTrade={syncedTrade} syncLoading={syncLoading} onCheckSynced={handleCheckSyncedTrade} />
+      )}
+
       <DataTabBar active={dataTab} onSelect={selectDataTab} counts={{ opportunities: marketStatus.activeCount }} />
 
       <div className="qmi-tabpanel" role="tabpanel" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -1408,14 +1213,14 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
         )}
 
         {dataTab === "market" && (
-          <div className="qmi-anim qmi-two-col" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(240px, 1fr))", gap: "1rem", alignItems: "start" }}>
+          <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(240px, 1fr))", gap: "1rem", alignItems: "start" }}>
             <CurrencyHeatMapCard snapshot={snapshot} trend={currencyTrend} />
             <SessionMapCard sessions={sessions} nowTick={nowTick} />
           </div>
         )}
 
         {dataTab === "opportunities" && (
-          <div className="qmi-anim qmi-two-col" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "1rem", alignItems: "start" }}>
+          <div className="qmi-anim" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "1rem", alignItems: "start" }}>
             <LiveOpportunitiesCard items={radarItems} openTradeSymbols={openTradeSymbols} onOpen={openOpportunity} nowTick={nowTick} />
             <LiveNotificationsCard items={radarItems} onOpen={openOpportunity} />
           </div>
