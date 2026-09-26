@@ -1947,11 +1947,6 @@ function drawSMT(ctx, smt, priceToY, plotW, ease) {
 }
 
 function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeSet, showLabels = true) {
-  /* ⚠️ الدخول والستوب بينرسموا حتى بلا أهداف.
-     الأهداف بتيجي من السيكونز، وممكن ما تكون مؤكَّدة بلحظة الدخول (C ما
-     تشكّلت بعد، أو ما في سيكونز بنفس اتجاه الصفقة). الدخول والستوب
-     **معروفان** وقتها — إخفاء الصفقة كلها بيضيّع معلومة مؤكَّدة عشان
-     وحدة ناقصة. والناقص بينتعلّم صراحةً باللوحة. */
   if (!trade?.entry) return;
   const hasTargets = !!trade.targets?.length;
   if (timeSet && !timeSet.has(trade.entry.time)) return;
@@ -1961,89 +1956,89 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
   if (ex == null || ey == null) return;
 
   const up = trade.direction === "up";
-  /* ⚠️ الستوب من `trade.stop` — قاعدة صاحب المنهجية: **تحت نقطة الـSMT**.
-     `points.B.price` تراجع للمحرك القديم اللي كان بياخده من نقطة التصحيح،
-     وهاد مستوى تاني تماماً. */
   const stopPrice = trade.stop ?? trade.points?.B?.price;
   const finalTarget = hasTargets ? trade.targets[trade.targets.length - 1] : null;
   const sy = stopPrice != null ? priceToY(stopPrice) : null;
-  /* بلا أهداف: الصندوق بيمتد بمقدار المخاطرة (1R) عشان يبان الاتجاه
-     والنسبة — مش عشان يوهم بهدف. اللوحة بتقول صراحةً إنه ما في أهداف. */
   const ty = finalTarget
     ? priceToY(finalTarget.price)
     : priceToY(up ? trade.entry.price + (trade.risk || 0) : trade.entry.price - (trade.risk || 0));
   if (sy == null || ty == null) return;
 
-  /* صندوق الصفقة — مثبَّت من لحظة الدخول لقدّام، زي أداة Long/Short Position
-     بتريدنغ فيو: أخضر ناحية الهدف وأحمر ناحية الوقف. بيوضّح المخاطرة/العائد
-     بلمحة، وبيمنع "طوفان" خطوط الأهداف اللي كان بيعمل عجقة. */
-  const boxRight = plotW - 58;
-  const boxW = Math.max(24, boxRight - ex);
+  const anchorX = Math.min(plotW - 150, Math.max(ex + 24, 120));
+  const entryRight = Math.min(plotW - 18, anchorX + 92);
+  const riskX = Math.max(26, anchorX - 18);
+  const rewardX = Math.min(plotW - 18, anchorX + 78);
 
   ctx.save();
   ctx.globalAlpha = ease * 0.9;
 
-  // منطقة الربح
-  ctx.fillStyle = `${GREEN}1c`;
-  ctx.fillRect(ex, Math.min(ey, ty), boxW, Math.abs(ey - ty));
-  // منطقة المخاطرة
-  ctx.fillStyle = `${RED}1c`;
-  ctx.fillRect(ex, Math.min(ey, sy), boxW, Math.abs(ey - sy));
-
-  // حدود
-  ctx.strokeStyle = `${GREEN}55`;
+  const riskTop = Math.min(ey, sy);
+  const riskHeight = Math.max(Math.abs(ey - sy), 12);
+  ctx.fillStyle = `${RED}18`;
+  ctx.strokeStyle = `${RED}8c`;
   ctx.lineWidth = 1;
-  ctx.strokeRect(ex + 0.5, Math.min(ey, ty) + 0.5, boxW - 1, Math.abs(ey - ty) - 1);
-  ctx.strokeStyle = `${RED}55`;
-  ctx.strokeRect(ex + 0.5, Math.min(ey, sy) + 0.5, boxW - 1, Math.abs(ey - sy) - 1);
-
-  // خط الدخول
-  ctx.strokeStyle = GOLD_LIGHT;
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(ex, ey);
-  ctx.lineTo(ex + boxW, ey);
+  roundRect(ctx, riskX, riskTop, 18, riskHeight, 5);
+  ctx.fill();
   ctx.stroke();
 
-  // علامة الدخول
+  const rewardTop = Math.min(ey, ty);
+  const rewardHeight = Math.max(Math.abs(ey - ty), 12);
+  ctx.fillStyle = `${GREEN}18`;
+  ctx.strokeStyle = `${GREEN}8c`;
+  roundRect(ctx, rewardX, rewardTop, 18, rewardHeight, 5);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = GOLD_LIGHT;
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(ex, ey, 4.5, 0, Math.PI * 2);
+  ctx.moveTo(anchorX, ey);
+  ctx.lineTo(entryRight, ey);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(anchorX + 10, ey);
+  ctx.lineTo(anchorX + 10, sy);
+  ctx.strokeStyle = `${RED}d9`;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(entryRight - 10, ey);
+  ctx.lineTo(entryRight - 10, ty);
+  ctx.strokeStyle = `${GREEN}d9`;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(anchorX, ey, 4.5, 0, Math.PI * 2);
   ctx.fillStyle = "#141024";
   ctx.fill();
   ctx.lineWidth = 2;
   ctx.strokeStyle = GOLD_LIGHT;
   ctx.stroke();
 
-  /* ⚠️ التسميات بتنرسم بس لما ما تكون `drawProjection` رسمت نفس الصفقة —
-     وإلا الدخول والستوب بينكتبوا مرتين بنفس السعر.
-
-     ⚠️ وكمان: `finalTarget` بيكون `null` لما الصفقة بلا أهداف، وكان
-     `finalTarget.key` بينقرا بلا حارس → TypeError بيطفّي الشارت. صار أوضح
-     بعد ما المحرك بلّش يرمي الأهداف المحقَّقة قبل الدخول. */
   if (showLabels) {
-    const rows = [
-      finalTarget ? { y: ty, text: `${finalTarget.key}  ${fmt(finalTarget.price)}`, color: GREEN } : null,
-      { y: ey, text: `${_t("radar.entryPoint")}  ${fmt(trade.entry.price)}`, color: GOLD_LIGHT },
-      { y: sy, text: `${_t("radar.stopLabel")}  ${fmt(stopPrice)}`, color: RED },
-    ].filter(Boolean);
     ctx.font = "700 9.5px sans-serif";
     ctx.textBaseline = "middle";
-    for (const rr of rows) {
-      ctx.fillStyle = rr.color;
-      ctx.fillText(rr.text, ex + boxW + 5, rr.y);
+
+    const entryLabel = `${_t("radar.entryPoint")} ${fmt(trade.entry.price)}`;
+    ctx.fillStyle = GOLD_LIGHT;
+    ctx.fillText(entryLabel, anchorX + 10, ey - 12);
+
+    const stopLabel = `${_t("radar.stopLabel")} ${fmt(stopPrice)}`;
+    ctx.fillStyle = RED;
+    ctx.fillText(stopLabel, Math.max(8, riskX - 5), sy > ey ? sy + 12 : sy - 12);
+
+    if (finalTarget) {
+      const tpLabel = `${finalTarget.key} ${fmt(finalTarget.price)}`;
+      ctx.fillStyle = GREEN;
+      ctx.fillText(tpLabel, rewardX + 22, ty < ey ? ty - 12 : ty + 12);
     }
+
     ctx.textBaseline = "alphabetic";
   }
 
-  /* ⚠️ صندوق «سبب الدخول» انشال من الشارت.
-     -----------------------------------------------------------------
-     كان بيعرض: من وين الدخول · هل الـSMT متحقق · حدود الكتلة · الإبطال.
-     نفس المحتوى صار معروضاً بخريطة الشروط باللوحة (R3…R12) بسطور مرتّبة
-     وقابلة للقراءة — بينما هون كان صندوقاً عائماً فوق الشموع. */
-
-  // وسم الحالة فوق الصندوق
-  /* ثلاث حالات مش ثنتين: محققة / ضاربة وقف / قيد التتبّع.
-     كان أي صفقة مش محققة تطلع "قيد التتبّع" حتى لو كانت مضروبة وقف من زمان. */
   const stopped = trade.invalidated && !trade.achieved;
   const label = trade.achieved
     ? _t("radar.tradeAchieved")
@@ -2052,11 +2047,12 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
       : _t("radar.tradeTracking");
   drawPill(
     ctx,
-    ex + boxW / 2,
-    Math.min(ey, ty) - 10,
+    Math.min(plotW - 40, anchorX + 42),
+    Math.min(ey, ty) - 14,
     `${_t("radar.lastTrade")} ${up ? "▲" : "▼"} · ${label}`,
     trade.achieved ? GREEN : stopped ? RED : GOLD_LIGHT,
-    "700 10px sans-serif"
+    "700 10px sans-serif",
+    "left"
   );
 
   ctx.restore();
@@ -2289,64 +2285,78 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
   if (entryY == null || stopY == null) return;
 
   const tpY = finalTarget ? priceToY(finalTarget.price) : null;
-  const rightX = chartW - 14;
-  const riskX = rightX - 28;
-  const tpX = rightX - 60;
-  const labelPad = 8;
+  const baseX = Math.min(chartW - 170, Math.max(lastX + 28, 116));
+  const endX = Math.min(chartW - 18, baseX + 90);
+  const riskX = Math.max(26, baseX - 18);
+  const rewardX = Math.min(chartW - 18, endX - 10);
 
   ctx.save();
   ctx.globalAlpha = ease;
 
-  // منطقة SL: مستطيل أحمر واحد واضح ومحدَّد تمامًا
   const riskTop = Math.min(entryY, stopY);
-  const riskHeight = Math.max(Math.abs(entryY - stopY), 12);
-  ctx.fillStyle = "rgba(255, 69, 58, 0.18)";
-  ctx.strokeStyle = "rgba(255, 69, 58, 0.96)";
-  ctx.lineWidth = 1.15;
-  roundRect(ctx, riskX, riskTop, 24, riskHeight, 5);
+  const riskHeight = Math.max(Math.abs(entryY - stopY), 14);
+  ctx.fillStyle = `${RED}18`;
+  ctx.strokeStyle = `${RED}8c`;
+  ctx.lineWidth = 1;
+  roundRect(ctx, riskX, riskTop, 18, riskHeight, 5);
   ctx.fill();
   ctx.stroke();
 
-  // منطقة TP: مستطيل أخضر واحد واضح ومبسط
   if (tpY != null) {
     const tpTop = Math.min(entryY, tpY);
-    const tpHeight = Math.max(Math.abs(entryY - tpY), 12);
-    ctx.fillStyle = "rgba(16, 229, 160, 0.14)";
-    ctx.strokeStyle = "rgba(16, 229, 160, 0.96)";
-    roundRect(ctx, tpX, tpTop, 24, tpHeight, 5);
+    const tpHeight = Math.max(Math.abs(entryY - tpY), 14);
+    ctx.fillStyle = `${GREEN}18`;
+    ctx.strokeStyle = `${GREEN}8c`;
+    roundRect(ctx, rewardX, tpTop, 18, tpHeight, 5);
     ctx.fill();
     ctx.stroke();
   }
 
-  // خط Entry: بسيط وواضح، بدون تكرار
-  ctx.strokeStyle = "rgba(245, 243, 255, 0.95)";
-  ctx.lineWidth = 1.8;
+  ctx.strokeStyle = GOLD_LIGHT;
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(lastX, entryY);
-  ctx.lineTo(rightX, entryY);
+  ctx.moveTo(baseX, entryY);
+  ctx.lineTo(endX, entryY);
   ctx.stroke();
 
-  // ربط صغير فقط للربط البصري مع الحافة
-  ctx.strokeStyle = "rgba(245, 243, 255, 0.65)";
   ctx.beginPath();
-  ctx.moveTo(lastX + 6, entryY);
-  ctx.lineTo(rightX - 2, entryY);
+  ctx.moveTo(baseX + 12, entryY);
+  ctx.lineTo(baseX + 12, stopY);
+  ctx.strokeStyle = `${RED}d9`;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // خط ربط صغير بين Entry و SL لتمييز المسافة المحفوظة
-  ctx.strokeStyle = "rgba(255, 69, 58, 0.75)";
-  ctx.beginPath();
-  ctx.moveTo(lastX + 4, entryY);
-  ctx.lineTo(lastX + 4, stopY);
-  ctx.stroke();
-
-  // تسميات خارجية فقط
-  drawProjectionTag(ctx, rightX + labelPad, entryY, "Entry", GOLD_LIGHT, "left");
-  drawProjectionTag(ctx, riskX - 6, riskTop + 10, "SL", RED, "right");
   if (tpY != null) {
-    drawProjectionTag(ctx, tpX - 6, Math.min(entryY, tpY) + 10, "TP", GREEN, "right");
+    ctx.beginPath();
+    ctx.moveTo(endX - 12, entryY);
+    ctx.lineTo(endX - 12, tpY);
+    ctx.strokeStyle = `${GREEN}d9`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
   }
 
+  ctx.beginPath();
+  ctx.arc(baseX, entryY, 4.5, 0, Math.PI * 2);
+  ctx.fillStyle = "#141024";
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = GOLD_LIGHT;
+  ctx.stroke();
+
+  ctx.font = "700 9.5px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = GOLD_LIGHT;
+  ctx.fillText(`${_t("radar.entryPoint")} ${fmt(entry)}`, baseX + 12, entryY - 12);
+
+  ctx.fillStyle = RED;
+  ctx.fillText(`${_t("radar.stopLabel")} ${fmt(stop)}`, Math.max(8, riskX - 3), stopY > entryY ? stopY + 12 : stopY - 12);
+
+  if (tpY != null) {
+    ctx.fillStyle = GREEN;
+    ctx.fillText(`${finalTarget?.key || "TP"} ${fmt(tpY)}`, rewardX + 20, tpY < entryY ? tpY - 12 : tpY + 12);
+  }
+
+  ctx.textBaseline = "alphabetic";
   ctx.restore();
 }
 
