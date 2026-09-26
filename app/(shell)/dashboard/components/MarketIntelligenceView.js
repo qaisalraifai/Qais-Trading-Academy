@@ -854,7 +854,10 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
     drawOrderBlocks(ctx, r.orderBlocks, timeToXSafe, priceToY, plotW, h, ease, r.price, timeSet);
     drawSMT(ctx, r.smtSignal, priceToY, plotW, ease);
 
-    drawProjection(ctx, r, priceToY, lastX, plotW, h, ease);
+    /* Trade setup النشط يرسم عبر `drawLastTrade` فقط.
+       `drawProjection` هو renderer قديم/مكرر للصفقة الحالية، وتركه هنا
+       يسبب ازدواجية في العرض على نفس الشارت. لا نلمس الحسابات ولا القيم،
+       فقط نزيل المسار المكرر من الطبقة البصرية. */
 
     /* آخر صفقة كاملة تكوّنت تاريخياً — بتنرسم دايماً (حتى لو محققة) طالما
        هي على نفس فريم العرض. بتنرسم أخيراً حتى تقعد فوق باقي الطبقات. */
@@ -1961,56 +1964,74 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
   const ty = finalTarget ? priceToY(finalTarget.price) : null;
   if (sy == null && ty == null) return;
 
-  const labelColor = up ? GREEN : RED;
-  const entryX = Math.min(plotW - 150, Math.max(ex + 30, plotW * 0.58));
-  const endX = Math.min(plotW - 16, entryX + 96);
+  const entryColor = up ? GREEN : RED;
+  const entryX = Math.min(plotW - 170, Math.max(ex + 26, plotW * 0.58));
+  const lineEndX = plotW - 10;
+  const bandX = entryX + 18;
+  const bandW = 22;
+  const labelX = Math.min(plotW - 70, Math.max(entryX + 52, plotW * 0.72));
 
   ctx.save();
-  ctx.globalAlpha = ease * 0.9;
+  ctx.globalAlpha = ease * 0.96;
 
-  ctx.strokeStyle = labelColor;
-  ctx.lineWidth = 1.6;
+  const dirText = up ? "BUY" : "SELL";
+  const entryText = `${dirText} / ENTRY ${fmt(trade.entry.price)}`;
+
+  if (sy != null) {
+    const riskTop = Math.min(ey, sy);
+    const riskHeight = Math.max(Math.abs(ey - sy), 16);
+    ctx.fillStyle = `${RED}12`;
+    ctx.strokeStyle = `${RED}36`;
+    roundRect(ctx, bandX, riskTop, bandW, riskHeight, 4);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  if (ty != null) {
+    const rewardTop = Math.min(ey, ty);
+    const rewardHeight = Math.max(Math.abs(ey - ty), 16);
+    ctx.fillStyle = `${GREEN}12`;
+    ctx.strokeStyle = `${GREEN}36`;
+    roundRect(ctx, bandX, rewardTop, bandW, rewardHeight, 4);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = entryColor;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(entryX, ey);
-  ctx.lineTo(endX, ey);
+  ctx.lineTo(lineEndX, ey);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(entryX, ey, 4.2, 0, Math.PI * 2);
+  ctx.arc(entryX, ey, 4, 0, Math.PI * 2);
   ctx.fillStyle = "#141024";
   ctx.fill();
-  ctx.strokeStyle = labelColor;
+  ctx.strokeStyle = entryColor;
   ctx.stroke();
 
   if (showLabels) {
-    const dirText = up ? "BUY" : "SELL";
-    const entryText = `ENTRY ${fmt(trade.entry.price)}`;
-    drawPill(ctx, entryX + 8, ey - 12, `${dirText}  ${entryText}`, labelColor, "700 9.5px sans-serif", "left");
+    drawPill(ctx, labelX, ey, entryText, entryColor, "700 9.5px sans-serif", "left");
 
     if (sy != null) {
-      const slText = `SL ${fmt(stopPrice)}`;
-      const slY = sy;
-      const riskTop = Math.min(ey, slY);
-      const riskHeight = Math.max(Math.abs(ey - slY), 12);
-      ctx.fillStyle = `${RED}18`;
-      ctx.strokeStyle = `${RED}88`;
-      roundRect(ctx, entryX + 14, riskTop, 16, riskHeight, 4);
-      ctx.fill();
+      ctx.strokeStyle = `${RED}90`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(entryX, sy);
+      ctx.lineTo(lineEndX, sy);
       ctx.stroke();
-      drawPill(ctx, entryX + 32, slY, slText, RED, "700 9.5px sans-serif", "left");
+      drawPill(ctx, labelX, sy, `SL ${fmt(stopPrice)}`, RED, "700 9.5px sans-serif", "left");
     }
 
     if (ty != null) {
-      const tpText = `TP ${fmt(finalTarget.price)}`;
-      const tpY = ty;
-      const rewardTop = Math.min(ey, tpY);
-      const rewardHeight = Math.max(Math.abs(ey - tpY), 12);
-      ctx.fillStyle = `${GREEN}18`;
-      ctx.strokeStyle = `${GREEN}88`;
-      roundRect(ctx, entryX + 14, rewardTop, 16, rewardHeight, 4);
-      ctx.fill();
+      ctx.strokeStyle = `${GREEN}90`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(entryX, ty);
+      ctx.lineTo(lineEndX, ty);
       ctx.stroke();
-      drawPill(ctx, entryX + 32, tpY, tpText, GREEN, "700 9.5px sans-serif", "left");
+      drawPill(ctx, labelX, ty, `TP ${fmt(finalTarget.price)}`, GREEN, "700 9.5px sans-serif", "left");
     }
   }
 
