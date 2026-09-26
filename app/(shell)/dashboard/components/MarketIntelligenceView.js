@@ -2239,98 +2239,96 @@ function drawProjection(ctx, r, priceToY, lastX, chartW, chartH, ease) {
   const ready = r.tradeValid && r.entry != null && r.stopLoss != null;
   if (!ready) return;
 
-  const targets = r.targets || [];
-  const entryY = priceToY(r.entry);
-  const slY = priceToY(r.stopLoss);
-  if (entryY == null || slY == null) return;
+  const entry = Number(r.entry);
+  const stop = Number(r.stopLoss);
+  const targets = Array.isArray(r.targets) ? r.targets.filter((t) => Number.isFinite(t?.price)) : [];
+  const finalTarget = targets[targets.length - 1];
+  if (!Number.isFinite(entry) || !Number.isFinite(stop)) return;
 
-  const rightEdge = chartW - 6;
-  const bendX = Math.max(lastX + 40, rightEdge - 90);
-  const riskPct = (Math.abs(r.entry - r.stopLoss) / r.entry) * 100;
+  const entryY = priceToY(entry);
+  const stopY = priceToY(stop);
+  if (entryY == null || stopY == null) return;
 
-  const rows = [
-    { y: entryY, color: GOLD_LIGHT, dash: [2, 3], lines: ["ENTRY", fmt(r.entry)] },
-    /* ⚠️ التسمية من المحرك — كانت «SMT» محفورة، فلما تبدّل مصدر الستوب
-       لحد إبطال الكتلة صارت تكذب على الطالب. */
-    { y: slY, color: RED, dash: [2, 3], lines: [`SL · ${r.stopLabel || "SMT"}`, fmt(r.stopLoss), `Risk ${riskPct.toFixed(2)}%`] },
-  ];
-  targets.forEach((t) => {
-    const y = priceToY(t.price);
-    if (y == null) return;
-    /* ⚠️ الهدف الأول سوينغ حقيقي (`isRealLevel`) — بلا نسبة فيبو. كان
-       بيطبع «null Fib». */
-    const isReal = !!t.isRealLevel || t.ratio == null;
-    const color = isReal ? GREEN : BLUE;
-    const rr = Math.abs(t.price - r.entry) / Math.abs(r.entry - r.stopLoss);
-    rows.push({
-      y, color, dash: [5, 4], glow: t.hit,
-      lines: [`${t.key} · ${isReal ? _t("radar.realLevelTarget") : `${t.ratio} Fib`}`, fmt(t.price), `RR 1 : ${rr.toFixed(2)}`],
-    });
-  });
-
-  // Decluttering: بنفصل موقع الليبل (labelY) عن موقع السعر الحقيقي (y) عشان
-  // ولا ليبل يتراكب فوق التاني، بغض النظر قد إيش المستويات قريبة من بعض.
-  const sorted = [...rows].sort((a, b) => a.y - b.y);
-  const rowGap = 42;
-  const halfBox = 22;
-  let prevLabelY = -Infinity;
-  sorted.forEach((row) => {
-    row.labelY = Math.max(row.y, prevLabelY + rowGap);
-    prevLabelY = row.labelY;
-  });
-  // نفس معالجة مسقط السيكونز: لو الكومة طلعت تحت حدود الشارت ارفعها كلها،
-  // وبعدين احصر كل ليبل جوّا الحدود حتى ما ينقص واحد منهم من الشاشة
-  const overflowBottom = sorted[sorted.length - 1].labelY - (chartH - halfBox);
-  if (overflowBottom > 0) sorted.forEach((row) => (row.labelY -= overflowBottom));
-  sorted.forEach((row) => {
-    row.labelY = Math.max(halfBox, Math.min(chartH - halfBox, row.labelY));
-  });
+  const tpY = finalTarget ? priceToY(finalTarget.price) : null;
+  const rightX = chartW - 14;
+  const riskX = rightX - 28;
+  const tpX = rightX - 60;
+  const labelPad = 8;
 
   ctx.save();
   ctx.globalAlpha = ease;
 
-  sorted.forEach((row) => {
-    // الخط الأفقي من آخر شمعة لحد قرب المحور (بسعره الحقيقي، بدون انزياح)
-    ctx.strokeStyle = `${row.color}70`;
-    ctx.lineWidth = row.glow ? 1.6 : 1;
-    ctx.setLineDash(row.dash);
-    ctx.beginPath();
-    ctx.moveTo(lastX, row.y);
-    ctx.lineTo(bendX, row.y);
-    ctx.stroke();
-    // قطعة قصيرة تربط السعر الحقيقي بموقع الليبل لو انزاح بسبب الديكلترينغ
-    ctx.beginPath();
-    ctx.moveTo(bendX, row.y);
-    ctx.lineTo(rightEdge - 4, row.labelY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    drawEdgeBox(ctx, rightEdge, row.labelY, row.lines, row.color, row.glow);
-  });
-
-  // خط المسقط القطري (زي أداة Trend-Based Extension) — من نقطة الدخول الحالية
-  // لحد أبعد هدف، لإعطاء إحساس بصري بمسار/زخم الحركة المتوقعة
-  const farthest = sorted[sorted.length - 1];
-  if (farthest) {
-    ctx.strokeStyle = `#2A2145`;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([1, 4]);
-    ctx.beginPath();
-    ctx.moveTo(lastX, entryY);
-    ctx.lineTo(rightEdge - 4, farthest.labelY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  // القطعة الرأسية القصيرة بين Entry وSL جنب آخر شمعة — إحساس فوري بحجم المخاطرة
-  ctx.strokeStyle = `${RED}99`;
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.moveTo(lastX + 3, entryY);
-  ctx.lineTo(lastX + 3, slY);
+  // منطقة SL: مستطيل أحمر واحد واضح ومحدَّد تمامًا
+  const riskTop = Math.min(entryY, stopY);
+  const riskHeight = Math.max(Math.abs(entryY - stopY), 12);
+  ctx.fillStyle = "rgba(255, 69, 58, 0.18)";
+  ctx.strokeStyle = "rgba(255, 69, 58, 0.96)";
+  ctx.lineWidth = 1.15;
+  roundRect(ctx, riskX, riskTop, 24, riskHeight, 5);
+  ctx.fill();
   ctx.stroke();
 
+  // منطقة TP: مستطيل أخضر واحد واضح ومبسط
+  if (tpY != null) {
+    const tpTop = Math.min(entryY, tpY);
+    const tpHeight = Math.max(Math.abs(entryY - tpY), 12);
+    ctx.fillStyle = "rgba(16, 229, 160, 0.14)";
+    ctx.strokeStyle = "rgba(16, 229, 160, 0.96)";
+    roundRect(ctx, tpX, tpTop, 24, tpHeight, 5);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // خط Entry: بسيط وواضح، بدون تكرار
+  ctx.strokeStyle = "rgba(245, 243, 255, 0.95)";
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(lastX, entryY);
+  ctx.lineTo(rightX, entryY);
+  ctx.stroke();
+
+  // ربط صغير فقط للربط البصري مع الحافة
+  ctx.strokeStyle = "rgba(245, 243, 255, 0.65)";
+  ctx.beginPath();
+  ctx.moveTo(lastX + 6, entryY);
+  ctx.lineTo(rightX - 2, entryY);
+  ctx.stroke();
+
+  // خط ربط صغير بين Entry و SL لتمييز المسافة المحفوظة
+  ctx.strokeStyle = "rgba(255, 69, 58, 0.75)";
+  ctx.beginPath();
+  ctx.moveTo(lastX + 4, entryY);
+  ctx.lineTo(lastX + 4, stopY);
+  ctx.stroke();
+
+  // تسميات خارجية فقط
+  drawProjectionTag(ctx, rightX + labelPad, entryY, "Entry", GOLD_LIGHT, "left");
+  drawProjectionTag(ctx, riskX - 6, riskTop + 10, "SL", RED, "right");
+  if (tpY != null) {
+    drawProjectionTag(ctx, tpX - 6, Math.min(entryY, tpY) + 10, "TP", GREEN, "right");
+  }
+
   ctx.restore();
+}
+
+function drawProjectionTag(ctx, x, y, label, color, align = "left") {
+  ctx.font = "700 10px sans-serif";
+  const textW = ctx.measureText(label).width;
+  const boxW = textW + 12;
+  const boxH = 16;
+  const boxX = align === "left" ? x : x - boxW;
+  const boxY = y - boxH / 2;
+
+  ctx.fillStyle = "rgba(18, 20, 24, 0.96)";
+  ctx.strokeStyle = `${color}A8`;
+  ctx.lineWidth = 1;
+  roundRect(ctx, boxX, boxY, boxW, boxH, 4);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = color;
+  ctx.font = "700 10px sans-serif";
+  ctx.fillText(label, boxX + 6, boxY + 11);
 }
 
 /* صندوق ليبل ملزوق على حافة محور السعر (يمين الشارت) — عنوان بولد + سطر/سطرين
