@@ -29,10 +29,10 @@ const CHART_H = 600;
 const ANIM_MS = 450;
 
 const glass = {
-  background: "linear-gradient(180deg, rgba(20,16,36,0.96), rgba(12,10,20,0.96))",
-  border: `1px solid rgba(124,77,255,0.2)`,
-  borderRadius: 20,
-  boxShadow: "0 18px 48px rgba(9,7,16,0.52)",
+  background: "#0f1320",
+  border: "1px solid rgba(148, 163, 184, 0.12)",
+  borderRadius: 12,
+  boxShadow: "0 8px 28px rgba(2, 6, 23, 0.28)",
   backdropFilter: "blur(10px)",
 };
 
@@ -1235,60 +1235,53 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
       {/* ================= TOP TOOLBAR ================= */}
       <div className="qmi-anim" style={{
         ...glass,
-        padding: "0.85rem 1rem",
+        padding: "0.6rem 0.8rem",
         display: "flex",
         alignItems: "center",
-        gap: "0.9rem",
+        gap: "0.7rem",
         flexWrap: "wrap",
-        background: "linear-gradient(135deg, rgba(20,16,36,0.96), rgba(23,18,34,0.92))",
-        borderRadius: 18,
-        borderColor: "#2E2549",
+        background: "#0d1220",
+        borderRadius: 10,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <select
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            style={{
-              background: "rgba(20,16,36,0.76)",
-              color: "#F5F3FF",
-              border: "1px solid #3D2F63",
-              borderRadius: 12,
-              fontSize: 13,
-              padding: "8px 12px",
-              fontWeight: 700,
-              minWidth: 150,
-              outline: "none",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.02)",
-            }}
-          >
-            {ASSETS.map((g) => (
-              <optgroup key={g.group} label={g.group}>
-                {g.items.filter((i) => i.yahoo).map((i) => (
-                  <option key={i.v} value={i.v}>{i.label}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </div>
+        <select
+          value={symbol}
+          onChange={(e) => setSymbol(e.target.value)}
+          style={{
+            background: "#0b0f18",
+            color: "#f5f7ff",
+            border: "1px solid rgba(148,163,184,0.18)",
+            borderRadius: 8,
+            fontSize: 13,
+            padding: "7px 10px",
+            fontWeight: 700,
+            minWidth: 140,
+            outline: "none",
+          }}
+        >
+          {ASSETS.map((g) => (
+            <optgroup key={g.group} label={g.group}>
+              {g.items.filter((i) => i.yahoo).map((i) => (
+                <option key={i.v} value={i.v}>{i.label}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
 
-        <div style={{ width: 1, height: 26, background: "rgba(255,255,255,0.08)" }} />
-
-        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 4, background: "rgba(148,163,184,0.04)", borderRadius: 8, padding: 3 }}>
           {TF_TOOLBAR_ORDER.filter((tf) => allCandles[tf]?.length).map((tf) => (
             <button
               key={tf}
               onClick={() => setDisplayTF(tf)}
               style={{
-                background: displayTF === tf ? "linear-gradient(135deg, rgba(124,77,255,0.25), rgba(212,175,55,0.15))" : "rgba(255,255,255,0.02)",
-                border: `1px solid ${displayTF === tf ? GOLD : "#2A2145"}`,
-                color: displayTF === tf ? GOLD_LIGHT : "#7B7097",
-                borderRadius: 10,
-                padding: "7px 11px",
+                background: displayTF === tf ? "#1c2436" : "transparent",
+                border: displayTF === tf ? "1px solid rgba(148,163,184,0.22)" : "1px solid transparent",
+                color: displayTF === tf ? "#f5f7ff" : "#8aa0bf",
+                borderRadius: 7,
+                padding: "6px 10px",
                 fontSize: 12,
-                fontWeight: 800,
+                fontWeight: 700,
                 cursor: "pointer",
-                letterSpacing: "0.04em",
-                minWidth: 42,
+                minWidth: 36,
               }}
             >
               {TF_LABELS[tf]}
@@ -1302,39 +1295,36 @@ export default function MarketIntelligenceView({ initialSymbol, embedded = false
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 7,
-            background: "linear-gradient(135deg, rgba(245,243,255,0.95), rgba(220,212,247,0.92))",
+            gap: 6,
+            background: "#e5e7eb",
             border: "none",
-            color: "#141024",
-            fontWeight: 900,
-            borderRadius: 12,
-            padding: "8px 15px",
-            fontSize: 12.5,
+            color: "#0b0f18",
+            fontWeight: 800,
+            borderRadius: 8,
+            padding: "7px 12px",
+            fontSize: 12,
             cursor: "pointer",
-            boxShadow: "0 10px 24px rgba(220,212,247,0.18)",
           }}
         >
-          <Zap size={13} fill="#141024" />
+          <Zap size={12} fill="#0b0f18" />
           {loading ? t("radar.analyzing") : t("radar.aiAnalyze")}
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(16,229,160,0.08)", border: `1px solid ${GREEN}50`, borderRadius: 999, padding: "6px 12px" }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: GREEN, boxShadow: `0 0 12px ${GREEN}` }} />
-          <span style={{ fontSize: 11.5, color: "#A9F2D5" }}>{t("radar.conditions")}</span>
-          <span style={{ fontSize: 12.8, fontWeight: 800, color: GREEN }}>
+        <div style={{ marginRight: "auto", display: "flex", alignItems: "center", gap: 8, color: "#aab7c9" }}>
+          <span style={{ fontSize: 11.5 }}>{t("radar.conditions")}</span>
+          <span style={{ fontSize: 12.5, fontWeight: 800, color: GREEN }}>
             {result?.readiness?.metCount != null ? `${result.readiness.metCount}/${result.readiness.totalCount}` : "—"}
           </span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(124,77,255,0.08)", border: "1px solid rgba(124,77,255,0.38)", borderRadius: 999, padding: "6px 12px" }}>
-          <Radio size={12} color={BLUE} />
-          <span style={{ fontSize: 12, color: "#C9C1E6" }}>{t("radar.sessionLabel")}</span>
-          <b style={{ fontSize: 12.3, color: "#F5F3FF" }}>{primarySession}</b>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#aab7c9" }}>
+          <Radio size={11} color={BLUE} />
+          <span style={{ fontSize: 11.5 }}>{primarySession}</span>
         </div>
 
-        <div style={{ marginRight: "auto", display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.02)", border: `1px solid ${biasColor}40`, borderRadius: 999, padding: "6px 12px" }}>
-          <span style={{ fontSize: 12, color: "#A79FC4" }}>{t("radar.marketBiasLabel")}</span>
-          <b style={{ fontSize: 12.5, color: biasColor }}>{biasLabel}</b>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, color: biasColor }}>
+          <span style={{ fontSize: 11.5, color: "#aab7c9" }}>{t("radar.marketBiasLabel")}</span>
+          <b style={{ fontSize: 12.5 }}>{biasLabel}</b>
         </div>
       </div>
 
@@ -2886,33 +2876,19 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
         <div style={{ color: "#6E6690", fontSize: 12.5, padding: "1rem 0", textAlign: "center" }}>{t("radar.loadingAnalysis")}</div>
       ) : (
         <>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, paddingBottom: 4 }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 900, color: "#F5F3FF", letterSpacing: "0.04em" }}>{r.symbol}</div>
-              <div style={{ fontSize: 11, color: "#9CA3AF" }}>{fmt(r.price)}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#f5f7ff" }}>{r.symbol}</div>
+              <div style={{ fontSize: 11, color: "#8ea2c0" }}>{fmt(r.price)}</div>
             </div>
             {signal && (
-              <span style={{ background: `${signalColor}18`, border: `1px solid ${signalColor}80`, color: signalColor, fontWeight: 900, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", letterSpacing: "0.06em" }}>
+              <span style={{ background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.16)", color: signalColor, fontWeight: 700, fontSize: 11.5, borderRadius: 7, padding: "5px 9px" }}>
                 {signal}
               </span>
             )}
-            <div
-              style={{
-                width: 58,
-                height: 58,
-                borderRadius: "50%",
-                flexShrink: 0,
-                background: `conic-gradient(${ringColor} ${ringDeg}deg, rgba(255,255,255,0.06) 0deg)`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: `0 0 20px ${ringColor}22`,
-              }}
-            >
-              <div style={{ width: 46, height: 46, borderRadius: "50%", background: "#141024", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <span style={{ fontSize: 12.5, fontWeight: 800, color: "#F5F3FF" }}>{met != null ? `${met}/${total}` : "—"}</span>
-                <span style={{ fontSize: 8, color: "#6E6690" }}>{t("radar.conditions")}</span>
-              </div>
+            <div style={{ minWidth: 68, background: "rgba(148,163,184,0.04)", border: "1px solid rgba(148,163,184,0.12)", borderRadius: 8, padding: "6px 7px", textAlign: "center" }}>
+              <div style={{ fontSize: 11, color: "#8ea2c0" }}>{t("radar.conditions")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: ringColor }}>{met != null ? `${met}/${total}` : "—"}</div>
             </div>
           </div>
 
@@ -2936,14 +2912,14 @@ function AIPanel({ result: r, signal, tab, setTab, primarySession }) {
             </div>
           )}
 
-              <div style={{ display: "flex", gap: 5, background: "rgba(255,255,255,0.02)", borderRadius: 12, padding: 4, border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div style={{ display: "flex", gap: 4, background: "rgba(148,163,184,0.04)", borderRadius: 8, padding: 3, border: "1px solid rgba(148,163,184,0.08)" }}>
             <button
               onClick={() => setTab("analysis")}
-              style={{ flex: 1, background: tab === "analysis" ? "linear-gradient(135deg, rgba(124,77,255,0.20), rgba(255,255,255,0.04))" : "transparent", color: tab === "analysis" ? GOLD_LIGHT : "#6E6690", border: "1px solid transparent", borderRadius: 9, padding: "7px 0", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
+              style={{ flex: 1, background: tab === "analysis" ? "#1c2436" : "transparent", color: tab === "analysis" ? "#f5f7ff" : "#8aa0bf", border: "1px solid transparent", borderRadius: 7, padding: "6px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
             >{t("radar.analysis")}</button>
             <button
               onClick={() => setTab("why")}
-              style={{ flex: 1, background: tab === "why" ? "linear-gradient(135deg, rgba(124,77,255,0.20), rgba(255,255,255,0.04))" : "transparent", color: tab === "why" ? GOLD_LIGHT : "#6E6690", border: "1px solid transparent", borderRadius: 9, padding: "7px 0", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
+              style={{ flex: 1, background: tab === "why" ? "#1c2436" : "transparent", color: tab === "why" ? "#f5f7ff" : "#8aa0bf", border: "1px solid transparent", borderRadius: 7, padding: "6px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
             >
               Why This Trade?
             </button>
