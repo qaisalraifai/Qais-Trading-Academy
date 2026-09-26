@@ -1977,29 +1977,35 @@ function drawLastTrade(ctx, trade, timeToX, priceToY, plotW, chartH, ease, timeS
   const dirText = up ? "BUY" : "SELL";
   const entryText = `${dirText} / ENTRY ${fmt(trade.entry.price)}`;
 
-  const riskStart = sy != null ? Math.min(ey, sy) : null;
-  const riskEnd = sy != null ? Math.max(ey, sy) : null;
-  const rewardStart = ty != null ? Math.min(ey, ty) : null;
-  const rewardEnd = ty != null ? Math.max(ey, ty) : null;
+  const riskY = sy;
+  const rewardY = ty;
 
-  if (sy != null) {
-    const riskTop = riskStart;
-    const riskHeight = Math.max(Math.abs(riskEnd - riskStart), 16);
+  const drawRiskZone = (topY, bottomY) => {
+    const yTop = Math.min(topY, bottomY);
+    const height = Math.max(Math.abs(bottomY - topY), 16);
     ctx.fillStyle = `${RED}12`;
     ctx.strokeStyle = `${RED}36`;
-    roundRect(ctx, bandX, riskTop, bandW, riskHeight, 4);
+    roundRect(ctx, bandX, yTop, bandW, height, 4);
     ctx.fill();
     ctx.stroke();
-  }
+  };
 
-  if (ty != null) {
-    const rewardTop = rewardStart;
-    const rewardHeight = Math.max(Math.abs(rewardEnd - rewardStart), 16);
+  const drawRewardZone = (topY, bottomY) => {
+    const yTop = Math.min(topY, bottomY);
+    const height = Math.max(Math.abs(bottomY - topY), 16);
     ctx.fillStyle = `${GREEN}12`;
     ctx.strokeStyle = `${GREEN}36`;
-    roundRect(ctx, bandX, rewardTop, bandW, rewardHeight, 4);
+    roundRect(ctx, bandX, yTop, bandW, height, 4);
     ctx.fill();
     ctx.stroke();
+  };
+
+  if (up) {
+    if (ty != null) drawRewardZone(ey, ty);
+    if (sy != null) drawRiskZone(ey, sy);
+  } else {
+    if (sy != null) drawRiskZone(sy, ey);
+    if (ty != null) drawRewardZone(ey, ty);
   }
 
   ctx.strokeStyle = entryColor;
